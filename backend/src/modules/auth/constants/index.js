@@ -1,0 +1,16 @@
+const {
+  BUSINESS_ACCOUNT_TYPES,
+  BUSINESS_CATEGORIES
+} = require('../../../constants/business');
+
+const SIGNUP_SESSION_KEY = 'signupFlow';
+const BUSINESS_CATEGORY_SET = new Set(BUSINESS_CATEGORIES);
+const COMPANY_REQUIRED_TYPES = new Set(BUSINESS_ACCOUNT_TYPES.filter((type) => type !== 'normal'));
+
+module.exports = {
+  SIGNUP_SESSION_KEY,
+  BUSINESS_ACCOUNT_TYPES,
+  BUSINESS_CATEGORIES,
+  BUSINESS_CATEGORY_SET,
+  COMPANY_REQUIRED_TYPES
+};
