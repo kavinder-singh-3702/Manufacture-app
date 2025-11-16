@@ -24,6 +24,7 @@ export const LoginScreen = ({ onBack, onSignup }: LoginScreenProps) => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -108,15 +109,24 @@ export const LoginScreen = ({ onBack, onSignup }: LoginScreenProps) => {
 
         <View style={styles.form}>
           {renderIdentifierInput()}
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+          <View style={styles.passwordWrapper}>
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Password"
+              placeholderTextColor="#888"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword((prev) => !prev)}
+              accessibilityLabel={`${showPassword ? "Hide" : "Show"} password`}
+            >
+              <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
+            </TouchableOpacity>
+          </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -232,6 +242,22 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     marginBottom: 18,
+  },
+  passwordWrapper: {
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 60,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 0,
+    top: 8,
+    padding: 8,
+  },
+  eyeText: {
+    fontWeight: "600",
+    color: "#111",
   },
   primaryButton: {
     marginTop: 12,
