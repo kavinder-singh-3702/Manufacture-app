@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { BUSINESS_ACCOUNT_TYPES } = require("../constants/business");
 
 const { Schema } = mongoose;
 
@@ -7,8 +8,6 @@ const USER_ROLES = ["admin", "user"];
 const ACCOUNT_STATUSES = ["active", "inactive", "suspended", "deleted"];
 const GENDER_OPTIONS = ["male", "female", "non-binary", "prefer-not-to-say"];
 const THEME_OPTIONS = ["system", "light", "dark"];
-const COMPANY_MEMBER_ROLES = ["owner", "admin", "manager", "contributor", "member", "viewer"];
-const COMPANY_MEMBER_STATUSES = ["active", "invited", "suspended", "removed"];
 
 const ADDRESS_SCHEMA = new Schema(
   {
@@ -58,32 +57,6 @@ const PREFERENCES_SCHEMA = new Schema(
   { _id: false }
 );
 
-const COMPANY_MEMBERSHIP_SCHEMA = new Schema(
-  {
-    company: { type: Schema.Types.ObjectId, ref: "Company", required: true }, // Reference to the organization this user can act on behalf of.
-    role: {
-      type: String,
-      enum: COMPANY_MEMBER_ROLES,
-      default: "member",
-    }, // Role within that company, drives authorization policies.
-    status: {
-      type: String,
-      enum: COMPANY_MEMBER_STATUSES,
-      default: "invited",
-    }, // Invitation lifecycle tracking (invited/active/suspended).
-    permissions: { type: [String], default: [] }, // Fine-grained feature entitlements beyond the role.
-    joinedAt: { type: Date, default: Date.now }, // When the membership was accepted/activated.
-    invitedBy: { type: Schema.Types.ObjectId, ref: "User" }, // User who issued the invite for auditing.
-    lastActiveAt: Date, // The latest interaction timestamp scoped to this company.
-    metadata: {
-      type: Map,
-      of: Schema.Types.Mixed,
-      default: () => ({}),
-    }, // Custom per-company data (e.g., default warehouse, seat preferences).
-  },
-  { _id: false }
-);
-
 const userSchema = new Schema(
   {
     firstName: { type: String, trim: true }, // Legal given name for personalization.
@@ -125,6 +98,11 @@ const userSchema = new Schema(
     twoFactorSecret: { type: String, select: false }, // Encrypted TOTP secret for MFA apps.
     loginAttempts: { type: Number, default: 0 }, // Failed login counter to help detect brute force attacks.
     lockUntil: Date, // Future timestamp until which the account stays locked.
+    accountType: {
+      type: String,
+      enum: BUSINESS_ACCOUNT_TYPES,
+      default: "normal",
+    }, // Determines whether the user is a consumer, trader, or manufacturer.
     role: {
       type: String,
       enum: USER_ROLES,
@@ -162,11 +140,11 @@ const userSchema = new Schema(
       of: Schema.Types.Mixed,
       default: () => ({}),
     }, // Flexible key/value map for integrations and feature flags.
-    companyMemberships: {
-      type: [COMPANY_MEMBERSHIP_SCHEMA],
+    companies: {
+      type: [{ type: Schema.Types.ObjectId, ref: "Company" }],
       default: [],
-    }, // List of companies the user can switch between.
-    activeCompany: { type: Schema.Types.ObjectId, ref: "Company" }, // The company context currently pinned by the user.
+    }, // Company ids owned/managed solely by this user.
+    activeCompany: { type: Schema.Types.ObjectId, ref: "Company" }, // Company currently selected in the UI.
     deletedAt: Date, // Soft delete marker to support delayed purging.
   },
   { timestamps: true }

@@ -117,10 +117,7 @@ const companySchema = new Schema(
       enum: ["pending", "submitted", "approved", "rejected"],
       default: "pending",
     }, // Review state of the submitted compliance documents.
-    ownerIds: {
-      type: [{ type: Schema.Types.ObjectId, ref: "User" }],
-      default: [],
-    }, // Quick lookup for users with immutable ownership rights.
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true }, // Single owner (the creating user) who manages this company.
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true }, // User who originally provisioned the company.
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" }, // Last user to change profile metadata.
     status: {

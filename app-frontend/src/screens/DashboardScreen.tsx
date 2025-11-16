@@ -1,84 +1,144 @@
-import { ScrollView, View, StyleSheet } from "react-native";
-import { KPIBlock } from "../components/summary/KPIBlock";
+import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { Typography } from "../components/common/Typography";
-import { Card } from "../components/common/Card";
 import { useTheme } from "../hooks/useTheme";
-import { appConfig } from "../config/appConfig";
+import { HeroHeader } from "../components/home/HeroHeader";
+import { QuickActionGrid, QuickAction } from "../components/home/QuickActionGrid";
+import { CategorySections, CategorySectionData } from "../components/home/CategorySections";
+import { MarketplacePulse, MarketplaceStat } from "../components/home/MarketplacePulse";
+import { SpotlightPrograms, SpotlightProgram } from "../components/home/SpotlightPrograms";
 
-const metrics = [
-  { label: "Production Output", value: "1,482 units", trend: "up", trendValue: "8%" },
-  { label: "On-Time Delivery", value: "96.2%", trend: "up", trendValue: "3%" },
-  { label: "Quality Incidents", value: "4 issues", trend: "down", trendValue: "2" },
+const logoSource = require("../../assets/icon.png");
+
+const quickActions: QuickAction[] = [
+  {
+    id: "requirements",
+    title: "Discover Verified Sellers",
+    description: "Share your procurement goals with the sourcing desk.",
+    cta: "Post requirement",
+  },
+  {
+    id: "selling",
+    title: "Boost your Sales",
+    description: "Reach trusted buyers with export-ready support.",
+    cta: "Start selling",
+  },
 ] as const;
 
-const activities = [
-  { id: "1", title: "Shift A quality audit", timestamp: "08:30 AM" },
-  { id: "2", title: "Line 3 maintenance window", timestamp: "11:00 AM" },
-  { id: "3", title: "Client shipment prep", timestamp: "02:45 PM" },
-];
+const categorySections: CategorySectionData[] = [
+  {
+    id: "food",
+    title: "Food & Beverages",
+    highlight: "Rice assortments",
+    items: [
+      { id: "basmati", label: "Basmati Rice", detail: "1121 & 1509 variants" },
+      { id: "kolam", label: "Kolam Rice", detail: "Steam, raw & broken" },
+      { id: "ponni", label: "Ponni Rice", detail: "South Indian staples" },
+    ],
+    theme: "#E9F6F4",
+  },
+  {
+    id: "chemicals",
+    title: "Chemicals & Minerals",
+    highlight: "Industrial solvents",
+    items: [
+      { id: "acids", label: "Specialty Acids", detail: "Battery grade & lab grade" },
+      { id: "powders", label: "Mineral Powders", detail: "Quartz, dolomite & more" },
+      { id: "coatings", label: "Protective Coatings", detail: "High temperature & food safe" },
+    ],
+    theme: "#F2F4FF",
+  },
+  {
+    id: "textiles",
+    title: "Textiles & Apparel",
+    highlight: "Premium cotton",
+    items: [
+      { id: "knits", label: "Organic Knits", detail: "GOTS certified partners" },
+      { id: "uniforms", label: "Industrial Uniforms", detail: "Custom fits for shop floors" },
+      { id: "technical", label: "Technical Fabrics", detail: "Fire retardant & antistatic" },
+    ],
+    theme: "#FFF4EC",
+  },
+] as const;
+
+const marketplaceHighlights: MarketplaceStat[] = [
+  { id: "buyers", value: "2.1k+", label: "Active buyers" },
+  { id: "exports", value: "780+", label: "Verified exporters" },
+  { id: "response", value: "4.2 hrs", label: "Avg response" },
+] as const;
+
+const spotlightPrograms: SpotlightProgram[] = [
+  {
+    id: "verified",
+    title: "Verified Exporters Club",
+    stat: "Invite-only",
+    description: "Hands-on compliance, bonded warehouses, and curated buyer circles.",
+  },
+  {
+    id: "logistics",
+    title: "Logistics Concierge",
+    stat: "Pan-India",
+    description: "End-to-end movement, packaging, and insurance support for urgent orders.",
+  },
+] as const;
+
+const brandPillars = ["Assisted sourcing desk", "Secure payments", "Escrow-ready partners"] as const;
 
 export const DashboardScreen = () => {
   const { spacing, colors } = useTheme();
 
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
-      <Typography variant="heading">{appConfig.companyName} Manufacturing Overview</Typography>
-      <Typography variant="body" color={colors.muted} style={{ marginTop: spacing.xs }}>
-        Quick glance at today&apos;s throughput and quality metrics.
-      </Typography>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ gap: spacing.lg }}>
+        <HeroHeader
+          brandName="Manufacture Command"
+          logoSource={logoSource}
+          headline="Empowering Business Connections"
+          description="Connect with verified sellers, manage sourcing, and boost exports with a single trusted workspace."
+          pillars={brandPillars}
+        />
 
-      <View style={[styles.metricsRow, { marginTop: spacing.lg }]}>
-        {metrics.map((metric, index) => (
-          <View
-            key={metric.label}
-            style={[
-              styles.metricWrapper,
-              {
-                marginRight: index % 2 === 0 ? spacing.md : 0,
-                marginBottom: spacing.md,
-              },
-            ]}
-          >
-            <KPIBlock
-              label={metric.label}
-              value={metric.value}
-              trend={metric.trend === "down" ? "down" : "up"}
-              trendValue={metric.trendValue}
-            />
-          </View>
-        ))}
-      </View>
+        <QuickActionGrid actions={quickActions} />
 
-      <Card style={{ marginTop: spacing.xl }}>
-        <Typography variant="subheading">Upcoming Activities</Typography>
-        <View style={{ marginTop: spacing.md }}>
-          {activities.map((activity) => (
-            <View key={activity.id} style={[styles.activityRow, { borderBottomColor: colors.border }]}>
-              <View>
-                <Typography variant="body">{activity.title}</Typography>
-                <Typography variant="caption" style={{ marginTop: spacing.xs }}>
-                  {activity.timestamp}
-                </Typography>
-              </View>
-            </View>
-          ))}
+        <View>
+          <SectionHeader title="Top Categories" actionLabel="View all" />
+          <CategorySections sections={categorySections} />
         </View>
-      </Card>
+
+        <MarketplacePulse stats={marketplaceHighlights} />
+
+        <SpotlightPrograms programs={spotlightPrograms} actionLabel="Talk to us" />
+      </View>
     </ScrollView>
   );
 };
 
+const SectionHeader = ({ title, actionLabel }: { title: string; actionLabel?: string }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={styles.sectionHeader}>
+      <Typography variant="subheading">{title}</Typography>
+      {actionLabel ? (
+        <TouchableOpacity>
+          <Text style={[styles.sectionAction, { color: colors.primary }]}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  metricsRow: {
+  sectionHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  metricWrapper: {
-    flex: 1,
-    minWidth: 160,
-  },
-  activityRow: {
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  sectionAction: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

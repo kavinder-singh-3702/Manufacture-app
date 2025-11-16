@@ -28,37 +28,16 @@ const signupBasePath = "/auth/signup";
 
 const signup = {
   start: (payload: SignupStartPayload) =>
-    apiClient<SignupStartResponse>({
-      path: `${signupBasePath}/start`,
-      method: "POST",
-      data: payload,
-    }),
+    apiClient.post<SignupStartResponse>(`${signupBasePath}/start`, payload),
   verify: (payload: SignupVerifyPayload) =>
-    apiClient<SignupVerifyResponse>({
-      path: `${signupBasePath}/verify`,
-      method: "POST",
-      data: payload,
-    }),
+    apiClient.post<SignupVerifyResponse>(`${signupBasePath}/verify`, payload),
   complete: (payload: SignupCompletePayload) =>
-    apiClient<SignupCompleteResponse>({
-      path: `${signupBasePath}/complete`,
-      method: "POST",
-      data: payload,
-    }),
+    apiClient.post<SignupCompleteResponse>(`${signupBasePath}/complete`, payload),
 };
 
-const login = (payload: LoginPayload) =>
-  apiClient<LoginResponse>({
-    path: "/auth/login",
-    method: "POST",
-    data: payload,
-  });
+const login = (payload: LoginPayload) => apiClient.post<LoginResponse>("/auth/login", payload);
 
-const logout = () =>
-  apiClient<void>({
-    path: "/auth/logout",
-    method: "POST",
-  });
+const logout = () => apiClient.post<void>("/auth/logout");
 
 export const authService = {
   signup,

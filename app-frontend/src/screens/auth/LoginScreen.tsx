@@ -1,91 +1,259 @@
 import { useState } from "react";
-import { View, TouchableOpacity, Text } from "react-native";
-import { InputField } from "../../components/common/InputField";
-import { Button } from "../../components/common/Button";
-import { Typography } from "../../components/common/Typography";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useAuth } from "../../hooks/useAuth";
-import { useTheme } from "../../hooks/useTheme";
+
+type CredentialMode = "email" | "phone";
 
 type LoginScreenProps = {
+  onBack: () => void;
   onSignup: () => void;
 };
 
-export const LoginScreen = ({ onSignup }: LoginScreenProps) => {
+export const LoginScreen = ({ onBack, onSignup }: LoginScreenProps) => {
   const { login } = useAuth();
-  const { spacing, colors } = useTheme();
-
+  const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  const identifierValue = credentialMode === "email" ? email : phone;
+  const identifierPlaceholder =
+    credentialMode === "email" ? "Enter Email Id" : "Enter Mobile Number";
+
+  const handleLogin = async () => {
+    setError(null);
+    const trimmedIdentifier = identifierValue.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedIdentifier || !trimmedPassword) {
+      setError("Fill in your credentials to continue");
+      return;
+    }
+
     try {
-      setError(null);
-      if (!password.trim()) {
-        setError("Password is required");
-        return;
-      }
-
-      const payload =
-        email.trim().length > 0
-          ? { email: email.trim(), password }
-          : phone.trim().length > 0
-          ? { phone: phone.trim(), password }
-          : null;
-
-      if (!payload) {
-        setError("Enter email or phone to continue");
-        return;
-      }
-
       setLoading(true);
-      await login(payload);
-    } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "Unable to login");
+      if (credentialMode === "email") {
+        await login({ email: trimmedIdentifier, password: trimmedPassword, remember: true });
+      } else {
+        await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
+      }
+    } catch (loginError) {
+      const message = loginError instanceof Error ? loginError.message : "Unable to login";
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <View>
-      <Typography variant="subheading">Welcome back</Typography>
-      <Typography variant="body" color={colors.muted} style={{ marginBottom: spacing.lg, marginTop: spacing.xs }}>
-        Use your manufacturing credentials to access dashboards.
-      </Typography>
-
-      <InputField label="Email" placeholder="opslead@company.com" value={email} onChangeText={setEmail} autoCapitalize="none" />
-      <InputField
-        label="Phone"
-        placeholder="+11234567890"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <InputField
-        label="Password"
-        placeholder="••••••••"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-
-      {error ? (
-        <Text style={{ color: colors.critical, marginBottom: spacing.md }}>
-          {error}
-        </Text>
-      ) : null}
-
-      <Button label="Sign in" onPress={handleSubmit} loading={loading} />
-
-      <View style={{ marginTop: spacing.lg, alignItems: "center" }}>
-        <TouchableOpacity onPress={onSignup}>
-          <Text style={{ color: colors.primary, fontWeight: "600" }}>Need an account? Start signup</Text>
-        </TouchableOpacity>
-      </View>
+  const renderIdentifierToggle = () => (
+    <View style={styles.toggleWrap}>
+      {(["email", "phone"] as CredentialMode[]).map((mode) => {
+        const isActive = credentialMode === mode;
+        return (
+          <TouchableOpacity
+            key={mode}
+            style={[styles.toggleButton, isActive ? styles.toggleButtonActive : null]}
+            onPress={() => setCredentialMode(mode)}
+          >
+            <Text style={[styles.toggleText, isActive ? styles.toggleTextActive : null]}>
+              {mode === "email" ? "Email" : "Mobile"}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
+
+  const renderIdentifierInput = () => (
+    <TextInput
+      style={styles.input}
+      placeholder={identifierPlaceholder}
+      placeholderTextColor="#888"
+      value={identifierValue}
+      onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
+      keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
+      autoCapitalize="none"
+    />
+  );
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.select({ ios: "padding", android: undefined })}
+      style={styles.slide}
+    >
+      <View style={styles.card}>
+        <View style={[styles.blob, styles.blobPrimary]} />
+        <View style={[styles.blob, styles.blobSecondary]} />
+
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+
+        <View style={styles.headerBlock}>
+          <Text style={styles.heading}>Welcome Back!</Text>
+          <Text style={styles.subheading}>Enter your email or mobile number to continue</Text>
+        </View>
+
+        {renderIdentifierToggle()}
+
+        <View style={styles.form}>
+          {renderIdentifierInput()}
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#888"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
+          </TouchableOpacity>
+
+          <Text style={styles.helperText}>Forgotten Password?</Text>
+          <TouchableOpacity onPress={onSignup}>
+            <Text style={styles.helperText}>Or Create a New Account</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
 };
+
+const styles = StyleSheet.create({
+  slide: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+  },
+  card: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 0,
+    paddingHorizontal: 32,
+    paddingTop: 32,
+    paddingBottom: 40,
+    position: "relative",
+    overflow: "hidden",
+  },
+  blob: {
+    position: "absolute",
+    borderRadius: 200,
+  },
+  blobPrimary: {
+    width: 320,
+    height: 320,
+    backgroundColor: "#E8F8E5",
+    bottom: -60,
+    right: -60,
+  },
+  blobSecondary: {
+    width: 240,
+    height: 240,
+    backgroundColor: "#DAF5D4",
+    bottom: 120,
+    left: -80,
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  backIcon: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#111",
+  },
+  headerBlock: {
+    marginBottom: 16,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#111",
+  },
+  subheading: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  toggleWrap: {
+    flexDirection: "row",
+    borderRadius: 32,
+    backgroundColor: "#F5F5F5",
+    padding: 4,
+    marginBottom: 24,
+  },
+  toggleButton: {
+    flex: 1,
+    borderRadius: 28,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#111",
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  toggleTextActive: {
+    color: "#111",
+  },
+  form: {
+    flex: 1,
+    marginTop: 8,
+  },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#C4C4C4",
+    paddingVertical: 14,
+    fontSize: 16,
+    marginBottom: 18,
+  },
+  primaryButton: {
+    marginTop: 12,
+    backgroundColor: "#000",
+    borderRadius: 32,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  helperText: {
+    textAlign: "center",
+    color: "#6B7280",
+    marginTop: 12,
+    fontSize: 13,
+  },
+  errorText: {
+    color: "#DC2626",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+});

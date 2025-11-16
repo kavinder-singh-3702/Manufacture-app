@@ -51,18 +51,12 @@ const maybeCreateInitialCompany = async (
       email: user.email,
       phone: user.phone
     },
-    ownerIds: [user.id],
+    owner: user.id,
     createdBy: user.id,
     status: 'active'
   });
 
-  user.companyMemberships.push({
-    company: company.id,
-    role: 'owner',
-    status: 'active',
-    joinedAt: new Date(),
-    invitedBy: user.id
-  });
+  user.companies.push(company.id);
   user.activeCompany = company.id;
 
   return user.save();

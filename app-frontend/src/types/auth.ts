@@ -12,6 +12,7 @@ export type LoginPayload = {
   email?: string;
   phone?: string;
   password: string;
+  remember?: boolean;
 };
 
 export type SignupStartPayload = {
