@@ -9,19 +9,28 @@ import { styles } from "./MainTabs.styles";
 
 const DEFAULT_ROUTE: RouteName = routes.DASHBOARD;
 
-export const MainTabs = () => {
+type MainTabsProps = {
+  onShowProfile?: () => void;
+};
+
+export const MainTabs = ({ onShowProfile }: MainTabsProps) => {
   const [activeRoute, setActiveRoute] = useState<RouteName>(DEFAULT_ROUTE);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { user, logout } = useAuth();
+  const { user, logout, requestLogin } = useAuth();
   const ActiveScreen = tabScreens[activeRoute];
   const displayName =
     typeof user?.displayName === "string" && user.displayName.trim().length ? user.displayName : "Operator";
   const email = user?.email;
-  const isAuthenticated = Boolean(user);
+  const isGuest = user?.role === "guest";
+  const isAuthenticated = Boolean(user) && !isGuest;
 
   const handleInfo = (type: "profile" | "settings") => {
     setSidebarVisible(false);
+    if (type === "profile" && onShowProfile) {
+      onShowProfile();
+      return;
+    }
     Alert.alert(
       type === "profile" ? "User profile" : "Preferences",
       "This section will let you fine tune your experience soon."
@@ -30,7 +39,7 @@ export const MainTabs = () => {
 
   const handleLoginPrompt = () => {
     setSidebarVisible(false);
-    Alert.alert("Login required", "Access your workspace by signing in.");
+    requestLogin();
   };
 
   const handleLogout = async () => {
@@ -49,15 +58,24 @@ export const MainTabs = () => {
     onPress: () => handleNavigate(tab.route),
   }));
 
+  const profileOrLoginItem = isAuthenticated
+    ? { label: "Profile", description: "Manage your personal details", onPress: () => handleInfo("profile") }
+    : {
+        label: "Login",
+        description: "Access your workspace",
+        onPress: handleLoginPrompt,
+        tone: "primary" as const,
+      };
+
+  const actionItems = isAuthenticated
+    ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
+    : [];
+
   const menuItems = [
     ...navigationItems,
-    isAuthenticated
-      ? { label: "Profile", description: "Manage your personal details", onPress: () => handleInfo("profile") }
-      : { label: "Login", description: "Return to the sign in screen", onPress: handleLoginPrompt },
+    profileOrLoginItem,
     { label: "Preferences", description: "Theme, notifications, and more", onPress: () => handleInfo("settings") },
-    ...(isAuthenticated
-      ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
-      : []),
+    ...actionItems,
   ];
 
   return (

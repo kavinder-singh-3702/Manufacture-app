@@ -6,7 +6,7 @@ type MenuItem = {
   label: string;
   description?: string;
   onPress: () => void;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "primary";
 };
 
 type SidebarMenuProps = {
@@ -46,28 +46,47 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 </Typography>
               ) : null}
             </View>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                onPress={item.onPress}
-                style={[
-                  styles.menuItem,
-                  {
-                    borderBottomColor: colors.border,
-                    paddingVertical: spacing.md,
-                  },
-                ]}
-              >
-                <Typography variant="body" color={item.tone === "danger" ? colors.critical : colors.text}>
-                  {item.label}
-                </Typography>
-                {item.description ? (
-                  <Typography variant="caption" color={colors.muted} style={{ marginTop: spacing.xs }}>
-                    {item.description}
+            {menuItems.map((item) => {
+              const isAction = item.tone && item.tone !== "default";
+              const backgroundColor =
+                item.tone === "primary"
+                  ? colors.primary
+                  : item.tone === "danger"
+                    ? colors.critical
+                    : colors.surface;
+              const textColor = isAction ? "#fff" : colors.text;
+              const descriptionColor = isAction ? "rgba(255,255,255,0.8)" : colors.muted;
+
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  onPress={item.onPress}
+                  style={[
+                    styles.menuItem,
+                    {
+                      borderBottomColor: colors.border,
+                      paddingVertical: spacing.md,
+                      backgroundColor,
+                    },
+                    isAction && {
+                      borderBottomWidth: 0,
+                      borderRadius: radius.md,
+                      marginTop: spacing.md,
+                      alignItems: "center",
+                    },
+                  ]}
+                >
+                  <Typography variant="body" color={textColor}>
+                    {item.label}
                   </Typography>
-                ) : null}
-              </TouchableOpacity>
-            ))}
+                  {item.description ? (
+                    <Typography variant="caption" color={descriptionColor} style={{ marginTop: spacing.xs }}>
+                      {item.description}
+                    </Typography>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </SafeAreaView>
       </View>

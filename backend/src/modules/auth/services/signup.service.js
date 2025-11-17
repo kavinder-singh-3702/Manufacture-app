@@ -56,8 +56,11 @@ const maybeCreateInitialCompany = async (
     status: 'active'
   });
 
-  user.companies.push(company.id);
-  user.activeCompany = company.id;
+  if (!Array.isArray(user.companies)) {
+    user.companies = [];
+  }
+  user.companies.push(company._id);
+  user.activeCompany = company._id;
 
   return user.save();
 };

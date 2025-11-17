@@ -1,5 +1,5 @@
 import { apiClient } from "./apiClient";
-import { AuthUser } from "../types/auth";
+import { AuthUser, UpdateUserPayload } from "../types/auth";
 
 type UserResponse = {
   user: AuthUser;
@@ -7,6 +7,10 @@ type UserResponse = {
 
 const getCurrentUser = () => apiClient.get<UserResponse>("/users/me");
 
+const updateCurrentUser = (payload: UpdateUserPayload) =>
+  apiClient.patch<UserResponse>("/users/me", payload);
+
 export const userService = {
   getCurrentUser,
+  updateCurrentUser,
 };
