@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SafeAreaView, View, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
 import { SignupScreen } from "./SignupScreen";
 import { useAuth } from "../../hooks/useAuth";
-
-type AuthView = "intro" | "login" | "signup";
+import { AuthView } from "../../types/auth";
 
 export const AuthScreen = () => {
-  const [view, setView] = useState<AuthView>("intro");
-  const { bootstrapError, setUser } = useAuth();
+  const { bootstrapError, setUser, authView, clearAuthView } = useAuth();
+  const [view, setView] = useState<AuthView>(authView ?? "intro");
+
+  useEffect(() => {
+    if (authView) {
+      setView(authView);
+      clearAuthView();
+    }
+  }, [authView, clearAuthView]);
 
   const handleGuestAccess = () => {
     setUser({

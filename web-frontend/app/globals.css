@@ -33,6 +33,12 @@
   --primary: var(--green);
   --secondary: var(--burgundy);
   --accent: var(--pink);
+
+  /* Additional color mappings */
+  --color-charcoal: #2e2e3a;
+  --color-midnight: #1a2440;
+  --color-plum: #3b1f2b;
+  --color-peach: #fadad0;
 }
 
 @theme inline {
@@ -66,8 +72,8 @@
   --color-info: var(--info);
 
   /* Fonts */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  --font-mono: var(--font-geist-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
 
   /* Gradients - Mixed color theme */
   --gradient-green-pink: linear-gradient(135deg, var(--green) 0%, var(--pink) 100%);
@@ -84,8 +90,16 @@
   --shadow-burgundy: 0 4px 12px rgba(59, 31, 43, 0.3);
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
-  background: var(--background);
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(250, 218, 208, 0.35), transparent 55%),
+    linear-gradient(135deg, var(--color-midnight), var(--color-charcoal));
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

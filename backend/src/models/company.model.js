@@ -1,10 +1,9 @@
 const mongoose = require("mongoose");
 const { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES } = require("../constants/business");
+const { COMPANY_STATUS, COMPANY_SIZE_BUCKETS } = require("../constants/company");
 
 const { Schema } = mongoose;
 
-const COMPANY_STATUS = ["pending-verification", "active", "inactive", "suspended", "archived"];
-const COMPANY_SIZE_BUCKETS = ["1-10", "11-50", "51-200", "201-500", "500+"];
 const COMPANY_CATEGORY_SET = new Set(BUSINESS_CATEGORIES);
 
 const ADDRESS_SCHEMA = new Schema(

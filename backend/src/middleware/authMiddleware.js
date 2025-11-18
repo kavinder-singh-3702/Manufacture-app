@@ -5,16 +5,24 @@ const { verifyToken } = require('../utils/token');
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
-    const [, token] = authHeader.split(' ');
+    const [, bearerToken] = authHeader.split(' ');
 
-    if (!token) {
-      return next(createError(401, 'Authentication token missing'));
+    let userId = null;
+
+    if (bearerToken) {
+      const payload = verifyToken(bearerToken);
+      userId = payload.sub;
+    } else if (req.session && req.session.userId) {
+      userId = req.session.userId;
     }
 
-    const payload = verifyToken(token);
-    const user = await User.findById(payload.sub).lean();
+    if (!userId) {
+      return next(createError(401, 'Authentication required'));
+    }
 
-    if (!user || !user.isActive) {
+    const user = await User.findById(userId).lean();
+
+    if (!user || (user.status && user.status !== 'active')) {
       return next(createError(401, 'User not found or inactive'));
     }
 

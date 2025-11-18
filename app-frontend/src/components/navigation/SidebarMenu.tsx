@@ -7,7 +7,7 @@ type MenuItem = {
   label: string;
   description?: string;
   onPress: () => void;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "primary";
 };
 
 type SidebarMenuProps = {

@@ -1,1 +1,0 @@
-export { MainTabs } from "./MainTabs";

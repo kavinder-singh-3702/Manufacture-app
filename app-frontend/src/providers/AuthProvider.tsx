@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { AuthUser, LoginPayload } from "../types/auth";
+import { AuthUser, AuthView, LoginPayload } from "../types/auth";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { ApiError } from "../services/http";
@@ -11,6 +11,9 @@ type AuthContextValue = {
   setUser: (user: AuthUser | null) => void;
   initializing: boolean;
   bootstrapError: string | null;
+  requestLogin: () => void;
+  authView: AuthView | null;
+  clearAuthView: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -23,6 +26,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [authView, setAuthView] = useState<AuthView | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -31,6 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const { user: currentUser } = await userService.getCurrentUser();
         if (isMounted) {
           setUserState(currentUser);
+          setAuthView(null);
           setBootstrapError(null);
         }
       } catch (error) {
@@ -65,15 +70,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = useCallback(async (payload: LoginPayload) => {
     const { user: authenticatedUser } = await authService.login(payload);
     setUserState(authenticatedUser);
+    setAuthView(null);
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
     setUserState(null);
+    setAuthView("login");
   }, []);
 
   const setUser = useCallback((next: AuthUser | null) => {
     setUserState(next);
+    if (next) {
+      setAuthView(null);
+    }
+  }, []);
+
+  const requestLogin = useCallback(() => {
+    setUserState(null);
+    setAuthView("login");
+  }, []);
+
+  const clearAuthView = useCallback(() => {
+    setAuthView(null);
   }, []);
 
   const value = useMemo(
@@ -84,8 +103,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser,
       initializing,
       bootstrapError,
+      requestLogin,
+      authView,
+      clearAuthView,
     }),
-    [bootstrapError, initializing, login, logout, setUser, user]
+    [authView, bootstrapError, clearAuthView, initializing, login, logout, requestLogin, setUser, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
