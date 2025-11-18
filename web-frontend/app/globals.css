@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand Colors */
+  --charcoal: #2E2E3A;
+  --green: #11A440;
+  --burgundy: #3B1F2B;
+  --pink: #FADADD;
+
+  /* Derived Shades */
+  --charcoal-light: #434355;
+  --green-dark: #0D7D31;
+  --burgundy-light: #4D2838;
+  --pink-light: #FCF0F1;
+
+  /* Neutrals */
+  --white: #FFFFFF;
+  --off-white: #F8F8FA;
+  --light-gray: #E5E5E8;
+  --medium-gray: #9999A1;
+
+  /* Semantic */
+  --success: #11A440;
+  --error: #DC2626;
+  --warning: #F59E0B;
+  --info: #3B82F6;
+
+  /* Application Colors */
+  --background: var(--pink-light);
+  --foreground: var(--charcoal);
+  --surface: var(--white);
+  --border: var(--light-gray);
+  --primary: var(--green);
+  --secondary: var(--burgundy);
+  --accent: var(--pink);
 }
 
 @theme inline {
+  /* Layout */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+
+  /* Brand */
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--green-dark);
+  --color-secondary: var(--secondary);
+  --color-secondary-light: var(--burgundy-light);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--pink-light);
+
+  /* Text */
+  --color-text: var(--charcoal);
+  --color-text-light: var(--charcoal-light);
+  --color-text-muted: var(--medium-gray);
+  --color-text-inverse: var(--white);
+
+  /* Border */
+  --color-border: var(--border);
+  --color-border-dark: var(--charcoal-light);
+
+  /* Semantic */
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Gradients - Mixed color theme */
+  --gradient-green-pink: linear-gradient(135deg, var(--green) 0%, var(--pink) 100%);
+  --gradient-burgundy-pink: linear-gradient(135deg, var(--burgundy) 0%, var(--pink) 100%);
+  --gradient-charcoal-green: linear-gradient(135deg, var(--charcoal) 0%, var(--green) 100%);
+  --gradient-brand: linear-gradient(135deg, var(--green) 0%, var(--pink) 50%, var(--burgundy) 100%);
+  --gradient-soft: linear-gradient(180deg, var(--pink-light) 0%, var(--white) 100%);
+
+  /* Shadows - Soft pink tinted */
+  --shadow-sm: 0 1px 2px 0 rgba(250, 218, 221, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(250, 218, 221, 0.4), 0 2px 4px -1px rgba(250, 218, 221, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(250, 218, 221, 0.5), 0 4px 6px -2px rgba(250, 218, 221, 0.3);
+  --shadow-green: 0 4px 12px rgba(17, 164, 64, 0.3);
+  --shadow-burgundy: 0 4px 12px rgba(59, 31, 43, 0.3);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

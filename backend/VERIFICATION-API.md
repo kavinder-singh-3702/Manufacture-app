@@ -22,8 +22,8 @@ verificationData: {
   accountNumber: String,
   ifscCode: String,
   accountHolderName: String,
-  gstDocumentUrl: String,        // URL to uploaded GST certificate
-  bankProofUrl: String,           // URL to uploaded bank proof
+  gstDocumentUrl: String,        
+  bankProofUrl: String,          
   submittedAt: Date,
   reviewedAt: Date,
   reviewedBy: ObjectId (ref: User),
