@@ -11,6 +11,7 @@ const {
   createCompanyValidation,
   companyIdParamValidation
 } = require('../validators/company.validators');
+const companyVerificationRouter = require('../../companyVerification/routes/companyVerificationUser.routes');
 
 const router = Router();
 
@@ -23,5 +24,10 @@ router
 
 router.get('/:companyId', validate(companyIdParamValidation), getCompanyController);
 router.post('/:companyId/select', validate(companyIdParamValidation), switchCompanyController);
+router.use(
+  '/:companyId/verification',
+  validate(companyIdParamValidation),
+  companyVerificationRouter
+);
 
 module.exports = router;

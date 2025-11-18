@@ -1,11 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --color-charcoal: #2e2e3a;
+  --color-charcoal: #43343d;
   --color-midnight: #1a2440;
-  --color-plum: #3b1f2b;
-  --color-peach: #fadad0;
+  --color-plum: #5a3042;
+  --color-peach: #f6b8a8;
+  --color-cream: #fff8f4;
+  --color-linen: #fceee7;
+  --background: var(--color-cream);
+  --surface: #ffffff;
+  --surface-muted: var(--color-linen);
+  --border-soft: rgba(90, 48, 66, 0.18);
+  --foreground: #2e1f2c;
+}
+
+[data-theme="dark"] {
   --background: #111827;
+  --surface: rgba(17, 24, 39, 0.65);
+  --surface-muted: rgba(59, 31, 43, 0.35);
+  --border-soft: rgba(250, 218, 208, 0.2);
   --foreground: #f8fafc;
 }
 
@@ -23,9 +36,14 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(250, 218, 208, 0.35), transparent 55%),
-    linear-gradient(135deg, var(--color-midnight), var(--color-charcoal));
+  background: radial-gradient(circle at top, rgba(246, 184, 168, 0.4), transparent 55%),
+    linear-gradient(180deg, var(--color-cream), #ffffff);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+body[data-theme="dark"] {
+  background: radial-gradient(circle at top, rgba(250, 218, 208, 0.35), transparent 55%),
+    linear-gradient(135deg, var(--color-midnight), var(--color-charcoal));
 }

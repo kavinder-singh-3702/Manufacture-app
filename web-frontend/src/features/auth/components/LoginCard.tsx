@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
 
 type CredentialMode = "email" | "phone";
 
 export const LoginCard = () => {
+  const router = useRouter();
   const { login } = useAuth();
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
@@ -35,6 +37,7 @@ export const LoginCard = () => {
       } else {
         await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
       }
+      router.push("/dashboard");
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to login";
       setError(message);
@@ -45,24 +48,24 @@ export const LoginCard = () => {
 
   return (
     <div
-      className="rounded-3xl p-6 shadow-xl shadow-black/20"
+      className="rounded-3xl p-6 shadow-xl shadow-[#5a304230]/20"
       style={{
-        border: "1px solid rgba(250, 218, 208, 0.2)",
-        background: "linear-gradient(135deg, rgba(26, 36, 64, 0.95), rgba(46, 46, 58, 0.8))",
+        border: "1px solid var(--border-soft)",
+        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
         color: "var(--foreground)",
       }}
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-peach)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
             Login
           </p>
-          <h3 className="text-xl font-semibold text-white">Welcome back</h3>
-          <p className="text-sm text-white/70">Use your registered email or phone number.</p>
+          <h3 className="text-xl font-semibold text-[#2e1f2c]">Welcome back</h3>
+          <p className="text-sm text-[#5c4451]">Use your registered email or phone number.</p>
         </div>
         <div
-          className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white"
-          style={{ backgroundColor: "var(--color-plum)" }}
+          className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+          style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
         >
           Ops
         </div>
@@ -70,7 +73,7 @@ export const LoginCard = () => {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div
           className="flex gap-2 rounded-full p-1 text-sm font-semibold"
-          style={{ backgroundColor: "rgba(46, 46, 58, 0.8)" }}
+          style={{ backgroundColor: "var(--surface-muted)" }}
         >
           {(["email", "phone"] as CredentialMode[]).map((mode) => {
             const isActive = credentialMode === mode;
@@ -82,8 +85,8 @@ export const LoginCard = () => {
                 className="flex-1 rounded-full px-3 py-2 transition"
                 style={{
                   backgroundColor: isActive ? "var(--color-peach)" : "transparent",
-                  color: isActive ? "var(--color-plum)" : "rgba(255,255,255,0.7)",
-                  boxShadow: isActive ? "0 5px 25px rgba(250, 218, 208, 0.5)" : undefined,
+                  color: isActive ? "var(--color-plum)" : "rgba(46, 44, 51, 0.7)",
+                  boxShadow: isActive ? "0 8px 20px rgba(246, 184, 168, 0.4)" : undefined,
                 }}
               >
                 {mode === "email" ? "Email" : "Mobile"}
@@ -91,25 +94,25 @@ export const LoginCard = () => {
             );
           })}
         </div>
-        <label className="block text-sm font-semibold text-white">
+        <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
           {credentialMode === "email" ? "Email address" : "Mobile number"}
           <input
-            className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
-            style={{ borderColor: "rgba(250, 218, 208, 0.35)", backgroundColor: "rgba(17, 24, 39, 0.4)" }}
+            className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+            style={{ borderColor: "var(--border-soft)", backgroundColor: "white" }}
             placeholder={credentialMode === "email" ? "Enter Email Id" : "Enter Mobile Number"}
             value={identifierValue}
             onChange={(event) => (credentialMode === "email" ? setEmail(event.target.value) : setPhone(event.target.value))}
             type={credentialMode === "email" ? "email" : "tel"}
           />
         </label>
-        <label className="block text-sm font-semibold text-white">
+        <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
           Password
           <div
             className="mt-2 flex items-center rounded-2xl border px-4"
-            style={{ borderColor: "rgba(250, 218, 208, 0.35)", backgroundColor: "rgba(17, 24, 39, 0.4)" }}
+            style={{ borderColor: "var(--border-soft)", backgroundColor: "white" }}
           >
             <input
-              className="w-full bg-transparent py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
+              className="w-full bg-transparent py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
               placeholder="Password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -120,7 +123,7 @@ export const LoginCard = () => {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               className="text-sm font-semibold"
-              style={{ color: "var(--color-peach)" }}
+              style={{ color: "var(--color-plum)" }}
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -129,16 +132,19 @@ export const LoginCard = () => {
         {error ? <p className="text-sm font-semibold" style={{ color: "#ff9aa2" }}>{error}</p> : null}
         <button
           type="submit"
-          className="w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
-          style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
+          className="w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide disabled:opacity-50"
+          style={{
+            backgroundColor: "var(--color-plum)",
+            color: "white",
+            boxShadow: "0 12px 30px rgba(90, 48, 66, 0.25)",
+          }}
           disabled={loading}
         >
           {loading ? "Signing in…" : "Login"}
         </button>
         <button
           type="button"
-          className="w-full text-center text-sm font-semibold"
-          style={{ color: "var(--color-peach)" }}
+          className="w-full text-center text-sm font-semibold text-[#5a3042]"
         >
           Forgotten password?
         </button>

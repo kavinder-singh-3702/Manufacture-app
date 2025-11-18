@@ -45,6 +45,14 @@ Current auth/user endpoints:
 - `GET /api/users/me` – fetch profile (requires `Authorization: Bearer <token>`).
 - `PATCH /api/users/me` – update business/contact details for the authenticated user.
 
+### Company Verification Flow
+- `POST /api/companies/:companyId/verification` – authenticated company owners upload GST & Aadhaar documents (Base64) that are pushed to the configured S3 bucket.
+- `GET /api/companies/:companyId/verification` – fetch the latest verification status for the active company, including reviewer notes and document metadata.
+- `GET /api/verification-requests?status=pending` – admin-only queue of submitted requests (filter by `pending`, `approved`, `rejected`, or omit for all).
+- `PATCH /api/verification-requests/:requestId` – admin decision endpoint; pass `{ action: "approve" }` or `{ action: "reject", rejectionReason }` with optional reviewer notes to update the company status.
+
+The React Native profile screen now surfaces this flow end-to-end, while the Next.js web console exposes an admin dashboard under `/admin/verification-requests` for moderation.
+
 ### Frontend
 1. `cd app-frontend`
 2. `npm install` (or `yarn install`)
@@ -61,7 +69,8 @@ Keep API contracts documented (OpenAPI/Swagger) to sync both ends.
 | `NODE_ENV`, `PORT` | Server environment + port. |
 | `MONGO_URI` | MongoDB Atlas connection string. |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Auth tokens. |
-| `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (or Firebase equivalents) | Media storage. |
+| `AWS_S3_BUCKET`, `AWS_S3_REGION`, `AWS_S3_ACCESS_KEY_ID`, `AWS_S3_SECRET_ACCESS_KEY` | Media storage (GST/Aadhaar uploads). |
+| `AWS_S3_UPLOADS_FOLDER` | Optional folder prefix for S3 uploads. |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_SECRET` (or Stripe keys) | Payments + webhooks. |
 | `FCM_SERVER_KEY` | Push notifications. |
 | `TWILIO_* / AGORA_*` | Voice/video integration. |
