@@ -17,15 +17,13 @@ export const QuickActionGrid = ({ actions }: QuickActionGridProps) => {
   const { colors, radius, spacing } = useTheme();
 
   return (
-    <View style={[styles.grid, { marginTop: spacing.xs }]}>
+    <View style={[styles.grid, { marginTop: spacing.sm }]}>
       {actions.map((action) => (
         <View key={action.id} style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border }]}>
-          <View style={styles.cardContent}>
-            <Typography variant="body" style={styles.title}>
-              {action.title}
-            </Typography>
-            <Text style={styles.description}>{action.description}</Text>
-          </View>
+          <Typography variant="body" style={styles.title}>
+            {action.title}
+          </Typography>
+          <Text style={styles.description}>{action.description}</Text>
           <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]}>
             <Text style={styles.buttonLabel}>{action.cta}</Text>
           </TouchableOpacity>
@@ -44,7 +42,7 @@ const styles = StyleSheet.create({
   card: {
     flexBasis: "48%",
     backgroundColor: "#fff",
-    padding: 10,
+    padding: 16,
     borderWidth: 1,
     marginBottom: 12,
     shadowColor: "#000",
@@ -52,10 +50,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    justifyContent: "space-between",
-  },
-  cardContent: {
-    flex: 1,
   },
   title: {
     fontWeight: "600",
@@ -69,7 +63,7 @@ const styles = StyleSheet.create({
   },
   button: {
     alignSelf: "flex-start",
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
   },
