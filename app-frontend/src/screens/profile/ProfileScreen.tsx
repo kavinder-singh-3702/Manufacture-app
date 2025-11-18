@@ -16,16 +16,15 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { ProfileSection } from "./components/ProfileSection";
 import { ProfileField } from "./components/ProfileField";
 import { userService } from "../../services/user.service";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
-
-type ProfileScreenProps = {
-  onBack: () => void;
-};
+import { RootStackParamList } from "../../navigation/types";
 
 type EditorType = "identity" | "professional" | "preferences" | null;
 
@@ -117,9 +116,10 @@ const Link = ({ label, url }: { label: string; url?: string | null }) => {
   );
 };
 
-export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
+export const ProfileScreen = () => {
   const { colors, spacing } = useTheme();
   const { user, setUser } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeEditor, setActiveEditor] = useState<EditorType>(null);
   const [identityForm, setIdentityForm] = useState(createIdentityFormState(user));
   const [professionalForm, setProfessionalForm] = useState(createProfessionalFormState(user));
@@ -227,7 +227,7 @@ export const ProfileScreen = ({ onBack }: ProfileScreenProps) => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
         <View style={styles.headerText}>

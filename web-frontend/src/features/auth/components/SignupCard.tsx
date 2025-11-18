@@ -5,10 +5,10 @@ import {
   BUSINESS_ACCOUNT_TYPES,
   BUSINESS_CATEGORIES,
   BusinessAccountType,
-} from "../../constants/business";
-import { authService } from "../../services/auth";
-import { useAuth } from "../../hooks/useAuth";
-import { ApiError } from "../../lib/api-error";
+} from "../../../constants/business";
+import { authService } from "../../../services/auth";
+import { useAuth } from "../../../hooks/useAuth";
+import { ApiError } from "../../../lib/api-error";
 
 const steps = ["profile", "otp", "account"] as const;
 
@@ -236,22 +236,47 @@ export const SignupCard = () => {
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl shadow-slate-200">
+    <div
+      className="rounded-3xl p-6 shadow-xl shadow-black/25"
+      style={{
+        border: "1px solid rgba(250, 218, 208, 0.2)",
+        background: "linear-gradient(135deg, rgba(59, 31, 43, 0.85), rgba(26, 36, 64, 0.9))",
+        color: "var(--foreground)",
+      }}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
+          <p
+            className="text-xs font-semibold uppercase tracking-[0.4em]"
+            style={{ color: "var(--color-peach)" }}
+          >
             Step {stepIndex + 1} of {steps.length}
           </p>
-          <h3 className="text-xl font-semibold text-slate-900">{stepTitles[step]}</h3>
-          <p className="text-sm text-slate-500">{stepDescriptions[step]}</p>
+          <h3 className="text-xl font-semibold text-white">{stepTitles[step]}</h3>
+          <p className="text-sm text-white/70">{stepDescriptions[step]}</p>
         </div>
-        <button onClick={handleBack} className="text-sm font-semibold text-slate-600 hover:text-slate-900">
+        <button
+          onClick={handleBack}
+          className="text-sm font-semibold transition"
+          style={{ color: "var(--color-peach)" }}
+        >
           {stepIndex === 0 ? "Reset" : "Back"}
         </button>
       </div>
 
-      {status ? <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{status}</p> : null}
-      {error ? <p className="mt-2 text-sm font-semibold text-rose-600">{error}</p> : null}
+      {status ? (
+        <p
+          className="mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+          style={{ backgroundColor: "rgba(250, 218, 208, 0.15)", color: "var(--color-peach)" }}
+        >
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-2 text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+          {error}
+        </p>
+      ) : null}
 
       <div className="mt-6 space-y-5">
         {step === "profile" ? (
@@ -284,8 +309,8 @@ export const SignupCard = () => {
 
         {step === "otp" ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-500">
-              We sent an OTP to {profile.email || "your email"} and {profile.phone || "your phone"}. Expires in {" "}
+            <p className="text-sm text-white/70">
+              We sent an OTP to {profile.email || "your email"} and {profile.phone || "your phone"}. Expires in{" "}
               {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
             </p>
             <InputField
@@ -295,7 +320,11 @@ export const SignupCard = () => {
               onChange={setOtp}
               error={otpError ?? undefined}
             />
-            <button onClick={resetFlow} className="text-sm font-semibold text-slate-600 hover:text-slate-900">
+            <button
+              onClick={resetFlow}
+              className="text-sm font-semibold"
+              style={{ color: "var(--color-peach)" }}
+            >
               Start over
             </button>
           </div>
@@ -303,15 +332,17 @@ export const SignupCard = () => {
 
         {step === "account" ? (
           <div className="space-y-5">
-            <div className="text-sm font-semibold text-slate-800">
+            <div className="text-sm font-semibold text-white">
               Create password
               <div
-                className={`mt-2 flex items-center rounded-2xl border bg-white px-4 ${
-                  accountErrors.password ? "border-rose-400" : "border-slate-200 focus-within:border-slate-900"
-                }`}
+                className="mt-2 flex items-center rounded-2xl border px-4"
+                style={{
+                  borderColor: accountErrors.password ? "#ff9aa2" : "rgba(250, 218, 208, 0.35)",
+                  backgroundColor: "rgba(17, 24, 39, 0.4)",
+                }}
               >
                 <input
-                  className="w-full bg-transparent py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  className="w-full bg-transparent py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
                   placeholder="Create Password"
                   value={account.password}
                   onChange={(event) => setAccount((prev) => ({ ...prev, password: event.target.value }))}
@@ -320,18 +351,21 @@ export const SignupCard = () => {
                 <button
                   type="button"
                   onClick={() => setShowSignupPassword((prev) => !prev)}
-                  className="text-sm font-semibold text-slate-600"
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--color-peach)" }}
                 >
                   {showSignupPassword ? "Hide" : "Show"}
                 </button>
               </div>
               {accountErrors.password ? (
-                <span className="mt-1 block text-sm font-semibold text-rose-600">{accountErrors.password}</span>
+                <span className="mt-1 block text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+                  {accountErrors.password}
+                </span>
               ) : null}
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-slate-700">Select account type</p>
+              <p className="text-sm font-semibold text-white">Select account type</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {BUSINESS_ACCOUNT_TYPES.map((type) => {
                   const isActive = account.accountType === type;
@@ -340,11 +374,13 @@ export const SignupCard = () => {
                       key={type}
                       type="button"
                       onClick={() => setAccount((prev) => ({ ...prev, accountType: type }))}
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${
-                        isActive
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white text-slate-600"
-                      }`}
+                      className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
+                      style={{
+                        borderColor: isActive ? "rgba(250, 218, 208, 0.6)" : "rgba(250, 218, 208, 0.25)",
+                        backgroundColor: isActive ? "var(--color-peach)" : "transparent",
+                        color: isActive ? "var(--color-plum)" : "rgba(255,255,255,0.75)",
+                        boxShadow: isActive ? "0 10px 25px rgba(250, 218, 208, 0.35)" : undefined,
+                      }}
                     >
                       {type}
                     </button>
@@ -363,7 +399,7 @@ export const SignupCard = () => {
                   error={accountErrors.companyName}
                 />
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">Business categories</p>
+                  <p className="text-sm font-semibold text-white">Business categories</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {BUSINESS_CATEGORIES.map((category) => {
                       const isSelected = account.categories.includes(category);
@@ -372,11 +408,12 @@ export const SignupCard = () => {
                           key={category}
                           type="button"
                           onClick={() => toggleCategory(category)}
-                          className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-900 text-white"
-                              : "border-slate-200 bg-white text-slate-600"
-                          }`}
+                          className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
+                          style={{
+                            borderColor: isSelected ? "rgba(250, 218, 208, 0.6)" : "rgba(250, 218, 208, 0.25)",
+                            backgroundColor: isSelected ? "var(--color-peach)" : "transparent",
+                            color: isSelected ? "var(--color-plum)" : "rgba(255,255,255,0.75)",
+                          }}
                         >
                           {category}
                         </button>
@@ -384,7 +421,9 @@ export const SignupCard = () => {
                     })}
                   </div>
                   {accountErrors.categories ? (
-                    <p className="mt-2 text-sm font-semibold text-rose-600">{accountErrors.categories}</p>
+                    <p className="mt-2 text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+                      {accountErrors.categories}
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -395,7 +434,8 @@ export const SignupCard = () => {
 
       <button
         onClick={handleContinue}
-        className="mt-8 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+        className="mt-8 w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
+        style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
         disabled={loading}
       >
         {loading ? "Saving…" : step === "account" ? "Create account" : "Continue"}
@@ -414,17 +454,19 @@ type InputFieldProps = {
 };
 
 const InputField = ({ label, value, onChange, placeholder, error, type = "text" }: InputFieldProps) => (
-  <label className="block text-sm font-semibold text-slate-800">
+  <label className="block text-sm font-semibold" style={{ color: "#fff" }}>
     {label}
     <input
-      className={`mt-2 w-full rounded-2xl border bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none ${
-        error ? "border-rose-400" : "border-slate-200 focus:border-slate-900"
-      }`}
+      className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
+      style={{
+        borderColor: error ? "#ff9aa2" : "rgba(250, 218, 208, 0.35)",
+        backgroundColor: "rgba(17, 24, 39, 0.4)",
+      }}
       placeholder={placeholder}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       type={type}
     />
-    {error ? <span className="mt-1 block text-sm font-semibold text-rose-600">{error}</span> : null}
+    {error ? <span className="mt-1 block text-sm font-semibold" style={{ color: "#ff9aa2" }}>{error}</span> : null}
   </label>
 );

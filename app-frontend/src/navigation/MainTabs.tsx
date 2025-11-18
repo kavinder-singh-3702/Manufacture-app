@@ -1,15 +1,17 @@
 import { ComponentType, useCallback, useMemo, useState } from "react";
-import { View, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { View, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { BottomTabBarProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { Typography } from "../components/common/Typography";
+import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { InventoryScreen } from "../screens/InventoryScreen";
-import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { RouteName, routes } from "./routes";
-
-type MainTabParamList = Record<RouteName, undefined>;
+import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
+import { MainTabParamList, RootStackParamList, MAIN_TAB_ORDER } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -18,15 +20,16 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   [routes.INVENTORY]: InventoryScreen,
 };
 
-const tabMetadata = [
-  { route: routes.DASHBOARD, label: "Operations" },
-  { route: routes.INVENTORY, label: "Inventory" },
-] as const;
-
 export const MainTabs = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeRoute, setActiveRoute] = useState<RouteName>(routes.DASHBOARD);
   const { colors } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, requestLogin } = useAuth();
+  const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const isGuest = user?.role === "guest";
+  const isAuthenticated = Boolean(user) && !isGuest;
 
   const displayName = useMemo(() => {
     if (typeof user?.displayName === "string" && user.displayName.trim().length) {
@@ -37,12 +40,27 @@ export const MainTabs = () => {
 
   const email = user?.email;
 
-  const handleInfo = useCallback((type: "profile" | "settings") => {
+  const handleNavigateToRoute = useCallback(
+    (route: RouteName) => {
+      // Jump to a nested tab via the root stack to keep deep linking consistent.
+      stackNavigation.navigate("Main", { screen: route });
+      setSidebarVisible(false);
+    },
+    [stackNavigation]
+  );
+
+  const handleShowProfile = useCallback(() => {
     setSidebarVisible(false);
-    Alert.alert(
-      type === "profile" ? "User profile" : "Preferences",
-      "This section will let you fine tune your experience soon."
-    );
+    if (!isAuthenticated) {
+      requestLogin();
+      return;
+    }
+    stackNavigation.navigate("Profile");
+  }, [isAuthenticated, requestLogin, stackNavigation]);
+
+  const handlePreferences = useCallback(() => {
+    setSidebarVisible(false);
+    Alert.alert("Preferences", "This section will let you fine tune your experience soon.");
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -50,27 +68,58 @@ export const MainTabs = () => {
     await logout();
   }, [logout]);
 
+  const navigationItems = useMemo(
+    () =>
+      MAIN_TAB_ORDER.map((tab) => ({
+        label: tab.label,
+        description: activeRoute === tab.route ? "Currently viewing" : undefined,
+        onPress: () => handleNavigateToRoute(tab.route),
+      })),
+    [activeRoute, handleNavigateToRoute]
+  );
+
+  const profileOrLoginItem = isAuthenticated
+    ? {
+        label: "Profile",
+        description: "Manage your personal details",
+        onPress: handleShowProfile,
+      }
+    : {
+        label: "Login",
+        description: "Access your workspace",
+        onPress: () => {
+          setSidebarVisible(false);
+          requestLogin();
+        },
+        tone: "primary" as const,
+      };
+
   const menuItems = useMemo(
     () => [
-      { label: "User Profile", description: "Manage your personal details", onPress: () => handleInfo("profile") },
-      { label: "Preferences", description: "Theme, notifications, and more", onPress: () => handleInfo("settings") },
-      { label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const },
+      ...navigationItems,
+      profileOrLoginItem,
+      { label: "Preferences", description: "Theme, notifications, and more", onPress: handlePreferences },
+      ...(isAuthenticated
+        ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
+        : []),
     ],
-    [handleInfo, handleLogout]
+    [handleLogout, handlePreferences, isAuthenticated, navigationItems, profileOrLoginItem]
   );
 
   return (
     <>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <MainHeader displayName={displayName} email={email} onOpenMenu={() => setSidebarVisible(true)} />
+        <HomeToolbar onMenuPress={() => setSidebarVisible(true)} searchValue={searchQuery} onSearchChange={setSearchQuery} />
         <View style={styles.contentArea}>
           <Tab.Navigator
             initialRouteName={routes.DASHBOARD}
             screenOptions={{ headerShown: false }}
-            sceneContainerStyle={{ backgroundColor: colors.background }}
+            screenListeners={({ route }) => ({
+              focus: () => setActiveRoute(route.name as RouteName),
+            })}
             tabBar={(props) => <PrimaryTabBar {...props} />}
           >
-            {tabMetadata.map((tab) => {
+            {MAIN_TAB_ORDER.map((tab) => {
               const ScreenComponent = screenRegistry[tab.route];
               return (
                 <Tab.Screen key={tab.route} name={tab.route} component={ScreenComponent} options={{ title: tab.label }} />
@@ -87,45 +136,6 @@ export const MainTabs = () => {
         menuItems={menuItems}
       />
     </>
-  );
-};
-
-const MainHeader = ({
-  displayName,
-  email,
-  onOpenMenu,
-}: {
-  displayName: string;
-  email?: string | null;
-  onOpenMenu: () => void;
-}) => {
-  const { colors, spacing } = useTheme();
-
-  return (
-    <View
-      style={[
-        styles.header,
-        {
-          borderBottomColor: colors.border,
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-        },
-      ]}
-    >
-      <TouchableOpacity style={styles.hamburger} onPress={onOpenMenu} accessibilityLabel="Open menu">
-        <View style={[styles.hamburgerLine, { backgroundColor: colors.text }]} />
-        <View style={[styles.hamburgerLine, { backgroundColor: colors.text, marginVertical: 4 }]} />
-        <View style={[styles.hamburgerLine, { backgroundColor: colors.text }]} />
-      </TouchableOpacity>
-      <View style={styles.userInfo}>
-        <Typography variant="subheading">Hi, {displayName}</Typography>
-        {email ? (
-          <Typography variant="caption" color={colors.muted} style={{ marginTop: 2 }}>
-            {email}
-          </Typography>
-        ) : null}
-      </View>
-    </View>
   );
 };
 
@@ -176,23 +186,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  hamburger: {
-    padding: 8,
-    marginRight: 12,
-  },
-  hamburgerLine: {
-    width: 24,
-    height: 2,
-    borderRadius: 1,
-  },
-  userInfo: {
     flex: 1,
   },
   tabBar: {
