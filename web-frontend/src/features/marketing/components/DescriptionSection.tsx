@@ -16,18 +16,20 @@ const highlights = [
 export const DescriptionSection = () => {
   return (
     <section
-      className="rounded-3xl p-6 shadow-lg shadow-black/20"
+      className="rounded-3xl p-6 shadow-lg shadow-[#5a304226]/20"
       style={{
-        border: "1px solid rgba(250, 218, 208, 0.18)",
-        backgroundColor: "rgba(17, 24, 39, 0.75)",
+        border: "1px solid var(--border-soft)",
+        backgroundColor: "var(--surface)",
       }}
     >
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.6em]" style={{ color: "var(--color-peach)" }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.6em]" style={{ color: "var(--color-plum)" }}>
           Description
         </p>
-        <h2 className="text-3xl font-semibold text-white">Designed for modern manufacturing teams</h2>
-        <p className="text-base text-white/80">
+        <h2 className="text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+          Designed for modern manufacturing teams
+        </h2>
+        <p className="text-base text-[#5c4451]">
           Web and mobile stay in sync so planners, sales, and leadership understand what&apos;s happening across the
           supply chain. Highlight the programs you already run or spin up new ones on demand.
         </p>
@@ -38,12 +40,14 @@ export const DescriptionSection = () => {
             key={highlight.title}
             className="rounded-2xl border p-4"
             style={{
-              borderColor: "rgba(250, 218, 208, 0.2)",
-              backgroundColor: "rgba(59, 31, 43, 0.35)",
+              borderColor: "var(--border-soft)",
+              backgroundColor: "var(--surface-muted)",
             }}
           >
-            <h3 className="text-lg font-semibold text-white">{highlight.title}</h3>
-            <p className="mt-2 text-sm text-white/75">{highlight.description}</p>
+            <h3 className="text-lg font-semibold" style={{ color: "var(--color-plum)" }}>
+              {highlight.title}
+            </h3>
+            <p className="mt-2 text-sm text-[#5c4451]">{highlight.description}</p>
           </article>
         ))}
       </div>

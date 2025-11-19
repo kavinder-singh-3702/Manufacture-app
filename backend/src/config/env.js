@@ -13,7 +13,12 @@ const config = {
   sessionName: process.env.SESSION_NAME || 'mf.sid',
   sessionCookieMaxAge: Number(process.env.SESSION_COOKIE_MAX_AGE || 1000 * 60 * 60 * 24 * 7),
   signupOtp: process.env.SIGNUP_TEST_OTP || '1234',
-  signupOtpTtlMs: Number(process.env.SIGNUP_OTP_TTL_MS || 5 * 60 * 1000)
+  signupOtpTtlMs: Number(process.env.SIGNUP_OTP_TTL_MS || 5 * 60 * 1000),
+  awsS3Bucket: process.env.AWS_S3_BUCKET,
+  awsS3Region: process.env.AWS_S3_REGION,
+  awsS3AccessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
+  awsS3SecretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
+  awsS3UploadsFolder: process.env.AWS_S3_UPLOADS_FOLDER || 'uploads'
 };
 
 module.exports = Object.freeze(config);
