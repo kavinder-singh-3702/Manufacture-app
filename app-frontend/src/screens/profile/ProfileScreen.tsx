@@ -669,12 +669,12 @@ export const ProfileScreen = () => {
   return Object.keys(payload).length ? payload : undefined;
 };
 
-const cleanObject = <T extends Record<string, unknown>>(obj: T) => {
+const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   return Object.entries(obj).reduce((acc, [key, value]) => {
     if (value === undefined || value === null || value === "") {
       return acc;
     }
-    acc[key] = value;
+    (acc as any)[key] = value;
     return acc;
   }, {} as Partial<T>);
 };
