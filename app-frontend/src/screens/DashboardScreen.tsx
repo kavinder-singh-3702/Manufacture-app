@@ -89,11 +89,10 @@ export const DashboardScreen = () => {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingBottom: spacing.xxl }}
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
       showsVerticalScrollIndicator={false}
-      stickyHeaderIndices={[]}
     >
-      <View style={{ padding: spacing.lg, gap: spacing.lg }}>
+      <View style={{ gap: spacing.lg }}>
         <HeroHeader
           brandName="Manufacture Command"
           logoSource={logoSource}

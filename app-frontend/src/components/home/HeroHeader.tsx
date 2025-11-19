@@ -1,7 +1,6 @@
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ImageSourcePropType } from "react-native";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
-import { colors, palette } from "../../theme/colors";
 
 type HeroHeaderProps = {
   brandName: string;
@@ -27,7 +26,7 @@ export const HeroHeader = ({
   const { spacing, radius } = useTheme();
 
   return (
-    <View style={[styles.container, { padding: spacing.md, borderRadius: radius.lg }]}>
+    <View style={[styles.container, { padding: spacing.lg, borderRadius: radius.lg }]}>
       <View style={styles.heroTopRow}>
         <TouchableOpacity style={styles.hamburgerButton} onPress={onMenuPress} accessibilityLabel="Open navigation">
           <View style={styles.hamburgerLine} />
@@ -84,7 +83,7 @@ export const HeroHeader = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: palette.charcoalGreen,
+    backgroundColor: "#0A7C7D",
     overflow: "hidden",
   },
   heroTopRow: {
@@ -102,7 +101,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 2,
     borderRadius: 2,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
   },
   logoRow: {
     flexDirection: "row",
@@ -116,9 +115,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   alertButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.4)",
     alignItems: "center",
@@ -126,17 +125,16 @@ const styles = StyleSheet.create({
   },
   alertDot: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: "#FF7373",
   },
   alertText: {
-    color: palette.white,
+    color: "#fff",
     fontWeight: "700",
-    fontSize: 14,
   },
   searchBar: {
     flexDirection: "row",
@@ -151,12 +149,12 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: palette.white,
+    borderColor: "#fff",
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    color: palette.white,
+    color: "#fff",
     fontSize: 15,
     paddingVertical: 8,
   },
@@ -164,11 +162,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
   },
   searchActionText: {
     fontWeight: "600",
-    color: colors.primary,
+    color: "#0A7C7D",
   },
   heroContent: {
     flexDirection: "row",
@@ -193,14 +191,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
     opacity: 0.25,
   },
   heroCircleSmall: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
     opacity: 0.4,
     position: "absolute",
     bottom: 18,
@@ -221,7 +219,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.35)",
   },
   pillarText: {
-    color: palette.white,
+    color: "#fff",
     fontSize: 13,
     fontWeight: "600",
   },
