@@ -1,4 +1,5 @@
 const BUSINESS_ACCOUNT_TYPES = Object.freeze(['normal', 'trader', 'manufacturer']);
+const COMPANY_VERIFICATION_ACCOUNT_TYPES = Object.freeze(['trader', 'manufacturer']);
 
 const BUSINESS_CATEGORIES = Object.freeze([
   'printing',
@@ -12,5 +13,6 @@ const BUSINESS_CATEGORIES = Object.freeze([
 
 module.exports = {
   BUSINESS_ACCOUNT_TYPES,
-  BUSINESS_CATEGORIES
+  BUSINESS_CATEGORIES,
+  COMPANY_VERIFICATION_ACCOUNT_TYPES
 };

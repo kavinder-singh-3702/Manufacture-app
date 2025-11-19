@@ -32,12 +32,11 @@ export const LoginCard = () => {
 
     try {
       setLoading(true);
-      if (credentialMode === "email") {
-        await login({ email: trimmedIdentifier, password: trimmedPassword, remember: true });
-      } else {
-        await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
-      }
-      router.push("/dashboard");
+      const authenticatedUser =
+        credentialMode === "email"
+          ? await login({ email: trimmedIdentifier, password: trimmedPassword, remember: true })
+          : await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
+      router.push(authenticatedUser.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to login";
       setError(message);

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { UserDashboard } from "@/src/features/dashboard";
+import { DashboardOverview } from "@/src/features/dashboard";
 
 export const metadata: Metadata = {
   title: "Manufacture Command — Dashboard",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <UserDashboard />;
+  return <DashboardOverview />;
 }

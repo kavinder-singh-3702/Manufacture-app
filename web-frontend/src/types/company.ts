@@ -17,6 +17,23 @@ export type CompanyVerificationDocument = {
   key?: string;
 };
 
+export type CompanyVerificationDocumentUpload = {
+  fileName: string;
+  mimeType: string;
+  content: string;
+};
+
+export type CompanyVerificationAuditEntry = {
+  action: "submitted" | "approved" | "rejected";
+  at?: string;
+  by?: {
+    id?: string;
+    displayName?: string;
+    email?: string;
+  };
+  notes?: string;
+};
+
 export type CompanyVerificationRequest = {
   id: string;
   status: CompanyVerificationStatus;
@@ -32,8 +49,19 @@ export type CompanyVerificationRequest = {
     displayName?: string;
     email?: string;
   };
+  decidedBy?: {
+    id: string;
+    displayName?: string;
+    email?: string;
+  };
   documents?: {
     gstCertificate?: CompanyVerificationDocument;
     aadhaarCard?: CompanyVerificationDocument;
   };
+  auditTrail?: CompanyVerificationAuditEntry[];
+};
+
+export type CompanyVerificationLatestResponse = {
+  company: CompanySummary;
+  request: CompanyVerificationRequest | null;
 };

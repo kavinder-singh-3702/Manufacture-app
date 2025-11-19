@@ -3,6 +3,7 @@ const Company = require('../../../models/company.model');
 const CompanyVerificationRequest = require('../../../models/companyVerificationRequest.model');
 const { uploadCompanyDocument } = require('../../../services/storage.service');
 const { COMPANY_VERIFICATION_STATUSES } = require('../../../constants/companyVerification');
+const { COMPANY_VERIFICATION_ACCOUNT_TYPES } = require('../../../constants/business');
 const { buildCompanyResponse } = require('../../company/utils/company.util');
 
 const toPlainObject = (doc) => {
@@ -64,8 +65,15 @@ const ensureOwnedCompany = async (userId, companyId) => {
   return company;
 };
 
+const ensureCompanyTypeIsVerifiable = (company) => {
+  if (!company || !COMPANY_VERIFICATION_ACCOUNT_TYPES.includes(company.type)) {
+    throw createError(400, 'Only trader or manufacturer companies can request verification');
+  }
+};
+
 const submitCompanyVerificationRequest = async (userId, companyId, payload) => {
   const company = await ensureOwnedCompany(userId, companyId);
+  ensureCompanyTypeIsVerifiable(company);
 
   const existingPendingRequest = await CompanyVerificationRequest.findOne({
     company: companyId,
@@ -124,6 +132,7 @@ const submitCompanyVerificationRequest = async (userId, companyId, payload) => {
 
 const getLatestCompanyVerificationRequest = async (userId, companyId) => {
   const company = await ensureOwnedCompany(userId, companyId);
+  ensureCompanyTypeIsVerifiable(company);
 
   const latestRequest = await CompanyVerificationRequest.findOne({ company: companyId }).sort({
     createdAt: -1

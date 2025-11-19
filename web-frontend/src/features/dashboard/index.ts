@@ -4,5 +4,11 @@ export { CategoryHighlights } from "./components/CategoryHighlights";
 export { MarketplacePulse } from "./components/MarketplacePulse";
 export { SpotlightPrograms } from "./components/SpotlightPrograms";
 export { InventoryWidget } from "./components/InventoryWidget";
-export { UserDashboard } from "./components/UserDashboard";
+export {
+  DashboardFrame,
+  DashboardOverview,
+  DashboardProfile,
+  DashboardActivity,
+  DashboardSettings,
+} from "./components/UserDashboard";
 export * from "./data";

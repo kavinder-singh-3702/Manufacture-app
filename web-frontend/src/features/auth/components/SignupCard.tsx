@@ -199,7 +199,7 @@ export const SignupCard = () => {
       const response = await authService.signup.complete(payload);
       setStatus("Signup complete! Redirecting...");
       setUser(response.user);
-      router.push("/dashboard");
+      router.push(response.user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to complete signup";
       setError(message);
