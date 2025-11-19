@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BUSINESS_ACCOUNT_TYPES,
   BUSINESS_CATEGORIES,
@@ -55,6 +56,7 @@ const stepDescriptions: Record<SignupStep, string> = {
 };
 
 export const SignupCard = () => {
+  const router = useRouter();
   const { setUser } = useAuth();
   const [step, setStep] = useState<SignupStep>("profile");
   const [profile, setProfile] = useState<ProfileState>(initialProfile);
@@ -197,6 +199,7 @@ export const SignupCard = () => {
       const response = await authService.signup.complete(payload);
       setStatus("Signup complete! Redirecting...");
       setUser(response.user);
+      router.push(response.user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to complete signup";
       setError(message);
@@ -237,28 +240,25 @@ export const SignupCard = () => {
 
   return (
     <div
-      className="rounded-3xl p-6 shadow-xl shadow-black/25"
+      className="rounded-3xl p-6 shadow-xl shadow-[#5a30422a]"
       style={{
-        border: "1px solid rgba(250, 218, 208, 0.2)",
-        background: "linear-gradient(135deg, rgba(59, 31, 43, 0.85), rgba(26, 36, 64, 0.9))",
+        border: "1px solid var(--border-soft)",
+        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
         color: "var(--foreground)",
       }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-[0.4em]"
-            style={{ color: "var(--color-peach)" }}
-          >
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
             Step {stepIndex + 1} of {steps.length}
           </p>
-          <h3 className="text-xl font-semibold text-white">{stepTitles[step]}</h3>
-          <p className="text-sm text-white/70">{stepDescriptions[step]}</p>
+          <h3 className="text-xl font-semibold text-[#2e1f2c]">{stepTitles[step]}</h3>
+          <p className="text-sm text-[#5c4451]">{stepDescriptions[step]}</p>
         </div>
         <button
           onClick={handleBack}
           className="text-sm font-semibold transition"
-          style={{ color: "var(--color-peach)" }}
+          style={{ color: "var(--color-plum)" }}
         >
           {stepIndex === 0 ? "Reset" : "Back"}
         </button>
@@ -267,7 +267,7 @@ export const SignupCard = () => {
       {status ? (
         <p
           className="mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-          style={{ backgroundColor: "rgba(250, 218, 208, 0.15)", color: "var(--color-peach)" }}
+          style={{ backgroundColor: "var(--surface-muted)", color: "var(--color-plum)" }}
         >
           {status}
         </p>
@@ -309,7 +309,7 @@ export const SignupCard = () => {
 
         {step === "otp" ? (
           <div className="space-y-4">
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-[#5c4451]">
               We sent an OTP to {profile.email || "your email"} and {profile.phone || "your phone"}. Expires in{" "}
               {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
             </p>
@@ -320,11 +320,7 @@ export const SignupCard = () => {
               onChange={setOtp}
               error={otpError ?? undefined}
             />
-            <button
-              onClick={resetFlow}
-              className="text-sm font-semibold"
-              style={{ color: "var(--color-peach)" }}
-            >
+            <button onClick={resetFlow} className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
               Start over
             </button>
           </div>
@@ -332,17 +328,17 @@ export const SignupCard = () => {
 
         {step === "account" ? (
           <div className="space-y-5">
-            <div className="text-sm font-semibold text-white">
+            <div className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
               Create password
               <div
                 className="mt-2 flex items-center rounded-2xl border px-4"
                 style={{
-                  borderColor: accountErrors.password ? "#ff9aa2" : "rgba(250, 218, 208, 0.35)",
-                  backgroundColor: "rgba(17, 24, 39, 0.4)",
+                  borderColor: accountErrors.password ? "#ff9aa2" : "var(--border-soft)",
+                  backgroundColor: "white",
                 }}
               >
                 <input
-                  className="w-full bg-transparent py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
+                  className="w-full bg-transparent py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
                   placeholder="Create Password"
                   value={account.password}
                   onChange={(event) => setAccount((prev) => ({ ...prev, password: event.target.value }))}
@@ -352,7 +348,7 @@ export const SignupCard = () => {
                   type="button"
                   onClick={() => setShowSignupPassword((prev) => !prev)}
                   className="text-sm font-semibold"
-                  style={{ color: "var(--color-peach)" }}
+                  style={{ color: "var(--color-plum)" }}
                 >
                   {showSignupPassword ? "Hide" : "Show"}
                 </button>
@@ -365,7 +361,9 @@ export const SignupCard = () => {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-white">Select account type</p>
+              <p className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+                Select account type
+              </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {BUSINESS_ACCOUNT_TYPES.map((type) => {
                   const isActive = account.accountType === type;
@@ -376,10 +374,10 @@ export const SignupCard = () => {
                       onClick={() => setAccount((prev) => ({ ...prev, accountType: type }))}
                       className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
                       style={{
-                        borderColor: isActive ? "rgba(250, 218, 208, 0.6)" : "rgba(250, 218, 208, 0.25)",
+                        borderColor: isActive ? "rgba(246, 184, 168, 0.8)" : "var(--border-soft)",
                         backgroundColor: isActive ? "var(--color-peach)" : "transparent",
-                        color: isActive ? "var(--color-plum)" : "rgba(255,255,255,0.75)",
-                        boxShadow: isActive ? "0 10px 25px rgba(250, 218, 208, 0.35)" : undefined,
+                        color: isActive ? "var(--color-plum)" : "rgba(67, 52, 61, 0.7)",
+                        boxShadow: isActive ? "0 10px 25px rgba(246, 184, 168, 0.45)" : undefined,
                       }}
                     >
                       {type}
@@ -399,7 +397,9 @@ export const SignupCard = () => {
                   error={accountErrors.companyName}
                 />
                 <div>
-                  <p className="text-sm font-semibold text-white">Business categories</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+                    Business categories
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {BUSINESS_CATEGORIES.map((category) => {
                       const isSelected = account.categories.includes(category);
@@ -410,9 +410,9 @@ export const SignupCard = () => {
                           onClick={() => toggleCategory(category)}
                           className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
                           style={{
-                            borderColor: isSelected ? "rgba(250, 218, 208, 0.6)" : "rgba(250, 218, 208, 0.25)",
+                            borderColor: isSelected ? "rgba(246, 184, 168, 0.8)" : "var(--border-soft)",
                             backgroundColor: isSelected ? "var(--color-peach)" : "transparent",
-                            color: isSelected ? "var(--color-plum)" : "rgba(255,255,255,0.75)",
+                            color: isSelected ? "var(--color-plum)" : "rgba(67, 52, 61, 0.7)",
                           }}
                         >
                           {category}
@@ -434,8 +434,12 @@ export const SignupCard = () => {
 
       <button
         onClick={handleContinue}
-        className="mt-8 w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide text-white disabled:opacity-50"
-        style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
+        className="mt-8 w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide disabled:opacity-50"
+        style={{
+          backgroundColor: "var(--color-plum)",
+          color: "white",
+          boxShadow: "0 12px 30px rgba(90, 48, 66, 0.25)",
+        }}
         disabled={loading}
       >
         {loading ? "Saving…" : step === "account" ? "Create account" : "Continue"}
@@ -454,13 +458,13 @@ type InputFieldProps = {
 };
 
 const InputField = ({ label, value, onChange, placeholder, error, type = "text" }: InputFieldProps) => (
-  <label className="block text-sm font-semibold" style={{ color: "#fff" }}>
+  <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
     {label}
     <input
-      className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-white placeholder:text-white/60 focus:outline-none"
+      className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
       style={{
-        borderColor: error ? "#ff9aa2" : "rgba(250, 218, 208, 0.35)",
-        backgroundColor: "rgba(17, 24, 39, 0.4)",
+        borderColor: error ? "#ff9aa2" : "var(--border-soft)",
+        backgroundColor: "white",
       }}
       placeholder={placeholder}
       value={value}

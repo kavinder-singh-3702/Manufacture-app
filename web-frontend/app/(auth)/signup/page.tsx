@@ -13,9 +13,9 @@ export default function SignUpPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 lg:flex-row-reverse">
         <aside className="w-full max-w-xl">
           <SignupCard />
-          <p className="mt-6 text-center text-sm text-white/70">
+          <p className="mt-6 text-center text-sm text-[#5c4451]">
             Already joined?{" "}
-            <Link href="/signin" className="font-semibold" style={{ color: "var(--color-peach)" }}>
+            <Link href="/signin" className="font-semibold" style={{ color: "var(--color-plum)" }}>
               Sign in to your workspace
             </Link>
           </p>

@@ -20,7 +20,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   initializing: boolean;
   bootstrapError: string | null;
-  login: (payload: LoginPayload) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   refreshUser: () => Promise<void>;
@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(authenticatedUser);
     setBootstrapError(null);
     setActiveAuthView("intro");
+    return authenticatedUser;
   }, []);
 
   const logout = useCallback(async () => {

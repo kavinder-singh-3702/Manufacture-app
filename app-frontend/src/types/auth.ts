@@ -7,6 +7,8 @@ export type AuthUser = {
   phone?: string;
   role?: string;
   status?: string;
+  activeCompany?: string;
+  companies?: string[];
   [key: string]: unknown;
 };
 
