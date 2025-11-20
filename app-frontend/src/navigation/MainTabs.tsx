@@ -143,40 +143,52 @@ const PrimaryTabBar = ({ state, navigation, descriptors }: BottomTabBarProps) =>
   const { colors, radius, spacing } = useTheme();
 
   return (
-    <View style={[styles.tabBar, { padding: spacing.xs }]}>
-      {state.routes.map((route, index) => {
-        const isFocused = state.index === index;
-        const label = descriptors[route.key].options.title ?? route.name;
+    <View style={[styles.tabBarContainer, { paddingBottom: spacing.lg, paddingHorizontal: spacing.md }]}>
+      <View style={styles.tabBar}>
+        {state.routes.map((route, index) => {
+          const isFocused = state.index === index;
+          const label = descriptors[route.key].options.title ?? route.name;
 
-        const onPress = () => {
-          const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name as never);
-          }
-        };
+          const onPress = () => {
+            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name as never);
+            }
+          };
 
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : undefined}
-            onPress={onPress}
-            style={[
-              styles.tab,
-              {
-                marginRight: index === state.routes.length - 1 ? 0 : spacing.xs,
-                backgroundColor: isFocused ? colors.primary : colors.background,
-                borderColor: colors.border,
-                borderRadius: radius.pill,
-              },
-            ]}
-          >
-            <Typography variant="body" color={isFocused ? "#fff" : colors.text}>
-              {label}
-            </Typography>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : undefined}
+              onPress={onPress}
+              style={[
+                styles.floatingButton,
+                {
+                  marginLeft: index === 0 ? 0 : spacing.sm,
+                  backgroundColor: isFocused ? colors.primary : colors.surface,
+                  borderRadius: radius.pill,
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isFocused ? 0.3 : 0.1,
+                  shadowRadius: 8,
+                  elevation: isFocused ? 8 : 4,
+                  borderWidth: isFocused ? 0 : 1,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Typography
+                variant="body"
+                color={isFocused ? "#fff" : colors.text}
+                style={{ fontWeight: isFocused ? '600' : '500' }}
+              >
+                {label}
+              </Typography>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -188,15 +200,19 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
   },
+  tabBarContainer: {
+    paddingTop: 12,
+  },
   tabBar: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
     alignItems: "center",
-    borderWidth: 1,
+  },
+  floatingButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,12 +1,13 @@
 import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
+import { palette } from "../../theme/colors";
 
 type MenuItem = {
   label: string;
   description?: string;
   onPress: () => void;
-  tone?: "default" | "danger" | "primary";
+  tone?: "default" | "danger";
 };
 
 type SidebarMenuProps = {
@@ -18,44 +19,47 @@ type SidebarMenuProps = {
 };
 
 export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, menuItems }: SidebarMenuProps) => {
-  const { colors, spacing, radius } = useTheme();
+  const { spacing, radius } = useTheme();
 
   return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.wrapper}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.backdrop} />
+          <View style={[styles.backdrop, { backgroundColor: palette.charcoal, opacity: 0.7 }]} />
         </TouchableWithoutFeedback>
         <SafeAreaView style={styles.panelSafeArea}>
           <View
             style={[
               styles.panel,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: palette.white,
                 padding: spacing.lg,
                 borderTopRightRadius: radius.lg,
                 borderBottomRightRadius: radius.lg,
               },
             ]}
           >
-            <View style={{ marginBottom: spacing.lg }}>
-              <Typography variant="subheading">{headerTitle}</Typography>
+            {/* Header Section with Brand Colors */}
+            <View style={[styles.header, {
+              backgroundColor: palette.charcoalGreen,
+              padding: spacing.lg,
+              borderRadius: radius.md,
+              marginBottom: spacing.lg,
+            }]}>
+              <Typography variant="subheading" color={palette.white} style={styles.headerTitle}>
+                {headerTitle}
+              </Typography>
               {headerSubtitle ? (
-                <Typography variant="body" color={colors.muted} style={{ marginTop: spacing.xs }}>
+                <Typography variant="body" color={palette.greenLight} style={{ marginTop: spacing.xs, fontSize: 13 }}>
                   {headerSubtitle}
                 </Typography>
               ) : null}
             </View>
-            {menuItems.map((item) => {
-              const isAction = item.tone && item.tone !== "default";
-              const backgroundColor =
-                item.tone === "primary"
-                  ? colors.primary
-                  : item.tone === "danger"
-                    ? colors.critical
-                    : colors.surface;
-              const textColor = isAction ? "#fff" : colors.text;
-              const descriptionColor = isAction ? "rgba(255,255,255,0.8)" : colors.muted;
+
+            {/* Menu Items */}
+            {menuItems.map((item, index) => {
+              const isDanger = item.tone === "danger";
+              const isLastItem = index === menuItems.length - 1;
 
               return (
                 <TouchableOpacity
@@ -64,23 +68,30 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   style={[
                     styles.menuItem,
                     {
-                      borderBottomColor: colors.border,
-                      paddingVertical: spacing.md,
-                      backgroundColor,
-                    },
-                    isAction && {
-                      borderBottomWidth: 0,
+                      backgroundColor: isDanger ? palette.pinkWarm : palette.offWhite,
+                      borderLeftWidth: 3,
+                      borderLeftColor: isDanger ? palette.burgundy : palette.green,
                       borderRadius: radius.md,
-                      marginTop: spacing.md,
-                      alignItems: "center",
+                      paddingVertical: spacing.md,
+                      paddingHorizontal: spacing.md,
+                      marginBottom: isLastItem ? 0 : spacing.sm,
                     },
                   ]}
+                  activeOpacity={0.7}
                 >
-                  <Typography variant="body" color={textColor}>
+                  <Typography
+                    variant="body"
+                    color={isDanger ? palette.burgundy : palette.charcoal}
+                    style={styles.menuLabel}
+                  >
                     {item.label}
                   </Typography>
                   {item.description ? (
-                    <Typography variant="caption" color={descriptionColor} style={{ marginTop: spacing.xs }}>
+                    <Typography
+                      variant="caption"
+                      color={isDanger ? palette.burgundySoft : palette.charcoalLight}
+                      style={{ marginTop: spacing.xs, fontSize: 12 }}
+                    >
                       {item.description}
                     </Typography>
                   ) : null}
@@ -101,20 +112,39 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
   },
   panel: {
     flex: 1,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
+    shadowColor: palette.charcoal,
+    shadowOpacity: 0.25,
     shadowOffset: { width: -4, height: 0 },
-    shadowRadius: 8,
-    elevation: 10,
+    shadowRadius: 12,
+    elevation: 15,
   },
   panelSafeArea: {
-    width: "75%",
+    width: "80%",
+    maxWidth: 340,
+  },
+  header: {
+    shadowColor: palette.charcoal,
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
   },
   menuItem: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    shadowColor: palette.charcoal,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  menuLabel: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

@@ -4,11 +4,26 @@ export type AuthUser = {
   id: string;
   email: string;
   displayName?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
+  bio?: string;
   role?: string;
   status?: string;
+  accountType?: string;
+  username?: string;
   activeCompany?: string;
   companies?: string[];
+  address?: UserAddress;
+  socialLinks?: UserSocialLinks;
+  preferences?: UserPreferences;
+  activityTags?: string[];
+  secondaryEmails?: string[];
+  emailVerifiedAt?: string | Date;
+  phoneVerifiedAt?: string | Date;
+  lastLoginAt?: string | Date;
+  lastLoginIp?: string;
+  onboardingCompletedAt?: string | Date;
   [key: string]: unknown;
 };
 

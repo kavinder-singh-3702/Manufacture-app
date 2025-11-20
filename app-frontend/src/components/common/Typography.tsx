@@ -19,6 +19,11 @@ export const Typography = ({
   const { typography, colors } = useTheme();
   const variantStyle = typography[variant];
 
+  // Safety check: Don't render if children is undefined, null, or empty
+  if (children === undefined || children === null || children === '') {
+    return null;
+  }
+
   return (
     <Text
       {...rest}
