@@ -9,6 +9,8 @@ import { ProfileScreen } from "../screens/profile/ProfileScreen";
 import { MainTabs } from "./MainTabs";
 import { useTheme } from "../hooks/useTheme";
 import { RootStackParamList } from "./types";
+import { CompanyVerificationScreen } from "../screens/verification/CompanyVerificationScreen";
+import { VerificationSubmitScreen } from "../screens/verification/VerificationSubmitScreen";
 
 enableScreens(true);
 
@@ -49,6 +51,16 @@ export const AppNavigator = () => {
               name="Profile"
               component={ProfileScreen}
               options={{ presentation: "modal", animation: "fade_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="CompanyVerification"
+              component={CompanyVerificationScreen}
+              options={{ presentation: "card", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="VerificationSubmit"
+              component={VerificationSubmitScreen}
+              options={{ presentation: "card", animation: "slide_from_right" }}
             />
           </>
         )}

@@ -5,6 +5,8 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Profile: undefined;
+  CompanyVerification: { companyId: string };
+  VerificationSubmit: { companyId: string };
 };
 
 // Helper mapped type ensures that every declared route has a tab entry.

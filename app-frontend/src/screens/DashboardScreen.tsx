@@ -1,11 +1,16 @@
 import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Typography } from "../components/common/Typography";
 import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../hooks/useAuth";
+import { RootStackParamList } from "../navigation/types";
 import { HeroHeader } from "../components/home/HeroHeader";
 import { QuickActionGrid, QuickAction } from "../components/home/QuickActionGrid";
 import { CategorySections, CategorySectionData } from "../components/home/CategorySections";
 import { MarketplacePulse, MarketplaceStat } from "../components/home/MarketplacePulse";
 import { SpotlightPrograms, SpotlightProgram } from "../components/home/SpotlightPrograms";
+import { CompanyVerificationWidget } from "../components/company/CompanyVerificationWidget";
 
 const logoSource = require("../../assets/icon.png");
 
@@ -85,6 +90,7 @@ const brandPillars = ["Assisted sourcing desk", "Secure payments", "Escrow-ready
 
 export const DashboardScreen = () => {
   const { spacing, colors } = useTheme();
+  const { user } = useAuth();
 
   return (
     <ScrollView
@@ -101,6 +107,11 @@ export const DashboardScreen = () => {
           description="Connect with verified sellers, manage sourcing, and boost exports with a single trusted workspace."
           pillars={brandPillars}
         />
+
+        {/* Company Verification Widget - Shows verification status */}
+        {user?.activeCompany && (
+          <CompanyVerificationWidget companyId={user.activeCompany} />
+        )}
 
         <QuickActionGrid actions={quickActions} />
 
