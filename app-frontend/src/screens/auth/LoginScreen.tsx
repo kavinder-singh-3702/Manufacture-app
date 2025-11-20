@@ -16,9 +16,10 @@ type CredentialMode = "email" | "phone";
 type LoginScreenProps = {
   onBack: () => void;
   onSignup: () => void;
+  onForgot: () => void;
 };
 
-export const LoginScreen = ({ onBack, onSignup }: LoginScreenProps) => {
+export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) => {
   const { login } = useAuth();
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
@@ -134,7 +135,9 @@ export const LoginScreen = ({ onBack, onSignup }: LoginScreenProps) => {
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
           </TouchableOpacity>
 
-          <Text style={styles.helperText}>Forgotten Password?</Text>
+          <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
+            <Text style={styles.helperText}>Forgotten your password?</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={onSignup}>
             <Text style={styles.helperText}>Or Create a New Account</Text>
           </TouchableOpacity>
@@ -276,6 +279,9 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 12,
     fontSize: 13,
+  },
+  helperLink: {
+    alignItems: "center",
   },
   errorText: {
     color: "#DC2626",

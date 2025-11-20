@@ -14,6 +14,7 @@ const config = {
   sessionCookieMaxAge: Number(process.env.SESSION_COOKIE_MAX_AGE || 1000 * 60 * 60 * 24 * 7),
   signupOtp: process.env.SIGNUP_TEST_OTP || '1234',
   signupOtpTtlMs: Number(process.env.SIGNUP_OTP_TTL_MS || 5 * 60 * 1000),
+  passwordResetTokenTtlMs: Number(process.env.PASSWORD_RESET_TTL_MS || 15 * 60 * 1000),
   awsS3Bucket: process.env.AWS_S3_BUCKET,
   awsS3Region: process.env.AWS_S3_REGION,
   awsS3AccessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,

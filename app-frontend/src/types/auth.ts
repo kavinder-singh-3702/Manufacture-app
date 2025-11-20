@@ -1,4 +1,4 @@
-export type AuthView = "intro" | "login" | "signup";
+export type AuthView = "intro" | "login" | "signup" | "forgot" | "reset";
 
 export type AuthUser = {
   id: string;
@@ -34,6 +34,16 @@ export type SignupCompletePayload = {
   accountType: string;
   companyName?: string;
   categories?: string[];
+};
+
+export type ForgotPasswordPayload = {
+  email?: string;
+  phone?: string;
+};
+
+export type ResetPasswordPayload = {
+  token: string;
+  password: string;
 };
 
 export type UserAddress = {
