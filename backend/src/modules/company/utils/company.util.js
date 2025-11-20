@@ -13,12 +13,14 @@ const normalizeCategories = (categories = []) => {
 
 const buildCompanyResponse = (company) => {
   if (!company) return null;
-  if (typeof company.toObject === 'function') {
-    const { __v, ...rest } = company.toObject({ versionKey: false });
-    return rest;
-  }
-  const { __v, ...rest } = company;
-  return rest;
+  const normalize = (value) => {
+    if (!value) return null;
+    const plain = typeof value.toObject === 'function' ? value.toObject({ versionKey: false }) : value;
+    if (!plain) return null;
+    const { __v, _id, ...rest } = plain;
+    return { ...rest, id: plain.id || (_id ? _id.toString() : undefined) };
+  };
+  return normalize(company);
 };
 
 module.exports = {

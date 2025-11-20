@@ -96,6 +96,51 @@ const uploadCompanyDocument = async ({ companyId, documentType, fileName, mimeTy
   };
 };
 
+const buildUserObjectKey = ({ userId, purpose = 'general', fileName }) => {
+  const prefix = (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
+  const normalizedFileName = sanitizeFileName(fileName) || `${purpose}-${Date.now()}`;
+  const timeSegment = Date.now();
+  return `${prefix}/user-uploads/${userId}/${purpose}-${timeSegment}-${normalizedFileName}`;
+};
+
+const uploadUserDocument = async ({ userId, purpose = 'general', fileName, mimeType, base64 }) => {
+  if (!base64 || typeof base64 !== 'string') {
+    throw createError(400, 'Invalid file payload supplied');
+  }
+
+  const s3 = getS3Client();
+  const objectKey = buildUserObjectKey({ userId, purpose, fileName });
+  const cleanedBase64 = normalizeBase64Payload(base64);
+  const buffer = Buffer.from(cleanedBase64, 'base64');
+
+  if (!buffer.length) {
+    throw createError(400, 'File content cannot be empty');
+  }
+
+  if (buffer.length > MAX_DOCUMENT_SIZE_BYTES) {
+    throw createError(413, 'File exceeds the 5 MB limit');
+  }
+
+  const putCommand = new PutObjectCommand({
+    Bucket: config.awsS3Bucket,
+    Key: objectKey,
+    Body: buffer,
+    ContentType: mimeType || 'application/octet-stream'
+  });
+
+  await s3.send(putCommand);
+
+  return {
+    key: objectKey,
+    url: buildPublicUrl(objectKey),
+    fileName,
+    contentType: mimeType,
+    size: buffer.length,
+    uploadedAt: new Date()
+  };
+};
+
 module.exports = {
-  uploadCompanyDocument
+  uploadCompanyDocument,
+  uploadUserDocument
 };

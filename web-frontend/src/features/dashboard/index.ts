@@ -4,6 +4,7 @@ export { CategoryHighlights } from "./components/CategoryHighlights";
 export { MarketplacePulse } from "./components/MarketplacePulse";
 export { SpotlightPrograms } from "./components/SpotlightPrograms";
 export { InventoryWidget } from "./components/InventoryWidget";
+export { CompanyWorkspace } from "./components/CompanyWorkspace";
 export {
   DashboardFrame,
   DashboardOverview,

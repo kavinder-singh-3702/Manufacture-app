@@ -83,6 +83,33 @@ const getCompany = async (ownerId, companyId) => {
   return buildCompanyResponse(company);
 };
 
+const updateCompany = async (ownerId, companyId, payload) => {
+  const company = await ensureOwnedCompany(ownerId, companyId);
+  const categories = normalizeCategories(payload.categories);
+
+  const nextValues = pruneUndefined({
+    displayName: payload.displayName?.trim(),
+    legalName: payload.legalName?.trim(),
+    description: payload.description,
+    foundedAt: payload.foundedAt,
+    sizeBucket: payload.sizeBucket,
+    slug: payload.slug?.trim().toLowerCase(),
+    type: payload.type,
+    categories,
+    logoUrl: payload.logoUrl,
+    coverImageUrl: payload.coverImageUrl,
+    contact: payload.contact,
+    headquarters: payload.headquarters,
+    locations: payload.locations,
+    socialLinks: payload.socialLinks
+  });
+
+  Object.assign(company, nextValues, { updatedBy: ownerId });
+  await company.save();
+
+  return buildCompanyResponse(company);
+};
+
 const switchActiveCompany = async (ownerId, companyId) => {
   const company = await ensureOwnedCompany(ownerId, companyId);
 
@@ -105,5 +132,6 @@ module.exports = {
   createCompany,
   listCompanies,
   getCompany,
-  switchActiveCompany
+  switchActiveCompany,
+  updateCompany
 };

@@ -4,13 +4,15 @@ const config = require('../../../config/env');
 const User = require('../../../models/user.model');
 const { attachUserToSession } = require('./session-auth.service');
 const { buildUserResponse } = require('../utils/response.util');
+const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
+const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
 
 const PASSWORD_RESET_TOKEN_TTL_MS = config.passwordResetTokenTtlMs || 15 * 60 * 1000;
 
 const generateResetToken = () => crypto.randomBytes(32).toString('hex');
 const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
-const requestPasswordReset = async ({ email, phone }) => {
+const requestPasswordReset = async (req, { email, phone }) => {
   const identifier = email ? { email } : phone ? { phone } : null;
 
   const response = {
@@ -38,6 +40,14 @@ const requestPasswordReset = async ({ email, phone }) => {
     response.expiresAt = user.passwordResetExpires;
   }
 
+  await recordActivitySafe({
+    userId: user.id,
+    action: ACTIVITY_ACTIONS.AUTH_PASSWORD_RESET_REQUESTED,
+    label: 'Requested password reset',
+    meta: { via: email ? 'email' : 'phone' },
+    context: extractRequestContext(req)
+  });
+
   return response;
 };
 
@@ -61,6 +71,13 @@ const resetPassword = async (req, { token, password }) => {
   await user.save();
 
   await attachUserToSession(req, user.id);
+  await recordActivitySafe({
+    userId: user.id,
+    action: ACTIVITY_ACTIONS.AUTH_PASSWORD_RESET,
+    label: 'Password reset',
+    description: 'Password was reset via token flow',
+    context: extractRequestContext(req)
+  });
   return buildUserResponse(user);
 };
 

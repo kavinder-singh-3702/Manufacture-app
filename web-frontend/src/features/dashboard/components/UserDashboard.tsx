@@ -1,5 +1,4 @@
 "use client";
-
 import {
   FormEvent,
   ReactNode,
@@ -8,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -16,6 +16,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/src/hooks/useAuth";
 import { userService } from "@/src/services/user";
 import { companyVerificationService } from "@/src/services/companyVerification";
+import { companyService } from "@/src/services/company";
+import { activityService } from "@/src/services/activity";
+import { ProfilePhotoUploader } from "./ProfilePhotoUploader";
 import { COMPANY_VERIFICATION_ACCOUNT_TYPES, CompanyVerificationAccountType } from "@/src/constants/business";
 import { ApiError } from "@/src/lib/api-error";
 import type {
@@ -25,20 +28,15 @@ import type {
   CompanyVerificationStatus,
 } from "@/src/types/company";
 import type { AuthUser } from "@/src/types/auth";
+import type { Company } from "@/src/types/company";
+import type { ActivityEvent } from "@/src/types/activity";
 
 const navItems = [
   { id: "overview", label: "Overview", description: "Workspace snapshot", href: "/dashboard" },
-  { id: "profile", label: "Profile", description: "Identity & editing", href: "/dashboard/profile" },
+  { id: "company", label: "Company", description: "Profile & details", href: "/dashboard/company" },
   { id: "activity", label: "Activity", description: "Recent timeline", href: "/dashboard/activity" },
   { id: "settings", label: "Preferences", description: "Notifications & sharing", href: "/dashboard/settings" },
 ] as const;
-
-const timelineEntries = [
-  { title: "Supplier verification approved", meta: "9:24 AM", tag: "Compliance" },
-  { title: "New RFQ shared with Delta Textiles", meta: "Yesterday", tag: "Trade lane" },
-  { title: "Inventory sync scheduled", meta: "2 days ago", tag: "Inventory" },
-  { title: "Team member invited", meta: "Jun 02", tag: "Workspace" },
-];
 
 const upcomingSchedules = [
   { title: "Weekly ops standup", time: "Today · 15:30 IST", location: "Circuit HQ" },
@@ -66,6 +64,56 @@ const initialPreferences = {
 };
 
 const isLikelyObjectId = (value?: string | null) => !!value && /^[a-f0-9]{24}$/i.test(value);
+const resolveCompanyLabel = (user: AuthUser, resolvedActiveName?: string) => {
+  if (resolvedActiveName) return resolvedActiveName;
+  if (user.activeCompany && !isLikelyObjectId(user.activeCompany)) return user.activeCompany;
+  const namedCompany = user.companies?.find((company) => company && !isLikelyObjectId(company));
+  return namedCompany ?? user.displayName ?? user.email ?? "Your workspace";
+};
+
+const buildInitials = (value?: string) => {
+  if (!value) return "MC";
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "MC";
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const formatCategory = (category: string) => category.charAt(0).toUpperCase() + category.slice(1);
+
+const activityBadgeStyles: Record<string, string> = {
+  auth: "bg-[var(--color-peach)] text-[var(--color-plum)]",
+  user: "bg-[#eef2ff] text-[#4338ca]",
+  company: "bg-[#ecfdf3] text-[#166534]",
+  verification: "bg-[#fff4e5] text-[#b45309]",
+};
+
+const formatRelativeTime = (value: string) => {
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "";
+  const deltaMs = Date.now() - timestamp;
+  const seconds = Math.round(deltaMs / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+};
+
+const buildActivityMetaLine = (activity: ActivityEvent) => {
+  const parts: string[] = [];
+  const relative = formatRelativeTime(activity.createdAt);
+  if (relative) parts.push(relative);
+  if (activity.companyName) parts.push(activity.companyName);
+  const method = typeof activity.meta?.method === "string" ? (activity.meta.method as string) : undefined;
+  if (method) parts.push(method);
+  return parts.join(" • ");
+};
 
 type ProfileFormState = ReturnType<typeof createProfileFormState>;
 type VerificationPillVariant = "verified" | "pending" | "warning";
@@ -74,6 +122,11 @@ type ProfileVerificationState = { label: string; variant: VerificationPillVarian
 type DashboardContextValue = {
   user: AuthUser;
   refreshUser: () => Promise<void>;
+  openVerificationModal: () => void;
+  verificationModalSignal: number;
+  companies: Company[];
+  activeCompany: Company | null;
+  reloadCompanies: () => Promise<void>;
 };
 
 const iconStroke = (active: boolean) => (active ? "var(--color-plum)" : "rgba(67,52,61,0.6)");
@@ -93,11 +146,11 @@ const NavIcon = ({ id, active }: { id: (typeof navItems)[number]["id"]; active: 
           />
         </svg>
       );
-    case "profile":
+    case "activity":
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
-            d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm7 9v-1a5 5 0 0 0-5-5H10a5 5 0 0 0-5 5v1"
+            d="M4 12h3l2-6 4 12 2-6h5"
             stroke={stroke}
             strokeWidth="1.8"
             strokeLinecap="round"
@@ -105,11 +158,11 @@ const NavIcon = ({ id, active }: { id: (typeof navItems)[number]["id"]; active: 
           />
         </svg>
       );
-    case "activity":
+    case "company":
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
-            d="M4 12h3l2-6 4 12 2-6h5"
+            d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4M7 17h1M16 17h1"
             stroke={stroke}
             strokeWidth="1.8"
             strokeLinecap="round"
@@ -155,16 +208,42 @@ export const useDashboardContext = () => {
 };
 
 export const DashboardFrame = ({ children }: { children: ReactNode }) => {
-  const { user, initializing, refreshUser } = useAuth();
+  const { user, initializing, refreshUser, logout, switchCompany } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [verificationModalSignal, setVerificationModalSignal] = useState(0);
+  const openVerificationModal = useCallback(() => setVerificationModalSignal(Date.now()), []);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [activeCompany, setActiveCompany] = useState<Company | null>(null);
+  const [switchingCompanyId, setSwitchingCompanyId] = useState<string | null>(null);
+  const [companyModalOpen, setCompanyModalOpen] = useState(false);
+
+  const reloadCompanies = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await companyService.list();
+      setCompanies(response.companies);
+      const activeId = user.activeCompany as string | undefined;
+      const resolvedActive = response.companies.find((company) => company.id === activeId) ?? response.companies[0] ?? null;
+      setActiveCompany(resolvedActive);
+    } catch {
+      setCompanies([]);
+      setActiveCompany(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!initializing && !user) {
       router.replace("/signin");
     }
   }, [initializing, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      void reloadCompanies();
+    }
+  }, [user, reloadCompanies]);
 
   if (initializing || !user) {
     return (
@@ -177,62 +256,111 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <DashboardContext.Provider value={{ user, refreshUser }}>
+    <DashboardContext.Provider
+      value={{ user, refreshUser, openVerificationModal, verificationModalSignal, companies, activeCompany, reloadCompanies }}
+    >
       <div className="space-y-6">
-        <DashboardTopbar user={user} onToggleSidebar={() => setSidebarOpen(true)} />
+        <DashboardTopbar
+          user={user}
+          activeCompany={activeCompany}
+          companies={companies}
+          switchingCompanyId={switchingCompanyId}
+          onToggleSidebar={() => setSidebarOpen(true)}
+          onProfile={() => router.push("/dashboard/profile")}
+          onSettings={() => router.push("/dashboard/settings")}
+          onLogout={async () => {
+            await logout();
+            router.push("/signin");
+          }}
+          onOpenCompanyCreate={() => {
+            setCompanyModalOpen(true);
+          }}
+          onSwitchCompany={async (companyId) => {
+            try {
+              setSwitchingCompanyId(companyId);
+              await switchCompany(companyId);
+              await refreshUser();
+              await reloadCompanies();
+            } finally {
+              setSwitchingCompanyId(null);
+            }
+          }}
+        />
         <div className="flex flex-col gap-6 lg:flex-row">
           <Sidebar activePath={pathname} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           <div className="flex-1 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-5 shadow-lg shadow-[#5a304218]">
             {children}
           </div>
         </div>
+        <CreateCompanyModal
+          open={companyModalOpen}
+          onClose={() => setCompanyModalOpen(false)}
+          onCreated={async () => {
+            await refreshUser();
+            await reloadCompanies();
+            setCompanyModalOpen(false);
+          }}
+        />
       </div>
     </DashboardContext.Provider>
   );
 };
 
 export const DashboardOverview = () => {
-  const { user } = useDashboardContext();
+  const { user, openVerificationModal, verificationModalSignal, activeCompany, companies } = useDashboardContext();
   const cards = useMemo(
     () => [
       {
-        label: "Account health",
-        value: user.status ?? "Pending",
-        detail: user.role ? `Role: ${user.role}` : "Awaiting verification",
+        label: "Active company",
+        value: activeCompany?.displayName ?? "Select a company",
+        detail: `Type: ${activeCompany?.type ?? user.accountType ?? "normal"}`,
       },
       {
-        label: "Active companies",
-        value: user.companies?.length ? `${user.companies.length}` : "0",
-        detail: "Linked workspaces",
+        label: "Linked companies",
+        value: companies.length ? `${companies.length}` : "0",
+        detail: "Switch between workspaces",
       },
       {
-        label: "Tasks due",
-        value: "3",
-        detail: "Document reviews",
+        label: "Compliance",
+        value: activeCompany?.complianceStatus ?? "pending",
+        detail: activeCompany ? "Verification state" : "Awaiting submission",
       },
     ],
-    [user]
+    [activeCompany, companies, user.accountType]
   );
 
-  return <OverviewSection user={user} cards={cards} />;
+  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user);
+  const normalizedStatus = (activeCompany?.complianceStatus ?? user.status ?? "").toLowerCase();
+  const isWorkspaceVerified = normalizedStatus === "verified" || normalizedStatus === "approved";
+
+  return (
+    <div className="space-y-6">
+      <ProfileVerificationPrompt
+        isVerified={isWorkspaceVerified}
+        primaryCompany={primaryCompanyName}
+        accountType={activeCompany?.type ?? user.accountType}
+        onRequestVerification={openVerificationModal}
+      />
+      <OverviewSection cards={cards} />
+      <CompanyVerificationSection
+        hideInline
+        openSignal={verificationModalSignal}
+        onRequestVerification={openVerificationModal}
+      />
+    </div>
+  );
 };
 
 export const DashboardProfile = () => {
-  const { user, refreshUser } = useDashboardContext();
+  const { user, refreshUser, openVerificationModal, verificationModalSignal, activeCompany } = useDashboardContext();
   const [editForm, setEditForm] = useState<ProfileFormState>(() => createProfileFormState(user));
   const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "success" | "error"; message?: string }>({
     status: "idle",
   });
-  const [activeCompanyName, setActiveCompanyName] = useState<string | undefined>(undefined);
-  const fallbackCompanyName =
-    (!isLikelyObjectId(user.activeCompany) ? user.activeCompany : undefined) ??
-    user.companies?.find((company) => company && !isLikelyObjectId(company)) ??
-    user.displayName ??
-    user.email ??
-    "Your workspace";
-  const primaryCompanyName = activeCompanyName ?? fallbackCompanyName;
-  const normalizedStatus = (user.status ?? "").toLowerCase();
-  const isWorkspaceVerified = normalizedStatus === "verified";
+  const [activeCompanyName, setActiveCompanyName] = useState<string | undefined>(activeCompany?.displayName);
+  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user, activeCompanyName);
+  const normalizedStatus = (activeCompany?.complianceStatus ?? user.status ?? "").toLowerCase();
+  const isWorkspaceVerified = normalizedStatus === "verified" || normalizedStatus === "approved";
   const verificationVariant: VerificationPillVariant = isWorkspaceVerified
     ? "verified"
     : normalizedStatus === "pending"
@@ -244,8 +372,8 @@ export const DashboardProfile = () => {
   };
 
   useEffect(() => {
-    setActiveCompanyName(undefined);
-  }, [user.activeCompany]);
+    setActiveCompanyName(activeCompany?.displayName);
+  }, [user.activeCompany, activeCompany]);
 
   useEffect(() => {
     setEditForm(createProfileFormState(user));
@@ -270,6 +398,7 @@ export const DashboardProfile = () => {
         displayName: normalizedForm.displayName,
         phone: normalizedForm.phone || undefined,
         bio: normalizedForm.bio || undefined,
+        avatarUrl: normalizedForm.avatarUrl || undefined,
         address: addressPayload,
         socialLinks: socialLinksPayload,
         activityTags: tagsPayload,
@@ -282,12 +411,57 @@ export const DashboardProfile = () => {
     }
   };
 
+  const handleAvatarUpload = async (file: File, base64: string) => {
+    try {
+      setSaveState({ status: "saving" });
+      const content = base64.includes(",") ? base64.split(",")[1] ?? "" : base64;
+      const response = await userService.uploadUserFile({
+        fileName: file.name,
+        mimeType: file.type,
+        content,
+        purpose: "avatar",
+      });
+      const url = response.file?.url ?? "";
+      if (url) {
+        setEditForm((prev) => ({ ...prev, avatarUrl: url }));
+      }
+      await refreshUser();
+      setSaveState({ status: "success" });
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error ? error.message : "Unable to upload avatar.";
+      setSaveState({ status: "error", message });
+    }
+  };
+
+  const handleAvatarUpload = async (file: File, base64: string) => {
+    try {
+      setSaveState({ status: "saving" });
+      const content = base64.includes(",") ? base64.split(",")[1] ?? "" : base64;
+      const response = await userService.uploadUserFile({
+        fileName: file.name,
+        mimeType: file.type || "image/png",
+        content,
+        purpose: "avatar",
+      });
+      const url = response.file?.url ?? editForm.avatarUrl ?? "";
+      if (url) {
+        setEditForm((prev) => ({ ...prev, avatarUrl: url }));
+      }
+      await refreshUser();
+      setSaveState({ status: "success" });
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error ? error.message : "Unable to upload avatar.";
+      setSaveState({ status: "error", message });
+    }
+  };
+
   return (
     <>
       <ProfileVerificationPrompt
         isVerified={isWorkspaceVerified}
         primaryCompany={primaryCompanyName}
-        accountType={user.accountType}
+        accountType={activeCompany?.type ?? user.accountType}
+        onRequestVerification={openVerificationModal}
       />
       <ProfileSection
         user={user}
@@ -296,8 +470,14 @@ export const DashboardProfile = () => {
         onSubmit={handleSaveProfile}
         saveState={saveState}
         verificationState={verificationState}
+        onUploadComplete={refreshUser}
       />
-      <CompanyVerificationSection onCompanyNameResolved={setActiveCompanyName} />
+      <CompanyVerificationSection
+        hideInline
+        onCompanyNameResolved={setActiveCompanyName}
+        openSignal={verificationModalSignal}
+        onRequestVerification={openVerificationModal}
+      />
     </>
   );
 };
@@ -312,63 +492,426 @@ export const DashboardSettings = () => {
   return <SettingsSection preferences={preferences} onToggle={togglePreference} />;
 };
 
-const DashboardTopbar = ({ user, onToggleSidebar }: { user: AuthUser; onToggleSidebar: () => void }) => (
-  <motion.header
-    className="flex flex-col gap-4 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-4 shadow-lg shadow-[#5a304212] lg:flex-row lg:items-center lg:justify-between"
-    initial={{ opacity: 0, y: -12 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.3 }}
-  >
-    <div className="flex items-center gap-3">
-      <button
-        onClick={onToggleSidebar}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-soft)] text-[#5a3042] lg:hidden"
-        aria-label="Toggle navigation"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      </button>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
-          Dashboard
-        </p>
-        <p className="text-lg font-semibold text-[#2e1f2c]">Hi {user.displayName ?? user.email}</p>
+const DashboardTopbar = ({
+  user,
+  activeCompany,
+  companies,
+  switchingCompanyId,
+  onToggleSidebar,
+  onProfile,
+  onSettings,
+  onLogout,
+  onOpenCompanyCreate,
+  onSwitchCompany,
+}: {
+  user: AuthUser;
+  activeCompany: Company | null;
+  companies: Company[];
+  switchingCompanyId: string | null;
+  onToggleSidebar: () => void;
+  onProfile: () => void;
+  onSettings: () => void;
+  onLogout: () => void;
+  onOpenCompanyCreate: () => void;
+  onSwitchCompany: (companyId: string) => Promise<void>;
+}) => {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [companyMenuOpen, setCompanyMenuOpen] = useState(false);
+  const companyLabel = activeCompany?.displayName ?? resolveCompanyLabel(user);
+  const companyMeta = activeCompany?.type ?? "normal";
+  const complianceLabel = activeCompany?.complianceStatus ?? user.status ?? "pending";
+  const companyLogo = activeCompany?.logoUrl;
+  const companyInitials = buildInitials(companyLabel);
+  const userAvatar = typeof user.avatarUrl === "string" ? user.avatarUrl : undefined;
+  const userInitials = buildInitials(user.displayName ?? user.email);
+
+  const handleUserMenuSelect = async (action: () => void | Promise<void>) => {
+    await action();
+    setUserMenuOpen(false);
+  };
+
+  return (
+    <motion.header
+      className="relative flex flex-col gap-4 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-4 shadow-lg shadow-[#5a304212] lg:flex-row lg:items-center lg:justify-between"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onToggleSidebar}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-soft)] text-[#5a3042] lg:hidden"
+          aria-label="Toggle navigation"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+            Dashboard
+          </p>
+          <p className="text-lg font-semibold text-[#2e1f2c]">{companyLabel}</p>
+          <p className="text-xs text-[#7a5d6b]">Type: {companyMeta} • Compliance: {complianceLabel}</p>
+        </div>
       </div>
-    </div>
-    <div className="flex flex-1 flex-col gap-4 lg:flex-row lg:items-center">
-      <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-white/80 px-4 py-2">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 7.5-7.5 7.5 7.5 0 0 1-7.5 7.5z"
-            stroke="#b98b9e"
-            strokeWidth="1.6"
-            strokeLinecap="round"
+      <div className="flex flex-1 flex-col gap-4 lg:flex-row lg:items-center lg:justify-end">
+        <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-white/80 px-4 py-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 7.5-7.5 7.5 7.5 0 0 1-7.5 7.5z"
+              stroke="#b98b9e"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+          <input
+            type="search"
+            placeholder="Search companies and workspace"
+            className="w-full bg-transparent text-sm text-[#2e1f2c] placeholder:text-[#b98b9e] focus:outline-none"
           />
-        </svg>
-        <input
-          type="search"
-          placeholder="Search workspace"
-          className="w-full bg-transparent text-sm text-[#2e1f2c] placeholder:text-[#b98b9e] focus:outline-none"
-        />
+        </div>
+        <motion.div
+          className="relative flex items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-white/80 px-4 py-2"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCompanyMenuOpen((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white px-3 py-2 text-sm font-semibold text-[#2e1f2c] shadow-sm hover:shadow-md"
+            >
+              {companyLogo ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={companyLogo}
+                    alt={companyLabel}
+                    className="h-8 w-8 rounded-full border border-[var(--border-soft)] object-cover"
+                  />
+                </>
+              ) : (
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-peach)] text-xs font-semibold text-[var(--color-plum)]">
+                  {companyInitials}
+                </span>
+              )}
+              <span className="text-left leading-tight">
+                <span className="block text-[13px]">{companyLabel}</span>
+                <span className="block text-[11px] text-[#7a5d6b] capitalize">
+                  {companyMeta} • {complianceLabel}
+                </span>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#7a5d6b]">
+                <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-peach)] text-sm font-semibold text-[var(--color-plum)]"
+              aria-label="Open profile menu"
+            >
+              {userAvatar ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={userAvatar} alt={user.displayName ?? user.email ?? "User"} className="h-11 w-11 rounded-2xl object-cover" />
+                </>
+              ) : (
+                userInitials
+              )}
+            </button>
+          </div>
+          {userMenuOpen ? (
+            <div className="absolute right-0 top-14 z-10 w-48 rounded-2xl border border-[var(--border-soft)] bg-white p-2 shadow-lg shadow-[#5a304222]">
+              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+                Workspace
+              </p>
+              <button
+                onClick={() => handleUserMenuSelect(onProfile)}
+                className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#2e1f2c] hover:bg-[var(--color-peach)]/60"
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => handleUserMenuSelect(onSettings)}
+                className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#2e1f2c] hover:bg-[var(--color-peach)]/60"
+              >
+                Settings
+              </button>
+              <button
+                onClick={() => handleUserMenuSelect(onLogout)}
+                className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#b23a48] hover:bg-[#ffeef1]"
+              >
+                Logout
+              </button>
+            </div>
+          ) : null}
+        </motion.div>
       </div>
-      <motion.div
-        className="flex items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-white/80 px-4 py-2"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+      {companyMenuOpen ? (
+        <div className="absolute right-24 top-24 z-20 w-full max-w-md rounded-3xl border border-[var(--border-soft)] bg-white p-3 shadow-2xl shadow-[#5a304228]">
+          <div className="flex items-center justify-between px-2 pb-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                Switch company
+              </p>
+              <p className="text-[12px] text-[#7a5d6b]">Select or create a workspace linked to your login.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setCompanyMenuOpen(false);
+                  onOpenCompanyCreate();
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-2xl border border-[var(--border-soft)] text-[#5c4451] hover:border-[var(--color-plum)]"
+                aria-label="Create company"
+              >
+                +
+              </button>
+              <button
+                onClick={() => setCompanyMenuOpen(false)}
+                className="h-8 w-8 rounded-2xl border border-[var(--border-soft)] text-[#5c4451]"
+                aria-label="Close company switcher"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {companies.map((company) => {
+              const isActive = company.id === activeCompany?.id;
+              return (
+                <button
+                  key={company.id}
+                  onClick={async () => {
+                    setCompanyMenuOpen(false);
+                    await onSwitchCompany(company.id);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--border-soft)] px-3 py-2 text-left transition hover:border-[var(--color-plum)] hover:shadow-lg"
+                  style={{
+                    background: isActive ? "linear-gradient(135deg, #fff6ef, #ffe9f2)" : "white",
+                  }}
+                  disabled={switchingCompanyId === company.id}
+                >
+                  <div className="flex items-center gap-3">
+                    {company.logoUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={company.logoUrl}
+                          alt={company.displayName}
+                          className="h-9 w-9 rounded-full border border-[var(--border-soft)] object-cover"
+                        />
+                      </>
+                    ) : (
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-peach)] text-xs font-semibold text-[var(--color-plum)]">
+                        {buildInitials(company.displayName)}
+                      </span>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-[#2e1f2c]">{company.displayName}</p>
+                      <p className="text-[11px] text-[#7a5d6b] capitalize">
+                        {company.type ?? "normal"} • {company.complianceStatus ?? "pending"}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                      isActive ? "bg-[var(--color-peach)] text-[var(--color-plum)]" : "bg-[var(--surface-muted)] text-[#5c4451]"
+                    }`}
+                  >
+                    {switchingCompanyId === company.id ? "Switching…" : isActive ? "Active" : "Switch"}
+                  </span>
+                </button>
+              );
+            })}
+            {!companies.length ? (
+              <p className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[#5c4451]">
+                No companies linked yet. Create one in the workspace section below.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </motion.header>
+  );
+};
+
+const CreateCompanyModal = ({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) => {
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    displayName: "",
+    type: user?.accountType ?? "normal",
+    categories: [] as string[],
+    logoUrl: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        displayName: "",
+        type: user?.accountType ?? "normal",
+        categories: [],
+        logoUrl: "",
+      });
+      setError(null);
+    }
+  }, [open, user?.accountType]);
+
+  if (!open) return null;
+
+  const toggleCategory = (category: string) => {
+    setForm((prev) => {
+      const exists = prev.categories.includes(category);
+      return { ...prev, categories: exists ? prev.categories.filter((item) => item !== category) : [...prev.categories, category] };
+    });
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = form.displayName.trim();
+    if (!name) {
+      setError("Enter a company display name.");
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      await companyService.create({
+        displayName: name,
+        type: form.type,
+        categories: form.categories,
+        logoUrl: form.logoUrl?.trim() || undefined,
+      });
+      await onCreated();
+    } catch (err) {
+      const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to create company.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 backdrop-blur">
+      <div
+        className="w-full max-w-lg rounded-3xl border border-[var(--border-soft)] bg-white p-6 shadow-2xl shadow-[#5a304233]"
+        role="dialog"
+        aria-modal="true"
       >
-        <div className="text-sm">
-          <p className="font-semibold text-[#2e1f2c]">{user.status ?? "Pending"}</p>
-          <p className="text-xs text-[#7a5d6b]">Workspace status</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+              New company
+            </p>
+            <h3 className="text-xl font-semibold text-[#2e1f2c]">Create a workspace</h3>
+            <p className="text-sm text-[#5c4451]">Add another company under your login to switch seamlessly.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-10 w-10 rounded-2xl border border-[var(--border-soft)] text-[#5c4451]"
+            aria-label="Close create company"
+          >
+            ×
+          </button>
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--color-peach)] text-sm font-semibold text-[var(--color-plum)]">
-          {(user.displayName ?? user.email)?.slice(0, 2).toUpperCase()}
-        </div>
-      </motion.div>
+
+        {error ? (
+          <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[#b23a48]">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+          <ProfileInputField
+            label="Display name"
+            value={form.displayName}
+            onChange={(value) => setForm((prev) => ({ ...prev, displayName: value }))}
+            placeholder="Acme Textiles"
+          />
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="text-sm font-semibold text-[#2e1f2c]">
+              Type
+              <select
+                className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[#2e1f2c] focus:outline-none"
+                value={form.type}
+                onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
+              >
+                {BUSINESS_ACCOUNT_TYPES.map((type) => (
+                  <option value={type} key={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <ProfileInputField
+              label="Logo URL"
+              value={form.logoUrl}
+              onChange={(value) => setForm((prev) => ({ ...prev, logoUrl: value }))}
+              placeholder="https://"
+              helperText="Optional"
+            />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+              Categories
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {BUSINESS_CATEGORIES.map((category) => {
+                const active = form.categories.includes(category);
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => toggleCategory(category)}
+                    className="rounded-full border px-3 py-1 text-xs font-semibold transition"
+                    style={{
+                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border-soft)",
+                      backgroundColor: active ? "var(--color-peach)" : "transparent",
+                      color: active ? "var(--color-plum)" : "#5c4451",
+                    }}
+                  >
+                    {formatCategory(category)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-[var(--border-soft)] px-4 py-2 text-sm font-semibold text-[#5c4451]"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-full bg-[var(--color-plum)] px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#5a304225] disabled:opacity-60"
+            >
+              {loading ? "Creating…" : "Create company"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  </motion.header>
-);
+  );
+};
 
 const Sidebar = ({
   activePath,
@@ -454,7 +997,7 @@ const SidebarContent = ({ activePath, onNavigate }: { activePath: string; onNavi
   </div>
 );
 
-const OverviewSection = ({ user, cards }: { user: AuthUser; cards: { label: string; value: string; detail: string }[] }) => (
+const OverviewSection = ({ cards }: { cards: { label: string; value: string; detail: string }[] }) => (
   <div className="space-y-6">
     <SectionHeader title="Today&apos;s overview" subtitle="Snapshot" />
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -509,21 +1052,6 @@ const OverviewSection = ({ user, cards }: { user: AuthUser; cards: { label: stri
         </div>
       </motion.div>
     </div>
-    <div className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-4">
-      <SectionHeader title="Linked companies" subtitle="Relationships" />
-      <div className="mt-4 flex flex-wrap gap-3">
-        {(user.companies ?? ["Add your first company"]).map((company) => (
-          <motion.span
-            key={company}
-            className="rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-semibold text-[#5a3042]"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {company}
-          </motion.span>
-        ))}
-      </div>
-    </div>
   </div>
 );
 
@@ -531,16 +1059,22 @@ const ProfileVerificationPrompt = ({
   isVerified,
   primaryCompany,
   accountType,
+  onRequestVerification,
 }: {
   isVerified: boolean;
   primaryCompany?: string;
   accountType?: string;
+  onRequestVerification?: () => void;
 }) => {
   if (isVerified) return null;
   const normalizedAccountType = (accountType ?? "").toLowerCase() as CompanyVerificationAccountType | "";
   const eligibleAccountType =
     !normalizedAccountType || COMPANY_VERIFICATION_ACCOUNT_TYPES.includes(normalizedAccountType as CompanyVerificationAccountType);
-  const scrollToVerification = () => {
+  const handleRequestVerification = () => {
+    if (onRequestVerification) {
+      onRequestVerification();
+      return;
+    }
     if (typeof window === "undefined") return;
     document.getElementById("company-verification")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -563,10 +1097,10 @@ const ProfileVerificationPrompt = ({
         {eligibleAccountType ? (
           <button
             type="button"
-            onClick={scrollToVerification}
+            onClick={handleRequestVerification}
             className="inline-flex items-center justify-center rounded-full bg-[#0d9f6e] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#0d9f6e33] transition hover:scale-[1.01]"
           >
-            Go to verification
+            Get verified
           </button>
         ) : (
           <p className="text-xs font-semibold text-[#b45309]">
@@ -597,7 +1131,6 @@ const ProfileSection = ({
     onChange({ ...editForm, [key]: value });
   };
   const currentTagPreview = buildActivityTags(editForm.activityTags) ?? [];
-  const addressSummary = formatAddressSummary(user.address);
   const companyList =
     user.companies && user.companies.length ? user.companies : ["Add a company from admin console"];
 
@@ -632,6 +1165,15 @@ const ProfileSection = ({
       <SectionHeader title="Profile & identity" subtitle="Profile" action={headerAction} />
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <form onSubmit={onSubmit} className="space-y-6 rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-[#2e1f2c]">Profile photo</h3>
+            <ProfilePhotoUploader
+              user={user}
+              onChange={(src) => updateField("avatarUrl", src)}
+              onUpload={handleAvatarUpload}
+              value={editForm.avatarUrl}
+            />
+          </div>
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-[#2e1f2c]">Identity</h3>
             <div className="grid gap-4 md:grid-cols-2">
@@ -777,32 +1319,6 @@ const ProfileSection = ({
         </form>
         <div className="space-y-4">
           <div className="rounded-3xl border border-[var(--border-soft)] bg-white/85 p-5">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Workspace badges</h3>
-            <div className="mt-4 grid gap-3">
-              <BadgeRow label="Role" value={user.role ?? "Member"} />
-              <BadgeRow label="Status" value={user.status ?? "Pending verification"} />
-              <BadgeRow label="Verification badge" value={verificationState?.label ?? "Unverified"} />
-              {user.accountType ? <BadgeRow label="Account type" value={user.accountType} /> : null}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-[var(--border-soft)] bg-white/85 p-5">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Address on record</h3>
-            {addressSummary ? (
-              <dl className="mt-3 space-y-2 text-sm text-[#5c4451]">
-                {addressSummary.map((entry) => (
-                  <div key={entry.label} className="border-b border-[var(--border-soft)] pb-2 last:border-b-0">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
-                      {entry.label}
-                    </dt>
-                    <dd className="mt-1">{entry.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-[#5c4451]">No address saved yet.</p>
-            )}
-          </div>
-          <div className="rounded-3xl border border-[var(--border-soft)] bg-white/85 p-5">
             <h3 className="text-lg font-semibold text-[#2e1f2c]">Linked companies</h3>
             <div className="mt-4 flex flex-wrap gap-2">
               {companyList.map((company) => (
@@ -838,29 +1354,128 @@ const ProfileSection = ({
   );
 };
 
-const ActivitySection = () => (
-  <div className="space-y-6">
-    <SectionHeader title="Recent activity" subtitle="Timeline" />
-    <div className="space-y-4">
-      {timelineEntries.map((entry) => (
-        <motion.div
-          key={entry.title}
-          className="flex items-start gap-4 rounded-3xl border border-[var(--border-soft)] bg-white/90 p-4"
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <span className="mt-1 inline-flex rounded-full bg-[var(--color-peach)] px-3 py-1 text-xs font-semibold text-[var(--color-plum)]">
-            {entry.tag}
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-[#2e1f2c]">{entry.title}</p>
-            <p className="text-xs text-[#7a5d6b]">{entry.meta}</p>
+const ActivitySection = () => {
+  const { user } = useDashboardContext();
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActivities = useCallback(
+    async (isRefresh = false) => {
+      if (!user) return;
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      try {
+        const response = await activityService.list({ limit: 30 });
+        setActivities(response.activities);
+        setError(null);
+      } catch (err) {
+        const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to load activity.";
+        setError(message);
+        setActivities([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.id]
+  );
+
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities]);
+
+  const isEmpty = !loading && !activities.length && !error;
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        title="Recent activity"
+        subtitle="Timeline"
+        action={
+          <button
+            type="button"
+            onClick={() => fetchActivities(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white px-3 py-2 text-xs font-semibold text-[#5a3042] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span aria-hidden="true">↻</span>
+            {refreshing || loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
+      />
+      {error ? (
+        <div className="rounded-3xl border border-[#f5d0dc] bg-[#fff1f4] px-4 py-3 text-sm text-[#7a3a4a]">
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => fetchActivities(true)}
+              className="text-xs font-semibold underline decoration-[var(--color-plum)]"
+            >
+              Retry
+            </button>
           </div>
-        </motion.div>
-      ))}
+        </div>
+      ) : null}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`activity-skeleton-${index}`}
+                className="animate-pulse rounded-3xl border border-[var(--border-soft)] bg-white/90 p-4"
+              >
+                <div className="mb-2 h-4 w-20 rounded-full bg-[var(--surface-muted)]" />
+                <div className="mb-1 h-4 w-56 rounded-full bg-[var(--surface-muted)]" />
+                <div className="h-3 w-40 rounded-full bg-[var(--surface-muted)]" />
+              </div>
+            ))}
+          </div>
+        ) : isEmpty ? (
+          <div className="rounded-3xl border border-dashed border-[var(--border-soft)] bg-white/70 px-5 py-6">
+            <p className="text-base font-semibold text-[#2e1f2c]">No activity yet</p>
+            <p className="mt-1 text-sm text-[#5c4451]">
+              We will track logins, profile updates, company edits, and verification steps here as you work.
+            </p>
+          </div>
+        ) : (
+          activities.map((activity) => {
+            const categoryKey = (activity.category || activity.action.split(".")[0] || "activity").toLowerCase();
+            const badgeClass = activityBadgeStyles[categoryKey] ?? "bg-[var(--surface-muted)] text-[#4b3040]";
+            const metaLine = buildActivityMetaLine(activity);
+            return (
+              <motion.div
+                key={activity.id}
+                className="flex items-start gap-4 rounded-3xl border border-[var(--border-soft)] bg-white/90 p-4"
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+              >
+                <span
+                  className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${badgeClass}`}
+                >
+                  {formatCategory(categoryKey)}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[#2e1f2c]">{activity.label}</p>
+                  {activity.description ? (
+                    <p className="text-xs text-[#5c4451]">{activity.description}</p>
+                  ) : null}
+                  <p className="text-xs text-[#7a5d6b]">{metaLine}</p>
+                </div>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const SettingsSection = ({
   preferences,
@@ -910,6 +1525,7 @@ const createProfileFormState = (user: AuthUser): ProfileFormState => ({
   displayName: (user.displayName as string | undefined) ?? "",
   phone: (user.phone as string | undefined) ?? "",
   bio: (user.bio as string | undefined) ?? "",
+  avatarUrl: (user.avatarUrl as string | undefined) ?? "",
   line1: (user.address?.line1 as string | undefined) ?? "",
   line2: (user.address?.line2 as string | undefined) ?? "",
   city: (user.address?.city as string | undefined) ?? "",
@@ -937,6 +1553,7 @@ const normalizeProfileForm = (form: ProfileFormState): ProfileFormState => {
     displayName: trim(form.displayName),
     phone: trim(form.phone),
     bio: trim(form.bio),
+    avatarUrl: trim(form.avatarUrl),
     line1: trim(form.line1),
     line2: trim(form.line2),
     city: trim(form.city),
@@ -981,19 +1598,6 @@ const buildActivityTags = (value: string) => {
   return tags.length ? tags : undefined;
 };
 
-const formatAddressSummary = (address?: AuthUser["address"]) => {
-  if (!address) return null;
-  const entries = [
-    { label: "Line 1", value: address.line1 },
-    { label: "Line 2", value: address.line2 },
-    { label: "City", value: address.city },
-    { label: "State", value: address.state },
-    { label: "Postal Code", value: address.postalCode },
-    { label: "Country", value: address.country },
-  ].filter((entry) => entry.value && entry.value.trim().length);
-  return entries.length ? entries.map((entry) => ({ label: entry.label, value: entry.value!.trim() })) : null;
-};
-
 const cleanObject = <T extends Record<string, unknown>>(obj: T) => {
   return Object.entries(obj).reduce((acc, [key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -1002,15 +1606,6 @@ const cleanObject = <T extends Record<string, unknown>>(obj: T) => {
     return acc;
   }, {} as Partial<T>);
 };
-
-const BadgeRow = ({ label, value }: { label: string; value?: string }) => (
-  <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3">
-    <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
-      {label}
-    </p>
-    <p className="text-sm text-[#2e1f2c]">{value ?? "—"}</p>
-  </div>
-);
 
 type ProfileInputFieldProps = {
   label: string;
@@ -1072,11 +1667,19 @@ type UploadEntry = {
 
 type CompanyVerificationSectionProps = {
   onCompanyNameResolved?: (name?: string) => void;
+  onRequestVerification?: () => void;
+  openSignal?: number;
+  hideInline?: boolean;
 };
 
-const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificationSectionProps) => {
-  const { user } = useDashboardContext();
-  const activeCompanyId = user.activeCompany as string | undefined;
+const CompanyVerificationSection = ({
+  onCompanyNameResolved,
+  onRequestVerification,
+  openSignal,
+  hideInline = false,
+}: CompanyVerificationSectionProps) => {
+  const { user, activeCompany } = useDashboardContext();
+  const activeCompanyId = (activeCompany?.id ?? (user.activeCompany as string | undefined)) as string | undefined;
   const [latest, setLatest] = useState<CompanyVerificationLatestResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1088,6 +1691,7 @@ const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificati
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const lastOpenSignal = useRef<number | undefined>(undefined);
   const companyType = latest?.company?.type as CompanyVerificationAccountType | string | undefined;
   const isCompanyTypeEligible =
     !companyType || COMPANY_VERIFICATION_ACCOUNT_TYPES.includes(companyType as CompanyVerificationAccountType);
@@ -1129,6 +1733,14 @@ const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificati
       setHistoryOpen(false);
     }
   }, [request]);
+
+  useEffect(() => {
+    if (!openSignal || openSignal === lastOpenSignal.current) return;
+    lastOpenSignal.current = openSignal;
+    setFormError(null);
+    setSuccessMessage(null);
+    setIsModalOpen(true);
+  }, [openSignal]);
 
   const handleDocumentSelect = async (files: FileList | null, setter: (entry: UploadEntry | null) => void) => {
     if (!files || !files.length) return;
@@ -1187,7 +1799,11 @@ const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificati
     if (ctaDisabled) return;
     setFormError(null);
     setSuccessMessage(null);
-    setIsModalOpen(true);
+    if (onRequestVerification) {
+      onRequestVerification();
+    } else {
+      setIsModalOpen(true);
+    }
   };
 
   const handleCloseModal = () => {
@@ -1196,131 +1812,135 @@ const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificati
   };
 
   return (
-    <section id="company-verification" className="rounded-3xl border border-[var(--border-soft)] bg-gradient-to-br from-white to-[#fff8fd] p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
-            Compliance
-          </p>
-          <h2 className="text-2xl font-semibold text-[#1f1422]">Company verification</h2>
-          <p className="text-sm text-[#5f3c4c]">
-            Active company:{" "}
-            <span className="font-semibold text-[#2e1f2c]">{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
-            {latest?.company?.type ?? "Type not set"}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <span
-            className={`inline-flex items-center rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide ${statusMeta.className}`}
-          >
-            {statusMeta.label}
-          </span>
-          <button
-            type="button"
-            onClick={loadLatest}
-            className="rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[#5a3042] transition hover:border-[var(--color-plum)] hover:text-[var(--color-plum)] disabled:opacity-60"
-            disabled={!activeCompanyId || loading}
-          >
-            {loading ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-      </div>
-      {fetchError ? (
-        <div className="mt-4 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-4 text-sm text-[#7f1d1d]">
-          {fetchError}{" "}
-          <button type="button" onClick={loadLatest} className="font-semibold underline">
-            Try again
-          </button>
-        </div>
-      ) : null}
-      {activeCompanyId ? (
-        <>
-          <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-            <div className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5 shadow-sm shadow-[#e7ddea]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#2e1f2c]">Latest status</p>
-                  <p className="text-xs text-[#7a5d6b]">
-                    {request
-                      ? `Updated ${formatDateTime(request.updatedAt ?? request.createdAt)}`
-                      : "No verification requests yet"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setHistoryOpen((prev) => !prev)}
-                  disabled={!request}
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-semibold text-[var(--color-plum)] transition hover:border-[var(--color-plum)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {historyOpen ? "Hide history" : "View history"}
-                  <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition ${historyOpen ? "rotate-180" : ""}`}>
-                    <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-              <p className="mt-4 text-sm text-[#5c4451]">{statusMeta.helper}</p>
-              {request?.rejectionReason ? (
-                <p className="mt-3 rounded-2xl border border-[#fecaca] bg-[#fff5f5] p-3 text-sm text-[#7f1d1d]">
-                  Rejection reason: <span className="font-semibold">{request.rejectionReason}</span>
-                </p>
-              ) : null}
-              {hasPendingRequest ? (
-                <p className="mt-3 rounded-2xl bg-[#ecfdf5] p-3 text-sm font-semibold text-[#065f46]">
-                  We&apos;re currently reviewing your documents. You&apos;ll receive an email as soon as we conclude.
-                </p>
-              ) : null}
-            </div>
-            <div className="rounded-3xl border border-[#bbf7d0] bg-gradient-to-br from-white via-[#f5fff9] to-[#e7fff1] p-5 shadow-sm shadow-[#ccf2dc]">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
-                Credibility spotlight
+    <>
+      {!hideInline ? (
+        <section id="company-verification" className="rounded-3xl border border-[var(--border-soft)] bg-gradient-to-br from-white to-[#fff8fd] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+                Compliance
               </p>
-              <h3 className="mt-2 text-xl font-semibold text-[#174836]">Turn trust into more deals</h3>
-              <ul className="mt-3 space-y-2 text-sm text-[#174836]">
-                {verificationSpotlightBenefits.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-2">
-                    <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#0d9f6e]" />
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
+              <h2 className="text-2xl font-semibold text-[#1f1422]">Company verification</h2>
+              <p className="text-sm text-[#5f3c4c]">
+                Active company:{" "}
+                <span className="font-semibold text-[#2e1f2c]">{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
+                {latest?.company?.type ?? "Type not set"}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <span
+                className={`inline-flex items-center rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide ${statusMeta.className}`}
+              >
+                {statusMeta.label}
+              </span>
               <button
                 type="button"
-                onClick={handleOpenModal}
-                disabled={ctaDisabled}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0d9f6e33] transition disabled:opacity-50"
-                style={{ backgroundColor: "#0d9f6e" }}
+                onClick={loadLatest}
+                className="rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[#5a3042] transition hover:border-[var(--color-plum)] hover:text-[var(--color-plum)] disabled:opacity-60"
+                disabled={!activeCompanyId || loading}
               >
-                {hasPendingRequest ? "Request in review" : "Earn the verified badge"}
+                {loading ? "Refreshing…" : "Refresh"}
               </button>
-              <p className="mt-2 text-xs text-[#256c51]">
-                {isCompanyTypeEligible
-                  ? hasPendingRequest
-                    ? "Your submission is being reviewed by Manufacture compliance."
-                    : "Trader & manufacturer accounts can upload GST + Aadhaar to claim the badge."
-                  : "Only trader and manufacturer account types are eligible for verification."}
-              </p>
             </div>
           </div>
-          <AnimatePresence initial={false}>
-            {historyOpen ? (
-              <motion.div
-                key="verification-history"
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.2 }}
-                className="mt-5"
-              >
-                <VerificationHistory request={request} />
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </>
-      ) : (
-        <p className="mt-6 text-sm text-[#5c4451]">
-          Select or create a trader/manufacturer company to unlock verification. Once selected, your badge controls will appear here.
-        </p>
-      )}
+          {fetchError ? (
+            <div className="mt-4 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-4 text-sm text-[#7f1d1d]">
+              {fetchError}{" "}
+              <button type="button" onClick={loadLatest} className="font-semibold underline">
+                Try again
+              </button>
+            </div>
+          ) : null}
+          {activeCompanyId ? (
+            <>
+              <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
+                <div className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5 shadow-sm shadow-[#e7ddea]">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-[#2e1f2c]">Latest status</p>
+                      <p className="text-xs text-[#7a5d6b]">
+                        {request
+                          ? `Updated ${formatDateTime(request.updatedAt ?? request.createdAt)}`
+                          : "No verification requests yet"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryOpen((prev) => !prev)}
+                      disabled={!request}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-semibold text-[var(--color-plum)] transition hover:border-[var(--color-plum)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {historyOpen ? "Hide history" : "View history"}
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition ${historyOpen ? "rotate-180" : ""}`}>
+                        <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="mt-4 text-sm text-[#5c4451]">{statusMeta.helper}</p>
+                  {request?.rejectionReason ? (
+                    <p className="mt-3 rounded-2xl border border-[#fecaca] bg-[#fff5f5] p-3 text-sm text-[#7f1d1d]">
+                      Rejection reason: <span className="font-semibold">{request.rejectionReason}</span>
+                    </p>
+                  ) : null}
+                  {hasPendingRequest ? (
+                    <p className="mt-3 rounded-2xl bg-[#ecfdf5] p-3 text-sm font-semibold text-[#065f46]">
+                      We&apos;re currently reviewing your documents. You&apos;ll receive an email as soon as we conclude.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-3xl border border-[#bbf7d0] bg-gradient-to-br from-white via-[#f5fff9] to-[#e7fff1] p-5 shadow-sm shadow-[#ccf2dc]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                    Credibility spotlight
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-[#174836]">Turn trust into more deals</h3>
+                  <ul className="mt-3 space-y-2 text-sm text-[#174836]">
+                    {verificationSpotlightBenefits.map((benefit) => (
+                      <li key={benefit} className="flex items-start gap-2">
+                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#0d9f6e]" />
+                        <span>{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={handleOpenModal}
+                    disabled={ctaDisabled}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0d9f6e33] transition disabled:opacity-50"
+                    style={{ backgroundColor: "#0d9f6e" }}
+                  >
+                    {hasPendingRequest ? "Request in review" : "Earn the verified badge"}
+                  </button>
+                  <p className="mt-2 text-xs text-[#256c51]">
+                    {isCompanyTypeEligible
+                      ? hasPendingRequest
+                        ? "Your submission is being reviewed by Manufacture compliance."
+                        : "Trader & manufacturer accounts can upload GST + Aadhaar to claim the badge."
+                      : "Only trader and manufacturer account types are eligible for verification."}
+                  </p>
+                </div>
+              </div>
+              <AnimatePresence initial={false}>
+                {historyOpen ? (
+                  <motion.div
+                    key="verification-history"
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.2 }}
+                    className="mt-5"
+                  >
+                    <VerificationHistory request={request} />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </>
+          ) : (
+            <p className="mt-6 text-sm text-[#5c4451]">
+              Select or create a trader/manufacturer company to unlock verification. Once selected, your badge controls will appear here.
+            </p>
+          )}
+        </section>
+      ) : null}
       <VerificationModal
         open={isModalOpen}
         onClose={handleCloseModal}
@@ -1337,7 +1957,7 @@ const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificati
         successMessage={successMessage}
         submitting={submitting}
       />
-    </section>
+    </>
   );
 };
 const VerificationHistory = ({ request }: { request: CompanyVerificationRequest | null }) => {
@@ -1590,6 +2210,8 @@ const DocumentUploadField = ({
     </label>
   </div>
 );
+
+
 
 const fileToDocumentPayload = (file: File): Promise<CompanyVerificationDocumentUpload> => {
   return new Promise((resolve, reject) => {

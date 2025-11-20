@@ -1,5 +1,8 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
+const { uploadUserDocument } = require('../services/storage.service');
+const { ACTIVITY_ACTIONS } = require('../constants/activity');
+const { recordActivitySafe, extractRequestContext } = require('../modules/activity/services/activity.service');
 
 const sanitizeUser = (user) => {
   const { password, __v, ...rest } = user.toObject({ versionKey: false });
@@ -56,7 +59,7 @@ const updateCurrentUser = async (req, res, next) => {
       }
     };
 
-    ['firstName', 'lastName', 'displayName', 'phone', 'bio'].forEach(assignField);
+    ['firstName', 'lastName', 'displayName', 'phone', 'bio', 'avatarUrl'].forEach(assignField);
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'activityTags')) {
       user.activityTags = Array.isArray(req.body.activityTags)
@@ -94,7 +97,55 @@ const updateCurrentUser = async (req, res, next) => {
 
     await user.save();
 
+    const updatedFields = Object.keys(req.body || {});
+    await recordActivitySafe({
+      userId: user.id,
+      action: ACTIVITY_ACTIONS.USER_PROFILE_UPDATED,
+      label: 'Profile updated',
+      description: updatedFields.length ? `Updated ${updatedFields.join(', ')}` : 'Updated profile details',
+      meta: { fields: updatedFields },
+      companyId: user.activeCompany,
+      context: extractRequestContext(req)
+    });
+
     return res.json({ user: sanitizeUser(user) });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const uploadUserFile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return next(createError(404, 'User not found'));
+    }
+
+    const { fileName, mimeType, content, purpose } = req.body;
+    const file = await uploadUserDocument({
+      userId: user.id,
+      purpose: purpose?.trim().toLowerCase() || 'general',
+      fileName,
+      mimeType,
+      base64: content
+    });
+
+    if (purpose === 'avatar') {
+      user.avatarUrl = file.url;
+      await user.save();
+    }
+
+    await recordActivitySafe({
+      userId: user.id,
+      action: ACTIVITY_ACTIONS.USER_FILE_UPLOADED,
+      label: 'File uploaded',
+      description: purpose === 'avatar' ? 'Updated profile avatar' : `Uploaded ${purpose || 'file'}`,
+      meta: { fileName, mimeType, purpose },
+      companyId: user.activeCompany,
+      context: extractRequestContext(req)
+    });
+
+    return res.status(201).json({ file });
   } catch (error) {
     return next(error);
   }
@@ -102,5 +153,6 @@ const updateCurrentUser = async (req, res, next) => {
 
 module.exports = {
   getCurrentUser,
-  updateCurrentUser
+  updateCurrentUser,
+  uploadUserFile
 };

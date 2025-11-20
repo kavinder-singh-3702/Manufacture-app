@@ -2,7 +2,7 @@ const { requestPasswordReset, resetPassword } = require('../services/password-re
 
 const requestPasswordResetController = async (req, res, next) => {
   try {
-    const payload = await requestPasswordReset({
+    const payload = await requestPasswordReset(req, {
       email: req.body.email?.trim(),
       phone: req.body.phone?.trim()
     });
