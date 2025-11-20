@@ -65,6 +65,8 @@ const initialPreferences = {
   autoReports: true,
 };
 
+const isLikelyObjectId = (value?: string | null) => !!value && /^[a-f0-9]{24}$/i.test(value);
+
 type ProfileFormState = ReturnType<typeof createProfileFormState>;
 type VerificationPillVariant = "verified" | "pending" | "warning";
 type ProfileVerificationState = { label: string; variant: VerificationPillVariant };
@@ -221,9 +223,14 @@ export const DashboardProfile = () => {
   const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "success" | "error"; message?: string }>({
     status: "idle",
   });
+  const [activeCompanyName, setActiveCompanyName] = useState<string | undefined>(undefined);
   const fallbackCompanyName =
-    (user.companies && user.companies.length ? user.companies[0] : undefined) ?? user.displayName ?? user.email;
-  const primaryCompanyName = user.activeCompany ?? fallbackCompanyName;
+    (!isLikelyObjectId(user.activeCompany) ? user.activeCompany : undefined) ??
+    user.companies?.find((company) => company && !isLikelyObjectId(company)) ??
+    user.displayName ??
+    user.email ??
+    "Your workspace";
+  const primaryCompanyName = activeCompanyName ?? fallbackCompanyName;
   const normalizedStatus = (user.status ?? "").toLowerCase();
   const isWorkspaceVerified = normalizedStatus === "verified";
   const verificationVariant: VerificationPillVariant = isWorkspaceVerified
@@ -235,6 +242,10 @@ export const DashboardProfile = () => {
     label: isWorkspaceVerified ? "Verified badge active" : "Unverified workspace",
     variant: verificationVariant,
   };
+
+  useEffect(() => {
+    setActiveCompanyName(undefined);
+  }, [user.activeCompany]);
 
   useEffect(() => {
     setEditForm(createProfileFormState(user));
@@ -286,7 +297,7 @@ export const DashboardProfile = () => {
         saveState={saveState}
         verificationState={verificationState}
       />
-      <CompanyVerificationSection />
+      <CompanyVerificationSection onCompanyNameResolved={setActiveCompanyName} />
     </>
   );
 };
@@ -1059,8 +1070,11 @@ type UploadEntry = {
   sizeLabel: string;
 };
 
+type CompanyVerificationSectionProps = {
+  onCompanyNameResolved?: (name?: string) => void;
+};
 
-const CompanyVerificationSection = () => {
+const CompanyVerificationSection = ({ onCompanyNameResolved }: CompanyVerificationSectionProps) => {
   const { user } = useDashboardContext();
   const activeCompanyId = user.activeCompany as string | undefined;
   const [latest, setLatest] = useState<CompanyVerificationLatestResponse | null>(null);
@@ -1085,22 +1099,25 @@ const CompanyVerificationSection = () => {
       setFetchError(null);
       const response = await companyVerificationService.getLatest(activeCompanyId);
       setLatest(response);
+      onCompanyNameResolved?.(response.company?.displayName);
     } catch (error) {
       const message =
         error instanceof ApiError || error instanceof Error ? error.message : "Unable to load verification status";
       setFetchError(message);
+      onCompanyNameResolved?.(undefined);
     } finally {
       setLoading(false);
     }
-  }, [activeCompanyId]);
+  }, [activeCompanyId, onCompanyNameResolved]);
 
   useEffect(() => {
     if (activeCompanyId) {
       loadLatest();
     } else {
       setLatest(null);
+      onCompanyNameResolved?.(undefined);
     }
-  }, [activeCompanyId, loadLatest]);
+  }, [activeCompanyId, loadLatest, onCompanyNameResolved]);
 
   const request = latest?.request ?? null;
   const complianceStatus = latest?.company?.complianceStatus ?? "pending";

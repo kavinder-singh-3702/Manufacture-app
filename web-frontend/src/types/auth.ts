@@ -72,6 +72,25 @@ export type SignupCompletePayload = {
   categories?: string[];
 };
 
+export type ForgotPasswordPayload = {
+  email?: string;
+  phone?: string;
+};
+
+export type ResetPasswordPayload = {
+  token: string;
+  password: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+  expiresInMs: number;
+  resetToken?: string;
+  expiresAt?: string;
+};
+
+export type ResetPasswordResponse = { user: AuthUser };
+
 export type UpdateUserPayload = Partial<
   Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio">
 > & {
