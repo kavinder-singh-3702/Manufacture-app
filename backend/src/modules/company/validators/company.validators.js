@@ -71,8 +71,19 @@ const updateCompanyValidation = [
   body('settings').optional().isObject().withMessage('Settings must be an object')
 ];
 
+const uploadCompanyFileValidation = [
+  body('fileName').trim().notEmpty().withMessage('File name is required'),
+  body('mimeType').optional().isString(),
+  body('content').isString().notEmpty().withMessage('Base64 content is required'),
+  body('purpose')
+    .optional()
+    .isIn(['logo', 'cover', 'asset'])
+    .withMessage('Purpose must be logo, cover, or asset')
+];
+
 module.exports = {
   createCompanyValidation,
   companyIdParamValidation,
-  updateCompanyValidation
+  updateCompanyValidation,
+  uploadCompanyFileValidation
 };

@@ -53,8 +53,8 @@ export const HeroHeader = ({
           placeholderTextColor="rgba(255,255,255,0.75)"
           style={styles.searchInput}
         />
-        <TouchableOpacity style={styles.searchAction}>
-          <Text style={styles.searchActionText}>Go</Text>
+        <TouchableOpacity style={[styles.searchAction, { backgroundColor: palette.charcoal }]}>
+          <Text style={[styles.searchActionText, { color: palette.white }]}>Go</Text>
         </TouchableOpacity>
       </View>
 
@@ -164,11 +164,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: palette.white,
   },
   searchActionText: {
     fontWeight: "600",
-    color: colors.primary,
   },
   heroContent: {
     flexDirection: "row",

@@ -3,7 +3,8 @@ const {
   listCompanies,
   getCompany,
   switchActiveCompany,
-  updateCompany
+  updateCompany,
+  uploadCompanyFile
 } = require('../services/company.service');
 const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
@@ -91,10 +92,32 @@ const updateCompanyController = async (req, res, next) => {
   }
 };
 
+const uploadCompanyFileController = async (req, res, next) => {
+  try {
+    const result = await uploadCompanyFile(req.user.id, req.params.companyId, req.body);
+
+    await recordActivitySafe({
+      userId: req.user.id,
+      action: ACTIVITY_ACTIONS.COMPANY_UPDATED,
+      label: result.purpose === 'logo' ? 'Company logo updated' : 'Company asset uploaded',
+      description: req.body.fileName ? `Uploaded ${req.body.fileName}` : 'Uploaded company asset',
+      companyId: result.company?.id,
+      companyName: result.company?.displayName,
+      meta: { purpose: result.purpose, fileName: req.body.fileName },
+      context: extractRequestContext(req)
+    });
+
+    return res.status(201).json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createCompanyController,
   listCompaniesController,
   getCompanyController,
   switchCompanyController,
-  updateCompanyController
+  updateCompanyController,
+  uploadCompanyFileController
 };

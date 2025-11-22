@@ -2,6 +2,7 @@ const createError = require('http-errors');
 const Company = require('../../../models/company.model');
 const User = require('../../../models/user.model');
 const { normalizeCategories, buildCompanyResponse } = require('../utils/company.util');
+const { uploadCompanyDocument } = require('../../../services/storage.service');
 
 const pruneUndefined = (obj = {}) =>
   Object.entries(obj).reduce((acc, [key, value]) => {
@@ -110,6 +111,36 @@ const updateCompany = async (ownerId, companyId, payload) => {
   return buildCompanyResponse(company);
 };
 
+const uploadCompanyFile = async (ownerId, companyId, payload) => {
+  const company = await ensureOwnedCompany(ownerId, companyId);
+  const purpose = (payload.purpose || 'asset').trim().toLowerCase();
+  const documentType = ['logo', 'cover'].includes(purpose) ? `company-${purpose}` : 'company-asset';
+
+  const file = await uploadCompanyDocument({
+    companyId,
+    documentType,
+    fileName: payload.fileName,
+    mimeType: payload.mimeType,
+    base64: payload.content
+  });
+
+  if (purpose === 'logo') {
+    company.logoUrl = file.url;
+  }
+  if (purpose === 'cover') {
+    company.coverImageUrl = file.url;
+  }
+
+  company.updatedBy = ownerId;
+  await company.save();
+
+  return {
+    file,
+    company: buildCompanyResponse(company),
+    purpose
+  };
+};
+
 const switchActiveCompany = async (ownerId, companyId) => {
   const company = await ensureOwnedCompany(ownerId, companyId);
 
@@ -133,5 +164,6 @@ module.exports = {
   listCompanies,
   getCompany,
   switchActiveCompany,
-  updateCompany
+  updateCompany,
+  uploadCompanyFile
 };

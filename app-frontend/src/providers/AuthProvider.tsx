@@ -2,16 +2,19 @@ import { createContext, ReactNode, useCallback, useEffect, useMemo, useState } f
 import { AuthUser, AuthView, LoginPayload } from "../types/auth";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
+import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
 
 type AuthContextValue = {
   user: AuthUser | null;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
+  switchCompany: (companyId: string) => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   initializing: boolean;
   bootstrapError: string | null;
   requestLogin: () => void;
+  refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
 };
@@ -28,16 +31,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
 
+  const refreshUser = useCallback(async () => {
+    const { user: currentUser } = await userService.getCurrentUser();
+    setUserState(currentUser);
+    setAuthView(null);
+    setBootstrapError(null);
+    return currentUser;
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     const bootstrap = async () => {
       try {
         const { user: currentUser } = await userService.getCurrentUser();
-        if (isMounted) {
-          setUserState(currentUser);
-          setAuthView(null);
-          setBootstrapError(null);
-        }
+        if (!isMounted) return;
+        setUserState(currentUser);
+        setAuthView(null);
+        setBootstrapError(null);
       } catch (error) {
         if (isMounted) {
           setUserState(null);
@@ -79,6 +89,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAuthView("login");
   }, []);
 
+  const switchCompany = useCallback(async (companyId: string) => {
+    const response = await companyService.switchActive(companyId);
+    setUserState((previous) => {
+      if (!previous) return previous;
+      const existingCompanies = Array.isArray(previous.companies) ? previous.companies : [];
+      const updatedCompanies = existingCompanies.includes(companyId) ? existingCompanies : [...existingCompanies, companyId];
+      return {
+        ...previous,
+        activeCompany: response.activeCompany ?? companyId,
+        companies: updatedCompanies,
+      };
+    });
+  }, []);
+
   const setUser = useCallback((next: AuthUser | null) => {
     setUserState(next);
     if (next) {
@@ -100,14 +124,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       user,
       login,
       logout,
+      switchCompany,
       setUser,
       initializing,
       bootstrapError,
       requestLogin,
+      refreshUser,
       authView,
       clearAuthView,
     }),
-    [authView, bootstrapError, clearAuthView, initializing, login, logout, requestLogin, setUser, user]
+    [authView, bootstrapError, clearAuthView, initializing, login, logout, refreshUser, requestLogin, setUser, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

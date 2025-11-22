@@ -4,14 +4,16 @@ const {
   listCompaniesController,
   getCompanyController,
   switchCompanyController,
-  updateCompanyController
+  updateCompanyController,
+  uploadCompanyFileController
 } = require('../controllers/company.controller');
 const { authenticate } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
 const {
   createCompanyValidation,
   companyIdParamValidation,
-  updateCompanyValidation
+  updateCompanyValidation,
+  uploadCompanyFileValidation
 } = require('../validators/company.validators');
 const companyVerificationRouter = require('../../companyVerification/routes/companyVerificationUser.routes');
 
@@ -27,6 +29,12 @@ router
 router.get('/:companyId', validate(companyIdParamValidation), getCompanyController);
 router.patch('/:companyId', validate(companyIdParamValidation), validate(updateCompanyValidation), updateCompanyController);
 router.post('/:companyId/select', validate(companyIdParamValidation), switchCompanyController);
+router.post(
+  '/:companyId/uploads',
+  validate(companyIdParamValidation),
+  validate(uploadCompanyFileValidation),
+  uploadCompanyFileController
+);
 router.use(
   '/:companyId/verification',
   validate(companyIdParamValidation),

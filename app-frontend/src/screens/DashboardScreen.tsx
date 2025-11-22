@@ -1,4 +1,10 @@
-import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import {
+  ScrollView,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Typography } from "../components/common/Typography";
@@ -6,11 +12,23 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { RootStackParamList } from "../navigation/types";
 import { HeroHeader } from "../components/home/HeroHeader";
-import { QuickActionGrid, QuickAction } from "../components/home/QuickActionGrid";
-import { CategorySections, CategorySectionData } from "../components/home/CategorySections";
-import { MarketplacePulse, MarketplaceStat } from "../components/home/MarketplacePulse";
-import { SpotlightPrograms, SpotlightProgram } from "../components/home/SpotlightPrograms";
-import { CompanyVerificationWidget } from "../components/company/CompanyVerificationWidget";
+import {
+  QuickActionGrid,
+  QuickAction,
+} from "../components/home/QuickActionGrid";
+import {
+  CategorySections,
+  CategorySectionData,
+} from "../components/home/CategorySections";
+import {
+  MarketplacePulse,
+  MarketplaceStat,
+} from "../components/home/MarketplacePulse";
+import {
+  SpotlightPrograms,
+  SpotlightProgram,
+} from "../components/home/SpotlightPrograms";
+import { CompanyVerificationWidget } from "../components/company";
 
 const logoSource = require("../../assets/icon.png");
 
@@ -46,9 +64,21 @@ const categorySections: CategorySectionData[] = [
     title: "Chemicals & Minerals",
     highlight: "Industrial solvents",
     items: [
-      { id: "acids", label: "Specialty Acids", detail: "Battery grade & lab grade" },
-      { id: "powders", label: "Mineral Powders", detail: "Quartz, dolomite & more" },
-      { id: "coatings", label: "Protective Coatings", detail: "High temperature & food safe" },
+      {
+        id: "acids",
+        label: "Specialty Acids",
+        detail: "Battery grade & lab grade",
+      },
+      {
+        id: "powders",
+        label: "Mineral Powders",
+        detail: "Quartz, dolomite & more",
+      },
+      {
+        id: "coatings",
+        label: "Protective Coatings",
+        detail: "High temperature & food safe",
+      },
     ],
     theme: "#F2F4FF",
   },
@@ -57,9 +87,21 @@ const categorySections: CategorySectionData[] = [
     title: "Textiles & Apparel",
     highlight: "Premium cotton",
     items: [
-      { id: "knits", label: "Organic Knits", detail: "GOTS certified partners" },
-      { id: "uniforms", label: "Industrial Uniforms", detail: "Custom fits for shop floors" },
-      { id: "technical", label: "Technical Fabrics", detail: "Fire retardant & antistatic" },
+      {
+        id: "knits",
+        label: "Organic Knits",
+        detail: "GOTS certified partners",
+      },
+      {
+        id: "uniforms",
+        label: "Industrial Uniforms",
+        detail: "Custom fits for shop floors",
+      },
+      {
+        id: "technical",
+        label: "Technical Fabrics",
+        detail: "Fire retardant & antistatic",
+      },
     ],
     theme: "#FFF4EC",
   },
@@ -76,17 +118,23 @@ const spotlightPrograms: SpotlightProgram[] = [
     id: "verified",
     title: "Verified Exporters Club",
     stat: "Invite-only",
-    description: "Hands-on compliance, bonded warehouses, and curated buyer circles.",
+    description:
+      "Hands-on compliance, bonded warehouses, and curated buyer circles.",
   },
   {
     id: "logistics",
     title: "Logistics Concierge",
     stat: "Pan-India",
-    description: "End-to-end movement, packaging, and insurance support for urgent orders.",
+    description:
+      "End-to-end movement, packaging, and insurance support for urgent orders.",
   },
 ] as const;
 
-const brandPillars = ["Assisted sourcing desk", "Secure payments", "Escrow-ready partners"] as const;
+const brandPillars = [
+  "Assisted sourcing desk",
+  "Secure payments",
+  "Escrow-ready partners",
+] as const;
 
 export const DashboardScreen = () => {
   const { spacing, colors } = useTheme();
@@ -100,14 +148,6 @@ export const DashboardScreen = () => {
       stickyHeaderIndices={[]}
     >
       <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-        <HeroHeader
-          brandName="Manufacture Command"
-          logoSource={logoSource}
-          headline="Empowering Business Connections"
-          description="Connect with verified sellers, manage sourcing, and boost exports with a single trusted workspace."
-          pillars={brandPillars}
-        />
-
         {/* Company Verification Widget - Shows verification status */}
         {user?.activeCompany && (
           <CompanyVerificationWidget companyId={user.activeCompany} />
@@ -122,21 +162,37 @@ export const DashboardScreen = () => {
 
         <MarketplacePulse stats={marketplaceHighlights} />
 
-        <SpotlightPrograms programs={spotlightPrograms} actionLabel="Talk to us" />
+        <SpotlightPrograms
+          programs={spotlightPrograms}
+          actionLabel="Talk to us"
+        />
       </View>
     </ScrollView>
   );
 };
 
-const SectionHeader = ({ title, actionLabel }: { title: string; actionLabel?: string }) => {
-  const { colors } = useTheme();
+const SectionHeader = ({
+  title,
+  actionLabel,
+}: {
+  title: string;
+  actionLabel?: string;
+}) => {
+  const { colors, radius } = useTheme();
 
   return (
     <View style={styles.sectionHeader}>
       <Typography variant="subheading">{title}</Typography>
       {actionLabel ? (
-        <TouchableOpacity>
-          <Text style={[styles.sectionAction, { color: colors.primary }]}>{actionLabel}</Text>
+        <TouchableOpacity
+          style={[
+            styles.sectionActionButton,
+            { backgroundColor: colors.text, borderRadius: radius.pill },
+          ]}
+        >
+          <Text style={[styles.sectionAction, { color: colors.textInverse }]}>
+            {actionLabel}
+          </Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -152,5 +208,9 @@ const styles = StyleSheet.create({
   sectionAction: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  sectionActionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 });

@@ -8,6 +8,7 @@ export type AuthUser = {
   lastName?: string;
   phone?: string;
   bio?: string;
+  avatarUrl?: string;
   role?: string;
   status?: string;
   accountType?: string;
@@ -90,7 +91,7 @@ export type UserPreferences = {
   communications?: UserCommunicationsPreferences;
 };
 
-export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio">> & {
+export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "avatarUrl">> & {
   address?: UserAddress;
   socialLinks?: UserSocialLinks;
   preferences?: UserPreferences;

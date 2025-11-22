@@ -16,23 +16,21 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
   // Use mixed color theme
   const backgroundColor =
     variant === "primary"
-      ? colors.buttonPrimary       // Green
+      ? colors.text                // Charcoal as primary CTA
       : variant === "secondary"
-      ? colors.buttonSecondary      // Burgundy
-      : colors.buttonGhost;         // Transparent
+      ? colors.accent              // Deep plum for alerts
+      : colors.buttonGhost;        // Transparent
 
   const textColor =
     variant === "ghost"
-      ? colors.primary              // Green text on transparent
-      : variant === "primary"
-      ? colors.textOnPrimary        // White on green
-      : colors.textOnSecondary;     // White on burgundy
+      ? colors.text                 // Charcoal text on transparent
+      : colors.textInverse;         // White on solid buttons
 
   // Add subtle shadow based on variant
   const shadowStyle = variant === "primary"
-    ? shadows.green
+    ? shadows.mdDark
     : variant === "secondary"
-    ? shadows.burgundy
+    ? shadows.green
     : undefined;
 
   return (

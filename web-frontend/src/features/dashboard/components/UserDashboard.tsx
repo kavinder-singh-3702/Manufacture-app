@@ -417,28 +417,6 @@ export const DashboardProfile = () => {
       const content = base64.includes(",") ? base64.split(",")[1] ?? "" : base64;
       const response = await userService.uploadUserFile({
         fileName: file.name,
-        mimeType: file.type,
-        content,
-        purpose: "avatar",
-      });
-      const url = response.file?.url ?? "";
-      if (url) {
-        setEditForm((prev) => ({ ...prev, avatarUrl: url }));
-      }
-      await refreshUser();
-      setSaveState({ status: "success" });
-    } catch (error) {
-      const message = error instanceof ApiError || error instanceof Error ? error.message : "Unable to upload avatar.";
-      setSaveState({ status: "error", message });
-    }
-  };
-
-  const handleAvatarUpload = async (file: File, base64: string) => {
-    try {
-      setSaveState({ status: "saving" });
-      const content = base64.includes(",") ? base64.split(",")[1] ?? "" : base64;
-      const response = await userService.uploadUserFile({
-        fileName: file.name,
         mimeType: file.type || "image/png",
         content,
         purpose: "avatar",
