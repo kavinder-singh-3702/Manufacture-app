@@ -1,23 +1,34 @@
 import { apiClient } from "./apiClient";
 import {
   VerificationRequest,
-  SubmitVerificationPayload,
   VerificationStatusResponse,
   VerificationDecisionPayload,
 } from "../types/company";
+import { PickedDocument } from "../components/company/DocumentUploader";
 
 class VerificationService {
 
     //Submit verification request for a company
   
-  async submitVerification(
-    companyId: string,
-    payload: SubmitVerificationPayload
-  ): Promise<VerificationRequest> {
-    const response = await apiClient.post<VerificationRequest>(
-      `/companies/${companyId}/verification`,
-      payload
-    );
+  async submitVerification(companyId: string, payload: { gstCertificate: PickedDocument; aadhaarCard: PickedDocument; notes?: string }): Promise<VerificationRequest> {
+    const form = new FormData();
+    form.append("gstCertificate", {
+      uri: payload.gstCertificate.uri,
+      name: payload.gstCertificate.fileName,
+      type: payload.gstCertificate.mimeType,
+    } as any);
+    form.append("aadhaarCard", {
+      uri: payload.aadhaarCard.uri,
+      name: payload.aadhaarCard.fileName,
+      type: payload.aadhaarCard.mimeType,
+    } as any);
+    if (payload.notes) {
+      form.append("notes", payload.notes);
+    }
+
+    const response = await apiClient.post<VerificationRequest>(`/companies/${companyId}/verification`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response;
   }
 

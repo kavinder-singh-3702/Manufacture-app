@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 
 type DocumentType = 'gstCertificate' | 'aadhaarCard';
 
 export type PickedDocument = {
   fileName: string;
   mimeType: string;
-  base64: string;
+  uri: string;
   size: number;
 };
 
@@ -50,15 +49,10 @@ export const DocumentUploader: React.FC<Props> = ({
         return;
       }
 
-      // Convert to base64
-      const base64 = await FileSystem.readAsStringAsync(file.uri, {
-        encoding: 'base64',
-      });
-
       const pickedDoc: PickedDocument = {
         fileName: file.name,
         mimeType: file.mimeType || 'application/octet-stream',
-        base64,
+        uri: file.uri,
         size: file.size || 0,
       };
 

@@ -105,7 +105,7 @@ export type SwitchCompanyResponse = {
 export type UploadCompanyFilePayload = {
   fileName: string;
   mimeType?: string;
-  content: string;
+  uri: string;
   purpose?: "logo" | "cover" | "asset";
 };
 

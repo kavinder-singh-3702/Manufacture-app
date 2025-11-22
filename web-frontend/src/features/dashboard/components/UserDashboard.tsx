@@ -448,7 +448,7 @@ export const DashboardProfile = () => {
         onSubmit={handleSaveProfile}
         saveState={saveState}
         verificationState={verificationState}
-        onUploadComplete={refreshUser}
+        onUpload={handleAvatarUpload}
       />
       <CompanyVerificationSection
         hideInline
@@ -1097,6 +1097,7 @@ const ProfileSection = ({
   onSubmit,
   saveState,
   verificationState,
+  onUpload,
 }: {
   user: AuthUser;
   editForm: ProfileFormState;
@@ -1104,6 +1105,7 @@ const ProfileSection = ({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   saveState: { status: "idle" | "saving" | "success" | "error"; message?: string };
   verificationState?: ProfileVerificationState;
+  onUpload?: (file: File, base64: string) => Promise<void>;
 }) => {
   const updateField = (key: keyof ProfileFormState, value: string) => {
     onChange({ ...editForm, [key]: value });
@@ -1148,7 +1150,7 @@ const ProfileSection = ({
             <ProfilePhotoUploader
               user={user}
               onChange={(src) => updateField("avatarUrl", src)}
-              onUpload={handleAvatarUpload}
+              onUpload={onUpload}
               value={editForm.avatarUrl}
             />
           </div>

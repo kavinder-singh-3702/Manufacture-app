@@ -16,6 +16,7 @@ const {
   uploadCompanyFileValidation
 } = require('../validators/company.validators');
 const companyVerificationRouter = require('../../companyVerification/routes/companyVerificationUser.routes');
+const { uploadMemory } = require('../../../middleware/upload');
 
 const router = Router();
 
@@ -31,6 +32,15 @@ router.patch('/:companyId', validate(companyIdParamValidation), validate(updateC
 router.post('/:companyId/select', validate(companyIdParamValidation), switchCompanyController);
 router.post(
   '/:companyId/uploads',
+  uploadMemory.single('file'),
+  (req, _res, next) => {
+    if (req.file) {
+      req.body.fileName = req.file.originalname;
+      req.body.mimeType = req.file.mimetype;
+      req.body.content = req.file.buffer.toString('base64');
+    }
+    next();
+  },
   validate(companyIdParamValidation),
   validate(uploadCompanyFileValidation),
   uploadCompanyFileController

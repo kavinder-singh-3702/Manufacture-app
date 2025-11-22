@@ -11,7 +11,6 @@ import {
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { RootStackParamList } from "../../navigation/types";
@@ -153,11 +152,10 @@ export const CompanyProfileScreen = () => {
       }
 
       setLogoUploading(true);
-      const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
       const response = await companyService.uploadFile(company.id, {
         fileName: file.name ?? "company-logo.jpg",
         mimeType: file.mimeType ?? "image/jpeg",
-        content: base64,
+        uri: file.uri,
         purpose: "logo",
       });
       setCompany(response.company);

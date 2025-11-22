@@ -45,21 +45,11 @@ export const VerificationSubmitScreen = () => {
     try {
       setIsSubmitting(true);
 
-      const payload: SubmitVerificationPayload = {
-        gstCertificate: {
-          fileName: gstDocument.fileName,
-          mimeType: gstDocument.mimeType,
-          content: gstDocument.base64,
-        },
-        aadhaarCard: {
-          fileName: aadhaarDocument.fileName,
-          mimeType: aadhaarDocument.mimeType,
-          content: aadhaarDocument.base64,
-        },
+      await verificationService.submitVerification(companyId, {
+        gstCertificate: gstDocument,
+        aadhaarCard: aadhaarDocument,
         notes: notes.trim() || undefined,
-      };
-
-      await verificationService.submitVerification(companyId, payload);
+      });
 
       Alert.alert(
         'Success',
