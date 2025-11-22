@@ -43,9 +43,9 @@ export const CompanyVerificationScreen = () => {
   };
 
   const handleVerifyPress = () => {
-    if (company) {
-      navigation.navigate('VerificationSubmit', { companyId: company.id });
-    }
+    if (!company?.id) return;
+    // Open the document upload screen for this company
+    navigation.navigate("VerificationSubmit", { companyId: company.id });
   };
 
   if (loading) {

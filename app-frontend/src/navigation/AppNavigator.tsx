@@ -67,12 +67,12 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="CompanyVerification"
               component={CompanyVerificationScreen}
-              options={{ headerShown: false, presentation: "card", animation: "slide_from_right" }}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="VerificationSubmit"
               component={VerificationSubmitScreen}
-              options={{ headerShown: false, presentation: "card", animation: "slide_from_right" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
           </>
         )}

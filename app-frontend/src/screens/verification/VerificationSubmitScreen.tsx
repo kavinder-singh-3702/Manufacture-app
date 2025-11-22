@@ -79,8 +79,13 @@ export const VerificationSubmitScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.content}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Company Verification</Text>
+      </View>
+      <View style={styles.content}>
         <Text style={styles.subtitle}>
           Upload your GST certificate and Aadhaar card to verify your company
         </Text>
@@ -139,6 +144,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  backIcon: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
   },
   content: {
     padding: 16,
