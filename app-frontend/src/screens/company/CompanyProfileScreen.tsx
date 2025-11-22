@@ -111,6 +111,19 @@ export const CompanyProfileScreen = () => {
 
   const complianceStatus = company?.complianceStatus ?? "pending";
   const needsVerification = complianceStatus !== "approved";
+  const companyId = company?.id ? String(company.id) : null;
+  const openVerification = () => {
+    if (!companyId) {
+      setError("Unable to open verification: missing company id.");
+      return;
+    }
+    const parentNav = navigation.getParent?.();
+    if (parentNav) {
+      parentNav.navigate("CompanyVerification" as never, { companyId } as never);
+      return;
+    }
+    navigation.push("CompanyVerification", { companyId });
+  };
 
   const handleUploadLogo = async () => {
     if (!company?.id) return;
@@ -258,7 +271,7 @@ export const CompanyProfileScreen = () => {
                 Verified companies earn sourcing priority, faster approvals, and improved visibility across buyer workflows.
               </Text>
               <TouchableOpacity
-                onPress={() => navigation.navigate("VerificationSubmit", { companyId: company.id })}
+                onPress={openVerification}
                 style={[
                   styles.verifyButton,
                   {

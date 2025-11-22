@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as DocumentPicker from "expo-document-picker";
@@ -19,6 +20,7 @@ export const ProfileScreen = () => {
   const { colors, spacing } = useTheme();
   const { user, setUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
   const [activeEditor, setActiveEditor] = useState<EditorType>(null);
   const [identityForm, setIdentityForm] = useState(createIdentityFormState(user));
   const [professionalForm, setProfessionalForm] = useState(createProfessionalFormState(user));
@@ -168,8 +170,19 @@ export const ProfileScreen = () => {
         return;
       }
 
+      const fileUri = file.uri;
+      if (!fileUri) {
+        setAvatarError("We couldn't read that file path. Please pick another image.");
+        return;
+      }
+
       setAvatarUploading(true);
-      const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+
+      if (!base64) {
+        setAvatarError("We couldn't read that image. Please try a different file.");
+        return;
+      }
 
       const response = await userService.uploadUserFile({
         fileName: file.name ?? "avatar.jpg",
@@ -190,7 +203,7 @@ export const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>‹</Text>

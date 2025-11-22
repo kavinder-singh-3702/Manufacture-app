@@ -5,13 +5,8 @@ import {
   TouchableOpacity,
   Text,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Typography } from "../components/common/Typography";
 import { useTheme } from "../hooks/useTheme";
-import { useAuth } from "../hooks/useAuth";
-import { RootStackParamList } from "../navigation/types";
-import { HeroHeader } from "../components/home/HeroHeader";
 import {
   QuickActionGrid,
   QuickAction,
@@ -28,9 +23,8 @@ import {
   SpotlightPrograms,
   SpotlightProgram,
 } from "../components/home/SpotlightPrograms";
-import { CompanyVerificationWidget } from "../components/company";
-
-const logoSource = require("../../assets/icon.png");
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const quickActions: QuickAction[] = [
   {
@@ -130,44 +124,36 @@ const spotlightPrograms: SpotlightProgram[] = [
   },
 ] as const;
 
-const brandPillars = [
-  "Assisted sourcing desk",
-  "Secure payments",
-  "Escrow-ready partners",
-] as const;
-
 export const DashboardScreen = () => {
   const { spacing, colors } = useTheme();
-  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingBottom: spacing.xxl }}
-      showsVerticalScrollIndicator={false}
-      stickyHeaderIndices={[]}
-    >
-      <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-        {/* Company Verification Widget - Shows verification status */}
-        {user?.activeCompany && (
-          <CompanyVerificationWidget companyId={user.activeCompany} />
-        )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[]}
+      >
+        <View style={{ padding: spacing.lg, gap: spacing.lg }}>
 
-        <QuickActionGrid actions={quickActions} />
+          <QuickActionGrid actions={quickActions} />
 
-        <View>
-          <SectionHeader title="Top Categories" actionLabel="View all" />
-          <CategorySections sections={categorySections} />
+          <View>
+            <SectionHeader title="Top Categories" actionLabel="View all" />
+            <CategorySections sections={categorySections} />
+          </View>
+
+          <MarketplacePulse stats={marketplaceHighlights} />
+
+          <SpotlightPrograms
+            programs={spotlightPrograms}
+            actionLabel="Talk to us"
+          />
         </View>
-
-        <MarketplacePulse stats={marketplaceHighlights} />
-
-        <SpotlightPrograms
-          programs={spotlightPrograms}
-          actionLabel="Talk to us"
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
