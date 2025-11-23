@@ -19,10 +19,10 @@ const getStatusInfo = (status: Company['complianceStatus']) => {
       };
     case 'submitted':
       return {
-        label: 'Under Review',
+        label: 'Request sent',
         color: '#3B82F6',
-        message: 'Your documents are being reviewed by our team',
-        action: 'View Status',
+        message: 'We received your documents. Our team is reviewing them shortly.',
+        action: null,
       };
     case 'approved':
       return {

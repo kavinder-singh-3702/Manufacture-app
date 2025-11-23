@@ -1,30 +1,11 @@
-import {
-  ScrollView,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-} from "react-native";
+import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { Typography } from "../components/common/Typography";
 import { useTheme } from "../hooks/useTheme";
-import {
-  QuickActionGrid,
-  QuickAction,
-} from "../components/home/QuickActionGrid";
-import {
-  CategorySections,
-  CategorySectionData,
-} from "../components/home/CategorySections";
-import {
-  MarketplacePulse,
-  MarketplaceStat,
-} from "../components/home/MarketplacePulse";
-import {
-  SpotlightPrograms,
-  SpotlightProgram,
-} from "../components/home/SpotlightPrograms";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { QuickActionGrid, QuickAction } from "../components/home/QuickActionGrid";
+import { CategorySections, CategorySectionData } from "../components/home/CategorySections";
+import { MarketplacePulse, MarketplaceStat } from "../components/home/MarketplacePulse";
+import { SpotlightPrograms, SpotlightProgram } from "../components/home/SpotlightPrograms";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const quickActions: QuickAction[] = [
   {
@@ -129,7 +110,7 @@ export const DashboardScreen = () => {
   const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}

@@ -1,4 +1,4 @@
-import { SafeAreaView, View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { AppProviders } from "../providers/AppProviders";
 import { AppNavigator } from "../navigation/AppNavigator";
@@ -8,12 +8,12 @@ const AppShell = () => {
   const { colors } = useTheme();
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar style="light" />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <AppNavigator />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

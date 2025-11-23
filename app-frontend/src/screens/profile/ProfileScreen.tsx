@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/user.service";
@@ -177,17 +176,10 @@ export const ProfileScreen = () => {
       }
 
       setAvatarUploading(true);
-      const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-
-      if (!base64) {
-        setAvatarError("We couldn't read that image. Please try a different file.");
-        return;
-      }
-
       const response = await userService.uploadUserFile({
         fileName: file.name ?? "avatar.jpg",
         mimeType: file.mimeType ?? "image/jpeg",
-        content: base64,
+        uri: fileUri,
         purpose: "avatar",
       });
 

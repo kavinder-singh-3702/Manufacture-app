@@ -1,8 +1,9 @@
 import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
-import { View, StyleSheet, Alert, TouchableOpacity, Modal, Text, Image } from "react-native";
+import { View, StyleSheet, Alert, TouchableOpacity, Modal, Text, Image, TouchableWithoutFeedback, Vibration } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
@@ -13,6 +14,7 @@ import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { MainTabParamList, RootStackParamList, MAIN_TAB_ORDER } from "./types";
 import { CompanySwitcherCard } from "../components/company";
 import { Company } from "../types/company";
+import { companyService } from "../services/company.service";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -30,6 +32,7 @@ export const MainTabs = () => {
   const { colors, spacing } = useTheme();
   const { user, logout, requestLogin } = useAuth();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
 
   const isGuest = user?.role === "guest";
   const isAuthenticated = Boolean(user) && !isGuest;
@@ -123,6 +126,36 @@ export const MainTabs = () => {
     setCompanyVisual((prev) => ({ ...prev, initials: buildInitials() }));
   }, [buildInitials]);
 
+  useEffect(() => {
+    if (!user) return;
+    const loadActiveCompany = async () => {
+      try {
+        const response = await companyService.list();
+        const active =
+          response.companies.find((company) => company.id === user.activeCompany) ?? response.companies[0];
+        if (active) {
+          const initials = active.displayName
+            ? active.displayName
+                .split(" ")
+                .filter(Boolean)
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()
+            : buildInitials();
+          setCompanyVisual({ logoUrl: active.logoUrl, initials: initials || buildInitials() });
+        }
+      } catch {
+        // Silent failure keeps initials fallback.
+      }
+    };
+    loadActiveCompany();
+  }, [buildInitials, user]);
+
+  const triggerHaptic = useCallback(() => {
+    Vibration.vibrate(10);
+  }, []);
+
   const openCompanyModal = useCallback(() => setCompanyModalOpen(true), []);
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
   const handleAddCompany = useCallback(() => {
@@ -152,7 +185,7 @@ export const MainTabs = () => {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <HomeToolbar onMenuPress={() => setSidebarVisible(true)} searchValue={searchQuery} onSearchChange={setSearchQuery} />
         <View style={styles.contentArea}>
           <Tab.Navigator
@@ -177,11 +210,8 @@ export const MainTabs = () => {
           onSearch={() => Alert.alert("Search", "Search will launch a global workspace search soon.")}
           onCreate={openCompanyModal}
           onCompanyPress={() => {
-            if (companyVisual?.logoUrl || companyVisual?.initials) {
-              stackNavigation.navigate("CompanyProfile");
-            } else {
-              openCompanyModal();
-            }
+            triggerHaptic();
+            openCompanyModal();
           }}
           onCompanyLongPress={openCompanyModal}
           companyVisual={companyVisual}
@@ -195,34 +225,38 @@ export const MainTabs = () => {
         menuItems={menuItems}
       />
       <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
-        <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
-          <View
-            style={[
-              styles.modalContent,
-              {
-                backgroundColor: colors.surface,
-                borderRadius: 18,
-                padding: spacing.md,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
-              <TouchableOpacity onPress={closeCompanyModal}>
-                <Text style={{ color: colors.primary, fontWeight: "700" }}>Close</Text>
-              </TouchableOpacity>
-            </View>
-            <CompanySwitcherCard
-              onActiveCompanyResolved={handleCompanyResolved}
-              onSwitched={() => {
-                closeCompanyModal();
-                handleNavigateToRoute(routes.DASHBOARD);
-              }}
-              onAddCompany={handleAddCompany}
-            />
+        <TouchableWithoutFeedback onPress={closeCompanyModal}>
+          <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
+                style={[
+                  styles.modalContent,
+                  {
+                    backgroundColor: colors.surface,
+                    borderRadius: 18,
+                    padding: spacing.md,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
+                  <TouchableOpacity onPress={closeCompanyModal}>
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+                <CompanySwitcherCard
+                  onActiveCompanyResolved={handleCompanyResolved}
+                  onSwitched={() => {
+                    closeCompanyModal();
+                    handleNavigateToRoute(routes.DASHBOARD);
+                  }}
+                  onAddCompany={handleAddCompany}
+                />
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </>
   );
@@ -264,39 +298,43 @@ const FooterBar = ({
   );
 
   return (
-    <View
-      style={[
-        styles.footer,
-        {
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.sm,
-          backgroundColor: colors.surfaceElevated,
-          borderTopColor: colors.border,
-        },
-      ]}
-    >
-      {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
-      {renderButton("🔍", onSearch)}
-      {renderButton("+", onCreate, colors.primaryLight)}
-      <TouchableOpacity
-        onPress={onCompanyPress}
-        onLongPress={onCompanyLongPress}
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.surfaceElevated }}>
+      <View
         style={[
-          styles.companyPill,
+          styles.footer,
           {
-            borderColor: colors.primary,
-            backgroundColor: colors.surface,
-            borderRadius: radius.pill,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.sm,
+            backgroundColor: colors.surfaceElevated,
+            borderTopColor: colors.border,
           },
         ]}
       >
-        {companyVisual.logoUrl ? (
-          <Image source={{ uri: companyVisual.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} resizeMode="cover" />
-        ) : (
-          <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+        {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
+        {renderButton("🔍", onSearch)}
+        {renderButton("+", onCreate, colors.primaryLight)}
+        <TouchableOpacity
+          onPress={onCompanyPress}
+          onLongPress={onCompanyLongPress}
+          style={[
+            styles.companyPill,
+            {
+              borderColor: companyVisual.logoUrl ? "transparent" : colors.primary,
+              borderWidth: companyVisual.logoUrl ? 0 : 1,
+              backgroundColor: colors.surface,
+              borderRadius: radius.pill,
+            },
+          ]}
+        >
+          {companyVisual.logoUrl ? (
+            <Image source={{ uri: companyVisual.logoUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="cover" />
+          ) : (
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 

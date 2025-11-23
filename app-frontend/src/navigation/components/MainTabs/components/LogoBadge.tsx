@@ -1,14 +1,15 @@
 import { FC } from "react";
-import { StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { Image, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { Typography } from "../../../../components/common/Typography";
 import { useTheme } from "../../../../hooks/useTheme";
 
 type LogoBadgeProps = {
   label?: string;
+  imageUri?: string;
   style?: StyleProp<ViewStyle>;
 };
 
-export const LogoBadge: FC<LogoBadgeProps> = ({ label = "MF", style }) => {
+export const LogoBadge: FC<LogoBadgeProps> = ({ label = "MF", imageUri, style }) => {
   const { colors } = useTheme();
 
   return (
@@ -22,9 +23,13 @@ export const LogoBadge: FC<LogoBadgeProps> = ({ label = "MF", style }) => {
         style,
       ]}
     >
-      <Typography variant="subheading" color={colors.primary}>
-        {label}
-      </Typography>
+      {imageUri ? (
+        <Image source={{ uri: imageUri }} style={styles.image} />
+      ) : (
+        <Typography variant="subheading" color={colors.primary}>
+          {label}
+        </Typography>
+      )}
     </View>
   );
 };
@@ -33,9 +38,15 @@ const styles = StyleSheet.create({
   container: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 22,
+    resizeMode: "cover",
   },
 });

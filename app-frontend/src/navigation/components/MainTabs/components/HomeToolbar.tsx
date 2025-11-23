@@ -31,6 +31,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({ onMenuPress, searchValue, on
   };
 
   const avatarLabel = buildInitials();
+  const avatarUri = typeof user?.avatarUrl === "string" && user.avatarUrl.trim().length ? user.avatarUrl : undefined;
 
   return (
     <View style={[styles.wrapper, { backgroundColor: colors.background }]}>
@@ -40,7 +41,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({ onMenuPress, searchValue, on
         paddingVertical: spacing.xs,
       }]}>
         <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
-        <LogoBadge label={avatarLabel} style={{ marginRight: spacing.xs  }} />
+        <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ marginRight: spacing.xs  }} />
         <View style={styles.searchContainer}>
           <SearchBar
             value={searchValue}

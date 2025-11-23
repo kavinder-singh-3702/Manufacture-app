@@ -19,7 +19,12 @@ import { companyVerificationService } from "@/src/services/companyVerification";
 import { companyService } from "@/src/services/company";
 import { activityService } from "@/src/services/activity";
 import { ProfilePhotoUploader } from "./ProfilePhotoUploader";
-import { COMPANY_VERIFICATION_ACCOUNT_TYPES, CompanyVerificationAccountType } from "@/src/constants/business";
+import {
+  BUSINESS_ACCOUNT_TYPES,
+  BUSINESS_CATEGORIES,
+  COMPANY_VERIFICATION_ACCOUNT_TYPES,
+  CompanyVerificationAccountType,
+} from "@/src/constants/business";
 import { ApiError } from "@/src/lib/api-error";
 import type {
   CompanyVerificationDocumentUpload,
@@ -735,6 +740,8 @@ const CreateCompanyModal = ({
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -745,8 +752,49 @@ const CreateCompanyModal = ({
         logoUrl: "",
       });
       setError(null);
+      setLogoError(null);
+      setLogoUploading(false);
     }
   }, [open, user?.accountType]);
+
+  const handleLogoUpload = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Please select an image file.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) {
+        setLogoError("Unable to read file.");
+        return;
+      }
+      const content = result.includes(",") ? result.split(",")[1] ?? "" : result;
+      try {
+        setLogoUploading(true);
+        const response = await userService.uploadUserFile({
+          fileName: file.name,
+          mimeType: file.type || "image/png",
+          content,
+          purpose: "company-logo",
+        });
+        const url = response.file?.url;
+        if (url) {
+          setForm((prev) => ({ ...prev, logoUrl: url }));
+          setLogoError(null);
+        }
+      } catch (err) {
+        const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to upload logo.";
+        setLogoError(message);
+      } finally {
+        setLogoUploading(false);
+      }
+    };
+    reader.onerror = () => setLogoError("Unable to read file.");
+    reader.readAsDataURL(file);
+  };
 
   if (!open) return null;
 
@@ -834,13 +882,37 @@ const CreateCompanyModal = ({
                 ))}
               </select>
             </label>
-            <ProfileInputField
-              label="Logo URL"
-              value={form.logoUrl}
-              onChange={(value) => setForm((prev) => ({ ...prev, logoUrl: value }))}
-              placeholder="https://"
-              helperText="Optional"
-            />
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-[#2e1f2c]">Logo</p>
+              <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-3">
+                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[var(--border-soft)] bg-white text-sm font-semibold text-[var(--color-plum)]">
+                  {form.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.logoUrl} alt="Logo preview" className="h-full w-full object-cover" />
+                  ) : (
+                    (form.displayName || "Co").slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="flex flex-1 flex-col gap-1 text-sm text-[#5c4451]">
+                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 font-semibold text-[var(--color-plum)] shadow-sm hover:border-[var(--color-plum)]">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        handleLogoUpload(event.target.files);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    {logoUploading ? "Uploading…" : "Upload logo"}
+                  </label>
+                  <p className="text-xs text-[#b98b9e]">
+                    Upload a JPG/PNG. A preview appears instantly.
+                  </p>
+                  {logoError ? <p className="text-xs font-semibold text-[#c53048]">{logoError}</p> : null}
+                </div>
+              </div>
+            </div>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
@@ -873,16 +945,16 @@ const CreateCompanyModal = ({
               type="button"
               onClick={onClose}
               className="rounded-full border border-[var(--border-soft)] px-4 py-2 text-sm font-semibold text-[#5c4451]"
-              disabled={loading}
+              disabled={loading || logoUploading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || logoUploading}
               className="rounded-full bg-[var(--color-plum)] px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#5a304225] disabled:opacity-60"
             >
-              {loading ? "Creating…" : "Create company"}
+              {logoUploading ? "Uploading logo…" : loading ? "Creating…" : "Create company"}
             </button>
           </div>
         </form>
