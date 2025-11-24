@@ -3,12 +3,15 @@ import { SafeAreaView, View, StyleSheet, Text, TouchableOpacity } from "react-na
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
 import { SignupScreen } from "./SignupScreen";
+import { ForgotPasswordScreen } from "./ForgotPasswordScreen";
+import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { useAuth } from "../../hooks/useAuth";
 import { AuthView } from "../../types/auth";
 
 export const AuthScreen = () => {
   const { bootstrapError, setUser, authView, clearAuthView } = useAuth();
   const [view, setView] = useState<AuthView>(authView ?? "intro");
+  const [resetToken, setResetToken] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (authView) {
@@ -34,10 +37,34 @@ export const AuthScreen = () => {
           <IntroPanel onJoin={() => setView("signup")} onSkip={handleGuestAccess} />
         ) : null}
         {view === "login" ? (
-          <LoginScreen onBack={() => setView("intro")} onSignup={() => setView("signup")} />
+          <LoginScreen
+            onBack={() => setView("intro")}
+            onSignup={() => setView("signup")}
+            onForgot={() => setView("forgot")}
+          />
         ) : null}
         {view === "signup" ? (
           <SignupScreen onBack={() => setView("login")} onLogin={() => setView("login")} />
+        ) : null}
+        {view === "forgot" ? (
+          <ForgotPasswordScreen
+            onBack={() => setView("login")}
+            onReset={(token) => {
+              if (token) {
+                setResetToken(token);
+              }
+              setView("reset");
+            }}
+            onLogin={() => setView("login")}
+          />
+        ) : null}
+        {view === "reset" ? (
+          <ResetPasswordScreen
+            onBack={() => setView("forgot")}
+            onLogin={() => setView("login")}
+            defaultToken={resetToken}
+            onSuccess={() => setView("intro")}
+          />
         ) : null}
       </View>
 

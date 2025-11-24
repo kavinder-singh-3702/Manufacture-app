@@ -31,8 +31,11 @@ export const SpotlightPrograms = ({
       <View style={styles.header}>
         <Typography variant="subheading">{title}</Typography>
         {actionLabel ? (
-          <TouchableOpacity onPress={onActionPress}>
-            <Text style={styles.actionText}>{actionLabel}</Text>
+          <TouchableOpacity
+            onPress={onActionPress}
+            style={[styles.actionButton, { backgroundColor: colors.text, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
+          >
+            <Text style={[styles.actionText, { color: colors.textInverse }]}>{actionLabel}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -66,8 +69,8 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0A7C7D",
   },
+  actionButton: {},
   wrap: {
     flexDirection: "row",
     flexWrap: "wrap",

@@ -26,8 +26,8 @@ export const QuickActionGrid = ({ actions }: QuickActionGridProps) => {
             </Typography>
             <Text style={styles.description}>{action.description}</Text>
           </View>
-          <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]}>
-            <Text style={styles.buttonLabel}>{action.cta}</Text>
+          <TouchableOpacity style={[styles.button, { backgroundColor: colors.text }]}>
+            <Text style={[styles.buttonLabel, { color: colors.textInverse }]}>{action.cta}</Text>
           </TouchableOpacity>
         </View>
       ))}
@@ -74,7 +74,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   buttonLabel: {
-    color: "#fff",
     fontWeight: "600",
   },
 });

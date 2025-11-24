@@ -35,7 +35,7 @@ export const ProfileSection = ({ title, description, children, footer, actionLab
           </View>
           {actionLabel && onAction ? (
             <TouchableOpacity onPress={onAction}>
-              <Text style={[styles.actionLabel, { color: colors.primary }]}>{actionLabel}</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>{actionLabel}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

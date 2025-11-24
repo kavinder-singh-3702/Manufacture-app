@@ -65,9 +65,35 @@ const loginValidation = [
   })
 ];
 
+const forgotPasswordValidation = [
+  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ min: 7 })
+    .withMessage('Phone number must be at least 7 digits')
+    .matches(/^[0-9+]+$/)
+    .withMessage('Phone number can only include digits and + sign'),
+  body().custom((value) => {
+    if (!value.email && !value.phone) {
+      throw new Error('Email or phone is required');
+    }
+    return true;
+  })
+];
+
+const resetPasswordValidation = [
+  body('token').trim().notEmpty().withMessage('Reset token is required'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+];
+
 module.exports = {
   signupStartValidation,
   signupVerifyValidation,
   signupCompleteValidation,
-  loginValidation
+  loginValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation
 };

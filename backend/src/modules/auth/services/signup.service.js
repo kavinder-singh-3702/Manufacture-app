@@ -10,6 +10,8 @@ const {
 const { splitFullName, sanitizeCategories } = require('../utils/signup.util');
 const { buildUserResponse } = require('../utils/response.util');
 const { attachUserToSession } = require('./session-auth.service');
+const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
+const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
 
 const OTP_CODE = config.signupOtp;
 const OTP_TTL_MS = config.signupOtpTtlMs;
@@ -150,6 +152,17 @@ const completeSignup = async ({ password, accountType, companyName, categories }
 
   await attachUserToSession(req, user.id);
   clearSignupState(req.session);
+
+  await recordActivitySafe({
+    userId: user.id,
+    action: ACTIVITY_ACTIONS.AUTH_SIGNUP_COMPLETED,
+    label: 'Account created',
+    description: companyName ? `Signed up as ${accountType} with ${companyName}` : 'Completed onboarding',
+    companyId: user.activeCompany,
+    companyName,
+    meta: { accountType, companyName },
+    context: extractRequestContext(req)
+  });
 
   return buildUserResponse(user);
 };

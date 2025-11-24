@@ -12,6 +12,7 @@ import {
 import type { AuthUser, LoginPayload } from "../types/auth";
 import { authService } from "../services/auth";
 import { userService } from "../services/user";
+import { companyService } from "../services/company";
 import { ApiError } from "../lib/api-error";
 
 export type AuthView = "intro" | "login" | "signup";
@@ -22,6 +23,7 @@ type AuthContextValue = {
   bootstrapError: string | null;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  switchCompany: (companyId: string) => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   refreshUser: () => Promise<void>;
   requestAuthView: (view: AuthView) => void;
@@ -79,6 +81,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setActiveAuthView("login");
   }, []);
 
+  const switchCompany = useCallback(
+    async (companyId: string) => {
+      const response = await companyService.switchActive(companyId);
+      setUser((previous) => {
+        if (!previous) return previous;
+        const existingCompanies = Array.isArray(previous.companies) ? previous.companies : [];
+        const updatedCompanies = existingCompanies.includes(companyId)
+          ? existingCompanies
+          : [...existingCompanies, companyId];
+        return {
+          ...previous,
+          activeCompany: response.activeCompany ?? companyId,
+          companies: updatedCompanies,
+        };
+      });
+    },
+    []
+  );
+
   const requestAuthView = useCallback((view: AuthView) => {
     setActiveAuthView(view);
   }, []);
@@ -90,12 +111,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       bootstrapError,
       login,
       logout,
+      switchCompany,
       setUser,
       refreshUser,
       requestAuthView,
       activeAuthView,
     }),
-    [user, initializing, bootstrapError, login, logout, refreshUser, activeAuthView]
+    [user, initializing, bootstrapError, login, logout, switchCompany, refreshUser, requestAuthView, activeAuthView]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

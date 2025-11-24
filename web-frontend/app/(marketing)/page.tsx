@@ -1,4 +1,4 @@
-import { HeroEntry, DescriptionSection, FooterCTA, TopBar } from "@/src/features/marketing";
+import { HeroEntry, DescriptionSection, SnapshotShowcase, FooterCTA, TopBar } from "@/src/features/marketing";
 
 export default function Home() {
   return (
@@ -8,6 +8,7 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4">
           <HeroEntry />
           <DescriptionSection />
+          <SnapshotShowcase />
           <FooterCTA />
         </div>
       </main>

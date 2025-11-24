@@ -1,4 +1,4 @@
-export type AuthView = "intro" | "login" | "signup";
+export type AuthView = "intro" | "login" | "signup" | "forgot" | "reset";
 
 export type AuthUser = {
   id: string;
@@ -8,6 +8,7 @@ export type AuthUser = {
   lastName?: string;
   phone?: string;
   bio?: string;
+  avatarUrl?: string;
   role?: string;
   status?: string;
   accountType?: string;
@@ -51,6 +52,16 @@ export type SignupCompletePayload = {
   categories?: string[];
 };
 
+export type ForgotPasswordPayload = {
+  email?: string;
+  phone?: string;
+};
+
+export type ResetPasswordPayload = {
+  token: string;
+  password: string;
+};
+
 export type UserAddress = {
   line1?: string;
   line2?: string;
@@ -80,7 +91,7 @@ export type UserPreferences = {
   communications?: UserCommunicationsPreferences;
 };
 
-export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio">> & {
+export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "avatarUrl">> & {
   address?: UserAddress;
   socialLinks?: UserSocialLinks;
   preferences?: UserPreferences;

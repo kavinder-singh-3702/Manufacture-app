@@ -55,13 +55,17 @@ export class HttpClient {
 
   async request<T>({ path, method = "GET", data, params, headers, signal }: RequestConfig): Promise<T> {
     const endpoint = this.buildUrl(path, params);
+    const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
     const requestHeaders = { ...this.defaultHeaders, ...headers };
+    if (isFormData) {
+      delete requestHeaders["Content-Type"];
+    }
 
     const response = await fetch(endpoint, {
       method,
       headers: requestHeaders,
       credentials: "include",
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? (data as BodyInit) : JSON.stringify(data)) : undefined,
       signal,
     });
 

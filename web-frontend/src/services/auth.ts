@@ -1,7 +1,11 @@
 import { httpClient } from "../lib/http-client";
 import {
   AuthUser,
+  ForgotPasswordPayload,
   LoginPayload,
+  ForgotPasswordResponse,
+  ResetPasswordResponse,
+  ResetPasswordPayload,
   SignupCompletePayload,
   SignupStartPayload,
   SignupVerifyPayload,
@@ -27,8 +31,16 @@ const login = (payload: LoginPayload) => httpClient.post<LoginResponse>("/auth/l
 
 const logout = () => httpClient.post<void>("/auth/logout");
 
+const requestPasswordReset = (payload: ForgotPasswordPayload) =>
+  httpClient.post<ForgotPasswordResponse>("/auth/password/forgot", payload);
+
+const resetPassword = (payload: ResetPasswordPayload) =>
+  httpClient.post<ResetPasswordResponse>("/auth/password/reset", payload);
+
 export const authService = {
   signup,
   login,
   logout,
+  requestPasswordReset,
+  resetPassword,
 };

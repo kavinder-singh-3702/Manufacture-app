@@ -7,6 +7,7 @@ const updateProfileValidation = [
   body('lastName').optional().isString(),
   body('displayName').optional().isString(),
   body('phone').optional().isString(),
+  body('avatarUrl').optional().isString(),
   body('bio').optional().isString().isLength({ max: 500 }),
   body('address').optional().isObject(),
   body('address.line1').optional().isString(),
@@ -32,6 +33,14 @@ const updateProfileValidation = [
   body('activityTags.*').optional().isString()
 ];
 
+const uploadUserFileValidation = [
+  body('fileName').trim().notEmpty().withMessage('File name is required'),
+  body('mimeType').optional().isString(),
+  body('content').isString().notEmpty().withMessage('Base64 content is required'),
+  body('purpose').optional().isString()
+];
+
 module.exports = {
-  updateProfileValidation
+  updateProfileValidation,
+  uploadUserFileValidation
 };

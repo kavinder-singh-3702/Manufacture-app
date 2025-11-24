@@ -1,7 +1,9 @@
 import { apiClient } from "./apiClient";
 import {
   AuthUser,
+  ForgotPasswordPayload,
   LoginPayload,
+  ResetPasswordPayload,
   SignupCompletePayload,
   SignupStartPayload,
   SignupVerifyPayload,
@@ -24,6 +26,17 @@ type LoginResponse = {
   user: AuthUser;
 };
 
+type ForgotPasswordResponse = {
+  message: string;
+  expiresInMs?: number;
+  resetToken?: string;
+  expiresAt?: string;
+};
+
+type ResetPasswordResponse = {
+  user: AuthUser;
+};
+
 const signupBasePath = "/auth/signup";
 
 const signup = {
@@ -39,8 +52,16 @@ const login = (payload: LoginPayload) => apiClient.post<LoginResponse>("/auth/lo
 
 const logout = () => apiClient.post<void>("/auth/logout");
 
+const requestPasswordReset = (payload: ForgotPasswordPayload) =>
+  apiClient.post<ForgotPasswordResponse>("/auth/password/forgot", payload);
+
+const resetPassword = (payload: ResetPasswordPayload) =>
+  apiClient.post<ResetPasswordResponse>("/auth/password/reset", payload);
+
 export const authService = {
   signup,
   login,
   logout,
+  requestPasswordReset,
+  resetPassword,
 };

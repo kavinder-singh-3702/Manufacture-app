@@ -1,7 +1,6 @@
 import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
-import { palette } from "../../theme/colors";
 
 type MenuItem = {
   label: string;
@@ -19,38 +18,39 @@ type SidebarMenuProps = {
 };
 
 export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, menuItems }: SidebarMenuProps) => {
-  const { spacing, radius } = useTheme();
+  const { spacing, radius, colors } = useTheme();
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.wrapper}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={[styles.backdrop, { backgroundColor: palette.charcoal, opacity: 0.7 }]} />
+          <View style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
         </TouchableWithoutFeedback>
         <SafeAreaView style={styles.panelSafeArea}>
           <View
             style={[
               styles.panel,
               {
-                backgroundColor: palette.white,
+                backgroundColor: colors.surface,
                 padding: spacing.lg,
                 borderTopRightRadius: radius.lg,
                 borderBottomRightRadius: radius.lg,
+                shadowColor: colors.text,
               },
             ]}
           >
             {/* Header Section with Brand Colors */}
             <View style={[styles.header, {
-              backgroundColor: palette.charcoalGreen,
+              backgroundColor: colors.secondary,
               padding: spacing.lg,
               borderRadius: radius.md,
               marginBottom: spacing.lg,
             }]}>
-              <Typography variant="subheading" color={palette.white} style={styles.headerTitle}>
+              <Typography variant="subheading" color={colors.textOnSecondary} style={styles.headerTitle}>
                 {headerTitle}
               </Typography>
               {headerSubtitle ? (
-                <Typography variant="body" color={palette.greenLight} style={{ marginTop: spacing.xs, fontSize: 13 }}>
+                <Typography variant="body" color={colors.primary} style={{ marginTop: spacing.xs, fontSize: 13 }}>
                   {headerSubtitle}
                 </Typography>
               ) : null}
@@ -68,20 +68,21 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   style={[
                     styles.menuItem,
                     {
-                      backgroundColor: isDanger ? palette.pinkWarm : palette.offWhite,
+                      backgroundColor: isDanger ? colors.errorBg : colors.surfaceElevated,
                       borderLeftWidth: 3,
-                      borderLeftColor: isDanger ? palette.burgundy : palette.green,
+                      borderLeftColor: isDanger ? colors.error : colors.primary,
                       borderRadius: radius.md,
                       paddingVertical: spacing.md,
                       paddingHorizontal: spacing.md,
                       marginBottom: isLastItem ? 0 : spacing.sm,
+                      shadowColor: colors.text,
                     },
                   ]}
                   activeOpacity={0.7}
                 >
                   <Typography
                     variant="body"
-                    color={isDanger ? palette.burgundy : palette.charcoal}
+                    color={isDanger ? colors.error : colors.text}
                     style={styles.menuLabel}
                   >
                     {item.label}
@@ -89,7 +90,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   {item.description ? (
                     <Typography
                       variant="caption"
-                      color={isDanger ? palette.burgundySoft : palette.charcoalLight}
+                      color={isDanger ? colors.errorLight : colors.textMuted}
                       style={{ marginTop: spacing.xs, fontSize: 12 }}
                     >
                       {item.description}
@@ -115,8 +116,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     flex: 1,
-    shadowColor: palette.charcoal,
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.18,
     shadowOffset: { width: -4, height: 0 },
     shadowRadius: 12,
     elevation: 15,
@@ -126,7 +126,6 @@ const styles = StyleSheet.create({
     maxWidth: 340,
   },
   header: {
-    shadowColor: palette.charcoal,
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
@@ -137,7 +136,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   menuItem: {
-    shadowColor: palette.charcoal,
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,

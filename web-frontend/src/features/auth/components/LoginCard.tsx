@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../hooks/useAuth";
@@ -141,12 +142,9 @@ export const LoginCard = () => {
         >
           {loading ? "Signing in…" : "Login"}
         </button>
-        <button
-          type="button"
-          className="w-full text-center text-sm font-semibold text-[#5a3042]"
-        >
+        <Link href="/forgot-password" className="block w-full text-center text-sm font-semibold text-[#5a3042]">
           Forgotten password?
-        </button>
+        </Link>
       </form>
     </div>
   );

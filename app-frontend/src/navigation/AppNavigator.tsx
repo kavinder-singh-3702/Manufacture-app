@@ -11,6 +11,9 @@ import { useTheme } from "../hooks/useTheme";
 import { RootStackParamList } from "./types";
 import { CompanyVerificationScreen } from "../screens/verification/CompanyVerificationScreen";
 import { VerificationSubmitScreen } from "../screens/verification/VerificationSubmitScreen";
+import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
+import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
+import { NotificationsScreen } from "../screens/NotificationsScreen";
 
 enableScreens(true);
 
@@ -53,14 +56,29 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "fade_from_bottom" }}
             />
             <RootStack.Screen
+              name="CompanyProfile"
+              component={CompanyProfileScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="CompanyCreate"
+              component={CompanyCreateScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
               name="CompanyVerification"
               component={CompanyVerificationScreen}
-              options={{ presentation: "card", animation: "slide_from_right" }}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="VerificationSubmit"
               component={VerificationSubmitScreen}
-              options={{ presentation: "card", animation: "slide_from_right" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
           </>
         )}

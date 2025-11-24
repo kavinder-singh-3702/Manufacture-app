@@ -60,7 +60,7 @@ export class HttpClient {
     let parsedBody: unknown;
     try {
       parsedBody = await response.json();
-    } catch (error) {
+    } catch {
       parsedBody = undefined;
     }
 

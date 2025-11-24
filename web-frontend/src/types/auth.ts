@@ -36,6 +36,7 @@ export type AuthUser = {
   username?: string;
   phone?: string;
   bio?: string;
+  avatarUrl?: string;
   role?: string;
   status?: string;
   accountType?: string;
@@ -72,8 +73,27 @@ export type SignupCompletePayload = {
   categories?: string[];
 };
 
+export type ForgotPasswordPayload = {
+  email?: string;
+  phone?: string;
+};
+
+export type ResetPasswordPayload = {
+  token: string;
+  password: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+  expiresInMs: number;
+  resetToken?: string;
+  expiresAt?: string;
+};
+
+export type ResetPasswordResponse = { user: AuthUser };
+
 export type UpdateUserPayload = Partial<
-  Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio">
+  Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "avatarUrl">
 > & {
   address?: UserAddress;
   socialLinks?: UserSocialLinks;
