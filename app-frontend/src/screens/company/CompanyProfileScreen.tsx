@@ -58,12 +58,12 @@ const formatCategories = (company?: Company | null) => {
   return company.categories.map((item) => item.trim()).filter(Boolean).join(", ");
 };
 
-const cleanObject = <T extends Record<string, unknown>>(obj: T) =>
+const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
   Object.entries(obj).reduce((acc, [key, value]) => {
     if (value === undefined || value === null || value === "") return acc;
-    (acc as Partial<T>)[key] = value;
+    (acc as Record<string, unknown>)[key] = value;
     return acc;
-  }, {} as Partial<T>);
+  }, {} as Record<string, unknown>) as Partial<T>;
 
 export const CompanyProfileScreen = () => {
   const { colors, spacing, radius } = useTheme();
@@ -118,7 +118,7 @@ export const CompanyProfileScreen = () => {
     }
     const parentNav = navigation.getParent?.();
     if (parentNav) {
-      parentNav.navigate("CompanyVerification" as never, { companyId } as never);
+      (parentNav.navigate as any)("CompanyVerification", { companyId });
       return;
     }
     navigation.push("CompanyVerification", { companyId });

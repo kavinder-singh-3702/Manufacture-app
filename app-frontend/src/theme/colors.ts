@@ -2,6 +2,8 @@
 export const palette = {
   // Core brand colors
   charcoal: "#2E2E3A", // Charcoal
+  charcoalGreen: "#2E3A2E", // Charcoal with green tint
+  charcoalBurgundy: "#3A2E30", // Charcoal with burgundy tint
   midnightBlue: "#1A2440", // Midnight blue
   deepPlum: "#3B1F2B", // Deep plum
   peach: "#FADADD", // Peach
@@ -16,6 +18,24 @@ export const palette = {
   peachWarm: "#FFE4E0",
   peachSoft: "#FBD4C8",
 
+  // Green palette
+  green: "#11A440",
+  greenLight: "#4CAF50",
+  greenDark: "#0D7A30",
+  greenSoft: "#B8E6C3",
+
+  // Pink palette
+  pink: "#FADADD",
+  pinkLight: "#FFF1EA",
+  pinkWarm: "#FFE4E0",
+  pinkGreen: "#E8F5E9",
+  pinkBurgundy: "#F3C5D0",
+
+  // Burgundy palette
+  burgundy: "#8B2C4A",
+  burgundyRose: "#A64760",
+  burgundySoft: "#D4A5B5",
+
   // Neutral palette
   white: "#FFFFFF",
   offWhite: "#F8F8FA",
@@ -23,6 +43,15 @@ export const palette = {
   lightGray: "#E5E5E8",
   mediumGray: "#9999A1",
   darkGray: "#5A5A65",
+
+  // Secondary palette
+  secondaryLight: "#24314F",
+
+  // Gradient palette
+  gradientGreenPink: "#D4F5E0",
+  gradientBurgundyPink: "#E8A8B8",
+  gradientCharcoalGreen: "#3A4840",
+  gradientCharcoalBurgundy: "#4A3840",
 
   // Semantic
   success: "#11A440",
@@ -87,10 +116,10 @@ export const colors = {
   borderAccent: palette.deepPlum,
 
   // Gradient anchors (reuse for backgrounds/shadows)
-  gradientGreenPink: palette.peach,
-  gradientCharcoalGreen: palette.midnightBlue,
-  gradientBurgundyPink: palette.deepPlum,
-  gradientCharcoalBurgundy: palette.deepPlum,
+  gradientGreenPink: palette.green,
+  gradientCharcoalGreen: palette.charcoalGreen,
+  gradientBurgundyPink: palette.burgundy,
+  gradientCharcoalBurgundy: palette.charcoalBurgundy,
 
   // Semantic colors
   success: palette.success,

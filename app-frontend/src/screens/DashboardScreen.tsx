@@ -485,4 +485,8 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: "flex-start",
   },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
 });

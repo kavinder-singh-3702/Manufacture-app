@@ -184,7 +184,9 @@ export const ProfileScreen = () => {
       });
 
       const uploadedUrl = response.file?.url ?? undefined;
-      setUser((prev) => (prev ? { ...prev, avatarUrl: uploadedUrl ?? prev.avatarUrl } : prev));
+      if (user) {
+        setUser({ ...user, avatarUrl: uploadedUrl ?? user.avatarUrl });
+      }
       setBanner({ type: "success", message: "Profile photo updated." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to upload photo";
