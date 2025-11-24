@@ -12,4 +12,5 @@ export {
   DashboardActivity,
   DashboardSettings,
 } from "./components/UserDashboard";
+export { DashboardNotifications, DashboardNotifications as NotificationsCenter } from "./components/notifications/DashboardNotifications";
 export * from "./data";

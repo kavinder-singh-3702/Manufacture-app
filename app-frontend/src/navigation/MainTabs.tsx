@@ -152,11 +152,10 @@ export const MainTabs = () => {
     loadActiveCompany();
   }, [buildInitials, user]);
 
-  const triggerHaptic = useCallback(() => {
+  const openCompanyModal = useCallback(() => {
     Vibration.vibrate(10);
+    setCompanyModalOpen(true);
   }, []);
-
-  const openCompanyModal = useCallback(() => setCompanyModalOpen(true), []);
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
   const handleAddCompany = useCallback(() => {
     closeCompanyModal();
@@ -186,7 +185,13 @@ export const MainTabs = () => {
   return (
     <>
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <HomeToolbar onMenuPress={() => setSidebarVisible(true)} searchValue={searchQuery} onSearchChange={setSearchQuery} />
+        <HomeToolbar
+          onMenuPress={() => setSidebarVisible(true)}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onNotificationsPress={() => stackNavigation.navigate("Notifications")}
+          notificationCount={3}
+        />
         <View style={styles.contentArea}>
           <Tab.Navigator
             initialRouteName={routes.DASHBOARD}
@@ -209,10 +214,7 @@ export const MainTabs = () => {
           onHome={() => handleNavigateToRoute(routes.DASHBOARD)}
           onSearch={() => Alert.alert("Search", "Search will launch a global workspace search soon.")}
           onCreate={openCompanyModal}
-          onCompanyPress={() => {
-            triggerHaptic();
-            openCompanyModal();
-          }}
+          onCompanyPress={() => stackNavigation.navigate("CompanyProfile")}
           onCompanyLongPress={openCompanyModal}
           companyVisual={companyVisual}
         />

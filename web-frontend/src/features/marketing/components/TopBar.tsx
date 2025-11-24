@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const navLinks = [
-  { href: "#", label: "Overview" },
-  { href: "#", label: "Marketplace" },
-  { href: "#", label: "Pricing" },
-  { href: "#", label: "Support" },
+  { href: "#overview", label: "Overview" },
+  { href: "#playbooks", label: "Playbooks" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#support", label: "Support" },
 ] as const;
 
 export const TopBar = () => {
@@ -40,17 +40,36 @@ export const TopBar = () => {
           </a>
         ))}
       </nav>
-      <Link
-        href="/signup"
-        className="rounded-full px-5 py-2 text-sm font-semibold uppercase tracking-wide"
-        style={{
-          backgroundColor: "var(--color-peach)",
-          color: "var(--color-plum)",
-          boxShadow: "0 10px 25px rgba(246, 184, 168, 0.65)",
-        }}
-      >
-        Join Now
-      </Link>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border-soft)] bg-white text-[#5a3042] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 5a5 5 0 0 0-5 5v3.5L5 15v1h14v-1l-2-.5V10a5 5 0 0 0-5-5z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#ef4444]" />
+        </button>
+        <Link
+          href="/signup"
+          className="rounded-full px-5 py-2 text-sm font-semibold uppercase tracking-wide"
+          style={{
+            backgroundColor: "var(--color-peach)",
+            color: "var(--color-plum)",
+            boxShadow: "0 10px 25px rgba(246, 184, 168, 0.65)",
+          }}
+        >
+          Join Now
+        </Link>
+      </div>
     </header>
   );
 };

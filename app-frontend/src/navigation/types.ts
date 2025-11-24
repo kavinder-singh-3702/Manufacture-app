@@ -9,6 +9,7 @@ export type RootStackParamList = {
   CompanyCreate: undefined;
   CompanyVerification: { companyId: string };
   VerificationSubmit: { companyId: string };
+  Notifications: undefined;
 };
 
 // Helper mapped type ensures that every declared route has a tab entry.

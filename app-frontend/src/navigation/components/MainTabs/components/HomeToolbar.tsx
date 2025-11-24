@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { StatusBar, StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useAuth } from "../../../../hooks/useAuth";
 import { HamburgerButton } from "./HamburgerButton";
@@ -10,9 +10,17 @@ type HomeToolbarProps = {
   onMenuPress: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
+  onNotificationsPress?: () => void;
+  notificationCount?: number;
 };
 
-export const HomeToolbar: FC<HomeToolbarProps> = ({ onMenuPress, searchValue, onSearchChange }) => {
+export const HomeToolbar: FC<HomeToolbarProps> = ({
+  onMenuPress,
+  searchValue,
+  onSearchChange,
+  onNotificationsPress,
+  notificationCount = 0,
+}) => {
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
 
@@ -49,6 +57,24 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({ onMenuPress, searchValue, on
             placeholder="Search"
           />
         </View>
+        <TouchableOpacity
+          onPress={onNotificationsPress}
+          style={[
+            styles.notificationButton,
+            { marginLeft: spacing.sm, borderColor: colors.border, backgroundColor: colors.surface },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+        >
+          <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
+          {notificationCount > 0 ? (
+            <View style={[styles.notificationBadge, { backgroundColor: colors.primary }]}>
+              <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: "800" }}>
+                {notificationCount}
+              </Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -69,5 +95,22 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     borderRadius: 1,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
   },
 });

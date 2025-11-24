@@ -13,6 +13,7 @@ import { CompanyVerificationScreen } from "../screens/verification/CompanyVerifi
 import { VerificationSubmitScreen } from "../screens/verification/VerificationSubmitScreen";
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
+import { NotificationsScreen } from "../screens/NotificationsScreen";
 
 enableScreens(true);
 
@@ -72,6 +73,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="VerificationSubmit"
               component={VerificationSubmitScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
           </>
