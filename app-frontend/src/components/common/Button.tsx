@@ -13,24 +13,26 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
   const { colors, radius, spacing, shadows } = useTheme();
   const isDisabled = disabled || loading;
 
-  // Use mixed color theme
+  // Dark theme button colors - darker purple tones
   const backgroundColor =
     variant === "primary"
-      ? colors.text                // Charcoal as primary CTA
+      ? colors.primary             // Darker purple as primary CTA
       : variant === "secondary"
-      ? colors.accent              // Deep plum for alerts
+      ? colors.secondary           // Dark secondary
       : colors.buttonGhost;        // Transparent
 
   const textColor =
     variant === "ghost"
-      ? colors.text                 // Charcoal text on transparent
-      : colors.textInverse;         // White on solid buttons
+      ? colors.text                 // White text on transparent
+      : variant === "primary"
+      ? colors.textOnPrimary        // White text on purple
+      : colors.textOnSecondary;     // White on dark buttons
 
   // Add subtle shadow based on variant
   const shadowStyle = variant === "primary"
-    ? shadows.mdDark
+    ? shadows?.mdDark
     : variant === "secondary"
-    ? shadows.green
+    ? shadows?.green
     : undefined;
 
   return (
@@ -40,16 +42,16 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
         styles.button,
         {
           backgroundColor,
-          borderRadius: radius.pill,
+          borderRadius: radius.md,
           opacity: isDisabled ? 0.6 : 1,
-          paddingVertical: spacing.md,
+          paddingVertical: spacing.lg,
           paddingHorizontal: spacing.xl,
-          // Apply shadow (web-style shadow for RN)
-          shadowColor: variant === "primary" ? colors.primary : variant === "secondary" ? colors.secondary : "transparent",
+          // Apply shadow
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: variant !== "ghost" ? 0.3 : 0,
-          shadowRadius: 6,
-          elevation: variant !== "ghost" ? 4 : 0,  // Android
+          shadowRadius: 8,
+          elevation: variant !== "ghost" ? 6 : 0,  // Android
         },
         style,
       ]}

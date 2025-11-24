@@ -7,6 +7,7 @@ type MenuItem = {
   description?: string;
   onPress: () => void;
   tone?: "default" | "danger";
+  isActive?: boolean;
 };
 
 type SidebarMenuProps = {
@@ -50,7 +51,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 {headerTitle}
               </Typography>
               {headerSubtitle ? (
-                <Typography variant="body" color={colors.primary} style={{ marginTop: spacing.xs, fontSize: 13 }}>
+                <Typography variant="body" color={colors.textSecondary} style={{ marginTop: spacing.xs, fontSize: 13 }}>
                   {headerSubtitle}
                 </Typography>
               ) : null}
@@ -59,7 +60,15 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
             {/* Menu Items */}
             {menuItems.map((item, index) => {
               const isDanger = item.tone === "danger";
+              const isActive = item.isActive || false;
               const isLastItem = index === menuItems.length - 1;
+
+              // Determine border color based on item type
+              const getBorderColor = () => {
+                if (isDanger) return colors.error;
+                if (isActive) return colors.success;
+                return 'transparent';
+              };
 
               return (
                 <TouchableOpacity
@@ -68,14 +77,18 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   style={[
                     styles.menuItem,
                     {
-                      backgroundColor: isDanger ? colors.errorBg : colors.surfaceElevated,
+                      backgroundColor: isDanger ? colors.errorBg : colors.backgroundTertiary,
                       borderLeftWidth: 3,
-                      borderLeftColor: isDanger ? colors.error : colors.primary,
+                      borderLeftColor: getBorderColor(),
                       borderRadius: radius.md,
                       paddingVertical: spacing.md,
                       paddingHorizontal: spacing.md,
                       marginBottom: isLastItem ? 0 : spacing.sm,
-                      shadowColor: colors.text,
+                      shadowColor: colors.shadow,
+                      shadowOffset: isActive ? { width: 0, height: 4 } : { width: 0, height: 2 },
+                      shadowOpacity: isActive ? 0.3 : 0.08,
+                      shadowRadius: isActive ? 8 : 4,
+                      elevation: isActive ? 6 : 2,
                     },
                   ]}
                   activeOpacity={0.7}

@@ -1,9 +1,10 @@
 import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../hooks/useAuth";
 
 type KpiCardData = { id: string; label: string; value: string; delta: string; tone?: "positive" | "neutral" | "warning" };
-type PipelineItem = { id: string; title: string; progress: number; owner: string; status: "on-track" | "at-risk" };
+type PipelineItem = { id: string; title: string; progress: number; owner: string; status: "accepted" | "pending" | "cancelled" | "in-progress" };
 type TaskItem = { id: string; title: string; owner: string; time: string; tag: string };
 type UpdateItem = { id: string; title: string; detail: string; tag: string; tone?: "info" | "warning" };
 
@@ -15,9 +16,9 @@ const kpis: KpiCardData[] = [
 ];
 
 const pipeline: PipelineItem[] = [
-  { id: "assembly", title: "Assembly line A", progress: 82, owner: "Floor", status: "on-track" },
-  { id: "finishing", title: "Finishing queue", progress: 54, owner: "Ops", status: "at-risk" },
-  { id: "packing", title: "Packing bay", progress: 68, owner: "Floor", status: "on-track" },
+  { id: "assembly", title: "Assembly line A", progress: 82, owner: "Floor", status: "in-progress" },
+  { id: "finishing", title: "Finishing queue", progress: 54, owner: "Ops", status: "pending" },
+  { id: "packing", title: "Packing bay", progress: 68, owner: "Floor", status: "accepted" },
 ];
 
 const tasks: TaskItem[] = [
@@ -34,6 +35,17 @@ const updates: UpdateItem[] = [
 export const DashboardScreen = () => {
   const { spacing, colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 16) return "Good afternoon";
+    if (hour >= 16 && hour < 20) return "Good evening";
+    return "Good night";
+  };
+
+  const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -43,6 +55,10 @@ export const DashboardScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ padding: spacing.lg, gap: spacing.lg }}>
+          <View style={{ gap: spacing.xs }}>
+            <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()},</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
+          </View>
           <HeroCard />
           <KpiGrid items={kpis} />
           <PipelineList items={pipeline} />
@@ -65,6 +81,8 @@ const HeroCard = () => {
           backgroundColor: colors.secondary,
           borderRadius: radius.lg,
           padding: spacing.lg,
+          borderWidth: 1,
+          borderColor: colors.borderPrimary,
         },
       ]}
     >
@@ -75,8 +93,8 @@ const HeroCard = () => {
             Keep dispatches on time and floor running smooth.
           </Text>
         </View>
-        <View style={[styles.heroBadge, { backgroundColor: colors.primarySoft }]}>
-          <Text style={[styles.heroBadgeText, { color: colors.textOnPrimary }]}>On track</Text>
+        <View style={[styles.heroBadge, { backgroundColor: colors.backgroundTertiary, borderWidth: 1, borderColor: colors.primary }]}>
+          <Text style={[styles.heroBadgeText, { color: colors.primary }]}>On track</Text>
         </View>
       </View>
 
@@ -87,16 +105,20 @@ const HeroCard = () => {
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
-          <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>Create order</Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, { backgroundColor: colors.secondaryLight, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.primaryButtonText, { color: colors.text }]}>Create order</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.secondaryButton,
-            { borderColor: colors.textOnSecondary, borderRadius: radius.md },
+            { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.backgroundTertiary },
           ]}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.secondaryButtonText, { color: colors.textOnSecondary }]}>Plan capacity</Text>
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Plan capacity</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -105,21 +127,22 @@ const HeroCard = () => {
 
 const StatPill = ({ label, value, muted }: { label: string; value: string; muted?: boolean }) => {
   const { colors, spacing, radius } = useTheme();
-  const textColor = muted ? colors.textOnSecondary : colors.textOnPrimary;
   return (
     <View
       style={[
         styles.statPill,
         {
-          backgroundColor: muted ? colors.secondaryLight : colors.primarySoft,
+          backgroundColor: muted ? colors.secondaryLight : colors.backgroundTertiary,
           borderRadius: radius.md,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
         },
       ]}
     >
-      <Text style={[styles.statLabel, { color: textColor }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: textColor }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
     </View>
   );
 };
@@ -176,36 +199,53 @@ const KpiGrid = ({ items }: { items: KpiCardData[] }) => {
 
 const PipelineList = ({ items }: { items: PipelineItem[] }) => {
   const { colors, spacing, radius } = useTheme();
+
+  const getStatusInfo = (status: PipelineItem['status']) => {
+    switch (status) {
+      case 'accepted':
+        return { label: 'Accepted', tone: 'success' as const, color: '#6BCF7F' };
+      case 'pending':
+        return { label: 'Pending', tone: 'warning' as const, color: '#F5D47E' };
+      case 'cancelled':
+        return { label: 'Cancelled', tone: 'error' as const, color: '#EF6B6B' };
+      case 'in-progress':
+        return { label: 'In Progress', tone: 'info' as const, color: '#7AC8F5' };
+    }
+  };
+
   return (
     <View style={{ gap: spacing.sm }}>
       <SectionHeader title="Live pipeline" actionLabel="View all" />
       <View style={{ gap: spacing.sm }}>
-        {items.map((item) => (
-          <View
-            key={item.id}
-            style={[
-              styles.pipelineCard,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                padding: spacing.md,
-              },
-            ]}
-          >
-            <View style={styles.pipelineRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.pipelineTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>Owner: {item.owner}</Text>
+        {items.map((item) => {
+          const statusInfo = getStatusInfo(item.status);
+          return (
+            <View
+              key={item.id}
+              style={[
+                styles.pipelineCard,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  borderRadius: radius.md,
+                  padding: spacing.md,
+                },
+              ]}
+            >
+              <View style={styles.pipelineRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.pipelineTitle, { color: colors.text }]}>{item.title}</Text>
+                  <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>Owner: {item.owner}</Text>
+                </View>
+                <Badge label={statusInfo.label} tone={statusInfo.tone} />
               </View>
-              <Badge label={item.status === "on-track" ? "On track" : "At risk"} tone={item.status === "on-track" ? "success" : "warning"} />
+              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                <View style={[styles.progressFill, { width: `${item.progress}%`, backgroundColor: statusInfo.color }]} />
+              </View>
+              <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>{item.progress}% complete</Text>
             </View>
-            <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-              <View style={[styles.progressFill, { width: `${item.progress}%`, backgroundColor: colors.primary }]} />
-            </View>
-            <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>{item.progress}% complete</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -282,21 +322,22 @@ const SectionHeader = ({ title, actionLabel }: { title: string; actionLabel?: st
     <View style={styles.sectionHeader}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
       {actionLabel ? (
-        <TouchableOpacity style={[styles.sectionAction, { borderRadius: radius.pill, borderColor: colors.border }]}>
-          <Text style={[styles.sectionActionText, { color: colors.text }]}>{actionLabel}</Text>
+        <TouchableOpacity style={[styles.sectionAction, { borderRadius: radius.pill, borderColor: colors.primary }]}>
+          <Text style={[styles.sectionActionText, { color: colors.primary }]}>{actionLabel}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
   );
 };
 
-const Badge = ({ label, tone }: { label: string; tone?: "success" | "warning" | "info" }) => {
+const Badge = ({ label, tone }: { label: string; tone?: "success" | "warning" | "info" | "error" }) => {
   const { colors, spacing, radius } = useTheme();
 
   const palette = {
-    success: { bg: colors.successLight, text: colors.success },
-    warning: { bg: colors.warningLight, text: colors.warning },
-    info: { bg: colors.infoLight, text: colors.info },
+    success: { bg: colors.badgeSuccess, text: '#6BCF7F', border: '#6BCF7F' },
+    warning: { bg: colors.badgeWarning, text: '#F5D47E', border: '#F5D47E' },
+    info: { bg: colors.badgeInfo, text: '#7AC8F5', border: '#7AC8F5' },
+    error: { bg: colors.badgeError, text: '#EF6B6B', border: '#EF6B6B' },
   }[tone ?? "info"];
 
   return (
@@ -305,9 +346,11 @@ const Badge = ({ label, tone }: { label: string; tone?: "success" | "warning" | 
         styles.badge,
         {
           backgroundColor: palette.bg,
-          borderRadius: radius.pill,
+          borderRadius: radius.md,
           paddingHorizontal: spacing.sm,
           paddingVertical: spacing.xs,
+          borderWidth: 1,
+          borderColor: palette.border,
         },
       ]}
     >
@@ -317,6 +360,15 @@ const Badge = ({ label, tone }: { label: string; tone?: "success" | "warning" | 
 };
 
 const styles = StyleSheet.create({
+  greeting: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  userName: {
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
   heroCard: {
     overflow: "hidden",
   },

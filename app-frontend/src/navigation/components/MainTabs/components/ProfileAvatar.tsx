@@ -12,15 +12,15 @@ type Props = {
 const getStatusColor = (status: Company['complianceStatus']): string => {
   switch (status) {
     case 'pending':
-      return '#F59E0B'; 
+      return '#F5D47E'; // Soft yellow ring for not verified
     case 'submitted':
-      return '#3B82F6';
+      return '#F5D47E'; // Soft yellow ring for pending verification
     case 'approved':
-      return '#11A440'; 
+      return '#6BCF7F'; // Soft green ring for verified
     case 'rejected':
-      return '#DC2626'; 
+      return '#EF6B6B'; // Soft red ring for rejected
     default:
-      return '#9CA3AF'; 
+      return '#B8B8B8'; // Gray ring as default
   }
 };
 
@@ -88,34 +88,34 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#1A1A1A',
   },
   image: {
     resizeMode: 'cover',
   },
   placeholder: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#2A2A2A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#B8B8B8',
   },
   badge: {
     position: 'absolute',
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#11A440',
+    backgroundColor: '#6BCF7F',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#1A1A1A',
   },
   badgeText: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 14,
     fontWeight: 'bold',
   },

@@ -6,6 +6,7 @@ import { RouteName, routes } from "../routes";
 export type TabDefinition = {
   route: RouteName;
   label: string;
+  icon: string;
 };
 
 export const tabScreens: Record<RouteName, ComponentType> = {
@@ -14,6 +15,6 @@ export const tabScreens: Record<RouteName, ComponentType> = {
 };
 
 export const tabDefinitions: TabDefinition[] = [
-  { route: routes.DASHBOARD, label: "Operations" },
-  { route: routes.INVENTORY, label: "Inventory" },
+  { route: routes.DASHBOARD, label: "Operations", icon: "home-outline" },
+  { route: routes.INVENTORY, label: "Inventory", icon: "cube-outline" },
 ];

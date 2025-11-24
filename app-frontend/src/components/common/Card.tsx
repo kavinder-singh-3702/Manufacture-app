@@ -31,5 +31,10 @@ export const Card = ({ children, style }: CardProps) => {
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

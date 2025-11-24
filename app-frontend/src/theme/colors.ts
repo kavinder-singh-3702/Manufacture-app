@@ -65,97 +65,119 @@ export const palette = {
 } as const;
 
 export const colors = {
-  // Layout colors - light theme
-  background: palette.peachLight,
-  backgroundWarm: palette.warmWhite,
-  backgroundMint: palette.peachWarm,
-  surface: palette.white,
-  surfaceElevated: palette.offWhite,
-  card: palette.white,
-  cardTinted: palette.peachWarm,
-  overlay: "rgba(46, 46, 58, 0.8)",
-  overlayLight: "rgba(250, 218, 221, 0.9)",
+  // Layout colors - Premium Soft-Dark Theme
+  background: "#1C1C1C",
+  backgroundSecondary: "#262626",
+  backgroundTertiary: "#2D2D2D",
+  backgroundWarm: "#262626",
+  backgroundMint: "#262626",
+  surface: "#262626",
+  surfaceElevated: "#2D2D2D",
+  card: "#262626",
+  cardTinted: "#2D2D2D",
+  overlay: "rgba(28,28,28,0.7)",
+  overlayLight: "rgba(28,28,28,0.5)",
 
-  // Brand colors - Primary (Peach-forward)
-  primary: palette.peach,
-  primaryDark: palette.peachSoft,
-  primaryLight: palette.peachLight,
-  primarySoft: palette.peachWarm,
-  primaryOnDark: palette.charcoal,
+  // Brand colors - Premium Subtle Purple
+  primary: "#8B7BC4",
+  primaryDark: "#6E5FA8",
+  primaryLight: "#A08FD4",
+  primarySoft: "#B5A8E0",
+  primaryOnDark: "#FFFFFF",
+  primaryGradientStart: "#9686CC",
+  primaryGradientEnd: "#7869B3",
+  primaryGlow: "rgba(139,123,196,0.25)",
 
-  // Secondary (Midnight blue)
-  secondary: palette.midnightBlue,
-  secondaryDark: "#121a2d",
-  secondaryLight: "#24314F",
-  secondarySoft: "#2f3b57",
-  secondaryRose: "#24314F",
+  // Secondary
+  secondary: "#262626",
+  secondaryDark: "#1C1C1C",
+  secondaryLight: "#343434",
+  secondarySoft: "#3D3D3D",
+  secondaryRose: "#262626",
 
-  // Accent (Deep plum)
-  accent: palette.deepPlum,
-  accentLight: palette.plumLight,
-  accentWarm: palette.plumSoft,
-  accentCharcoal: palette.charcoalMuted,
-  accentBurgundy: palette.deepPlum,
+  // Accent (Premium Subtle Purple tones)
+  accent: "#8B7BC4",
+  accentLight: "#9686CC",
+  accentWarm: "#9080CC",
+  accentCharcoal: "#7869B3",
+  accentBurgundy: "#8B7BC4",
+  accentStrong: "#9080CC",
+  accentDark: "#7869B3",
 
-  // Text colors
-  text: palette.charcoal,
-  textLight: palette.charcoalLight,
-  textMuted: palette.charcoalMuted,
-  textSecondary: palette.mediumGray,
-  textTertiary: palette.darkGray,
-  textInverse: palette.white,
-  textOnPrimary: palette.deepPlum,
-  textOnSecondary: palette.white,
-  textOnAccent: palette.white,
+  // Text colors - Premium Typography
+  text: "#FFFFFF",
+  textPrimary: "#FFFFFF",
+  textLight: "#E9E9E9",
+  textMuted: "#B4B4B4",
+  textSecondary: "#E9E9E9",
+  textTertiary: "#8A8A8A",
+  textDisabled: "#787878",
+  textInverse: "#1C1C1C",
+  textOnPrimary: "#FFFFFF",
+  textOnSecondary: "#E9E9E9",
+  textOnAccent: "#FFFFFF",
 
-  // Border colors
-  border: palette.lightGray,
-  borderDark: palette.charcoalLight,
-  borderPrimary: palette.peachSoft,
-  borderSecondary: palette.secondaryLight,
-  borderAccent: palette.deepPlum,
+  // Border colors - Premium Elevation
+  border: "#3D3848",
+  borderLight: "#44404F",
+  borderDark: "#2A2A2A",
+  borderPrimary: "#6E5FA8",
+  borderSecondary: "#3D3848",
+  borderAccent: "#8B7BC4",
 
-  // Gradient anchors (reuse for backgrounds/shadows)
-  gradientGreenPink: palette.green,
-  gradientCharcoalGreen: palette.charcoalGreen,
-  gradientBurgundyPink: palette.burgundy,
-  gradientCharcoalBurgundy: palette.charcoalBurgundy,
+  // Icon colors
+  iconActive: "#9080CC",
+  iconInactive: "#8A8A8A",
+  iconDisabled: "#6C6C6C",
 
-  // Semantic colors
-  success: palette.success,
-  successLight: palette.successLight,
-  successBg: palette.successLight,
+  // Gradient anchors - Premium
+  gradientGreenPink: "#A388EE",
+  gradientCharcoalGreen: "#262626",
+  gradientBurgundyPink: "#262626",
+  gradientCharcoalBurgundy: "#1C1C1C",
 
-  error: palette.error,
-  errorLight: palette.errorSoft,
-  errorBg: palette.errorSoft,
+  // Semantic colors - Premium softer tones
+  success: "#6BCF7F",
+  successLight: "#8FE09D",
+  successBg: "#262626",
 
-  warning: palette.warning,
-  warningLight: palette.warningSoft,
-  warningBg: palette.warningSoft,
+  error: "#EF6B6B",
+  errorStrong: "#E85555",
+  errorLight: "#F78989",
+  errorBg: "#262626",
 
-  info: palette.info,
-  infoLight: palette.infoSoft,
-  infoBg: palette.infoSoft,
+  warning: "#F5D47E",
+  warningStrong: "#F0C659",
+  warningLight: "#F8E09C",
+  warningBg: "#262626",
 
-  // Buttons
-  buttonPrimary: palette.peach,
-  buttonPrimaryHover: palette.peachSoft,
-  buttonSecondary: palette.deepPlum,
-  buttonSecondaryHover: palette.plumDark,
+  info: "#7AC8F5",
+  infoLight: "#9DD9F9",
+  infoBg: "#262626",
+
+  // Buttons - Premium
+  buttonPrimary: "#8B7BC4",
+  buttonPrimaryHover: "#7869B3",
+  buttonSecondary: "#343434",
+  buttonSecondaryHover: "#3D3D3D",
   buttonGhost: "transparent",
-  buttonGhostHover: palette.peachLight,
+  buttonGhostHover: "#262626",
 
-  // Badges/Tags
-  badgeSuccess: palette.successLight,
-  badgeError: palette.errorSoft,
-  badgeWarning: palette.warningSoft,
-  badgeInfo: palette.infoSoft,
-  badgePrimary: palette.peachWarm,
-  badgeSecondary: palette.secondaryLight,
-  badgeNeutral: palette.charcoalLight,
+  // Badges/Tags - Premium
+  badgeSuccess: "#262626",
+  badgeError: "#262626",
+  badgeWarning: "#262626",
+  badgeInfo: "#262626",
+  badgePrimary: "#262626",
+  badgeSecondary: "#262626",
+  badgeNeutral: "#262626",
+
+  // Shadows - Premium
+  shadow: "rgba(0,0,0,0.25)",
+  shadowGlow: "rgba(139,123,196,0.20)",
+  shadowFocus: "rgba(110,95,168,0.35)",
 
   // Legacy/backwards compatibility
-  critical: palette.error,
-  muted: palette.mediumGray,
+  critical: "#EF6B6B",
+  muted: "#A4A4A4",
 } as const;

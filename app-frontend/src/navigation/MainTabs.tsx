@@ -1,5 +1,6 @@
 import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
 import { View, StyleSheet, Alert, TouchableOpacity, Modal, Text, Image, TouchableWithoutFeedback, Vibration } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -79,6 +80,7 @@ export const MainTabs = () => {
       MAIN_TAB_ORDER.map((tab) => ({
         label: tab.label,
         description: activeRoute === tab.route ? "Currently viewing" : undefined,
+        isActive: activeRoute === tab.route,
         onPress: () => handleNavigateToRoute(tab.route),
       })),
     [activeRoute, handleNavigateToRoute]
@@ -86,19 +88,19 @@ export const MainTabs = () => {
 
   const profileOrLoginItem = isAuthenticated
     ? {
-        label: "Profile",
-        description: "Manage your personal details",
-        onPress: handleShowProfile,
-      }
+      label: "Profile",
+      description: "Manage your personal details",
+      onPress: handleShowProfile,
+    }
     : {
-        label: "Login",
-        description: "Access your workspace",
-        onPress: () => {
-          setSidebarVisible(false);
-          requestLogin();
-        },
-        tone: "primary" as const,
-      };
+      label: "Login",
+      description: "Access your workspace",
+      onPress: () => {
+        setSidebarVisible(false);
+        requestLogin();
+      },
+      tone: "primary" as const,
+    };
 
   const menuItems = useMemo(
     () => [
@@ -136,12 +138,12 @@ export const MainTabs = () => {
         if (active) {
           const initials = active.displayName
             ? active.displayName
-                .split(" ")
-                .filter(Boolean)
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase()
+              .split(" ")
+              .filter(Boolean)
+              .map((part) => part[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase()
             : buildInitials();
           setCompanyVisual({ logoUrl: active.logoUrl, initials: initials || buildInitials() });
         }
@@ -170,12 +172,12 @@ export const MainTabs = () => {
       }
       const initials = company.displayName?.trim()
         ? company.displayName
-            .split(" ")
-            .filter(Boolean)
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase()
+          .split(" ")
+          .filter(Boolean)
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
         : buildInitials();
       setCompanyVisual({ logoUrl: company.logoUrl, initials: initials || buildInitials() });
     },
@@ -229,7 +231,7 @@ export const MainTabs = () => {
       <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
         <TouchableWithoutFeedback onPress={closeCompanyModal}>
           <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View
                 style={[
                   styles.modalContent,
@@ -244,7 +246,7 @@ export const MainTabs = () => {
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
                   <TouchableOpacity onPress={closeCompanyModal}>
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Close</Text>
+                    <Text style={{ color: colors.textSecondary, fontWeight: "700" }}>Close</Text>
                   </TouchableOpacity>
                 </View>
                 <CompanySwitcherCard
@@ -283,46 +285,72 @@ const FooterBar = ({
 }) => {
   const { colors, spacing, radius } = useTheme();
 
-  const renderButton = (label: string, onPress: () => void, bg?: string, active?: boolean) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[
-        styles.footerButton,
-        {
-          backgroundColor: active ? colors.primaryLight : bg ?? colors.surface,
-          borderColor: active ? colors.primary : colors.border,
-          borderRadius: radius.md,
-        },
-      ]}
-    >
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>{label}</Text>
-    </TouchableOpacity>
-  );
+  const renderButton = (label: string, onPress: () => void, bg?: string, active?: boolean) => {
+    if (active) {
+      return (
+        <TouchableOpacity onPress={onPress} style={styles.footerButton}>
+          <LinearGradient
+            colors={[colors.primaryGradientStart, colors.primaryGradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              shadowColor: colors.shadowGlow,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 1,
+              shadowRadius: 15,
+              elevation: 8,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", textAlign: "center" }}>{label}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        style={[
+          styles.footerButton,
+          {
+            backgroundColor: bg ?? "transparent",
+            borderRadius: radius.md,
+          },
+        ]}
+      >
+        <Text style={{ color: colors.textMuted, fontSize: 18, fontWeight: "700" }}>{label}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.surfaceElevated }}>
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.background }}>
       <View
         style={[
           styles.footer,
           {
-            paddingHorizontal: spacing.lg,
-            paddingTop: spacing.sm,
-            paddingBottom: spacing.sm,
+            paddingHorizontal: spacing.xl,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.xs,
             backgroundColor: colors.surfaceElevated,
-            borderTopColor: colors.border,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
           },
         ]}
       >
         {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
         {renderButton("🔍", onSearch)}
-        {renderButton("+", onCreate, colors.primaryLight)}
+        {renderButton("+", onCreate)}
         <TouchableOpacity
           onPress={onCompanyPress}
           onLongPress={onCompanyLongPress}
           style={[
             styles.companyPill,
             {
-              borderColor: companyVisual.logoUrl ? "transparent" : colors.primary,
+              borderColor: companyVisual.logoUrl ? "transparent" : colors.textSecondary,
               borderWidth: companyVisual.logoUrl ? 0 : 1,
               backgroundColor: colors.surface,
               borderRadius: radius.pill,
@@ -332,7 +360,7 @@ const FooterBar = ({
           {companyVisual.logoUrl ? (
             <Image source={{ uri: companyVisual.logoUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="cover" />
           ) : (
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
+            <Text style={{ color: colors.textSecondary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -351,7 +379,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   footerButton: {
     width: 52,

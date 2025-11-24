@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { StatusBar, StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useAuth } from "../../../../hooks/useAuth";
 import { HamburgerButton } from "./HamburgerButton";
@@ -43,7 +43,6 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
 
   return (
     <View style={[styles.wrapper, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={[styles.content, {
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs,
@@ -68,8 +67,8 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         >
           <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
           {notificationCount > 0 ? (
-            <View style={[styles.notificationBadge, { backgroundColor: colors.primary }]}>
-              <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: "800" }}>
+            <View style={[styles.notificationBadge, { backgroundColor: colors.error }]}>
+              <Text style={{ color: colors.text, fontSize: 10, fontWeight: "800" }}>
                 {notificationCount}
               </Text>
             </View>
@@ -85,7 +84,6 @@ const styles = StyleSheet.create({
     width: "100%",
     elevation: 4,
     zIndex: 10,
-    paddingTop: StatusBar.currentHeight || 0,
   },
   content: {
     flexDirection: "row",

@@ -1,4 +1,5 @@
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../hooks/useTheme";
 import { StatusPill } from "./ProfileForm";
 
@@ -29,21 +30,29 @@ export const ProfileHero = ({
     <View style={styles.headerMeta}>
       <View style={styles.headerRow}>
         <TouchableOpacity
-          style={[styles.avatarContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}
           onPress={onUploadAvatar}
           activeOpacity={0.9}
           disabled={uploading}
         >
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-          ) : (
-            <Text style={[styles.avatarInitials, { color: colors.text }]}>{avatarInitials}</Text>
-          )}
-          {uploading ? (
-            <View style={styles.avatarOverlay}>
-              <ActivityIndicator color="#fff" />
+          <LinearGradient
+            colors={[colors.primaryGradientStart, colors.primaryGradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientRing}
+          >
+            <View style={[styles.avatarContainer, { backgroundColor: colors.surface }]}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={[styles.avatarInitials, { color: colors.text }]}>{avatarInitials}</Text>
+              )}
+              {uploading ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              ) : null}
             </View>
-          ) : null}
+          </LinearGradient>
         </TouchableOpacity>
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.text }]}>{fullName}</Text>
@@ -87,12 +96,24 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
+  gradientRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
+    padding: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "rgba(163,136,238,0.5)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   avatarContainer: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    borderWidth: 1,
-    marginRight: 16,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",

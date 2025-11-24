@@ -13,35 +13,35 @@ const getStatusInfo = (status: Company['complianceStatus']) => {
     case 'pending':
       return {
         label: 'Not Verified',
-        color: '#F59E0B',
+        color: '#F5D47E', // Soft yellow for pending
         message: 'Get verified to unlock all features',
         action: 'Start Verification',
       };
     case 'submitted':
       return {
         label: 'Request sent',
-        color: '#3B82F6',
+        color: '#F5D47E', // Soft yellow for pending verification
         message: 'We received your documents. Our team is reviewing them shortly.',
         action: null,
       };
     case 'approved':
       return {
         label: 'Verified',
-        color: '#11A440',
+        color: '#6BCF7F', // Soft green for verified
         message: 'Your company is verified',
         action: null,
       };
     case 'rejected':
       return {
         label: 'Verification Rejected',
-        color: '#DC2626',
+        color: '#EF6B6B', // Soft red for rejected
         message: 'Please resubmit with correct documents',
         action: 'Resubmit',
       };
     default:
       return {
         label: 'Unknown',
-        color: '#9CA3AF',
+        color: '#6B6B6B',
         message: '',
         action: null,
       };
@@ -82,15 +82,17 @@ export const VerificationStatusCard: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    padding: 20,
     marginVertical: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
@@ -106,39 +108,41 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#FFFFFF',
   },
   message: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#B8B8B8',
     marginBottom: 12,
   },
   rejectionBox: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#1A1A1A',
     borderLeftWidth: 4,
-    borderLeftColor: '#DC2626',
+    borderLeftColor: '#EF6B6B',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
   },
   rejectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#DC2626',
+    color: '#EF6B6B',
     marginBottom: 4,
   },
   rejectionText: {
     fontSize: 14,
-    color: '#991B1B',
+    color: '#FFFFFF',
   },
   button: {
-    backgroundColor: '#11A440',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 16,
     fontWeight: '600',
   },

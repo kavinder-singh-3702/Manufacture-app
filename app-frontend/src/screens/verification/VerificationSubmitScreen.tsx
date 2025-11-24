@@ -130,6 +130,7 @@ export const VerificationSubmitScreen = () => {
               ]}
               onPress={handleSubmit}
               disabled={!gstDocument || !aadhaarDocument || isSubmitting}
+              activeOpacity={0.7}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#fff" />
@@ -151,7 +152,7 @@ export const VerificationSubmitScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -159,11 +160,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 0,
+    backgroundColor: '#1A1A1A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
@@ -171,23 +173,23 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F0F0F',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#2A2A2A',
   },
   backIcon: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#374151',
+    color: '#FFFFFF',
     marginLeft: -2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   keyboardAvoid: {
@@ -204,7 +206,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#B8B8B8',
     marginBottom: 24,
     marginTop: 16,
     lineHeight: 20,
@@ -215,37 +217,47 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   textArea: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderColor: '#2A2A2A',
+    borderRadius: 12,
     padding: 12,
     fontSize: 14,
-    backgroundColor: '#fff',
+    color: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     textAlignVertical: 'top',
     minHeight: 100,
   },
   submitButton: {
-    backgroundColor: '#11A440',
-    borderRadius: 8,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+    backgroundColor: '#1A1A1A',
+    borderColor: '#2A2A2A',
+    opacity: 0.5,
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   disclaimer: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#6B6B6B',
     textAlign: 'center',
     fontStyle: 'italic',
     marginBottom: 16,
