@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DocumentUploader, PickedDocument } from '../../components/company/DocumentUploader';
@@ -78,60 +81,80 @@ export const VerificationSubmitScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Company Verification</Text>
-        <Text style={styles.subtitle}>
-          Upload your GST certificate and Aadhaar card to verify your company
-        </Text>
-
-        <DocumentUploader
-          type="gstCertificate"
-          label="GST Certificate *"
-          onDocumentPicked={setGstDocument}
-          pickedDocument={gstDocument || undefined}
-        />
-
-        <DocumentUploader
-          type="aadhaarCard"
-          label="Aadhaar Card *"
-          onDocumentPicked={setAadhaarDocument}
-          pickedDocument={aadhaarDocument || undefined}
-        />
-
-        <View style={styles.notesContainer}>
-          <Text style={styles.label}>Additional Notes (Optional)</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            numberOfLines={4}
-            placeholder="Add any additional information..."
-            value={notes}
-            onChangeText={setNotes}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            (!gstDocument || !aadhaarDocument || isSubmitting) &&
-              styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!gstDocument || !aadhaarDocument || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit for Verification</Text>
-          )}
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-
-        <Text style={styles.disclaimer}>
-          * Required fields. Your documents will be reviewed within 2-3 business days.
-        </Text>
+        <Text style={styles.headerTitle}>Company Verification</Text>
       </View>
-    </ScrollView>
+
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            <Text style={styles.subtitle}>
+              Upload your GST certificate and Aadhaar card to verify your company
+            </Text>
+
+            <DocumentUploader
+              type="gstCertificate"
+              label="GST Certificate *"
+              onDocumentPicked={setGstDocument}
+              pickedDocument={gstDocument || undefined}
+            />
+
+            <DocumentUploader
+              type="aadhaarCard"
+              label="Aadhaar Card *"
+              onDocumentPicked={setAadhaarDocument}
+              pickedDocument={aadhaarDocument || undefined}
+            />
+
+            <View style={styles.notesContainer}>
+              <Text style={styles.label}>Additional Notes (Optional)</Text>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                numberOfLines={4}
+                placeholder="Add any additional information..."
+                value={notes}
+                onChangeText={setNotes}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!gstDocument || !aadhaarDocument || isSubmitting) &&
+                styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!gstDocument || !aadhaarDocument || isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit for Verification</Text>
+              )}
+            </TouchableOpacity>
+
+            <Text style={styles.disclaimer}>
+              * Required fields. Your documents will be reviewed within 2-3 business days.
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -140,19 +163,61 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  content: {
-    padding: 16,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  title: {
-    fontSize: 24,
+  headerBackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  backIcon: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#374151',
+    marginLeft: -2,
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  content: {
+    padding: 16,
   },
   subtitle: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 24,
+    marginTop: 16,
+    lineHeight: 20,
   },
   notesContainer: {
     marginBottom: 24,
@@ -171,6 +236,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: '#fff',
     textAlignVertical: 'top',
+    minHeight: 100,
   },
   submitButton: {
     backgroundColor: '#11A440',
@@ -192,5 +258,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     fontStyle: 'italic',
+    marginBottom: 16,
   },
 });

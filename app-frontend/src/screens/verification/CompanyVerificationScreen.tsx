@@ -87,7 +87,11 @@ export const CompanyVerificationScreen = () => {
         <Text style={styles.headerTitle}>Company Verification</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Company Info */}
         <View style={styles.companyCard}>
           <CompanyAvatar company={company} size={80} />
@@ -214,30 +218,39 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 15,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
   headerBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F9FAFB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#374151',
+    marginLeft: -2,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
+    letterSpacing: -0.5,
   },
   loadingContainer: {
     flex: 1,
@@ -276,6 +289,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 40,
   },
   companyCard: {
     backgroundColor: '#fff',
