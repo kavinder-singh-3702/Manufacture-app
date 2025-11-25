@@ -1,4 +1,5 @@
 import { ScrollView, View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
@@ -74,28 +75,47 @@ const HeroCard = () => {
   const { colors, spacing, radius } = useTheme();
 
   return (
-    <View
+    <LinearGradient
+      colors={[
+        "rgba(108, 99, 255, 0.15)",  // Royal Indigo
+        "rgba(108, 99, 255, 0.05)",
+        "rgba(255, 140, 60, 0.08)",   // Muted Salmon
+      ]}
+      locations={[0, 0.5, 1]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={[
         styles.heroCard,
         {
-          backgroundColor: colors.secondary,
           borderRadius: radius.lg,
           padding: spacing.lg,
           borderWidth: 1,
-          borderColor: colors.borderPrimary,
+          borderColor: "rgba(108, 99, 255, 0.3)",
         },
       ]}
     >
+      {/* Inner glow effect */}
+      <LinearGradient
+        colors={["rgba(74, 201, 255, 0.08)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[StyleSheet.absoluteFill, { borderRadius: radius.lg }]}
+      />
       <View style={styles.heroHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.heroTitle, { color: colors.textOnSecondary }]}>Production pulse</Text>
-          <Text style={[styles.heroSubtitle, { color: colors.textOnSecondary }]}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Production pulse</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
             Keep dispatches on time and floor running smooth.
           </Text>
         </View>
-        <View style={[styles.heroBadge, { backgroundColor: colors.backgroundTertiary, borderWidth: 1, borderColor: colors.primary }]}>
-          <Text style={[styles.heroBadgeText, { color: colors.primary }]}>On track</Text>
-        </View>
+        <LinearGradient
+          colors={["#6C63FF", "#5248E6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.heroBadge, { borderRadius: radius.md }]}
+        >
+          <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>On track</Text>
+        </LinearGradient>
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
@@ -105,23 +125,31 @@ const HeroCard = () => {
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: colors.secondaryLight, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.primaryButtonText, { color: colors.text }]}>Create order</Text>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.8}>
+          <LinearGradient
+            colors={["#6C63FF", "#5248E6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.primaryButton, { borderRadius: radius.md }]}
+          >
+            <Text style={[styles.primaryButtonText, { color: "#FFFFFF" }]}>Create order</Text>
+          </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.secondaryButton,
-            { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.backgroundTertiary },
+            {
+              borderColor: "rgba(108, 99, 255, 0.4)",
+              borderRadius: radius.md,
+              backgroundColor: "rgba(30, 33, 39, 0.8)",
+            },
           ]}
           activeOpacity={0.7}
         >
           <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Plan capacity</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -132,17 +160,17 @@ const StatPill = ({ label, value, muted }: { label: string; value: string; muted
       style={[
         styles.statPill,
         {
-          backgroundColor: muted ? colors.secondaryLight : colors.backgroundTertiary,
+          backgroundColor: muted ? "rgba(30, 33, 39, 0.6)" : "rgba(22, 24, 29, 0.8)",
           borderRadius: radius.md,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
           borderWidth: 1,
-          borderColor: colors.border,
+          borderColor: muted ? colors.border : "rgba(108, 99, 255, 0.2)",
         },
       ]}
     >
       <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: muted ? colors.textMuted : colors.text }]}>{value}</Text>
     </View>
   );
 };
@@ -150,13 +178,16 @@ const StatPill = ({ label, value, muted }: { label: string; value: string; muted
 const KpiGrid = ({ items }: { items: KpiCardData[] }) => {
   const { colors, spacing, radius } = useTheme();
 
-  const toneColor = (tone?: KpiCardData["tone"]) =>
-    ({
-      positive: colors.success,
-      warning: colors.warning,
-      neutral: colors.textMuted,
-      undefined: colors.textMuted,
-    }[tone ?? "neutral"]);
+  const toneStyles = (tone?: KpiCardData["tone"]) => {
+    switch (tone) {
+      case "positive":
+        return { color: "#4ADE80", glow: "rgba(74, 222, 128, 0.15)", border: "rgba(74, 222, 128, 0.3)" };
+      case "warning":
+        return { color: "#FF8C3C", glow: "rgba(255, 140, 60, 0.15)", border: "rgba(255, 140, 60, 0.3)" };
+      default:
+        return { color: colors.textMuted, glow: "transparent", border: colors.border };
+    }
+  };
 
   const rows = items.reduce<KpiCardData[][]>((acc, item, index) => {
     if (index % 2 === 0) {
@@ -171,25 +202,45 @@ const KpiGrid = ({ items }: { items: KpiCardData[] }) => {
     <View style={{ gap: spacing.sm }}>
       {rows.map((row, rowIndex) => (
         <View key={`kpi-row-${rowIndex}`} style={{ flexDirection: "row", gap: spacing.sm }}>
-          {row.map((item) => (
-            <View
-              key={item.id}
-              style={[
-                styles.kpiCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  flex: 1,
-                },
-              ]}
-            >
-              <Text style={[styles.kpiLabel, { color: colors.textMuted }]}>{item.label}</Text>
-              <Text style={[styles.kpiValue, { color: colors.text }]}>{item.value}</Text>
-              <Text style={[styles.kpiDelta, { color: toneColor(item.tone) }]}>{item.delta}</Text>
-            </View>
-          ))}
+          {row.map((item) => {
+            const tone = toneStyles(item.tone);
+            return (
+              <View
+                key={item.id}
+                style={[
+                  styles.kpiCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: tone.border,
+                    borderRadius: radius.md,
+                    padding: spacing.md,
+                    flex: 1,
+                    shadowColor: tone.color,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: item.tone === "positive" || item.tone === "warning" ? 0.15 : 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  },
+                ]}
+              >
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 60,
+                    height: 60,
+                    backgroundColor: tone.glow,
+                    borderTopRightRadius: radius.md,
+                    borderBottomLeftRadius: 60,
+                  }}
+                />
+                <Text style={[styles.kpiLabel, { color: colors.textMuted }]}>{item.label}</Text>
+                <Text style={[styles.kpiValue, { color: colors.text }]}>{item.value}</Text>
+                <Text style={[styles.kpiDelta, { color: tone.color, fontWeight: "700" }]}>{item.delta}</Text>
+              </View>
+            );
+          })}
           {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
         </View>
       ))}

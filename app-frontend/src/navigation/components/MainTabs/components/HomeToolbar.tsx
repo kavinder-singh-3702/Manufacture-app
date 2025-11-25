@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useAuth } from "../../../../hooks/useAuth";
 import { HamburgerButton } from "./HamburgerButton";
@@ -42,10 +43,30 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   const avatarUri = typeof user?.avatarUrl === "string" && user.avatarUrl.trim().length ? user.avatarUrl : undefined;
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: colors.background }]}>
+    <View style={[styles.wrapper, { backgroundColor: "transparent" }]}>
+      {/* Glassmorphism background */}
+      <LinearGradient
+        colors={[
+          "rgba(22, 24, 29, 0.95)",
+          "rgba(22, 24, 29, 0.85)",
+        ]}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Subtle accent glow */}
+      <LinearGradient
+        colors={[
+          "rgba(108, 99, 255, 0.08)",
+          "transparent",
+          "rgba(74, 201, 255, 0.05)",
+        ]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={[styles.content, {
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
+        paddingVertical: spacing.sm,
       }]}>
         <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
         <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ marginRight: spacing.xs  }} />
@@ -60,18 +81,27 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
           onPress={onNotificationsPress}
           style={[
             styles.notificationButton,
-            { marginLeft: spacing.sm, borderColor: colors.border, backgroundColor: colors.surface },
+            {
+              marginLeft: spacing.sm,
+              borderColor: "rgba(108, 99, 255, 0.3)",
+              backgroundColor: "rgba(30, 33, 39, 0.8)",
+            },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Notifications"
         >
           <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
           {notificationCount > 0 ? (
-            <View style={[styles.notificationBadge, { backgroundColor: colors.error }]}>
-              <Text style={{ color: colors.text, fontSize: 10, fontWeight: "800" }}>
+            <LinearGradient
+              colors={["#FF8C3C", "#E87A30"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.notificationBadge}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
                 {notificationCount}
               </Text>
-            </View>
+            </LinearGradient>
           ) : null}
         </TouchableOpacity>
       </View>

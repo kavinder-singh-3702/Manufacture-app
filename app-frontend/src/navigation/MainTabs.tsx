@@ -186,7 +186,53 @@ export const MainTabs = () => {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={[
+          "#0F1115",      // Rich dark base
+          "#101318",      // Subtle transition
+          "#0F1115",      // Back to dark
+        ]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.container, { paddingTop: insets.top }]}
+      >
+        {/* Royal Indigo glow - top left corner */}
+        <LinearGradient
+          colors={[
+            "rgba(108, 99, 255, 0.12)",   // Royal Indigo
+            "rgba(108, 99, 255, 0.04)",
+            "transparent",
+          ]}
+          locations={[0, 0.4, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.6, y: 0.6 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Aqua Blue glow - top right */}
+        <LinearGradient
+          colors={[
+            "transparent",
+            "rgba(74, 201, 255, 0.08)",   // Aqua Blue
+            "transparent",
+          ]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.3, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Muted Salmon glow - bottom right corner */}
+        <LinearGradient
+          colors={[
+            "transparent",
+            "rgba(255, 140, 60, 0.06)",   // Muted Salmon
+            "rgba(255, 140, 60, 0.12)",
+          ]}
+          locations={[0, 0.6, 1]}
+          start={{ x: 0.4, y: 0.4 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <HomeToolbar
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
@@ -220,7 +266,7 @@ export const MainTabs = () => {
           onCompanyLongPress={openCompanyModal}
           companyVisual={companyVisual}
         />
-      </View>
+      </LinearGradient>
       <SidebarMenu
         visible={sidebarVisible}
         onClose={() => setSidebarVisible(false)}
@@ -294,7 +340,7 @@ const FooterBar = ({
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              borderRadius: radius.md,
+              borderRadius: radius.xl,
               paddingHorizontal: 14,
               paddingVertical: 10,
               shadowColor: colors.shadowGlow,
@@ -327,20 +373,41 @@ const FooterBar = ({
   };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.background }}>
-      <View
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
+      <LinearGradient
+        colors={[
+          "#1E2127",           // Elevated surface
+          "#16181D",           // Surface
+          "#12141A",           // Darker base
+        ]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={[
           styles.footer,
           {
-            paddingHorizontal: spacing.xl,
+            paddingHorizontal: spacing.md,
             paddingTop: spacing.lg,
             paddingBottom: spacing.xs,
-            backgroundColor: colors.surfaceElevated,
             borderTopLeftRadius: radius.xl,
             borderTopRightRadius: radius.xl,
+            borderTopWidth: 1,
+            borderTopColor: "rgba(108, 99, 255, 0.15)",
           },
         ]}
       >
+        {/* Subtle indigo glow on footer */}
+        <LinearGradient
+          colors={[
+            "rgba(108, 99, 255, 0.08)",
+            "transparent",
+            "rgba(74, 201, 255, 0.05)",
+          ]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}
+        />
         {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
         {renderButton("🔍", onSearch)}
         {renderButton("+", onCreate)}
@@ -350,9 +417,9 @@ const FooterBar = ({
           style={[
             styles.companyPill,
             {
-              borderColor: companyVisual.logoUrl ? "transparent" : colors.textSecondary,
+              borderColor: companyVisual.logoUrl ? "transparent" : "rgba(108, 99, 255, 0.4)",
               borderWidth: companyVisual.logoUrl ? 0 : 1,
-              backgroundColor: colors.surface,
+              backgroundColor: "rgba(22, 24, 29, 0.8)",
               borderRadius: radius.pill,
             },
           ]}
@@ -363,7 +430,7 @@ const FooterBar = ({
             <Text style={{ color: colors.textSecondary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -388,7 +455,6 @@ const styles = StyleSheet.create({
   footerButton: {
     width: 52,
     height: 52,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
