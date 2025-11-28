@@ -41,9 +41,10 @@ Key folders:
 
 Current auth/user endpoints:
 - `POST /api/auth/register` – create manufacturer/dealer/service-provider/entrepreneur accounts with company metadata.
-- `POST /api/auth/login` – email or phone + password exchange for JWT.
+- `POST /api/auth/login` – email or phone + password exchange for JWT/session (response includes `role` for user/admin).
 - `GET /api/users/me` – fetch profile (requires `Authorization: Bearer <token>`).
 - `PATCH /api/users/me` – update business/contact details for the authenticated user.
+- `POST /api/auth/admin` – bootstrap an admin account (requires `adminToken` matching `ADMIN_INVITE_TOKEN`; returns user + JWT + role).
 
 ### Company Verification Flow
 - `POST /api/companies/:companyId/verification` – authenticated company owners upload GST & Aadhaar documents (Base64) that are pushed to the configured S3 bucket.

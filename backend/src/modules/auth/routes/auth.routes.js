@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { createAdmin } = require('../controllers/admin.controller');
 const { beginSignup, verifyOtp, finalizeSignup } = require('../controllers/signup.controller');
 const { loginUser, logoutUser } = require('../controllers/session.controller');
 const {
@@ -10,6 +11,7 @@ const {
   signupStartValidation,
   signupVerifyValidation,
   signupCompleteValidation,
+  adminCreateValidation,
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation
@@ -17,6 +19,7 @@ const {
 
 const router = Router();
 
+router.post('/admin', validate(adminCreateValidation), createAdmin);
 router.post('/signup/start', validate(signupStartValidation), beginSignup);
 router.post('/signup/verify', validate(signupVerifyValidation), verifyOtp);
 router.post('/signup/complete', validate(signupCompleteValidation), finalizeSignup);

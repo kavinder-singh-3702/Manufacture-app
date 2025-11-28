@@ -55,6 +55,25 @@ const signupCompleteValidation = [
   })
 ];
 
+const adminCreateValidation = [
+  body('fullName').trim().isLength({ min: 2 }).withMessage('Full name is required'),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ min: 7 })
+    .withMessage('Phone number must be at least 7 digits')
+    .matches(/^[0-9+]+$/)
+    .withMessage('Phone number can only include digits and + sign'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
+  body('adminToken')
+    .trim()
+    .notEmpty()
+    .withMessage('Admin invite token is required')
+];
+
 const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
   body().custom((value) => {
@@ -93,6 +112,7 @@ module.exports = {
   signupStartValidation,
   signupVerifyValidation,
   signupCompleteValidation,
+  adminCreateValidation,
   loginValidation,
   forgotPasswordValidation,
   resetPasswordValidation

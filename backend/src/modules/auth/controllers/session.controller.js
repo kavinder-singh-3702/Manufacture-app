@@ -3,7 +3,7 @@ const { loginWithPassword, logout } = require('../services/session-auth.service'
 const loginUser = async (req, res, next) => {
   try {
     const user = await loginWithPassword(req, req.body);
-    return res.json({ user });
+    return res.json({ user, role: user.role });
   } catch (error) {
     return next(error);
   }
