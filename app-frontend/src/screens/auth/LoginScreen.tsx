@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../hooks/useAuth";
 
 type CredentialMode = "email" | "phone";
@@ -67,9 +69,22 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
             style={[styles.toggleButton, isActive ? styles.toggleButtonActive : null]}
             onPress={() => setCredentialMode(mode)}
           >
-            <Text style={[styles.toggleText, isActive ? styles.toggleTextActive : null]}>
-              {mode === "email" ? "Email" : "Mobile"}
-            </Text>
+            {isActive ? (
+              <LinearGradient
+                colors={["#6C63FF", "#5248E6"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.toggleButtonGradient}
+              >
+                <Text style={styles.toggleTextActive}>
+                  {mode === "email" ? "Email" : "Mobile"}
+                </Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.toggleText}>
+                {mode === "email" ? "Email" : "Mobile"}
+              </Text>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -93,56 +108,78 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
       behavior={Platform.select({ ios: "padding", android: undefined })}
       style={styles.slide}
     >
-      <View style={styles.card}>
-        <View style={[styles.blob, styles.blobPrimary]} />
-        <View style={[styles.blob, styles.blobSecondary]} />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          {/* Indigo glow blob */}
+          <LinearGradient
+            colors={["rgba(108, 99, 255, 0.25)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+            style={[styles.blob, styles.blobPrimary]}
+          />
+          {/* Salmon glow blob */}
+          <LinearGradient
+            colors={["rgba(255, 140, 60, 0.2)", "rgba(255, 140, 60, 0.05)", "transparent"]}
+            style={[styles.blob, styles.blobSecondary]}
+          />
 
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
 
-        <View style={styles.headerBlock}>
-          <Text style={styles.heading}>Welcome Back!</Text>
-          <Text style={styles.subheading}>Enter your email or mobile number to continue</Text>
-        </View>
-
-        {renderIdentifierToggle()}
-
-        <View style={styles.form}>
-          {renderIdentifierInput()}
-          <View style={styles.passwordWrapper}>
-            <TextInput
-              style={[styles.input, styles.passwordInput]}
-              placeholder="Password"
-              placeholderTextColor="#888"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword((prev) => !prev)}
-              accessibilityLabel={`${showPassword ? "Hide" : "Show"} password`}
-            >
-              <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
-            </TouchableOpacity>
+          <View style={styles.headerBlock}>
+            <Text style={styles.heading}>Welcome Back!</Text>
+            <Text style={styles.subheading}>Enter your email or mobile number to continue</Text>
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {renderIdentifierToggle()}
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
-          </TouchableOpacity>
+          <View style={styles.form}>
+            {renderIdentifierInput()}
+            <View style={styles.passwordWrapper}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Password"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword((prev) => !prev)}
+                accessibilityLabel={`${showPassword ? "Hide" : "Show"} password`}
+              >
+                <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
-            <Text style={styles.helperText}>Forgotten your password?</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onSignup}>
-            <Text style={styles.helperText}>Or Create a New Account</Text>
-          </TouchableOpacity>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity style={styles.primaryButtonWrapper} onPress={handleLogin} disabled={loading}>
+              <LinearGradient
+                colors={["#6C63FF", "#5248E6"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.primaryButton}
+              >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
+              <Text style={styles.helperText}>Forgotten your password?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onSignup}>
+              <Text style={[styles.helperText, styles.signupLink]}>Or Create a New Account</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -151,12 +188,18 @@ const styles = StyleSheet.create({
   slide: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   card: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     borderRadius: 0,
     paddingHorizontal: 32,
     paddingTop: 32,
@@ -171,14 +214,12 @@ const styles = StyleSheet.create({
   blobPrimary: {
     width: 320,
     height: 320,
-    backgroundColor: "#E8F8E5",
     bottom: -60,
     right: -60,
   },
   blobSecondary: {
     width: 240,
     height: 240,
-    backgroundColor: "#DAF5D4",
     bottom: 120,
     left: -80,
   },
@@ -186,7 +227,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
@@ -194,7 +237,7 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#111",
+    color: "#FFFFFF",
   },
   headerBlock: {
     marginBottom: 16,
@@ -202,49 +245,66 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#111",
+    color: "#FFFFFF",
   },
   subheading: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 4,
   },
   toggleWrap: {
     flexDirection: "row",
     borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "rgba(30, 33, 39, 0.8)",
     padding: 4,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   toggleButton: {
     flex: 1,
     borderRadius: 28,
-    paddingVertical: 12,
     alignItems: "center",
+    overflow: "hidden",
   },
   toggleButtonActive: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#111",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  toggleButtonGradient: {
+    width: "100%",
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 28,
   },
   toggleText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.5)",
+    paddingVertical: 12,
   },
   toggleTextActive: {
-    color: "#111",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   form: {
     flex: 1,
     marginTop: 8,
   },
   input: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#C4C4C4",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 12,
     paddingVertical: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 18,
+    color: "#FFFFFF",
+    backgroundColor: "rgba(22, 24, 29, 0.9)",
   },
   passwordWrapper: {
     position: "relative",
@@ -254,38 +314,52 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     position: "absolute",
-    right: 0,
+    right: 8,
     top: 8,
     padding: 8,
   },
   eyeText: {
     fontWeight: "600",
-    color: "#111",
+    color: "#6C63FF",
+  },
+  primaryButtonWrapper: {
+    marginTop: 12,
+    borderRadius: 32,
+    overflow: "hidden",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   primaryButton: {
-    marginTop: 12,
-    backgroundColor: "#000",
     borderRadius: 32,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: "center",
   },
   primaryButtonText: {
     color: "#fff",
     fontWeight: "700",
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 1.5,
   },
   helperText: {
     textAlign: "center",
-    color: "#6B7280",
-    marginTop: 12,
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: 16,
     fontSize: 13,
+  },
+  signupLink: {
+    color: "#6C63FF",
+    fontWeight: "600",
   },
   helperLink: {
     alignItems: "center",
   },
   errorText: {
-    color: "#DC2626",
+    color: "#FF6B6B",
     marginBottom: 8,
     textAlign: "center",
+    fontWeight: "500",
   },
 });

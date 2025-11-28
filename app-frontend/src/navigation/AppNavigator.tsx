@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
+import { useEffect, useMemo, useRef } from "react";
+import { DefaultTheme, NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { enableScreens } from "react-native-screens";
 import { AuthScreen } from "../screens/auth/AuthScreen";
@@ -20,8 +20,9 @@ enableScreens(true);
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
-  const { user, initializing } = useAuth();
+  const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect } = useAuth();
   const { colors } = useTheme();
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   const navigationTheme = useMemo(
     () => ({
@@ -38,12 +39,27 @@ export const AppNavigator = () => {
     [colors]
   );
 
+  // Redirect to verification screen after manufacturer/trader signup
+  useEffect(() => {
+    if (!pendingVerificationRedirect || !user) return;
+
+    // Small delay to ensure navigation is ready
+    const timer = setTimeout(() => {
+      navigationRef.current?.navigate("CompanyVerification", {
+        companyId: pendingVerificationRedirect,
+      });
+      clearPendingVerificationRedirect();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [pendingVerificationRedirect, user, clearPendingVerificationRedirect]);
+
   if (initializing) {
     return <FullScreenLoader />;
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
           <RootStack.Screen name="Auth" component={AuthScreen} />

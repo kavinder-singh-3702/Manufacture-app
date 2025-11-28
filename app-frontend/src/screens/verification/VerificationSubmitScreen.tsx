@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { DocumentUploader, PickedDocument } from '../../components/company/DocumentUploader';
 import { verificationService } from '../../services/verificationService';
@@ -71,114 +72,139 @@ export const VerificationSubmitScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Company Verification</Text>
-      </View>
+    <LinearGradient
+      colors={["#0F1115", "#101318", "#0F1115"]}
+      locations={[0, 0.5, 1]}
+      style={styles.container}
+    >
+      {/* Indigo glow - top left */}
+      <LinearGradient
+        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.7, y: 0.7 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Salmon glow - bottom right */}
+      <LinearGradient
+        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.3, y: 0.3 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Company Verification</Text>
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <View style={styles.content}>
-            <Text style={styles.subtitle}>
-              Upload your GST certificate and Aadhaar card to verify your company
-            </Text>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.content}>
+              <Text style={styles.subtitle}>
+                Upload your GST certificate and Aadhaar card to verify your company
+              </Text>
 
-            <DocumentUploader
-              type="gstCertificate"
-              label="GST Certificate *"
-              onDocumentPicked={setGstDocument}
-              pickedDocument={gstDocument || undefined}
-            />
-
-            <DocumentUploader
-              type="aadhaarCard"
-              label="Aadhaar Card *"
-              onDocumentPicked={setAadhaarDocument}
-              pickedDocument={aadhaarDocument || undefined}
-            />
-
-            <View style={styles.notesContainer}>
-              <Text style={styles.label}>Additional Notes (Optional)</Text>
-              <TextInput
-                style={styles.textArea}
-                multiline
-                numberOfLines={4}
-                placeholder="Add any additional information..."
-                value={notes}
-                onChangeText={setNotes}
+              <DocumentUploader
+                type="gstCertificate"
+                label="GST Certificate *"
+                onDocumentPicked={setGstDocument}
+                pickedDocument={gstDocument || undefined}
               />
+
+              <DocumentUploader
+                type="aadhaarCard"
+                label="Aadhaar Card *"
+                onDocumentPicked={setAadhaarDocument}
+                pickedDocument={aadhaarDocument || undefined}
+              />
+
+              <View style={styles.notesContainer}>
+                <Text style={styles.label}>Additional Notes (Optional)</Text>
+                <TextInput
+                  style={styles.textArea}
+                  multiline
+                  numberOfLines={4}
+                  placeholder="Add any additional information..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  value={notes}
+                  onChangeText={setNotes}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.submitButtonWrapper,
+                  (!gstDocument || !aadhaarDocument || isSubmitting) &&
+                  styles.submitButtonDisabled,
+                ]}
+                onPress={handleSubmit}
+                disabled={!gstDocument || !aadhaarDocument || isSubmitting}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={(!gstDocument || !aadhaarDocument || isSubmitting)
+                    ? ["#2A2A2A", "#1A1A1A"]
+                    : ["#6C63FF", "#5248E6"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.submitButton}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Submit for Verification</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <Text style={styles.disclaimer}>
+                * Required fields. Your documents will be reviewed within 2-3 business days.
+              </Text>
             </View>
-
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (!gstDocument || !aadhaarDocument || isSubmitting) &&
-                styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={!gstDocument || !aadhaarDocument || isSubmitting}
-              activeOpacity={0.7}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit for Verification</Text>
-              )}
-            </TouchableOpacity>
-
-            <Text style={styles.disclaimer}>
-              * Required fields. Your documents will be reviewed within 2-3 business days.
-            </Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#0F1115',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 15,
-    backgroundColor: '#1A1A1A',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: 'transparent',
   },
   headerBackButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   backIcon: {
     fontSize: 26,
@@ -206,7 +232,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#B8B8B8',
+    color: 'rgba(255, 255, 255, 0.6)',
     marginBottom: 24,
     marginTop: 16,
     lineHeight: 20,
@@ -221,43 +247,45 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   textArea: {
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
     color: '#FFFFFF',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: 'rgba(22, 24, 29, 0.9)',
     textAlignVertical: 'top',
     minHeight: 100,
   },
+  submitButtonWrapper: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   submitButton: {
-    backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   submitButtonDisabled: {
-    backgroundColor: '#1A1A1A',
-    borderColor: '#2A2A2A',
     opacity: 0.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   disclaimer: {
     fontSize: 12,
-    color: '#6B6B6B',
+    color: 'rgba(255, 255, 255, 0.5)',
     textAlign: 'center',
     fontStyle: 'italic',
     marginBottom: 16,

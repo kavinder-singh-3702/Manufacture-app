@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../navigation/types";
@@ -50,36 +51,72 @@ export const CompanyVerificationScreen = () => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={["#0F1115", "#101318", "#0F1115"]}
+        locations={[0, 0.5, 1]}
+        style={[styles.container, { paddingTop: insets.top }]}
+      >
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color="#6C63FF" />
           <Text style={[styles.loadingText, { color: colors.muted }]}>Loading verification status...</Text>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   if (!company) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={["#0F1115", "#101318", "#0F1115"]}
+        locations={[0, 0.5, 1]}
+        style={[styles.container, { paddingTop: insets.top }]}
+      >
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.error }]}>Company not found</Text>
-          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.primary }]} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={[styles.errorText, { color: "#FF6B6B" }]}>Company not found</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <LinearGradient
+              colors={["#6C63FF", "#5248E6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.backButton}
+            >
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <LinearGradient
+      colors={["#0F1115", "#101318", "#0F1115"]}
+      locations={[0, 0.5, 1]}
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
+      {/* Indigo glow - top left */}
+      <LinearGradient
+        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.7, y: 0.7 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Salmon glow - bottom right */}
+      <LinearGradient
+        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.3, y: 0.3 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={[styles.headerBackButton, { backgroundColor: colors.surfaceElevated }]} onPress={() => navigation.goBack()}>
-          <Text style={[styles.backIcon, { color: colors.text }]}>‹</Text>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Company Verification</Text>
+        <Text style={styles.headerTitle}>Company Verification</Text>
       </View>
 
       <ScrollView
@@ -88,20 +125,11 @@ export const CompanyVerificationScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Company Info */}
-        <View
-          style={[
-            styles.companyCard,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              shadowColor: "transparent",
-            },
-          ]}
-        >
+        <View style={styles.companyCard}>
           <CompanyAvatar company={company} size={80} />
           <View style={styles.companyInfo}>
-            <Text style={[styles.companyName, { color: colors.text }]}>{company.displayName}</Text>
-            {company.legalName ? <Text style={[styles.companyLegalName, { color: colors.muted }]}>{company.legalName}</Text> : null}
+            <Text style={styles.companyName}>{company.displayName}</Text>
+            {company.legalName ? <Text style={styles.companyLegalName}>{company.legalName}</Text> : null}
             <View style={{ flexDirection: "row", marginTop: 6 }}>
               <Badge label={company.type} tone="primary" />
               <Badge label={company.complianceStatus ?? "pending"} tone={company.complianceStatus === "approved" ? "success" : "warning"} />
@@ -115,16 +143,16 @@ export const CompanyVerificationScreen = () => {
         {/* Request Details (if exists) */}
         {request && (
           <View style={styles.detailsCard}>
-            <Text style={[styles.detailsTitle, { color: colors.text }]}>Request Details</Text>
+            <Text style={styles.detailsTitle}>Request Details</Text>
 
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.muted }]}>Request ID:</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{request.id}</Text>
+              <Text style={styles.detailLabel}>Request ID:</Text>
+              <Text style={styles.detailValue}>{request.id}</Text>
             </View>
 
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.muted }]}>Submitted:</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>
+              <Text style={styles.detailLabel}>Submitted:</Text>
+              <Text style={styles.detailValue}>
                 {new Date(request.createdAt).toLocaleDateString()}
               </Text>
             </View>
@@ -132,16 +160,16 @@ export const CompanyVerificationScreen = () => {
             {request.decidedBy && (
               <>
                 <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.muted }]}>Reviewed By:</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>
+                  <Text style={styles.detailLabel}>Reviewed By:</Text>
+                  <Text style={styles.detailValue}>
                     {request.decidedBy.displayName}
                   </Text>
                 </View>
 
                 {request.decidedAt && (
                   <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: colors.muted }]}>Reviewed On:</Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
+                    <Text style={styles.detailLabel}>Reviewed On:</Text>
+                    <Text style={styles.detailValue}>
                       {new Date(request.decidedAt).toLocaleDateString()}
                     </Text>
                   </View>
@@ -151,24 +179,24 @@ export const CompanyVerificationScreen = () => {
 
             {request.notes && (
               <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.muted }]}>Notes:</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{request.notes}</Text>
+                <Text style={styles.detailLabel}>Notes:</Text>
+                <Text style={styles.detailValue}>{request.notes}</Text>
               </View>
             )}
 
             {/* Documents */}
             {(request.documents.gstCertificate || request.documents.aadhaarCard) && (
               <View style={styles.documentsSection}>
-                <Text style={[styles.documentsTitle, { color: colors.text }]}>Submitted Documents</Text>
+                <Text style={styles.documentsTitle}>Submitted Documents</Text>
 
                 {request.documents.gstCertificate && (
-                  <View style={[styles.documentItem, { backgroundColor: colors.surfaceElevated }]}>
+                  <View style={styles.documentItem}>
                     <Text style={styles.documentIcon}>📄</Text>
                     <View style={styles.documentInfo}>
-                      <Text style={[styles.documentName, { color: colors.text }]}>
+                      <Text style={styles.documentName}>
                         {request.documents.gstCertificate.fileName}
                       </Text>
-                      <Text style={[styles.documentMeta, { color: colors.muted }]}>
+                      <Text style={styles.documentMeta}>
                         GST Certificate • {(request.documents.gstCertificate.size / 1024).toFixed(2)} KB
                       </Text>
                     </View>
@@ -176,13 +204,13 @@ export const CompanyVerificationScreen = () => {
                 )}
 
                 {request.documents.aadhaarCard && (
-                  <View style={[styles.documentItem, { backgroundColor: colors.surfaceElevated }]}>
+                  <View style={styles.documentItem}>
                     <Text style={styles.documentIcon}>📄</Text>
                     <View style={styles.documentInfo}>
-                      <Text style={[styles.documentName, { color: colors.text }]}>
+                      <Text style={styles.documentName}>
                         {request.documents.aadhaarCard.fileName}
                       </Text>
-                      <Text style={[styles.documentMeta, { color: colors.muted }]}>
+                      <Text style={styles.documentMeta}>
                         Aadhaar Card • {(request.documents.aadhaarCard.size / 1024).toFixed(2)} KB
                       </Text>
                     </View>
@@ -194,60 +222,55 @@ export const CompanyVerificationScreen = () => {
         )}
 
         {/* Information Box */}
-        <View style={[styles.infoBox, { backgroundColor: colors.surfaceElevated, borderLeftColor: colors.primary }]}>
-          <Text style={[styles.infoTitle, { color: colors.text }]}>About Verification</Text>
-          <Text style={[styles.infoText, { color: colors.muted }]}>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}>About Verification</Text>
+          <Text style={styles.infoText}>
             Company verification helps build trust in the marketplace. Verified companies get:
           </Text>
-          <Text style={[styles.infoBullet, { color: colors.text }]}>• Green verified badge on profile</Text>
-          <Text style={[styles.infoBullet, { color: colors.text }]}>• Access to premium features</Text>
-          <Text style={[styles.infoBullet, { color: colors.text }]}>• Higher visibility in search results</Text>
-          <Text style={[styles.infoBullet, { color: colors.text }]}>• Increased trust from partners</Text>
+          <Text style={styles.infoBullet}>• Green verified badge on profile</Text>
+          <Text style={styles.infoBullet}>• Access to premium features</Text>
+          <Text style={styles.infoBullet}>• Higher visibility in search results</Text>
+          <Text style={styles.infoBullet}>• Increased trust from partners</Text>
         </View>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0F1115',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: 'transparent',
   },
   headerBackButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   backIcon: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#374151',
+    color: '#FFFFFF',
     marginLeft: -2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   loadingContainer: {
@@ -258,6 +281,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   errorContainer: {
     flex: 1,
@@ -268,16 +292,17 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     marginBottom: 16,
+    color: '#FF6B6B',
   },
   backButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -293,6 +318,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(22, 24, 29, 0.8)',
   },
   companyInfo: {
     marginLeft: 16,
@@ -302,21 +329,26 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
+    color: '#FFFFFF',
   },
   companyLegalName: {
     fontSize: 14,
     marginBottom: 4,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   detailsCard: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(22, 24, 29, 0.8)',
   },
   detailsTitle: {
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 16,
+    color: '#FFFFFF',
   },
   detailRow: {
     flexDirection: 'row',
@@ -326,21 +358,25 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 14,
     fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   detailValue: {
     fontSize: 14,
     flex: 1,
     textAlign: 'right',
+    color: '#FFFFFF',
   },
   documentsSection: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   documentsTitle: {
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
+    color: '#FFFFFF',
   },
   documentItem: {
     flexDirection: 'row',
@@ -348,6 +384,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(108, 99, 255, 0.2)',
   },
   documentIcon: {
     fontSize: 24,
@@ -360,36 +399,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
+    color: '#FFFFFF',
   },
   documentMeta: {
     fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   infoBox: {
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
+    borderLeftColor: '#6C63FF',
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
   },
   infoTitle: {
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 8,
+    color: '#FFFFFF',
   },
   infoText: {
     fontSize: 14,
     marginBottom: 8,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   infoBullet: {
     fontSize: 14,
     marginBottom: 4,
+    color: '#FFFFFF',
   },
 });
 const Badge = ({ label, tone = "default" }: { label: string; tone?: "default" | "primary" | "success" | "warning" }) => {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const palette = {
-    default: { bg: colors.surfaceElevated, text: colors.text },
-    primary: { bg: "rgba(59, 130, 246, 0.12)", text: "#1D4ED8" },
-    success: { bg: "rgba(16, 185, 129, 0.12)", text: "#059669" },
-    warning: { bg: "rgba(234, 179, 8, 0.15)", text: "#92400E" },
+    default: { bg: "rgba(255, 255, 255, 0.1)", text: "#FFFFFF" },
+    primary: { bg: "rgba(108, 99, 255, 0.2)", text: "#6C63FF" },
+    success: { bg: "rgba(74, 222, 128, 0.15)", text: "#4ADE80" },
+    warning: { bg: "rgba(255, 140, 60, 0.15)", text: "#FF8C3C" },
   }[tone];
 
   return (

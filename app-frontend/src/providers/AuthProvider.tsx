@@ -10,13 +10,15 @@ type AuthContextValue = {
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
-  setUser: (user: AuthUser | null) => void;
+  setUser: (user: AuthUser | null, options?: { requiresVerification?: boolean }) => void;
   initializing: boolean;
   bootstrapError: string | null;
   requestLogin: () => void;
   refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
+  pendingVerificationRedirect: string | null;
+  clearPendingVerificationRedirect: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -30,6 +32,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [initializing, setInitializing] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
+  const [pendingVerificationRedirect, setPendingVerificationRedirect] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
     const { user: currentUser } = await userService.getCurrentUser();
@@ -103,10 +106,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   }, []);
 
-  const setUser = useCallback((next: AuthUser | null) => {
+  const setUser = useCallback((next: AuthUser | null, options?: { requiresVerification?: boolean }) => {
     setUserState(next);
     if (next) {
       setAuthView(null);
+      // If this is a signup that requires verification, set the redirect
+      if (options?.requiresVerification && next.activeCompany) {
+        setPendingVerificationRedirect(next.activeCompany);
+      }
     }
   }, []);
 
@@ -117,6 +124,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const clearAuthView = useCallback(() => {
     setAuthView(null);
+  }, []);
+
+  const clearPendingVerificationRedirect = useCallback(() => {
+    setPendingVerificationRedirect(null);
   }, []);
 
   const value = useMemo(
@@ -132,8 +143,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       refreshUser,
       authView,
       clearAuthView,
+      pendingVerificationRedirect,
+      clearPendingVerificationRedirect,
     }),
-    [authView, bootstrapError, clearAuthView, initializing, login, logout, refreshUser, requestLogin, setUser, switchCompany, user]
+    [authView, bootstrapError, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, setUser, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

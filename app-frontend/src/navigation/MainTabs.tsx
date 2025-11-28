@@ -14,7 +14,7 @@ import { RouteName, routes } from "./routes";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { MainTabParamList, RootStackParamList, MAIN_TAB_ORDER } from "./types";
 import { CompanySwitcherCard } from "../components/company";
-import { Company } from "../types/company";
+import { Company, ComplianceStatus } from "../types/company";
 import { companyService } from "../services/company.service";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -29,7 +29,12 @@ export const MainTabs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRoute, setActiveRoute] = useState<RouteName>(routes.DASHBOARD);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
-  const [companyVisual, setCompanyVisual] = useState<{ logoUrl?: string; initials: string }>({ initials: "CO" });
+  const [companyVisual, setCompanyVisual] = useState<{
+    logoUrl?: string;
+    initials: string;
+    complianceStatus?: ComplianceStatus;
+    companyType?: Company["type"];
+  }>({ initials: "CO" });
   const { colors, spacing } = useTheme();
   const { user, logout, requestLogin } = useAuth();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -145,7 +150,12 @@ export const MainTabs = () => {
               .slice(0, 2)
               .toUpperCase()
             : buildInitials();
-          setCompanyVisual({ logoUrl: active.logoUrl, initials: initials || buildInitials() });
+          setCompanyVisual({
+            logoUrl: active.logoUrl,
+            initials: initials || buildInitials(),
+            complianceStatus: active.complianceStatus,
+            companyType: active.type,
+          });
         }
       } catch {
         // Silent failure keeps initials fallback.
@@ -179,7 +189,12 @@ export const MainTabs = () => {
           .slice(0, 2)
           .toUpperCase()
         : buildInitials();
-      setCompanyVisual({ logoUrl: company.logoUrl, initials: initials || buildInitials() });
+      setCompanyVisual({
+        logoUrl: company.logoUrl,
+        initials: initials || buildInitials(),
+        complianceStatus: company.complianceStatus,
+        companyType: company.type,
+      });
     },
     [buildInitials]
   );
@@ -258,13 +273,12 @@ export const MainTabs = () => {
           </Tab.Navigator>
         </View>
         <FooterBar
-          activeRoute={activeRoute}
-          onHome={() => handleNavigateToRoute(routes.DASHBOARD)}
-          onSearch={() => Alert.alert("Search", "Search will launch a global workspace search soon.")}
-          onCreate={openCompanyModal}
-          onCompanyPress={() => stackNavigation.navigate("CompanyProfile")}
-          onCompanyLongPress={openCompanyModal}
-          companyVisual={companyVisual}
+          activeTab="home"
+          onHomePress={() => handleNavigateToRoute(routes.DASHBOARD)}
+          onCartPress={() => Alert.alert("E-Commerce", "Your cart and marketplace features coming soon!")}
+          onServicesPress={() => Alert.alert("Services", "Help & support services coming soon!")}
+          onStatsPress={() => Alert.alert("Statistics", "Business analytics dashboard coming soon!")}
+          onProfilePress={() => stackNavigation.navigate("Profile")}
         />
       </LinearGradient>
       <SidebarMenu
@@ -312,62 +326,72 @@ export const MainTabs = () => {
   );
 };
 
+type TabType = "home" | "cart" | "services" | "stats" | "profile";
+
 const FooterBar = ({
-  activeRoute,
-  onHome,
-  onSearch,
-  onCreate,
-  onCompanyPress,
-  onCompanyLongPress,
-  companyVisual,
+  activeTab,
+  onHomePress,
+  onCartPress,
+  onServicesPress,
+  onStatsPress,
+  onProfilePress,
 }: {
-  activeRoute: RouteName;
-  onHome: () => void;
-  onSearch: () => void;
-  onCreate: () => void;
-  onCompanyPress: () => void;
-  onCompanyLongPress: () => void;
-  companyVisual: { logoUrl?: string; initials: string };
+  activeTab: TabType;
+  onHomePress: () => void;
+  onCartPress: () => void;
+  onServicesPress: () => void;
+  onStatsPress: () => void;
+  onProfilePress: () => void;
 }) => {
   const { colors, spacing, radius } = useTheme();
 
-  const renderButton = (label: string, onPress: () => void, bg?: string, active?: boolean) => {
-    if (active) {
-      return (
-        <TouchableOpacity onPress={onPress} style={styles.footerButton}>
-          <LinearGradient
-            colors={[colors.primaryGradientStart, colors.primaryGradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              borderRadius: radius.xl,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              shadowColor: colors.shadowGlow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 1,
-              shadowRadius: 15,
-              elevation: 8,
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", textAlign: "center" }}>{label}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      );
-    }
+  const tabs: { id: TabType; icon: string; label: string; onPress: () => void; gradientColors: [string, string] }[] = [
+    { id: "home", icon: "🏠", label: "Home", onPress: onHomePress, gradientColors: ["#FF6B6B", "#FF8E53"] },      // Red to Orange
+    { id: "cart", icon: "🛒", label: "Cart", onPress: onCartPress, gradientColors: ["#FF4757", "#FF6348"] },      // Vibrant Red-Orange
+    { id: "services", icon: "🛎️", label: "Services", onPress: onServicesPress, gradientColors: ["#ee0979", "#ff6a00"] }, // Pink to Orange
+    { id: "stats", icon: "📊", label: "Stats", onPress: onStatsPress, gradientColors: ["#F97316", "#FBBF24"] },   // Orange to Amber
+    { id: "profile", icon: "👤", label: "Profile", onPress: onProfilePress, gradientColors: ["#EC4899", "#F43F5E"] }, // Pink to Rose
+  ];
+
+  const renderTab = (tab: typeof tabs[0]) => {
+    const isActive = activeTab === tab.id;
 
     return (
       <TouchableOpacity
-        onPress={onPress}
-        style={[
-          styles.footerButton,
-          {
-            backgroundColor: bg ?? "transparent",
-            borderRadius: radius.md,
-          },
-        ]}
+        key={tab.id}
+        onPress={tab.onPress}
+        style={styles.tabButton}
+        activeOpacity={0.7}
       >
-        <Text style={{ color: colors.textMuted, fontSize: 18, fontWeight: "700" }}>{label}</Text>
+        {isActive ? (
+          <View style={styles.activeTabContainer}>
+            {/* Gradient glow background */}
+            <LinearGradient
+              colors={tab.gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.activeTabGlow, { borderRadius: radius.lg, shadowColor: tab.gradientColors[0] }]}
+            >
+              <Text style={styles.tabIcon}>{tab.icon}</Text>
+            </LinearGradient>
+            <Text style={[styles.tabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
+          </View>
+        ) : (
+          <View style={styles.inactiveTabContainer}>
+            {/* Gradient border for inactive tabs */}
+            <LinearGradient
+              colors={[`${tab.gradientColors[0]}40`, `${tab.gradientColors[1]}20`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.inactiveGradientBorder, { borderRadius: radius.lg }]}
+            >
+              <View style={[styles.inactiveIconInner, { borderRadius: radius.lg - 1.5, backgroundColor: colors.background }]}>
+                <Text style={styles.tabIconInactive}>{tab.icon}</Text>
+              </View>
+            </LinearGradient>
+            <Text style={[styles.tabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -376,9 +400,9 @@ const FooterBar = ({
     <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
       <LinearGradient
         colors={[
-          "#1E2127",           // Elevated surface
-          "#16181D",           // Surface
-          "#12141A",           // Darker base
+          "rgba(30, 33, 39, 0.98)",
+          "rgba(22, 24, 29, 0.98)",
+          "rgba(18, 20, 26, 0.98)",
         ]}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
@@ -386,50 +410,31 @@ const FooterBar = ({
         style={[
           styles.footer,
           {
-            paddingHorizontal: spacing.md,
-            paddingTop: spacing.lg,
+            paddingHorizontal: spacing.sm,
+            paddingTop: spacing.md,
             paddingBottom: spacing.xs,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
             borderTopWidth: 1,
-            borderTopColor: "rgba(108, 99, 255, 0.15)",
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
           },
         ]}
       >
-        {/* Subtle indigo glow on footer */}
+        {/* Subtle gradient overlay */}
         <LinearGradient
           colors={[
-            "rgba(108, 99, 255, 0.08)",
+            "rgba(0, 178, 255, 0.05)",
             "transparent",
-            "rgba(74, 201, 255, 0.05)",
+            "rgba(255, 107, 107, 0.05)",
           ]}
           locations={[0, 0.5, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
         />
-        {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
-        {renderButton("🔍", onSearch)}
-        {renderButton("+", onCreate)}
-        <TouchableOpacity
-          onPress={onCompanyPress}
-          onLongPress={onCompanyLongPress}
-          style={[
-            styles.companyPill,
-            {
-              borderColor: companyVisual.logoUrl ? "transparent" : "rgba(108, 99, 255, 0.4)",
-              borderWidth: companyVisual.logoUrl ? 0 : 1,
-              backgroundColor: "rgba(22, 24, 29, 0.8)",
-              borderRadius: radius.pill,
-            },
-          ]}
-        >
-          {companyVisual.logoUrl ? (
-            <Image source={{ uri: companyVisual.logoUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="cover" />
-          ) : (
-            <Text style={{ color: colors.textSecondary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
-          )}
-        </TouchableOpacity>
+        {tabs.map(renderTab)}
       </LinearGradient>
     </SafeAreaView>
   );
@@ -445,26 +450,74 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  footerButton: {
-    width: 52,
-    height: 52,
+  // Tab button styles
+  tabButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  activeTabContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  inactiveTabContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  activeTabGlow: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  inactiveIconContainer: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  inactiveGradientBorder: {
+    width: 46,
+    height: 46,
+    padding: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  companyPill: {
-    flexDirection: "row",
+  inactiveIconInner: {
+    width: 43,
+    height: 43,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
-    height: 52,
-    borderWidth: 1,
+  },
+  tabIcon: {
+    fontSize: 22,
+  },
+  tabIconInactive: {
+    fontSize: 20,
+    opacity: 0.7,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  tabLabelActive: {
+    fontSize: 10,
+    fontWeight: "700",
   },
   modalBackdrop: {
     flex: 1,

@@ -5,6 +5,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 
 type KpiCardData = { id: string; label: string; value: string; delta: string; tone?: "positive" | "neutral" | "warning" };
+type CategoryItem = { id: string; title: string; count: number; image: any; bgColor: string };
 type PipelineItem = { id: string; title: string; progress: number; owner: string; status: "accepted" | "pending" | "cancelled" | "in-progress" };
 type TaskItem = { id: string; title: string; owner: string; time: string; tag: string };
 type UpdateItem = { id: string; title: string; detail: string; tag: string; tone?: "info" | "warning" };
@@ -14,6 +15,16 @@ const kpis: KpiCardData[] = [
   { id: "dispatch", label: "Ready to dispatch", value: "7", delta: "2 delayed", tone: "warning" },
   { id: "suppliers", label: "Active suppliers", value: "42", delta: "Stable", tone: "neutral" },
   { id: "qa", label: "QA passes", value: "96%", delta: "+5% vs avg", tone: "positive" },
+];
+
+// Category data for the grid (Blinkit-style)
+const categories: CategoryItem[] = [
+  { id: "raw-materials", title: "Raw Materials", count: 9, image: null, bgColor: "#E8F5E9" },
+  { id: "packaging", title: "Packaging & Supplies", count: 11, image: null, bgColor: "#FFF3E0" },
+  { id: "machinery", title: "Machinery Parts", count: 13, image: null, bgColor: "#FFEBEE" },
+  { id: "safety", title: "Safety Equipment", count: 2, image: null, bgColor: "#E3F2FD" },
+  { id: "chemicals", title: "Chemicals & Solvents", count: 4, image: null, bgColor: "#F3E5F5" },
+  { id: "tools", title: "Tools & Hardware", count: 8, image: null, bgColor: "#FFF8E1" },
 ];
 
 const pipeline: PipelineItem[] = [
@@ -61,7 +72,7 @@ export const DashboardScreen = () => {
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
           <HeroCard />
-          <KpiGrid items={kpis} />
+          <CategoryGrid items={categories} />
           <PipelineList items={pipeline} />
           <TaskBoard items={tasks} />
           <UpdatesPanel items={updates} />
@@ -72,16 +83,11 @@ export const DashboardScreen = () => {
 };
 
 const HeroCard = () => {
-  const { colors, spacing, radius } = useTheme();
+  const { spacing, radius } = useTheme();
 
   return (
     <LinearGradient
-      colors={[
-        "rgba(108, 99, 255, 0.15)",  // Royal Indigo
-        "rgba(108, 99, 255, 0.05)",
-        "rgba(255, 140, 60, 0.08)",   // Muted Salmon
-      ]}
-      locations={[0, 0.5, 1]}
+      colors={["#00B2FF", "#FF6B6B"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[
@@ -89,64 +95,72 @@ const HeroCard = () => {
         {
           borderRadius: radius.lg,
           padding: spacing.lg,
-          borderWidth: 1,
-          borderColor: "rgba(108, 99, 255, 0.3)",
         },
       ]}
     >
-      {/* Inner glow effect */}
-      <LinearGradient
-        colors={["rgba(74, 201, 255, 0.08)", "transparent"]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[StyleSheet.absoluteFill, { borderRadius: radius.lg }]}
-      />
       <View style={styles.heroHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>Production pulse</Text>
-          <Text style={[styles.heroSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.heroTitle, { color: "#FFFFFF" }]}>Production pulse</Text>
+          <Text style={[styles.heroSubtitle, { color: "rgba(255,255,255,0.85)" }]}>
             Keep dispatches on time and floor running smooth.
           </Text>
         </View>
-        <LinearGradient
-          colors={["#6C63FF", "#5248E6"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.heroBadge, { borderRadius: radius.md }]}
+        <View
+          style={[styles.heroBadge, { borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.2)" }]}
         >
           <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>On track</Text>
-        </LinearGradient>
+        </View>
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <StatPill label="Next dispatch" value="12:30 PM" />
-        <StatPill label="Pending QC" value="4 lots" muted />
-        <StatPill label="Inbound trucks" value="3" />
+        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+          <Text style={styles.statLabelWhite}>Next dispatch</Text>
+          <Text style={styles.statValueWhite}>12:30 <Text style={styles.statValueSmall}>PM</Text></Text>
+        </View>
+        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+          <Text style={styles.statLabelWhite}>Pending QC</Text>
+          <Text style={styles.statValueWhite}>4 lots</Text>
+        </View>
+        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+          <Text style={styles.statLabelWhite}>Inbound trucks</Text>
+          <Text style={styles.statValueWhite}>3</Text>
+        </View>
       </View>
 
       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.8}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
           <LinearGradient
-            colors={["#6C63FF", "#5248E6"]}
+            colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.primaryButton, { borderRadius: radius.md }]}
+            style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
           >
-            <Text style={[styles.primaryButtonText, { color: "#FFFFFF" }]}>Create order</Text>
+            <LinearGradient
+              colors={["rgba(0,178,255,0.25)", "rgba(255,107,107,0.25)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
+            >
+              <Text style={styles.elegantButtonText}>Create order</Text>
+            </LinearGradient>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.secondaryButton,
-            {
-              borderColor: "rgba(108, 99, 255, 0.4)",
-              borderRadius: radius.md,
-              backgroundColor: "rgba(30, 33, 39, 0.8)",
-            },
-          ]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Plan capacity</Text>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
+          <LinearGradient
+            colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
+          >
+            <LinearGradient
+              colors={["rgba(255,107,107,0.25)", "rgba(0,178,255,0.25)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
+            >
+              <Text style={styles.elegantButtonText}>Plan capacity</Text>
+            </LinearGradient>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -171,6 +185,101 @@ const StatPill = ({ label, value, muted }: { label: string; value: string; muted
     >
       <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
       <Text style={[styles.statValue, { color: muted ? colors.textMuted : colors.text }]}>{value}</Text>
+    </View>
+  );
+};
+
+const CategoryGrid = ({ items }: { items: CategoryItem[] }) => {
+  const { colors, spacing } = useTheme();
+
+  // Create rows of 3 items each
+  const rows = items.reduce<CategoryItem[][]>((acc, item, index) => {
+    if (index % 3 === 0) {
+      acc.push([item]);
+    } else {
+      acc[acc.length - 1].push(item);
+    }
+    return acc;
+  }, []);
+
+  // Emoji icons for each category
+  const getIcon = (id: string) => {
+    const icons: Record<string, string> = {
+      "raw-materials": "🧱",
+      "packaging": "📦",
+      "machinery": "⚙️",
+      "safety": "🦺",
+      "chemicals": "🧪",
+      "tools": "🔧",
+    };
+    return icons[id] || "📦";
+  };
+
+  // Different gradient colors for each category - bold and vibrant
+  const getGradientColors = (id: string): { colors: [string, string]; shadow: string } => {
+    const gradients: Record<string, { colors: [string, string]; shadow: string }> = {
+      "raw-materials": { colors: ["#FF6B6B", "#FF8E53"], shadow: "#FF6B6B" },    // Coral to Orange
+      "packaging": { colors: ["#FFB347", "#FFCC33"], shadow: "#FFB347" },        // Orange to Gold
+      "machinery": { colors: ["#667eea", "#764ba2"], shadow: "#667eea" },        // Purple to Violet
+      "safety": { colors: ["#11998e", "#38ef7d"], shadow: "#38ef7d" },           // Teal to Green
+      "chemicals": { colors: ["#ee0979", "#ff6a00"], shadow: "#ee0979" },        // Pink to Orange
+      "tools": { colors: ["#f2994a", "#f2c94c"], shadow: "#f2994a" },            // Orange to Yellow
+    };
+    return gradients[id] || { colors: ["#FF6B6B", "#FF8E53"], shadow: "#FF6B6B" };
+  };
+
+  return (
+    <View style={{ gap: spacing.lg }}>
+      {rows.map((row, rowIndex) => (
+        <View key={`cat-row-${rowIndex}`} style={styles.categoryRow}>
+          {row.map((item) => {
+            const gradient = getGradientColors(item.id);
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.categoryItem}
+                activeOpacity={0.7}
+              >
+                {/* Circular container with bold gradient border and glow */}
+                <View style={[styles.categoryCircleOuter, { shadowColor: gradient.shadow }]}>
+                  <LinearGradient
+                    colors={gradient.colors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.categoryCircleGradient, { shadowColor: gradient.shadow }]}
+                  >
+                    <View style={[styles.categoryCircleInner, { backgroundColor: colors.background }]}>
+                      <Text style={styles.categoryIcon}>{getIcon(item.id)}</Text>
+                    </View>
+                  </LinearGradient>
+
+                  {/* Count badge with matching gradient */}
+                  <View style={styles.countBadgeCircle}>
+                    <LinearGradient
+                      colors={gradient.colors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[styles.countBadgeGradient, { shadowColor: gradient.shadow }]}
+                    >
+                      <Text style={styles.countBadgeText}>+{item.count}</Text>
+                    </LinearGradient>
+                  </View>
+                </View>
+
+                {/* Title */}
+                <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>
+                  {item.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {/* Fill empty spaces if row has less than 3 items */}
+          {row.length < 3 &&
+            Array(3 - row.length)
+              .fill(null)
+              .map((_, i) => <View key={`empty-${i}`} style={styles.categoryItem} />)}
+        </View>
+      ))}
     </View>
   );
 };
@@ -422,6 +531,136 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     overflow: "hidden",
+  },
+  // Category Grid Styles (Circular elegant design)
+  categoryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  categoryItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  categoryCircleOuter: {
+    position: "relative",
+    marginBottom: 10,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  categoryCircleGradient: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    padding: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  categoryCircleInner: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryIcon: {
+    fontSize: 32,
+  },
+  countBadgeCircle: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    zIndex: 1,
+  },
+  countBadgeGradient: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  countBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  categoryTitleCircle: {
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 16,
+    maxWidth: 90,
+  },
+  statPillGlass: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  statLabelWhite: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.8)",
+  },
+  statValueWhite: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginTop: 2,
+  },
+  statValueSmall: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  glassButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  glassButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  frostedButton: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  frostedButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  elegantButtonOuter: {
+    padding: 1.5,
+  },
+  elegantButtonInner: {
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  elegantButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0,0,0,0.15)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   heroHeader: {
     flexDirection: "row",
