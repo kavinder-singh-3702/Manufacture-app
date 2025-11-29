@@ -77,7 +77,8 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      const errorMessage = (parsedBody as { message?: string })?.message || "Request failed";
+      const body = parsedBody as { message?: string; error?: string };
+      const errorMessage = body?.message || body?.error || "Request failed";
       throw new ApiError(errorMessage, response.status, parsedBody);
     }
 

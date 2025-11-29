@@ -5,6 +5,8 @@ const userRouter = require('./user.routes');
 const companyRouter = require('../modules/company/routes/company.routes');
 const activityRouter = require('../modules/activity/routes/activity.routes');
 const companyVerificationAdminRouter = require('../modules/companyVerification/routes/companyVerificationAdmin.routes');
+const adminRouter = require('../modules/admin/routes/admin.routes');
+const inventoryRouter = require('../modules/inventory/routes/inventory.routes');
 
 const router = Router();
 
@@ -14,5 +16,7 @@ router.use('/users', userRouter);
 router.use('/companies', companyRouter);
 router.use('/activity', activityRouter);
 router.use('/verification-requests', companyVerificationAdminRouter);
+router.use('/admin', adminRouter);
+router.use('/inventory', inventoryRouter);
 
 module.exports = router;

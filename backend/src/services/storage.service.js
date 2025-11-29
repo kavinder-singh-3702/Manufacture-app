@@ -59,6 +59,7 @@ const normalizeBase64Payload = (value = '') => {
   return value;
 };
 
+//=====>>>>upload company verification documents====<<<<<
 const uploadCompanyDocument = async ({ companyId, documentType, fileName, mimeType, base64 }) => {
   if (!base64 || typeof base64 !== 'string') {
     throw createError(400, `Invalid payload for ${documentType}`);
@@ -103,6 +104,8 @@ const buildUserObjectKey = ({ userId, purpose = 'general', fileName }) => {
   return `${prefix}/user-uploads/${userId}/${purpose}-${timeSegment}-${normalizedFileName}`;
 };
 
+
+//=====>>>Upload user documents <<<===-
 const uploadUserDocument = async ({ userId, purpose = 'general', fileName, mimeType, base64 }) => {
   if (!base64 || typeof base64 !== 'string') {
     throw createError(400, 'Invalid file payload supplied');

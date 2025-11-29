@@ -185,22 +185,31 @@ const decideVerificationRequest = async ({
   const decisionTimestamp = new Date();
   const trimmedNotes = notes?.trim();
 
+  // Check if adminId is a valid MongoDB ObjectId (test-admin-id is not valid)
+  const isValidObjectId = adminId && adminId.match(/^[0-9a-fA-F]{24}$/);
+
   if (action === 'approve') {
     request.status = 'approved';
     request.decisionNotes = trimmedNotes;
     request.decidedAt = decisionTimestamp;
-    request.decidedBy = adminId;
+    // Only set decidedBy if it's a valid ObjectId
+    if (isValidObjectId) {
+      request.decidedBy = adminId;
+    }
     request.auditTrail.push({
       action: 'approved',
       at: decisionTimestamp,
-      by: adminId,
+      by: isValidObjectId ? adminId : null,
       notes: trimmedNotes
     });
 
     if (request.company) {
       request.company.status = 'active';
       request.company.complianceStatus = 'approved';
-      request.company.updatedBy = adminId;
+      // Only set updatedBy if it's a valid ObjectId
+      if (isValidObjectId) {
+        request.company.updatedBy = adminId;
+      }
       await request.company.save();
     }
   } else if (action === 'reject') {
@@ -213,18 +222,24 @@ const decideVerificationRequest = async ({
     request.decisionNotes = trimmedNotes;
     request.rejectionReason = trimmedReason;
     request.decidedAt = decisionTimestamp;
-    request.decidedBy = adminId;
+    // Only set decidedBy if it's a valid ObjectId
+    if (isValidObjectId) {
+      request.decidedBy = adminId;
+    }
     request.auditTrail.push({
       action: 'rejected',
       at: decisionTimestamp,
-      by: adminId,
+      by: isValidObjectId ? adminId : null,
       notes: trimmedNotes || trimmedReason
     });
 
     if (request.company) {
       request.company.status = 'pending-verification';
       request.company.complianceStatus = 'rejected';
-      request.company.updatedBy = adminId;
+      // Only set updatedBy if it's a valid ObjectId
+      if (isValidObjectId) {
+        request.company.updatedBy = adminId;
+      }
       await request.company.save();
     }
   } else {

@@ -14,11 +14,23 @@ import { VerificationSubmitScreen } from "../screens/verification/VerificationSu
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
+import { AddInventoryItemScreen, InventoryListScreen } from "../screens/inventory";
 
 enableScreens(true);
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
+/**
+ * AppNavigator - Main navigation container
+ *
+ * This component handles:
+ * 1. Authentication state (showing Auth screen when not logged in)
+ * 2. Role-based navigation is handled within MainTabs
+ *
+ * The navigation flow:
+ * - Not authenticated → AuthScreen
+ * - Authenticated → MainTabs (which shows role-appropriate tabs)
+ */
 export const AppNavigator = () => {
   const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect } = useAuth();
   const { colors } = useTheme();
@@ -43,7 +55,6 @@ export const AppNavigator = () => {
   useEffect(() => {
     if (!pendingVerificationRedirect || !user) return;
 
-    // Small delay to ensure navigation is ready
     const timer = setTimeout(() => {
       navigationRef.current?.navigate("CompanyVerification", {
         companyId: pendingVerificationRedirect,
@@ -62,8 +73,10 @@ export const AppNavigator = () => {
     <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
+          // Not authenticated: Show login/signup screens
           <RootStack.Screen name="Auth" component={AuthScreen} />
         ) : (
+          // Authenticated: Show unified MainTabs (role-based content handled inside)
           <>
             <RootStack.Screen name="Main" component={MainTabs} />
             <RootStack.Screen
@@ -95,6 +108,16 @@ export const AppNavigator = () => {
               name="Notifications"
               component={NotificationsScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="AddInventoryItem"
+              component={AddInventoryItemScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="InventoryList"
+              component={InventoryListScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
             />
           </>
         )}

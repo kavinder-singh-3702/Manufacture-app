@@ -4,6 +4,16 @@ import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
+import { AppRole, AppRoleType } from "../constants/roles";
+
+/**
+ * Normalizes the user object to ensure it has a valid role
+ * If the API doesn't return a role, defaults to "user"
+ */
+const normalizeUser = (user: AuthUser): AuthUser => ({
+  ...user,
+  role: (user.role as AppRoleType) || AppRole.USER,
+});
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -36,10 +46,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const refreshUser = useCallback(async () => {
     const { user: currentUser } = await userService.getCurrentUser();
-    setUserState(currentUser);
+    const normalized = normalizeUser(currentUser);
+    setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
-    return currentUser;
+    return normalized;
   }, []);
 
   useEffect(() => {
@@ -48,7 +59,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const { user: currentUser } = await userService.getCurrentUser();
         if (!isMounted) return;
-        setUserState(currentUser);
+        setUserState(normalizeUser(currentUser));
         setAuthView(null);
         setBootstrapError(null);
       } catch (error) {
@@ -82,7 +93,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const { user: authenticatedUser } = await authService.login(payload);
-    setUserState(authenticatedUser);
+    setUserState(normalizeUser(authenticatedUser));
     setAuthView(null);
   }, []);
 
@@ -107,7 +118,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const setUser = useCallback((next: AuthUser | null, options?: { requiresVerification?: boolean }) => {
-    setUserState(next);
+    setUserState(next ? normalizeUser(next) : null);
     if (next) {
       setAuthView(null);
       // If this is a signup that requires verification, set the redirect

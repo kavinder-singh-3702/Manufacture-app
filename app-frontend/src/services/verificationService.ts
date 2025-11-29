@@ -44,30 +44,35 @@ class VerificationService {
     return response;
   }
 
-  //Admin: List all verification requests 
+  //Admin: List all verification requests
+  // Backend returns { requests: [...] } so we need to extract the array
 
   async listVerificationRequests(
     status?: "pending" | "approved" | "rejected"
   ): Promise<VerificationRequest[]> {
     const params = status ? { status } : {};
-    const response = await apiClient.get<VerificationRequest[]>(
+    // Backend wraps the array in { requests: [...] }
+    const response = await apiClient.get<{ requests: VerificationRequest[] }>(
       "/verification-requests",
       { params }
     );
-    return response;
+    // Return the requests array, or empty array if undefined
+    return response.requests || [];
   }
 
   //Admin: Approve or reject a verification request
-  
+  // Backend returns { request: {...} } so we need to extract the object
+
   async decideVerification(
     requestId: string,
     payload: VerificationDecisionPayload
   ): Promise<VerificationRequest> {
-    const response = await apiClient.patch<VerificationRequest>(
+    // Backend wraps the response in { request: {...} }
+    const response = await apiClient.patch<{ request: VerificationRequest }>(
       `/verification-requests/${requestId}`,
       payload
     );
-    return response;
+    return response.request;
   }
 }
 

@@ -1,3 +1,5 @@
+import { AppRoleType } from "../constants/roles";
+
 export type AuthView = "intro" | "login" | "signup" | "forgot" | "reset";
 
 export type AuthUser = {
@@ -9,7 +11,13 @@ export type AuthUser = {
   phone?: string;
   bio?: string;
   avatarUrl?: string;
-  role?: string;
+  /**
+   * App-level role that determines navigation stack
+   * - "admin": Full admin access
+   * - "user": Standard user access
+   * - "guest": Limited guest access
+   */
+  role: AppRoleType;
   status?: string;
   accountType?: string;
   username?: string;
