@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as DocumentPicker from "expo-document-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/user.service";
+import { verificationService } from "../../services/verificationService";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
+import { ComplianceStatus } from "../../types/company";
 import { RootStackParamList } from "../../navigation/types";
 import { ProfileHero } from "./components/ProfileHero";
 import { ProfileSections } from "./components/ProfileSections";
@@ -30,6 +32,30 @@ export const ProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Fetch verification status when screen focuses
+  useFocusEffect(
+    useCallback(() => {
+      const fetchVerificationStatus = async () => {
+        if (!user?.activeCompany) return;
+        try {
+          const response = await verificationService.getVerificationStatus(user.activeCompany);
+          // Check if there's a pending verification request (submitted status)
+          if (response.request && response.request.status === "pending") {
+            setVerificationStatus("submitted");
+          } else {
+            setVerificationStatus(response.company?.complianceStatus || null);
+          }
+          setCompanyName(response.company?.displayName || null);
+        } catch (error) {
+          console.error("Failed to fetch verification status:", error);
+        }
+      };
+      fetchVerificationStatus();
+    }, [user?.activeCompany])
+  );
 
   useEffect(() => {
     setIdentityForm(createIdentityFormState(user));
@@ -271,6 +297,8 @@ export const ProfileScreen = () => {
             accountType={user?.accountType}
             onUploadAvatar={handleUploadAvatar}
             uploading={avatarUploading}
+            verificationStatus={verificationStatus === "approved" ? "approved" : null}
+            companyName={companyName}
           />
         </View>
 

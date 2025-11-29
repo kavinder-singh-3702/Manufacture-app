@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ScrollView,
   View,
@@ -10,15 +10,17 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
-import { inventoryService } from "../services/inventory.service";
+import { useCart } from "../hooks/useCart";
 import { adminService, AdminStats } from "../services/admin.service";
+import { verificationService } from "../services/verificationService";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
+import { ComplianceStatus } from "../types/company";
 
 // ============================================================
 // TYPES
@@ -216,35 +218,67 @@ const AdminDashboardContent = () => {
 // USER DASHBOARD CONTENT
 // ============================================================
 const UserDashboardContent = () => {
-  const { spacing, colors } = useTheme();
+  const { spacing, colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { items: cartItems } = useCart();
 
-  const [categories, setCategories] = useState<CategoryItem[]>(defaultCategories);
+  // Verification status state
+  const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(true);
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await inventoryService.getCategoryStats();
-      const mappedCategories = response.categories.map((cat) => {
-        const defaultCat = defaultCategories.find((d) => d.id === cat.id);
-        return {
-          id: cat.id,
-          title: cat.title,
-          count: cat.count,
-          image: null,
-          bgColor: defaultCat?.bgColor || "#E8F5E9",
-        };
-      });
-      setCategories(mappedCategories);
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
+  // Fetch verification status
+  const fetchVerificationStatus = useCallback(async () => {
+    if (!user?.activeCompany) {
+      setVerificationStatus(null);
+      setVerificationLoading(false);
+      return;
     }
-  }, []);
+    try {
+      const response = await verificationService.getVerificationStatus(user.activeCompany);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+      // Check if there's a pending verification request
+      // If request exists and is pending, show "submitted" status
+      if (response.request && response.request.status === "pending") {
+        setVerificationStatus("submitted");
+      } else {
+        setVerificationStatus(response.company?.complianceStatus || "pending");
+      }
+      setCompanyName(response.company?.displayName || null);
+    } catch (error) {
+      console.error("Failed to fetch verification status:", error);
+      setVerificationStatus(null);
+    } finally {
+      setVerificationLoading(false);
+    }
+  }, [user?.activeCompany]);
+
+  // Refresh verification status when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchVerificationStatus();
+    }, [fetchVerificationStatus])
+  );
+
+  // Calculate cart counts per category
+  const cartCountsByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    cartItems.forEach((cartItem) => {
+      const category = cartItem.item.category;
+      counts[category] = (counts[category] || 0) + cartItem.quantity;
+    });
+    return counts;
+  }, [cartItems]);
+
+  // Categories with cart counts
+  const categories = useMemo(() => {
+    return defaultCategories.map((cat) => ({
+      ...cat,
+      count: cartCountsByCategory[cat.id] || 0,
+    }));
+  }, [cartCountsByCategory]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -255,6 +289,68 @@ const UserDashboardContent = () => {
   };
 
   const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
+
+  // Verification status config
+  const getVerificationConfig = () => {
+    switch (verificationStatus) {
+      case "approved":
+        return {
+          icon: "✓",
+          title: "Verified",
+          message: companyName ? `${companyName} is verified` : "Your company is verified",
+          bgColor: "#ECFDF5",
+          borderColor: "#10B981",
+          iconBg: "#10B981",
+          textColor: "#065F46",
+          showAction: false,
+        };
+      case "submitted":
+        return {
+          icon: "⏳",
+          title: "Pending Approval",
+          message: "Your verification is under review",
+          bgColor: "#FFFBEB",
+          borderColor: "#F59E0B",
+          iconBg: "#F59E0B",
+          textColor: "#92400E",
+          showAction: true,
+          actionLabel: "View Status",
+        };
+      case "rejected":
+        return {
+          icon: "✕",
+          title: "Verification Rejected",
+          message: "Please resubmit your documents",
+          bgColor: "#FEF2F2",
+          borderColor: "#EF4444",
+          iconBg: "#EF4444",
+          textColor: "#991B1B",
+          showAction: true,
+          actionLabel: "Resubmit",
+        };
+      case "pending":
+      default:
+        return {
+          icon: "🔒",
+          title: "Get Verified",
+          message: "Unlock premium features and build trust",
+          bgColor: "#EEF2FF",
+          borderColor: "#6366F1",
+          iconBg: "#6366F1",
+          textColor: "#3730A3",
+          showAction: true,
+          actionLabel: "Start Verification",
+        };
+    }
+  };
+
+  const handleVerificationPress = () => {
+    if (user?.activeCompany) {
+      navigation.navigate("CompanyVerification", { companyId: user.activeCompany });
+    }
+  };
+
+  const verificationConfig = getVerificationConfig();
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -268,7 +364,54 @@ const UserDashboardContent = () => {
             <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()},</Text>
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
+
           <HeroCard />
+
+          {/* Verification Status Card - Only show when NOT verified */}
+          {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
+            <View
+              style={[
+                styles.verificationCard,
+                {
+                  backgroundColor: verificationConfig.bgColor,
+                  borderColor: verificationConfig.borderColor,
+                  borderRadius: radius.lg,
+                  padding: spacing.md,
+                },
+              ]}
+            >
+              <View style={styles.verificationContent}>
+                <View
+                  style={[
+                    styles.verificationIconContainer,
+                    { backgroundColor: verificationConfig.iconBg },
+                  ]}
+                >
+                  <Text style={styles.verificationIcon}>{verificationConfig.icon}</Text>
+                </View>
+                <View style={styles.verificationInfo}>
+                  <Text style={[styles.verificationTitle, { color: verificationConfig.textColor }]}>
+                    {verificationConfig.title}
+                  </Text>
+                  <Text style={[styles.verificationMessage, { color: verificationConfig.textColor }]}>
+                    {verificationConfig.message}
+                  </Text>
+                </View>
+              </View>
+              {verificationConfig.showAction && verificationConfig.actionLabel && (
+                <TouchableOpacity
+                  onPress={handleVerificationPress}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.verificationActionButton,
+                    { backgroundColor: verificationConfig.borderColor, borderRadius: radius.md },
+                  ]}
+                >
+                  <Text style={styles.verificationActionText}>{verificationConfig.actionLabel}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           {/* Inventory Action Buttons */}
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -685,6 +828,18 @@ const styles = StyleSheet.create({
   sectionActionText: { fontSize: 12, fontWeight: "700" },
   badge: { alignSelf: "flex-start" },
   badgeText: { fontSize: 12, fontWeight: "700" },
+
+  // Verification Card
+  verificationCard: { borderWidth: 1.5 },
+  verificationContent: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  verificationIconContainer: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  verificationIcon: { fontSize: 20, color: "#FFFFFF", fontWeight: "700" },
+  verificationInfo: { flex: 1, marginLeft: 12 },
+  verificationTitle: { fontSize: 16, fontWeight: "700" },
+  verificationMessage: { fontSize: 13, fontWeight: "500", marginTop: 2, opacity: 0.8 },
+  verificationArrow: { paddingLeft: 8 },
+  verificationActionButton: { paddingVertical: 10, alignItems: "center" },
+  verificationActionText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
 
   // Admin Stats
   statsGrid: { flexDirection: "row", flexWrap: "wrap" },

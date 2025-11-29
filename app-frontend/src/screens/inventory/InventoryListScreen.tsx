@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,18 +21,24 @@ import { useCart } from "../../hooks/useCart";
 import { inventoryService, InventoryItem } from "../../services/inventory.service";
 import { RootStackParamList } from "../../navigation/types";
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const SWIPE_THRESHOLD = -80;
+
 // ============================================================
 // INVENTORY ITEM CARD
 // ============================================================
 type InventoryItemCardProps = {
   item: InventoryItem;
   onAddToCart: (item: InventoryItem) => void;
+  onRemoveFromCart: (itemId: string) => void;
   isInCart: boolean;
   cartQuantity: number;
 };
 
-const InventoryItemCard = ({ item, onAddToCart, isInCart, cartQuantity }: InventoryItemCardProps) => {
+const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, isInCart, cartQuantity }: InventoryItemCardProps) => {
   const { colors, spacing, radius } = useTheme();
+  const translateX = useRef(new Animated.Value(0)).current;
+  const itemHeight = useRef(new Animated.Value(1)).current;
 
   const price = item.sellingPrice || item.costPrice || 0;
   const statusColor =
@@ -39,60 +48,162 @@ const InventoryItemCard = ({ item, onAddToCart, isInCart, cartQuantity }: Invent
       ? "#F59E0B"
       : "#EF4444";
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to horizontal swipes when item is in cart
+        return isInCart && Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow left swipe (negative dx)
+        if (gestureState.dx < 0) {
+          translateX.setValue(Math.max(gestureState.dx, -100));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < SWIPE_THRESHOLD) {
+          // Swipe past threshold - animate out and remove
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: -SCREEN_WIDTH,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(itemHeight, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+          ]).start(() => {
+            onRemoveFromCart(item._id);
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 10,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Reset animation when cart status changes
+  useEffect(() => {
+    if (!isInCart) {
+      translateX.setValue(0);
+      itemHeight.setValue(1);
+    }
+  }, [isInCart, translateX, itemHeight]);
+
   return (
-    <View
+    <Animated.View
       style={[
-        styles.itemCard,
+        styles.swipeContainer,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderRadius: radius.md,
-          padding: spacing.md,
           marginBottom: spacing.sm,
+          transform: [{ scaleY: itemHeight }],
+          opacity: itemHeight,
         },
       ]}
     >
-      {/* Item Info */}
-      <View style={styles.itemInfo}>
-        <View style={styles.itemHeader}>
-          <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+      {/* Delete background (revealed on swipe) */}
+      {isInCart && (
+        <View style={[styles.deleteBackground, { borderRadius: radius.md }]}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => {
+              Animated.parallel([
+                Animated.timing(translateX, {
+                  toValue: -SCREEN_WIDTH,
+                  duration: 200,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(itemHeight, {
+                  toValue: 0,
+                  duration: 200,
+                  useNativeDriver: false,
+                }),
+              ]).start(() => {
+                onRemoveFromCart(item._id);
+              });
+            }}
+          >
+            <Text style={styles.deleteButtonText}>🗑️</Text>
+            <Text style={styles.deleteLabel}>Remove</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={[styles.itemCategory, { color: colors.textMuted }]}>
-          {item.category} {item.sku ? `- ${item.sku}` : ""}
-        </Text>
-        <View style={styles.itemMeta}>
-          <Text style={[styles.itemStock, { color: colors.textSecondary }]}>
-            Stock: {item.quantity} {item.unit}
-          </Text>
-          <Text style={[styles.itemPrice, { color: colors.primary }]}>
-            {item.currency || "INR"} {price.toFixed(2)}
-          </Text>
-        </View>
-      </View>
+      )}
 
-      {/* Add to Cart Button */}
-      <TouchableOpacity
-        onPress={() => onAddToCart(item)}
-        style={styles.addButton}
-        activeOpacity={0.8}
+      {/* Card content */}
+      <Animated.View
+        {...(isInCart ? panResponder.panHandlers : {})}
+        style={[
+          styles.itemCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: isInCart ? "#10B981" : colors.border,
+            borderRadius: radius.md,
+            padding: spacing.md,
+            transform: [{ translateX }],
+          },
+        ]}
       >
-        <LinearGradient
-          colors={isInCart ? ["#10B981", "#059669"] : ["#FF4757", "#FF6348"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.addButtonGradient, { borderRadius: radius.sm }]}
-        >
-          {isInCart ? (
-            <Text style={styles.addButtonText}>In Cart ({cartQuantity})</Text>
-          ) : (
-            <Text style={styles.addButtonText}>+ Add</Text>
+        {/* Item Info */}
+        <View style={styles.itemInfo}>
+          <View style={styles.itemHeader}>
+            <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          </View>
+          <Text style={[styles.itemCategory, { color: colors.textMuted }]}>
+            {item.category} {item.sku ? `- ${item.sku}` : ""}
+          </Text>
+          <View style={styles.itemMeta}>
+            <Text style={[styles.itemStock, { color: colors.textSecondary }]}>
+              Stock: {item.quantity} {item.unit}
+            </Text>
+            <Text style={[styles.itemPrice, { color: colors.primary }]}>
+              {item.currency || "INR"} {price.toFixed(2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Add to Cart / In Cart Button */}
+        <View style={styles.buttonGroup}>
+          {isInCart && (
+            <TouchableOpacity
+              onPress={() => onRemoveFromCart(item._id)}
+              style={styles.removeButton}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.removeButtonText}>✕</Text>
+            </TouchableOpacity>
           )}
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity
+            onPress={() => onAddToCart(item)}
+            style={styles.addButton}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={isInCart ? ["#10B981", "#059669"] : ["#FF4757", "#FF6348"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.addButtonGradient, { borderRadius: radius.sm }]}
+            >
+              {isInCart ? (
+                <Text style={styles.addButtonText}>+1 ({cartQuantity})</Text>
+              ) : (
+                <Text style={styles.addButtonText}>+ Add</Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </Animated.View>
   );
 };
 
@@ -102,7 +213,7 @@ const InventoryItemCard = ({ item, onAddToCart, isInCart, cartQuantity }: Invent
 export const InventoryListScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { addToCart, isInCart, getCartItem, itemCount } = useCart();
+  const { addToCart, removeFromCart, isInCart, getCartItem, itemCount } = useCart();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,6 +250,13 @@ export const InventoryListScreen = () => {
     [addToCart]
   );
 
+  const handleRemoveFromCart = useCallback(
+    (itemId: string) => {
+      removeFromCart(itemId);
+    },
+    [removeFromCart]
+  );
+
   const handleGoToCart = useCallback(() => {
     // Reset navigation stack and go directly to cart tab
     navigation.dispatch(
@@ -171,12 +289,13 @@ export const InventoryListScreen = () => {
         <InventoryItemCard
           item={item}
           onAddToCart={handleAddToCart}
+          onRemoveFromCart={handleRemoveFromCart}
           isInCart={inCart}
           cartQuantity={cartItem?.quantity || 0}
         />
       );
     },
-    [handleAddToCart, isInCart, getCartItem]
+    [handleAddToCart, handleRemoveFromCart, isInCart, getCartItem]
   );
 
   const keyExtractor = useCallback((item: InventoryItem) => item._id, []);
@@ -392,7 +511,35 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Item card
+  // Item card with swipe
+  swipeContainer: {
+    position: "relative",
+    overflow: "hidden",
+  },
+  deleteBackground: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  deleteButtonText: {
+    fontSize: 24,
+  },
+  deleteLabel: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
+  },
   itemCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -434,6 +581,24 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   itemPrice: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  buttonGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  removeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  removeButtonText: {
+    color: "#EF4444",
     fontSize: 14,
     fontWeight: "700",
   },
