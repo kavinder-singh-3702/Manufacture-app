@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from "../../constants/business";
 import { authService } from "../../services/auth.service";
 import { useAuth } from "../../hooks/useAuth";
+import { tokenStorage } from "../../services/tokenStorage";
 
 type SignupScreenProps = {
   onBack: () => void;
@@ -219,6 +220,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         categories: requiresCompany ? account.categories : undefined,
       };
       const response = await authService.signup.complete(payload);
+      // Store the JWT token for API authentication
+      if (response.token) {
+        await tokenStorage.setToken(response.token);
+      }
       setStatus("Signup complete! Redirecting...");
       // For manufacturer/trader accounts, trigger verification redirect
       setUser(response.user, { requiresVerification: requiresCompany });

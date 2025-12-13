@@ -14,7 +14,8 @@ import { VerificationSubmitScreen } from "../screens/verification/VerificationSu
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
-import { AddInventoryItemScreen, InventoryListScreen } from "../screens/inventory";
+import { AddInventoryItemScreen, EditInventoryItemScreen, InventoryListScreen, FilteredInventoryScreen } from "../screens/inventory";
+import { ChatScreen } from "../screens/chat";
 
 enableScreens(true);
 
@@ -117,6 +118,21 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="InventoryList"
               component={InventoryListScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="EditInventoryItem"
+              component={EditInventoryItemScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="FilteredInventory"
+              component={FilteredInventoryScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="Chat"
+              component={ChatScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
           </>

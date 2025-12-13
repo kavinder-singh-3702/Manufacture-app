@@ -28,7 +28,7 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.node === 'production',
+      secure: false,
       maxAge: config.sessionCookieMaxAge
     },
     // MemoryStore is fine for dev; swap for Redis/Mongo in production for HA.

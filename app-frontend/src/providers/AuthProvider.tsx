@@ -5,6 +5,7 @@ import { userService } from "../services/user.service";
 import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
 import { AppRole, AppRoleType } from "../constants/roles";
+import { tokenStorage } from "../services/tokenStorage";
 
 /**
  * Normalizes the user object to ensure it has a valid role
@@ -66,13 +67,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (isMounted) {
           setUserState(null);
           if (error instanceof ApiError) {
+            // 401 = not logged in, this is expected - don't show error
             if (error.status === 401) {
               setBootstrapError(null);
+            } else if (error.status === 0) {
+              // Network error - couldn't connect
+              setBootstrapError(error.message);
             } else {
               setBootstrapError(error.message);
             }
           } else if (error instanceof Error) {
-            setBootstrapError(error.message);
+            setBootstrapError(`Network error: ${error.message}`);
           } else {
             setBootstrapError("Unable to reach the backend.");
           }
@@ -92,13 +97,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
-    const { user: authenticatedUser } = await authService.login(payload);
-    setUserState(normalizeUser(authenticatedUser));
+    const response = await authService.login(payload);
+    // Store the JWT token for API authentication
+    if (response.token) {
+      await tokenStorage.setToken(response.token);
+    }
+    setUserState(normalizeUser(response.user));
     setAuthView(null);
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
+    // Remove the stored JWT token
+    await tokenStorage.removeToken();
     setUserState(null);
     setAuthView("login");
   }, []);

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminCompany } from "../../services/admin.service";
+import { RequestDocumentsModal } from "../../components/admin/RequestDocumentsModal";
 
 // ============================================================
 // FILTER STATUS TYPE
@@ -40,6 +41,8 @@ export const CompaniesScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [requestDocsModalVisible, setRequestDocsModalVisible] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(null);
 
   // ------------------------------------------------------------
   // FILTERED COMPANIES (LOCAL FILTERING)
@@ -98,6 +101,32 @@ export const CompaniesScreen = () => {
     setRefreshing(true);
     fetchCompanies();
   }, [fetchCompanies]);
+
+  // ------------------------------------------------------------
+  // REQUEST DOCUMENTS HANDLER
+  // ------------------------------------------------------------
+  const handleRequestDocuments = useCallback((company: AdminCompany) => {
+    setSelectedCompany(company);
+    setRequestDocsModalVisible(true);
+  }, []);
+
+  const handleRequestDocsSuccess = useCallback(() => {
+    // Update local state to mark documents as requested
+    if (selectedCompany) {
+      setAllCompanies((prev) =>
+        prev.map((c) =>
+          c.id === selectedCompany.id
+            ? { ...c, documentsRequestedAt: new Date().toISOString() }
+            : c
+        )
+      );
+    }
+    Alert.alert(
+      "Request Sent",
+      "Document request has been sent successfully. The company owner will receive an email and notification.",
+      [{ text: "OK" }]
+    );
+  }, [selectedCompany]);
 
   // ------------------------------------------------------------
   // DELETE COMPANY HANDLER
@@ -409,35 +438,77 @@ export const CompaniesScreen = () => {
                   </View>
                 )}
 
-                {/* ---- Footer: Created Date & Delete Button ---- */}
+                {/* ---- Footer: Created Date & Action Buttons ---- */}
                 <View style={[styles.cardFooter, { marginTop: spacing.sm }]}>
                   <Text style={[styles.dateText, { color: colors.textMuted }]}>
                     Created {formatDate(company.createdAt)}
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteCompany(company)}
-                    disabled={deletingId === company.id}
-                    style={[
-                      styles.deleteButton,
-                      {
-                        backgroundColor: colors.error + "15",
-                        paddingHorizontal: spacing.sm,
-                        paddingVertical: spacing.xs,
-                        borderRadius: 6,
-                        opacity: deletingId === company.id ? 0.5 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.deleteButtonText, { color: colors.error }]}>
-                      {deletingId === company.id ? "Deleting..." : "Delete"}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={[styles.actionButtons, { gap: spacing.xs }]}>
+                    {/* Request Documents Button - Only for pending companies */}
+                    {company.status === "pending-verification" && company.owner && (
+                      <TouchableOpacity
+                        onPress={() => !company.documentsRequestedAt && handleRequestDocuments(company)}
+                        disabled={!!company.documentsRequestedAt}
+                        style={[
+                          styles.requestDocsButton,
+                          {
+                            backgroundColor: company.documentsRequestedAt
+                              ? colors.success + "15"
+                              : colors.primary + "15",
+                            paddingHorizontal: spacing.sm,
+                            paddingVertical: spacing.xs,
+                            borderRadius: 6,
+                            opacity: company.documentsRequestedAt ? 0.8 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.requestDocsButtonText,
+                            { color: company.documentsRequestedAt ? colors.success : colors.primary },
+                          ]}
+                        >
+                          {company.documentsRequestedAt ? "Requested" : "Request Docs"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* Delete Button */}
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCompany(company)}
+                      disabled={deletingId === company.id}
+                      style={[
+                        styles.deleteButton,
+                        {
+                          backgroundColor: colors.error + "15",
+                          paddingHorizontal: spacing.sm,
+                          paddingVertical: spacing.xs,
+                          borderRadius: 6,
+                          opacity: deletingId === company.id ? 0.5 : 1,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.deleteButtonText, { color: colors.error }]}>
+                        {deletingId === company.id ? "Deleting..." : "Delete"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* ========== REQUEST DOCUMENTS MODAL ========== */}
+      <RequestDocumentsModal
+        visible={requestDocsModalVisible}
+        company={selectedCompany}
+        onClose={() => {
+          setRequestDocsModalVisible(false);
+          setSelectedCompany(null);
+        }}
+        onSuccess={handleRequestDocsSuccess}
+      />
     </View>
   );
 };
@@ -594,6 +665,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  requestDocsButton: {},
+  requestDocsButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   deleteButton: {},
   deleteButtonText: {

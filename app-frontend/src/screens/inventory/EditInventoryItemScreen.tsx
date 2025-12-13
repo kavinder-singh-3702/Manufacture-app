@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ScrollView,
   View,
@@ -8,14 +8,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
-import { inventoryService, CreateInventoryItemInput } from "../../services/inventory.service";
+import { inventoryService, CreateInventoryItemInput, InventoryItem } from "../../services/inventory.service";
 import { RootStackParamList } from "../../navigation/types";
 
 // Category options matching backend
@@ -30,11 +31,14 @@ const CATEGORIES = [
 
 const UNITS = ["pieces", "kg", "liters", "meters", "boxes", "pallets", "units"];
 
-export const AddInventoryItemScreen = () => {
+export const EditInventoryItemScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, "EditInventoryItem">>();
+  const { itemId } = route.params;
 
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [formData, setFormData] = useState<CreateInventoryItemInput>({
     name: "",
     description: "",
@@ -47,6 +51,32 @@ export const AddInventoryItemScreen = () => {
     sellingPrice: 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch existing item data
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        const item = await inventoryService.getItemById(itemId);
+        setFormData({
+          name: item.name,
+          description: item.description || "",
+          sku: item.sku || "",
+          category: item.category,
+          quantity: item.quantity,
+          unit: item.unit,
+          minStockLevel: item.minStockLevel,
+          costPrice: item.costPrice,
+          sellingPrice: item.sellingPrice,
+        });
+      } catch (error: any) {
+        Alert.alert("Error", error.message || "Failed to load item");
+        navigation.goBack();
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchItem();
+  }, [itemId, navigation]);
 
   const updateField = useCallback((field: keyof CreateInventoryItemInput, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -77,16 +107,53 @@ export const AddInventoryItemScreen = () => {
 
     setLoading(true);
     try {
-      await inventoryService.createItem(formData);
-      Alert.alert("Success", "Inventory item added successfully!", [
+      await inventoryService.updateItem(itemId, formData);
+      Alert.alert("Success", "Inventory item updated successfully!", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to add item. Please try again.");
+      Alert.alert("Error", error.message || "Failed to update item. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [formData, navigation, validate]);
+  }, [formData, itemId, navigation, validate]);
+
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      "Delete Item",
+      "Are you sure you want to delete this item? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await inventoryService.deleteItem(itemId);
+              Alert.alert("Deleted", "Item has been removed.", [
+                { text: "OK", onPress: () => navigation.goBack() },
+              ]);
+            } catch (error: any) {
+              Alert.alert("Error", error.message || "Failed to delete item.");
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [itemId, navigation]);
+
+  if (fetching) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading item...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -100,8 +167,10 @@ export const AddInventoryItemScreen = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Inventory Item</Text>
-          <View style={{ width: 50 }} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Item</Text>
+          <TouchableOpacity onPress={handleDelete}>
+            <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -284,7 +353,7 @@ export const AddInventoryItemScreen = () => {
           {/* Submit Button */}
           <View style={{ marginTop: spacing.xl }}>
             <Button
-              label={loading ? "Adding..." : "Add Item"}
+              label={loading ? "Saving..." : "Save Changes"}
               onPress={handleSubmit}
               disabled={loading}
               variant="primary"
@@ -297,6 +366,16 @@ export const AddInventoryItemScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -310,6 +389,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
+  },
+  deleteButton: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   sectionTitle: {
     fontSize: 16,

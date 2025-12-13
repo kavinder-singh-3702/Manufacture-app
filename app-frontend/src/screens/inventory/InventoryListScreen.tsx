@@ -31,11 +31,12 @@ type InventoryItemCardProps = {
   item: InventoryItem;
   onAddToCart: (item: InventoryItem) => void;
   onRemoveFromCart: (itemId: string) => void;
+  onEdit: (itemId: string) => void;
   isInCart: boolean;
   cartQuantity: number;
 };
 
-const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, isInCart, cartQuantity }: InventoryItemCardProps) => {
+const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCart, cartQuantity }: InventoryItemCardProps) => {
   const { colors, spacing, radius } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const itemHeight = useRef(new Animated.Value(1)).current;
@@ -172,8 +173,15 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, isInCart, cart
           </View>
         </View>
 
-        {/* Add to Cart / In Cart Button */}
+        {/* Edit & Add to Cart Buttons */}
         <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            onPress={() => onEdit(item._id)}
+            style={[styles.editButton, { borderColor: colors.primary }]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.editButtonText, { color: colors.primary }]}>✏️</Text>
+          </TouchableOpacity>
           {isInCart && (
             <TouchableOpacity
               onPress={() => onRemoveFromCart(item._id)}
@@ -257,6 +265,13 @@ export const InventoryListScreen = () => {
     [removeFromCart]
   );
 
+  const handleEditItem = useCallback(
+    (itemId: string) => {
+      navigation.navigate("EditInventoryItem", { itemId });
+    },
+    [navigation]
+  );
+
   const handleGoToCart = useCallback(() => {
     // Reset navigation stack and go directly to cart tab
     navigation.dispatch(
@@ -290,12 +305,13 @@ export const InventoryListScreen = () => {
           item={item}
           onAddToCart={handleAddToCart}
           onRemoveFromCart={handleRemoveFromCart}
+          onEdit={handleEditItem}
           isInCart={inCart}
           cartQuantity={cartItem?.quantity || 0}
         />
       );
     },
-    [handleAddToCart, handleRemoveFromCart, isInCart, getCartItem]
+    [handleAddToCart, handleRemoveFromCart, handleEditItem, isInCart, getCartItem]
   );
 
   const keyExtractor = useCallback((item: InventoryItem) => item._id, []);
@@ -588,6 +604,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  editButtonText: {
+    fontSize: 14,
   },
   removeButton: {
     width: 32,

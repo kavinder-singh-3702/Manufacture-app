@@ -4,7 +4,8 @@ const {
   getAdminStatsController,
   listAllCompaniesController,
   listAllUsersController,
-  deleteCompanyController
+  deleteCompanyController,
+  requestDocumentsController
 } = require('../controllers/admin.controller');
 
 const router = Router();
@@ -20,6 +21,9 @@ router.get('/companies', listAllCompaniesController);
 
 // DELETE /api/admin/companies/:companyId - Delete a company
 router.delete('/companies/:companyId', deleteCompanyController);
+
+// POST /api/admin/companies/:companyId/request-documents - Request verification documents from company
+router.post('/companies/:companyId/request-documents', requestDocumentsController);
 
 // GET /api/admin/users - List all users
 router.get('/users', listAllUsersController);

@@ -43,6 +43,7 @@ export type AdminCompany = {
     displayName: string;
     email: string;
   } | null;
+  documentsRequestedAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -143,6 +144,35 @@ class AdminService {
       message: string;
       deletedCompanyId: string;
     }>(`/admin/companies/${companyId}`);
+    return response;
+  }
+
+  /**
+   * Request documents from a company for verification (admin only)
+   * Sends an email and notification to the company owner requesting them to submit documents
+   * @param companyId - The ID of the company to request documents from
+   * @param payload - Optional message and notification preferences
+   * @returns Success status and message
+   */
+  async requestDocuments(
+    companyId: string,
+    payload?: {
+      message?: string;
+      sendEmail?: boolean;
+      sendNotification?: boolean;
+    }
+  ): Promise<{
+    success: boolean;
+    message: string;
+    emailSent?: boolean;
+    notificationSent?: boolean;
+  }> {
+    const response = await apiClient.post<{
+      success: boolean;
+      message: string;
+      emailSent?: boolean;
+      notificationSent?: boolean;
+    }>(`/admin/companies/${companyId}/request-documents`, payload ?? {});
     return response;
   }
 }

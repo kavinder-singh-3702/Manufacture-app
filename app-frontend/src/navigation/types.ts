@@ -14,8 +14,12 @@ export type RootStackParamList = {
   VerificationSubmit: { companyId: string };
   Notifications: undefined;
   AddInventoryItem: undefined;
+  EditInventoryItem: { itemId: string };
   InventoryList: undefined;
   InventoryCategory: { categoryId: string; categoryTitle: string };
+  FilteredInventory: { filter: "low_stock" | "out_of_stock"; title: string };
+  // Chat screens
+  Chat: { conversationId: string; recipientName: string; recipientPhone?: string };
 };
 
 /**

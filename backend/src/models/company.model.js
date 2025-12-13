@@ -124,6 +124,7 @@ const companySchema = new Schema(
       enum: COMPANY_STATUS,
       default: "pending-verification",
     }, // Operational state toggled by admins/moderators.
+    documentsRequestedAt: Date, // Timestamp when admin requested verification documents
     lastActivityAt: Date, // Recently tracked company-level activity to sort switcher lists.
     metadata: {
       type: Map,

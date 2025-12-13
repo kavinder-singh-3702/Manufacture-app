@@ -55,7 +55,8 @@ const maybeCreateInitialCompany = async (
     },
     owner: user.id,
     createdBy: user.id,
-    status: 'active'
+    status: 'pending-verification',
+    complianceStatus: 'pending'
   });
 
   if (!Array.isArray(user.companies)) {

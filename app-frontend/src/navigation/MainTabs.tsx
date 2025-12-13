@@ -17,6 +17,7 @@ import { DashboardScreen } from "../screens/DashboardScreen";
 import { StatsScreen } from "../screens/StatsScreen";
 import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
 import { CartScreen } from "../screens/cart";
+import { UserServicesScreen, AdminChatScreen } from "../screens/chat";
 
 // Hooks
 import { useCart } from "../hooks/useCart";
@@ -62,7 +63,7 @@ const placeholderStyles = StyleSheet.create({
 });
 
 // Wrapper screens for placeholders
-const ServicesScreen = () => <PlaceholderScreen title="Services" icon="🛎️" />;
+// ServicesScreen is now a real screen (UserServicesScreen) - no placeholder needed
 const ProfileTabScreen = () => <PlaceholderScreen title="Profile" icon="👤" />;
 
 /**
@@ -72,13 +73,14 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   // User screens
   [routes.DASHBOARD]: DashboardScreen,
   [routes.CART]: CartScreen,
-  [routes.SERVICES]: ServicesScreen,
+  [routes.SERVICES]: UserServicesScreen, // User's services screen (chat with admin)
   [routes.STATS]: StatsScreen,
   [routes.PROFILE_TAB]: ProfileTabScreen,
   // Admin screens
   [routes.USERS]: UserManagementScreen,
   [routes.VERIFICATIONS]: VerificationsScreen,
   [routes.COMPANIES]: CompaniesScreen,
+  [routes.CHAT]: AdminChatScreen, // Admin's chat screen (list of users to chat with)
 };
 
 /**

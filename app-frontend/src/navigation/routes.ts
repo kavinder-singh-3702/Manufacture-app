@@ -16,6 +16,7 @@ export const routes = {
   USERS: "users",
   VERIFICATIONS: "verifications",
   COMPANIES: "companies",
+  CHAT: "chat", // Admin chat tab
 } as const;
 
 export type RouteName = (typeof routes)[keyof typeof routes];
@@ -60,7 +61,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     icon: "🛎️",
     gradientColors: ["#ee0979", "#ff6a00"],
     roles: ["user", "guest"],
-    isPlaceholder: true,
+    // No longer a placeholder - now has chat functionality!
   },
   {
     route: routes.STATS,
@@ -78,7 +79,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     isPlaceholder: true,
   },
 
-  // Admin tabs (4 tabs)
+  // Admin tabs (5 tabs)
   {
     route: routes.DASHBOARD,
     label: "Dashboard",
@@ -91,6 +92,13 @@ export const TAB_CONFIG: RouteConfig[] = [
     label: "Users",
     icon: "👥",
     gradientColors: ["#EC4899", "#F472B6"],
+    roles: ["admin"],
+  },
+  {
+    route: routes.CHAT,
+    label: "Messages",
+    icon: "💬",
+    gradientColors: ["#6C63FF", "#5248E6"],
     roles: ["admin"],
   },
   {

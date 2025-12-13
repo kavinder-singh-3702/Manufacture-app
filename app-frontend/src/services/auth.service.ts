@@ -20,10 +20,12 @@ type SignupVerifyResponse = {
 
 type SignupCompleteResponse = {
   user: AuthUser;
+  token?: string;
 };
 
 type LoginResponse = {
   user: AuthUser;
+  token?: string;
 };
 
 type ForgotPasswordResponse = {

@@ -11,8 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BarChart, PieChart } from "react-native-gifted-charts";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { inventoryService, InventoryStats } from "../services/inventory.service";
+import { RootStackParamList } from "../navigation/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 64;
@@ -31,12 +34,14 @@ const CATEGORY_COLORS: Record<string, string> = {
 // MAIN STATS SCREEN
 // ============================================================
 export const StatsScreen = () => {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<InventoryStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBarValue, setSelectedBarValue] = useState<{ label: string; value: number } | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -77,6 +82,15 @@ export const StatsScreen = () => {
   const lowStockCount = stats?.lowStockCount || 0;
   const outOfStockCount = stats?.outOfStockCount || 0;
 
+  // Navigation handlers for clickable stats
+  const handleLowStockPress = useCallback(() => {
+    navigation.navigate("FilteredInventory", { filter: "low_stock", title: "Low Stock Items" });
+  }, [navigation]);
+
+  const handleOutOfStockPress = useCallback(() => {
+    navigation.navigate("FilteredInventory", { filter: "out_of_stock", title: "Out of Stock Items" });
+  }, [navigation]);
+
   // Quick stats cards from real data
   const statCards = [
     {
@@ -85,6 +99,7 @@ export const StatsScreen = () => {
       trend: "neutral" as const,
       trendValue: `${totalQuantity} units`,
       color: "#6C63FF",
+      onPress: undefined,
     },
     {
       label: "Inventory Value",
@@ -92,31 +107,40 @@ export const StatsScreen = () => {
       trend: "neutral" as const,
       trendValue: "Cost value",
       color: "#4ADE80",
+      onPress: undefined,
     },
     {
       label: "Low Stock",
       value: lowStockCount.toString(),
       trend: lowStockCount > 0 ? ("down" as const) : ("neutral" as const),
-      trendValue: lowStockCount > 0 ? "Needs attention" : "All good",
+      trendValue: lowStockCount > 0 ? "Tap to view →" : "All good",
       color: "#FBBF24",
+      onPress: lowStockCount > 0 ? handleLowStockPress : undefined,
     },
     {
       label: "Out of Stock",
       value: outOfStockCount.toString(),
       trend: outOfStockCount > 0 ? ("down" as const) : ("neutral" as const),
-      trendValue: outOfStockCount > 0 ? "Critical" : "All stocked",
+      trendValue: outOfStockCount > 0 ? "Tap to view →" : "All stocked",
       color: "#FF6B6B",
+      onPress: outOfStockCount > 0 ? handleOutOfStockPress : undefined,
     },
   ];
 
-  // Category bar data
+  // Category bar data with onPress for showing quantity
   const categoryBarData = stats?.categoryDistribution.map((cat) => ({
     value: cat.totalQuantity,
     label: cat.label.split(" ")[0],
     frontColor: CATEGORY_COLORS[cat.id] || "#6C63FF",
+    onPress: () => setSelectedBarValue({ label: cat.label, value: cat.totalQuantity }),
   })) || [];
 
   const maxQuantity = Math.max(...categoryBarData.map((d) => d.value), 10);
+
+  // Calculate proper chart width to prevent overflow
+  const barCount = categoryBarData.length || 1;
+  const calculatedBarWidth = Math.min(32, (CHART_WIDTH - 60) / barCount - 12);
+  const calculatedSpacing = Math.min(16, (CHART_WIDTH - 60 - calculatedBarWidth * barCount) / (barCount + 1));
 
   if (loading) {
     return (
@@ -174,25 +198,45 @@ export const StatsScreen = () => {
         {/* Category Quantity Chart */}
         {categoryBarData.length > 0 && (
           <ChartCard title="Quantity by Category">
-            <BarChart
-              data={categoryBarData}
-              width={CHART_WIDTH}
-              height={180}
-              barWidth={32}
-              spacing={20}
-              roundedTop
-              roundedBottom
-              hideRules
-              xAxisThickness={0}
-              yAxisThickness={0}
-              yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-              xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
-              noOfSections={4}
-              maxValue={maxQuantity * 1.2}
-              isAnimated
-              animationDuration={500}
-              barBorderRadius={6}
-            />
+            {selectedBarValue && (
+              <TouchableOpacity
+                onPress={() => setSelectedBarValue(null)}
+                style={[styles.selectedValueBanner, { backgroundColor: colors.primary + "15", borderRadius: radius.md }]}
+              >
+                <Text style={[styles.selectedValueText, { color: colors.primary }]}>
+                  {selectedBarValue.label}: <Text style={styles.selectedValueNumber}>{selectedBarValue.value.toLocaleString()} units</Text>
+                </Text>
+                <Text style={[styles.selectedValueHint, { color: colors.textMuted }]}>Tap to dismiss</Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.chartContainer}>
+              <BarChart
+                data={categoryBarData}
+                width={CHART_WIDTH - 40}
+                height={180}
+                barWidth={calculatedBarWidth}
+                spacing={calculatedSpacing}
+                initialSpacing={10}
+                endSpacing={10}
+                roundedTop
+                roundedBottom
+                hideRules
+                xAxisThickness={0}
+                yAxisThickness={0}
+                yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+                xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 8 }}
+                noOfSections={4}
+                maxValue={maxQuantity * 1.2}
+                isAnimated
+                animationDuration={500}
+                barBorderRadius={6}
+                showValuesAsTopLabel
+                topLabelTextStyle={{ color: colors.textMuted, fontSize: 9, fontWeight: "600" }}
+              />
+            </View>
+            <Text style={[styles.chartHint, { color: colors.textMuted }]}>
+              Tap on bars to see exact quantity
+            </Text>
           </ChartCard>
         )}
 
@@ -312,6 +356,7 @@ type StatCardData = {
   trend: "up" | "down" | "neutral";
   trendValue: string;
   color: string;
+  onPress?: () => void;
 };
 
 const QuickStatCard = ({ data }: { data: StatCardData }) => {
@@ -319,6 +364,39 @@ const QuickStatCard = ({ data }: { data: StatCardData }) => {
   const trendIcon = data.trend === "up" ? "↑" : data.trend === "down" ? "↓" : "→";
   const trendColor =
     data.trend === "up" ? colors.success : data.trend === "down" ? colors.error : colors.textMuted;
+  const isClickable = !!data.onPress;
+
+  const content = (
+    <>
+      <View style={[styles.statAccent, { backgroundColor: data.color }]} />
+      <Text style={[styles.quickStatLabel, { color: colors.textSecondary }]}>{data.label}</Text>
+      <Text style={[styles.quickStatValue, { color: colors.text }]}>{data.value}</Text>
+      <View style={styles.trendRow}>
+        <Text style={[styles.trendIcon, { color: isClickable ? data.color : trendColor }]}>{trendIcon}</Text>
+        <Text style={[styles.trendValue, { color: isClickable ? data.color : trendColor }]}>{data.trendValue}</Text>
+      </View>
+    </>
+  );
+
+  if (data.onPress) {
+    return (
+      <TouchableOpacity
+        onPress={data.onPress}
+        activeOpacity={0.7}
+        style={[
+          styles.quickStatCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: data.color + "40",
+            borderRadius: radius.md,
+            padding: spacing.md,
+          },
+        ]}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View
@@ -332,13 +410,7 @@ const QuickStatCard = ({ data }: { data: StatCardData }) => {
         },
       ]}
     >
-      <View style={[styles.statAccent, { backgroundColor: data.color }]} />
-      <Text style={[styles.quickStatLabel, { color: colors.textSecondary }]}>{data.label}</Text>
-      <Text style={[styles.quickStatValue, { color: colors.text }]}>{data.value}</Text>
-      <View style={styles.trendRow}>
-        <Text style={[styles.trendIcon, { color: trendColor }]}>{trendIcon}</Text>
-        <Text style={[styles.trendValue, { color: trendColor }]}>{data.trendValue}</Text>
-      </View>
+      {content}
     </View>
   );
 };
@@ -510,10 +582,38 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     borderWidth: 1,
+    overflow: "hidden",
   },
   chartTitle: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  chartContainer: {
+    overflow: "hidden",
+    alignItems: "center",
+  },
+  chartHint: {
+    fontSize: 11,
+    fontWeight: "500",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  selectedValueBanner: {
+    padding: 12,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  selectedValueText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  selectedValueNumber: {
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  selectedValueHint: {
+    fontSize: 10,
+    marginTop: 4,
   },
   legendDot: {
     width: 8,

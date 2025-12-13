@@ -1,4 +1,4 @@
-const { getAdminStats, listAllCompanies, listAllUsers, deleteCompany } = require('../services/admin.service');
+const { getAdminStats, listAllCompanies, listAllUsers, deleteCompany, requestDocuments } = require('../services/admin.service');
 
 /**
  * GET /api/admin/stats
@@ -67,9 +67,33 @@ const deleteCompanyController = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/admin/companies/:companyId/request-documents
+ * Request verification documents from a company owner (admin only)
+ * Body: { message?, sendEmail?, sendNotification? }
+ */
+const requestDocumentsController = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { message, sendEmail, sendNotification } = req.body;
+    const adminId = req.user.id;
+
+    const result = await requestDocuments(companyId, adminId, {
+      message,
+      sendEmail: sendEmail !== false, // Default to true
+      sendNotification: sendNotification !== false // Default to true
+    });
+
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getAdminStatsController,
   listAllCompaniesController,
   listAllUsersController,
-  deleteCompanyController
+  deleteCompanyController,
+  requestDocumentsController
 };

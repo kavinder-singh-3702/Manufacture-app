@@ -1,4 +1,5 @@
 import { ApiError } from "./errors";
+import { tokenStorage } from "../tokenStorage";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -56,18 +57,32 @@ export class HttpClient {
   async request<T>({ path, method = "GET", data, params, headers, signal }: RequestConfig): Promise<T> {
     const endpoint = this.buildUrl(path, params);
     const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
-    const requestHeaders = { ...this.defaultHeaders, ...headers };
+    const requestHeaders: Record<string, string> = { ...this.defaultHeaders, ...headers };
     if (isFormData) {
       delete requestHeaders["Content-Type"];
     }
 
-    const response = await fetch(endpoint, {
-      method,
-      headers: requestHeaders,
-      credentials: "include",
-      body: data ? (isFormData ? (data as BodyInit) : JSON.stringify(data)) : undefined,
-      signal,
-    });
+    // Add Authorization header if token exists
+    const token = await tokenStorage.getToken();
+    if (token) {
+      requestHeaders["Authorization"] = `Bearer ${token}`;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method,
+        headers: requestHeaders,
+        body: data ? (isFormData ? (data as BodyInit) : JSON.stringify(data)) : undefined,
+        signal,
+        credentials: "include",
+      });
+    } catch (networkError: unknown) {
+      // Network error - couldn't connect at all
+      const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
+      console.error("Network error:", errorMessage, "URL:", endpoint);
+      throw new ApiError(`${errorMessage} - URL: ${endpoint}`, 0, { networkError: errorMessage });
+    }
 
     let parsedBody: unknown;
     try {

@@ -1,6 +1,8 @@
 const User = require('../../../models/user.model');
 const Company = require('../../../models/company.model');
 const CompanyVerificationRequest = require('../../../models/companyVerificationRequest.model');
+const { sendDocumentRequestEmail } = require('../../../services/email.service');
+const { createDocumentRequestNotification } = require('../../../services/notification.service');
 
 /**
  * Get admin dashboard statistics
@@ -117,6 +119,7 @@ const listAllCompanies = async ({ status, search, limit = 50, offset = 0 } = {})
       displayName: company.owner.displayName,
       email: company.owner.email
     } : null,
+    documentsRequestedAt: company.documentsRequestedAt,
     createdAt: company.createdAt,
     updatedAt: company.updatedAt
   }));
@@ -216,9 +219,96 @@ const deleteCompany = async (companyId) => {
   };
 };
 
+/**
+ * Request documents from a company for verification (admin only)
+ * Sends email and/or notification to the company owner
+ * @param {string} companyId - Company ID to request documents from
+ * @param {string} adminId - Admin user ID making the request
+ * @param {Object} options - Request options
+ * @param {string} options.message - Optional custom message
+ * @param {boolean} options.sendEmail - Whether to send email (default: true)
+ * @param {boolean} options.sendNotification - Whether to send notification (default: true)
+ */
+const requestDocuments = async (companyId, adminId, { message, sendEmail = true, sendNotification = true } = {}) => {
+  // Find the company with owner details
+  const company = await Company.findById(companyId).populate('owner', 'displayName email');
+
+  if (!company) {
+    const error = new Error('Company not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Check if company is in pending status
+  if (company.status !== 'pending-verification') {
+    const error = new Error('Company is not in pending verification status');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Check if company has an owner
+  if (!company.owner) {
+    const error = new Error('Company does not have an owner assigned');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const owner = company.owner;
+  const results = {
+    success: true,
+    message: 'Document request sent successfully',
+    emailSent: false,
+    notificationSent: false
+  };
+
+  // Send email if requested
+  if (sendEmail && owner.email) {
+    const emailResult = await sendDocumentRequestEmail({
+      ownerEmail: owner.email,
+      ownerName: owner.displayName || 'User',
+      companyName: company.displayName,
+      customMessage: message
+    });
+    results.emailSent = emailResult.success;
+    if (!emailResult.success) {
+      console.warn(`[AdminService] Failed to send email to ${owner.email}:`, emailResult.error);
+    }
+  }
+
+  // Send in-app notification if requested
+  if (sendNotification) {
+    const notificationResult = await createDocumentRequestNotification({
+      userId: owner._id.toString(),
+      companyId: company._id.toString(),
+      companyName: company.displayName,
+      actorId: adminId,
+      customMessage: message
+    });
+    results.notificationSent = notificationResult.success;
+    if (!notificationResult.success) {
+      console.warn(`[AdminService] Failed to create notification:`, notificationResult.error);
+    }
+  }
+
+  // Check if at least one method succeeded
+  if (!results.emailSent && !results.notificationSent) {
+    const error = new Error('Failed to send both email and notification');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  // Update company to mark documents as requested
+  await Company.findByIdAndUpdate(companyId, {
+    documentsRequestedAt: new Date()
+  });
+
+  return results;
+};
+
 module.exports = {
   getAdminStats,
   listAllCompanies,
   listAllUsers,
-  deleteCompany
+  deleteCompany,
+  requestDocuments
 };
