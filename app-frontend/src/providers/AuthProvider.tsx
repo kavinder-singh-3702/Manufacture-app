@@ -4,19 +4,32 @@ import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
+import { AppRole, AppRoleType } from "../constants/roles";
+import { tokenStorage } from "../services/tokenStorage";
+
+/**
+ * Normalizes the user object to ensure it has a valid role
+ * If the API doesn't return a role, defaults to "user"
+ */
+const normalizeUser = (user: AuthUser): AuthUser => ({
+  ...user,
+  role: (user.role as AppRoleType) || AppRole.USER,
+});
 
 type AuthContextValue = {
   user: AuthUser | null;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
-  setUser: (user: AuthUser | null) => void;
+  setUser: (user: AuthUser | null, options?: { requiresVerification?: boolean }) => void;
   initializing: boolean;
   bootstrapError: string | null;
   requestLogin: () => void;
   refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
+  pendingVerificationRedirect: string | null;
+  clearPendingVerificationRedirect: () => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -30,13 +43,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [initializing, setInitializing] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
+  const [pendingVerificationRedirect, setPendingVerificationRedirect] = useState<string | null>(null);
 
   const refreshUser = useCallback(async () => {
     const { user: currentUser } = await userService.getCurrentUser();
-    setUserState(currentUser);
+    const normalized = normalizeUser(currentUser);
+    setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
-    return currentUser;
+    return normalized;
   }, []);
 
   useEffect(() => {
@@ -45,20 +60,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const { user: currentUser } = await userService.getCurrentUser();
         if (!isMounted) return;
-        setUserState(currentUser);
+        setUserState(normalizeUser(currentUser));
         setAuthView(null);
         setBootstrapError(null);
       } catch (error) {
         if (isMounted) {
           setUserState(null);
           if (error instanceof ApiError) {
+            // 401 = not logged in, this is expected - don't show error
             if (error.status === 401) {
               setBootstrapError(null);
+            } else if (error.status === 0) {
+              // Network error - couldn't connect
+              setBootstrapError(error.message);
             } else {
               setBootstrapError(error.message);
             }
           } else if (error instanceof Error) {
-            setBootstrapError(error.message);
+            setBootstrapError(`Network error: ${error.message}`);
           } else {
             setBootstrapError("Unable to reach the backend.");
           }
@@ -78,13 +97,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
-    const { user: authenticatedUser } = await authService.login(payload);
-    setUserState(authenticatedUser);
+    const response = await authService.login(payload);
+    // Store the JWT token for API authentication
+    if (response.token) {
+      await tokenStorage.setToken(response.token);
+    }
+    setUserState(normalizeUser(response.user));
     setAuthView(null);
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
+    // Remove the stored JWT token
+    await tokenStorage.removeToken();
     setUserState(null);
     setAuthView("login");
   }, []);
@@ -103,10 +128,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   }, []);
 
-  const setUser = useCallback((next: AuthUser | null) => {
-    setUserState(next);
+  const setUser = useCallback((next: AuthUser | null, options?: { requiresVerification?: boolean }) => {
+    setUserState(next ? normalizeUser(next) : null);
     if (next) {
       setAuthView(null);
+      // If this is a signup that requires verification, set the redirect
+      if (options?.requiresVerification && next.activeCompany) {
+        setPendingVerificationRedirect(next.activeCompany);
+      }
     }
   }, []);
 
@@ -117,6 +146,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const clearAuthView = useCallback(() => {
     setAuthView(null);
+  }, []);
+
+  const clearPendingVerificationRedirect = useCallback(() => {
+    setPendingVerificationRedirect(null);
   }, []);
 
   const value = useMemo(
@@ -132,8 +165,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       refreshUser,
       authView,
       clearAuthView,
+      pendingVerificationRedirect,
+      clearPendingVerificationRedirect,
     }),
-    [authView, bootstrapError, clearAuthView, initializing, login, logout, refreshUser, requestLogin, setUser, switchCompany, user]
+    [authView, bootstrapError, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, setUser, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

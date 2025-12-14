@@ -10,9 +10,11 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from "../../constants/business";
 import { authService } from "../../services/auth.service";
 import { useAuth } from "../../hooks/useAuth";
+import { tokenStorage } from "../../services/tokenStorage";
 
 type SignupScreenProps = {
   onBack: () => void;
@@ -218,8 +220,13 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         categories: requiresCompany ? account.categories : undefined,
       };
       const response = await authService.signup.complete(payload);
-      setStatus("Signup complete! Redirecting to your dashboard...");
-      setUser(response.user);
+      // Store the JWT token for API authentication
+      if (response.token) {
+        await tokenStorage.setToken(response.token);
+      }
+      setStatus("Signup complete! Redirecting...");
+      // For manufacturer/trader accounts, trigger verification redirect
+      setUser(response.user, { requiresVerification: requiresCompany });
     } catch (accountError) {
       setError(accountError instanceof Error ? accountError.message : "Unable to complete signup");
     } finally {
@@ -363,16 +370,31 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       keyboardVerticalOffset={32}
     >
       <View style={styles.card}>
-        <View style={[styles.blob, styles.pinkBlobLarge]} />
-        <View style={[styles.blob, styles.pinkBlobSmall]} />
+        {/* Indigo glow blob */}
+        <LinearGradient
+          colors={["rgba(108, 99, 255, 0.25)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+          style={[styles.blob, styles.pinkBlobLarge]}
+        />
+        {/* Salmon glow blob */}
+        <LinearGradient
+          colors={["rgba(255, 140, 60, 0.2)", "rgba(255, 140, 60, 0.05)", "transparent"]}
+          style={[styles.blob, styles.pinkBlobSmall]}
+        />
 
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
-        <Text style={styles.stepBadge}>
-          Step {stepIndex + 1} of {steps.length}
-        </Text>
+        <LinearGradient
+          colors={["rgba(108, 99, 255, 0.2)", "rgba(108, 99, 255, 0.05)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.stepBadgeWrapper}
+        >
+          <Text style={styles.stepBadge}>
+            Step {stepIndex + 1} of {steps.length}
+          </Text>
+        </LinearGradient>
         <Text style={styles.heading}>{stepTitles[step]}</Text>
         <Text style={styles.subheading}>{stepDescriptions[step]}</Text>
 
@@ -385,12 +407,19 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             {step === "otp" && renderOtpStep()}
             {step === "account" && renderAccountStep()}
 
-            <TouchableOpacity style={styles.primaryButton} onPress={handleContinue} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
+            <TouchableOpacity style={styles.primaryButtonWrapper} onPress={handleContinue} disabled={loading}>
+              <LinearGradient
+                colors={["#6C63FF", "#5248E6"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.primaryButton}
+              >
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={onLogin} style={{ marginTop: 24 }}>
-              <Text style={styles.loginLink}>Already have an account? Login</Text>
+              <Text style={styles.loginLink}>Already have an account? <Text style={styles.loginLinkHighlight}>Login</Text></Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -416,7 +445,7 @@ const InputField = ({ value, onChangeText, placeholder, errorText, rightAccessor
       <TextInput
         style={[styles.input, rightAccessory ? styles.inputWithAccessory : null]}
         placeholder={placeholder}
-        placeholderTextColor="#888"
+        placeholderTextColor="rgba(255, 255, 255, 0.4)"
         value={value}
         onChangeText={onChangeText}
         {...rest}
@@ -431,12 +460,12 @@ const styles = StyleSheet.create({
   slide: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
   },
   card: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     borderRadius: 0,
     paddingHorizontal: 32,
     paddingTop: 32,
@@ -451,14 +480,12 @@ const styles = StyleSheet.create({
   pinkBlobLarge: {
     width: 300,
     height: 300,
-    backgroundColor: "#FFE0EB",
     top: -80,
     right: -60,
   },
   pinkBlobSmall: {
     width: 240,
     height: 240,
-    backgroundColor: "#FFD1E1",
     bottom: -60,
     left: -60,
   },
@@ -466,7 +493,9 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -474,22 +503,28 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#111",
+    color: "#FFFFFF",
+  },
+  stepBadgeWrapper: {
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 12,
   },
   stepBadge: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B7280",
-    marginBottom: 8,
+    color: "#6C63FF",
   },
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#111",
+    color: "#FFFFFF",
   },
   subheading: {
     fontSize: 14,
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 4,
     marginBottom: 16,
   },
@@ -497,16 +532,20 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   inputWrapper: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#C4C4C4",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 12,
+    backgroundColor: "rgba(22, 24, 29, 0.9)",
     position: "relative",
   },
   inputWrapperError: {
-    borderBottomColor: "#DC2626",
+    borderColor: "#FF6B6B",
   },
   input: {
     paddingVertical: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
+    color: "#FFFFFF",
   },
   inputWithAccessory: {
     paddingRight: 64,
@@ -517,54 +556,69 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
   eyeText: {
     fontWeight: "600",
-    color: "#111",
+    color: "#6C63FF",
+  },
+  primaryButtonWrapper: {
+    marginTop: 12,
+    borderRadius: 32,
+    overflow: "hidden",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   primaryButton: {
-    marginTop: 12,
-    backgroundColor: "#000",
     borderRadius: 32,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: "center",
   },
   primaryButtonText: {
     color: "#fff",
     fontWeight: "700",
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 1.5,
   },
   loginLink: {
     textAlign: "center",
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
+  },
+  loginLinkHighlight: {
+    color: "#6C63FF",
+    fontWeight: "600",
   },
   errorText: {
-    color: "#DC2626",
+    color: "#FF6B6B",
     marginBottom: 8,
+    fontWeight: "500",
   },
   statusText: {
-    color: "#10B981",
+    color: "#4ADE80",
     marginBottom: 8,
+    fontWeight: "500",
   },
   fieldError: {
-    color: "#DC2626",
+    color: "#FF6B6B",
     fontSize: 13,
     marginTop: 4,
   },
   helperCopy: {
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
     marginBottom: 12,
   },
   secondaryLink: {
-    color: "#111",
+    color: "#6C63FF",
     textAlign: "right",
     fontWeight: "600",
   },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.7)",
     marginBottom: 8,
     marginTop: 12,
   },
@@ -575,7 +629,8 @@ const styles = StyleSheet.create({
   },
   accountChip: {
     borderWidth: 1,
-    borderColor: "#C4C4C4",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(30, 33, 39, 0.8)",
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -583,14 +638,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   accountChipActive: {
-    borderColor: "#000",
+    borderColor: "#6C63FF",
+    backgroundColor: "rgba(108, 99, 255, 0.15)",
   },
   accountChipText: {
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "600",
   },
   accountChipTextActive: {
-    color: "#000",
+    color: "#6C63FF",
   },
   categoryGrid: {
     flexDirection: "row",
@@ -598,7 +654,8 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     borderWidth: 1,
-    borderColor: "#C4C4C4",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(30, 33, 39, 0.8)",
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -606,14 +663,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryChipActive: {
-    borderColor: "#111",
-    backgroundColor: "#111",
+    borderColor: "#FF8C3C",
+    backgroundColor: "rgba(255, 140, 60, 0.2)",
   },
   categoryText: {
-    color: "#6B7280",
+    color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "600",
   },
   categoryTextActive: {
-    color: "#fff",
+    color: "#FF8C3C",
   },
 });

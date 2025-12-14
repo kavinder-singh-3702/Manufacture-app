@@ -26,7 +26,7 @@ export const LogoBadge: FC<LogoBadgeProps> = ({ label = "MF", imageUri, style })
       {imageUri ? (
         <Image source={{ uri: imageUri }} style={styles.image} />
       ) : (
-        <Typography variant="subheading" color={colors.primary}>
+        <Typography variant="subheading" color={colors.textSecondary}>
           {label}
         </Typography>
       )}

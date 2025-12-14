@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SafeAreaView, View, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
 import { SignupScreen } from "./SignupScreen";
@@ -30,53 +31,75 @@ export const AuthScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
-      <View style={styles.slideWrapper}>
-        {view === "intro" ? (
-          <IntroPanel onJoin={() => setView("signup")} onSkip={handleGuestAccess} />
-        ) : null}
-        {view === "login" ? (
-          <LoginScreen
-            onBack={() => setView("intro")}
-            onSignup={() => setView("signup")}
-            onForgot={() => setView("forgot")}
-          />
-        ) : null}
-        {view === "signup" ? (
-          <SignupScreen onBack={() => setView("login")} onLogin={() => setView("login")} />
-        ) : null}
-        {view === "forgot" ? (
-          <ForgotPasswordScreen
-            onBack={() => setView("login")}
-            onReset={(token) => {
-              if (token) {
-                setResetToken(token);
-              }
-              setView("reset");
-            }}
-            onLogin={() => setView("login")}
-          />
-        ) : null}
-        {view === "reset" ? (
-          <ResetPasswordScreen
-            onBack={() => setView("forgot")}
-            onLogin={() => setView("login")}
-            defaultToken={resetToken}
-            onSuccess={() => setView("intro")}
-          />
-        ) : null}
-      </View>
-
-      {bootstrapError ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorTitle}>Environment issue</Text>
-          <Text style={styles.errorText}>
-            {bootstrapError}. Ensure EXPO_PUBLIC_API_URL points to your backend (e.g., http://192.168.x.x:4000/api).
-          </Text>
+    <LinearGradient
+      colors={["#0F1115", "#101318", "#0F1115"]}
+      locations={[0, 0.5, 1]}
+      style={styles.safeArea}
+    >
+      {/* Royal Indigo glow - top left */}
+      <LinearGradient
+        colors={["rgba(108, 99, 255, 0.15)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.7, y: 0.7 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Muted Salmon glow - bottom right */}
+      <LinearGradient
+        colors={["transparent", "rgba(255, 140, 60, 0.08)", "rgba(255, 140, 60, 0.12)"]}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.3, y: 0.3 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <SafeAreaView style={{ flex: 1 }}>
+        <StatusBar style="light" />
+        <View style={styles.slideWrapper}>
+          {view === "intro" ? (
+            <IntroPanel onJoin={() => setView("signup")} onSkip={handleGuestAccess} />
+          ) : null}
+          {view === "login" ? (
+            <LoginScreen
+              onBack={() => setView("intro")}
+              onSignup={() => setView("signup")}
+              onForgot={() => setView("forgot")}
+            />
+          ) : null}
+          {view === "signup" ? (
+            <SignupScreen onBack={() => setView("login")} onLogin={() => setView("login")} />
+          ) : null}
+          {view === "forgot" ? (
+            <ForgotPasswordScreen
+              onBack={() => setView("login")}
+              onReset={(token) => {
+                if (token) {
+                  setResetToken(token);
+                }
+                setView("reset");
+              }}
+              onLogin={() => setView("login")}
+            />
+          ) : null}
+          {view === "reset" ? (
+            <ResetPasswordScreen
+              onBack={() => setView("forgot")}
+              onLogin={() => setView("login")}
+              defaultToken={resetToken}
+              onSuccess={() => setView("intro")}
+            />
+          ) : null}
         </View>
-      ) : null}
-    </SafeAreaView>
+
+        {bootstrapError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorTitle}>Environment issue</Text>
+            <Text style={styles.errorText}>
+              {bootstrapError}. Ensure EXPO_PUBLIC_API_URL points to your backend (e.g., http://192.168.x.x:4000/api).
+            </Text>
+          </View>
+        ) : null}
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
@@ -95,7 +118,11 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
       </View>
 
       <View style={styles.illustrationArea}>
-        <View style={[styles.blob, styles.blueBlob]} />
+        {/* Indigo gradient blob */}
+        <LinearGradient
+          colors={["rgba(108, 99, 255, 0.4)", "rgba(108, 99, 255, 0.1)"]}
+          style={[styles.blob, styles.blueBlob]}
+        />
         <View style={[styles.imagePlaceholderLarge, styles.imageShadow]}>
           <Text style={styles.imageLabel}>IMAGE</Text>
         </View>
@@ -109,9 +136,16 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
         <Text style={styles.introSubheading}>Grow Together</Text>
       </View>
 
-      <TouchableOpacity style={[styles.primaryButton, { marginTop: 40 }]} onPress={onJoin}>
-        <Text style={styles.primaryButtonText}>JOIN NOW</Text>
-      </TouchableOpacity>
+      <LinearGradient
+        colors={["#6C63FF", "#5248E6"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.primaryButton, { marginTop: 40 }]}
+      >
+        <TouchableOpacity onPress={onJoin} style={styles.primaryButtonInner}>
+          <Text style={styles.primaryButtonText}>JOIN NOW</Text>
+        </TouchableOpacity>
+      </LinearGradient>
     </View>
   );
 };
@@ -119,18 +153,18 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#0F1115",
   },
   slideWrapper: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     alignItems: "stretch",
   },
   slideCard: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     borderRadius: 0,
     paddingHorizontal: 32,
     paddingVertical: 32,
@@ -144,11 +178,14 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     padding: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 20,
+    paddingHorizontal: 16,
   },
   skipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#3C3C43",
+    color: "rgba(255, 255, 255, 0.7)",
   },
   illustrationArea: {
     width: "100%",
@@ -163,7 +200,6 @@ const styles = StyleSheet.create({
   blueBlob: {
     width: 220,
     height: 220,
-    backgroundColor: "#E7ECFF",
     top: 0,
     left: -20,
   },
@@ -171,81 +207,93 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: "#F3F3F3",
+    backgroundColor: "rgba(30, 33, 39, 0.9)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
-    borderColor: "#fff",
+    borderWidth: 2,
+    borderColor: "rgba(108, 99, 255, 0.3)",
   },
   imagePlaceholderSmall: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: "#F3F3F3",
+    backgroundColor: "rgba(30, 33, 39, 0.9)",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
     top: 16,
     right: 30,
-    borderWidth: 4,
-    borderColor: "#fff",
+    borderWidth: 2,
+    borderColor: "rgba(255, 140, 60, 0.3)",
   },
   imageShadow: {
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: "#6C63FF",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   imageLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: "rgba(255, 255, 255, 0.5)",
   },
   imageLabelSmall: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: "rgba(255, 255, 255, 0.5)",
   },
   introHeading: {
     fontSize: 34,
     fontWeight: "700",
     textAlign: "center",
-    color: "#0C0C0C",
+    color: "#FFFFFF",
   },
   introSubheading: {
     fontSize: 16,
-    color: "#4B5563",
+    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 8,
+    textAlign: "center",
   },
   primaryButton: {
-    backgroundColor: "#000",
     borderRadius: 40,
-    paddingVertical: 14,
+    overflow: "hidden",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  primaryButtonInner: {
+    paddingVertical: 16,
     paddingHorizontal: 50,
     alignItems: "center",
   },
   primaryButtonText: {
     color: "#fff",
     fontWeight: "700",
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 1.5,
   },
   errorBanner: {
     marginTop: 24,
+    marginHorizontal: 24,
     width: "85%",
     maxWidth: 380,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(214, 69, 80, 0.4)",
-    backgroundColor: "rgba(214, 69, 80, 0.1)",
+    borderColor: "rgba(255, 107, 107, 0.4)",
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
     padding: 16,
+    alignSelf: "center",
   },
   errorTitle: {
     fontWeight: "700",
-    color: "#B91C1C",
+    color: "#FF6B6B",
     marginBottom: 4,
   },
   errorText: {
-    color: "#7F1D1D",
+    color: "rgba(255, 107, 107, 0.8)",
     lineHeight: 18,
   },
 });

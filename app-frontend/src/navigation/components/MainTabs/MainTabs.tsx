@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Alert } from "react-native";
 import { SidebarMenu } from "../../../components/navigation/SidebarMenu";
+import { BottomTabBar } from "../../../components/navigation/BottomTabBar";
 import { useAuth } from "../../../hooks/useAuth";
 import { RouteName, routes } from "../../routes";
 import { tabDefinitions, tabScreens } from "../../config/mainTabs";
@@ -46,7 +47,14 @@ export const MainTabs = () => {
   const navigationItems = tabDefinitions.map((tab) => ({
     label: tab.label,
     description: activeRoute === tab.route ? "Currently viewing" : undefined,
+    isActive: activeRoute === tab.route,
     onPress: () => handleNavigate(tab.route),
+  }));
+
+  const bottomTabs = tabDefinitions.map((tab) => ({
+    route: tab.route,
+    label: tab.label,
+    icon: tab.icon,
   }));
 
   const menuItems = [
@@ -71,6 +79,11 @@ export const MainTabs = () => {
         <View style={styles.screenContainer}>
           <ActiveScreen />
         </View>
+        <BottomTabBar
+          activeRoute={activeRoute}
+          onTabPress={handleNavigate}
+          tabs={bottomTabs}
+        />
       </View>
       <SidebarMenu
         visible={sidebarVisible}

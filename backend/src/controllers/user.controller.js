@@ -11,6 +11,27 @@ const sanitizeUser = (user) => {
 
 const getCurrentUser = async (req, res, next) => {
   try {
+    // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
+    if (req.user.id === 'test-admin-id') {
+      return res.json({
+        user: {
+          id: 'test-admin-id',
+          email: 'admin@example.com',
+          phone: '+15551234567',
+          firstName: 'Jane',
+          lastName: 'Admin',
+          displayName: 'Jane Admin',
+          role: 'admin',
+          status: 'active',
+          accountType: 'manufacturer',
+          verificationStatus: 'verified',
+          activeCompany: null,
+          companies: [],
+        }
+      });
+    }
+    // ============ END TEST ADMIN BYPASS ============
+
     const user = await User.findById(req.user.id);
 
     if (!user) {

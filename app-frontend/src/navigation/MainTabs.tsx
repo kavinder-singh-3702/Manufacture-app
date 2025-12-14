@@ -1,5 +1,6 @@
-import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
-import { View, StyleSheet, Alert, TouchableOpacity, Modal, Text, Image, TouchableWithoutFeedback, Vibration } from "react-native";
+import { ComponentType, useCallback, useMemo, useState } from "react";
+import { View, StyleSheet, Alert, TouchableOpacity, Modal, Text, TouchableWithoutFeedback } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -7,52 +8,129 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
-import { DashboardScreen } from "../screens/DashboardScreen";
-import { InventoryScreen } from "../screens/InventoryScreen";
-import { RouteName, routes } from "./routes";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
-import { MainTabParamList, RootStackParamList, MAIN_TAB_ORDER } from "./types";
 import { CompanySwitcherCard } from "../components/company";
-import { Company } from "../types/company";
-import { companyService } from "../services/company.service";
+import { AppRole } from "../constants/roles";
+
+// Screens
+import { DashboardScreen } from "../screens/DashboardScreen";
+import { StatsScreen } from "../screens/StatsScreen";
+import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
+import { CartScreen } from "../screens/cart";
+import { UserServicesScreen, AdminChatScreen } from "../screens/chat";
+
+// Hooks
+import { useCart } from "../hooks/useCart";
+
+// Navigation
+import { routes, RouteName, getTabsForRole, RouteConfig } from "./routes";
+import { MainTabParamList, RootStackParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const screenRegistry: Record<RouteName, ComponentType> = {
-  [routes.DASHBOARD]: DashboardScreen,
-  [routes.INVENTORY]: InventoryScreen,
+// ============================================================
+// PLACEHOLDER SCREEN (for Coming Soon tabs)
+// ============================================================
+const PlaceholderScreen = ({ title, icon }: { title: string; icon: string }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[placeholderStyles.container, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={["rgba(108, 99, 255, 0.08)", "transparent"]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={placeholderStyles.content}>
+        <Text style={placeholderStyles.icon}>{icon}</Text>
+        <Text style={[placeholderStyles.title, { color: colors.text }]}>{title}</Text>
+        <Text style={[placeholderStyles.subtitle, { color: colors.textMuted }]}>Coming Soon</Text>
+        <View style={[placeholderStyles.badge, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}>
+          <Text style={[placeholderStyles.badgeText, { color: colors.primary }]}>Under Development</Text>
+        </View>
+      </View>
+    </View>
+  );
 };
 
+const placeholderStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: "center", alignItems: "center" },
+  content: { alignItems: "center", gap: 12 },
+  icon: { fontSize: 64, marginBottom: 8 },
+  title: { fontSize: 28, fontWeight: "800" },
+  subtitle: { fontSize: 16, fontWeight: "600" },
+  badge: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+});
+
+// Wrapper screens for placeholders
+// ServicesScreen is now a real screen (UserServicesScreen) - no placeholder needed
+const ProfileTabScreen = () => <PlaceholderScreen title="Profile" icon="👤" />;
+
+/**
+ * Screen registry - maps route names to their components
+ */
+const screenRegistry: Record<RouteName, ComponentType> = {
+  // User screens
+  [routes.DASHBOARD]: DashboardScreen,
+  [routes.CART]: CartScreen,
+  [routes.SERVICES]: UserServicesScreen, // User's services screen (chat with admin)
+  [routes.STATS]: StatsScreen,
+  [routes.PROFILE_TAB]: ProfileTabScreen,
+  // Admin screens
+  [routes.USERS]: UserManagementScreen,
+  [routes.VERIFICATIONS]: VerificationsScreen,
+  [routes.COMPANIES]: CompaniesScreen,
+  [routes.CHAT]: AdminChatScreen, // Admin's chat screen (list of users to chat with)
+};
+
+/**
+ * MainTabs - Unified navigation for all user roles
+ * Shows different tabs based on user role (admin/user/guest)
+ */
 export const MainTabs = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRoute, setActiveRoute] = useState<RouteName>(routes.DASHBOARD);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
-  const [companyVisual, setCompanyVisual] = useState<{ logoUrl?: string; initials: string }>({ initials: "CO" });
+
   const { colors, spacing } = useTheme();
   const { user, logout, requestLogin } = useAuth();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
-  const isGuest = user?.role === "guest";
+  // Determine user role for tab filtering
+  const userRole = (user?.role as "admin" | "user" | "guest") || "guest";
+  const isAdmin = userRole === AppRole.ADMIN;
+  const isGuest = userRole === "guest";
   const isAuthenticated = Boolean(user) && !isGuest;
+
+  // Get tabs for current user's role
+  const tabs = useMemo(() => getTabsForRole(userRole), [userRole]);
 
   const displayName = useMemo(() => {
     if (typeof user?.displayName === "string" && user.displayName.trim().length) {
       return user.displayName;
     }
-    return "Operator";
-  }, [user?.displayName]);
+    return isAdmin ? "Admin" : "Operator";
+  }, [user?.displayName, isAdmin]);
 
   const email = user?.email;
 
   const handleNavigateToRoute = useCallback(
     (route: RouteName) => {
-      // Jump to a nested tab via the root stack to keep deep linking consistent.
+      // Profile tab opens modal screen instead of tab
+      if (route === routes.PROFILE_TAB) {
+        if (!isAuthenticated) {
+          requestLogin();
+          return;
+        }
+        stackNavigation.navigate("Profile");
+        return;
+      }
       stackNavigation.navigate("Main", { screen: route });
       setSidebarVisible(false);
     },
-    [stackNavigation]
+    [isAuthenticated, requestLogin, stackNavigation]
   );
 
   const handleShowProfile = useCallback(() => {
@@ -74,31 +152,23 @@ export const MainTabs = () => {
     await logout();
   }, [logout]);
 
+  // Build navigation items from tabs (exclude placeholders from sidebar)
   const navigationItems = useMemo(
     () =>
-      MAIN_TAB_ORDER.map((tab) => ({
-        label: tab.label,
-        description: activeRoute === tab.route ? "Currently viewing" : undefined,
-        onPress: () => handleNavigateToRoute(tab.route),
-      })),
-    [activeRoute, handleNavigateToRoute]
+      tabs
+        .filter((tab) => !tab.isPlaceholder)
+        .map((tab) => ({
+          label: tab.label,
+          description: activeRoute === tab.route ? "Currently viewing" : undefined,
+          isActive: activeRoute === tab.route,
+          onPress: () => handleNavigateToRoute(tab.route),
+        })),
+    [activeRoute, handleNavigateToRoute, tabs]
   );
 
   const profileOrLoginItem = isAuthenticated
-    ? {
-        label: "Profile",
-        description: "Manage your personal details",
-        onPress: handleShowProfile,
-      }
-    : {
-        label: "Login",
-        description: "Access your workspace",
-        onPress: () => {
-          setSidebarVisible(false);
-          requestLogin();
-        },
-        tone: "primary" as const,
-      };
+    ? { label: "Profile", description: "Manage your personal details", onPress: handleShowProfile }
+    : { label: "Login", description: "Access your workspace", onPress: () => { setSidebarVisible(false); requestLogin(); } };
 
   const menuItems = useMemo(
     () => [
@@ -112,86 +182,60 @@ export const MainTabs = () => {
     [handleLogout, handlePreferences, isAuthenticated, navigationItems, profileOrLoginItem]
   );
 
-  const buildInitials = useCallback(() => {
-    const label = user?.activeCompany ?? user?.displayName ?? user?.email ?? "CO";
-    const trimmed = String(label).trim();
-    if (!trimmed.length) return "CO";
-    const tokens = trimmed.split(" ").filter(Boolean);
-    if (tokens.length >= 2) return `${tokens[0][0]}${tokens[1][0]}`.toUpperCase();
-    if (trimmed.length >= 2) return trimmed.slice(0, 2).toUpperCase();
-    return trimmed[0].toUpperCase();
-  }, [user?.activeCompany, user?.displayName, user?.email]);
-
-  useEffect(() => {
-    setCompanyVisual((prev) => ({ ...prev, initials: buildInitials() }));
-  }, [buildInitials]);
-
-  useEffect(() => {
-    if (!user) return;
-    const loadActiveCompany = async () => {
-      try {
-        const response = await companyService.list();
-        const active =
-          response.companies.find((company) => company.id === user.activeCompany) ?? response.companies[0];
-        if (active) {
-          const initials = active.displayName
-            ? active.displayName
-                .split(" ")
-                .filter(Boolean)
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase()
-            : buildInitials();
-          setCompanyVisual({ logoUrl: active.logoUrl, initials: initials || buildInitials() });
-        }
-      } catch {
-        // Silent failure keeps initials fallback.
-      }
-    };
-    loadActiveCompany();
-  }, [buildInitials, user]);
-
-  const openCompanyModal = useCallback(() => {
-    Vibration.vibrate(10);
-    setCompanyModalOpen(true);
-  }, []);
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
+
   const handleAddCompany = useCallback(() => {
     closeCompanyModal();
     stackNavigation.navigate("CompanyCreate");
   }, [closeCompanyModal, stackNavigation]);
 
-  const handleCompanyResolved = useCallback(
-    (company: Company | null) => {
-      if (!company) {
-        setCompanyVisual({ initials: buildInitials() });
-        return;
-      }
-      const initials = company.displayName?.trim()
-        ? company.displayName
-            .split(" ")
-            .filter(Boolean)
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase()
-        : buildInitials();
-      setCompanyVisual({ logoUrl: company.logoUrl, initials: initials || buildInitials() });
-    },
-    [buildInitials]
-  );
+  // Gradient colors based on role
+  const gradientOverlay = isAdmin
+    ? { primary: "rgba(139, 92, 246, 0.15)", secondary: "rgba(236, 72, 153, 0.08)" }
+    : { primary: "rgba(108, 99, 255, 0.12)", secondary: "rgba(74, 201, 255, 0.08)" };
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <LinearGradient
+        colors={["#0F1115", "#101318", "#0F1115"]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.container, { paddingTop: insets.top }]}
+      >
+        {/* Role-based gradient overlay */}
+        <LinearGradient
+          colors={[gradientOverlay.primary, gradientOverlay.primary.replace("0.15", "0.04").replace("0.12", "0.04"), "transparent"]}
+          locations={[0, 0.4, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.6, y: 0.6 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={["transparent", gradientOverlay.secondary, "transparent"]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.3, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {!isAdmin && (
+          <LinearGradient
+            colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.12)"]}
+            locations={[0, 0.6, 1]}
+            start={{ x: 0.4, y: 0.4 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+
         <HomeToolbar
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onNotificationsPress={() => stackNavigation.navigate("Notifications")}
-          notificationCount={3}
+          notificationCount={isAdmin ? 5 : 3}
         />
+
         <View style={styles.contentArea}>
           <Tab.Navigator
             initialRouteName={routes.DASHBOARD}
@@ -201,7 +245,7 @@ export const MainTabs = () => {
             })}
             tabBar={() => null}
           >
-            {MAIN_TAB_ORDER.map((tab) => {
+            {tabs.map((tab) => {
               const ScreenComponent = screenRegistry[tab.route];
               return (
                 <Tab.Screen key={tab.route} name={tab.route} component={ScreenComponent} options={{ title: tab.label }} />
@@ -209,16 +253,15 @@ export const MainTabs = () => {
             })}
           </Tab.Navigator>
         </View>
-        <FooterBar
-          activeRoute={activeRoute}
-          onHome={() => handleNavigateToRoute(routes.DASHBOARD)}
-          onSearch={() => Alert.alert("Search", "Search will launch a global workspace search soon.")}
-          onCreate={openCompanyModal}
-          onCompanyPress={() => stackNavigation.navigate("CompanyProfile")}
-          onCompanyLongPress={openCompanyModal}
-          companyVisual={companyVisual}
-        />
-      </View>
+
+        {/* Different footer bar for admin vs user */}
+        {isAdmin ? (
+          <AdminFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
+        ) : (
+          <UserFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
+        )}
+      </LinearGradient>
+
       <SidebarMenu
         visible={sidebarVisible}
         onClose={() => setSidebarVisible(false)}
@@ -226,165 +269,365 @@ export const MainTabs = () => {
         headerSubtitle={email}
         menuItems={menuItems}
       />
-      <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
-        <TouchableWithoutFeedback onPress={closeCompanyModal}>
-          <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View
-                style={[
-                  styles.modalContent,
-                  {
-                    backgroundColor: colors.surface,
-                    borderRadius: 18,
-                    padding: spacing.md,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
-                  <TouchableOpacity onPress={closeCompanyModal}>
-                    <Text style={{ color: colors.primary, fontWeight: "700" }}>Close</Text>
-                  </TouchableOpacity>
+
+      {/* Company switcher modal - only for non-admin users */}
+      {!isAdmin && (
+        <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
+          <TouchableWithoutFeedback onPress={closeCompanyModal}>
+            <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: 18, padding: spacing.md, borderColor: colors.border }]}>
+                  <View style={styles.modalHeader}>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
+                    <TouchableOpacity onPress={closeCompanyModal}>
+                      <Text style={{ color: colors.textSecondary, fontWeight: "700" }}>Close</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <CompanySwitcherCard
+                    onSwitched={() => { closeCompanyModal(); handleNavigateToRoute(routes.DASHBOARD); }}
+                    onAddCompany={handleAddCompany}
+                  />
                 </View>
-                <CompanySwitcherCard
-                  onActiveCompanyResolved={handleCompanyResolved}
-                  onSwitched={() => {
-                    closeCompanyModal();
-                    handleNavigateToRoute(routes.DASHBOARD);
-                  }}
-                  onAddCompany={handleAddCompany}
-                />
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      )}
     </>
   );
 };
 
-const FooterBar = ({
-  activeRoute,
-  onHome,
-  onSearch,
-  onCreate,
-  onCompanyPress,
-  onCompanyLongPress,
-  companyVisual,
-}: {
-  activeRoute: RouteName;
-  onHome: () => void;
-  onSearch: () => void;
-  onCreate: () => void;
-  onCompanyPress: () => void;
-  onCompanyLongPress: () => void;
-  companyVisual: { logoUrl?: string; initials: string };
-}) => {
-  const { colors, spacing, radius } = useTheme();
+// ============================================================
+// USER FOOTER BAR (5 tabs with gradient buttons)
+// ============================================================
+type FooterBarProps = {
+  tabs: RouteConfig[];
+  activeTab: RouteName;
+  onTabPress: (route: RouteName) => void;
+};
 
-  const renderButton = (label: string, onPress: () => void, bg?: string, active?: boolean) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[
-        styles.footerButton,
-        {
-          backgroundColor: active ? colors.primaryLight : bg ?? colors.surface,
-          borderColor: active ? colors.primary : colors.border,
-          borderRadius: radius.md,
-        },
-      ]}
-    >
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>{label}</Text>
-    </TouchableOpacity>
-  );
+const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
+  const { colors, spacing } = useTheme();
+  const { itemCount } = useCart();
+
+  const renderTab = (tab: RouteConfig, index: number) => {
+    const isActive = activeTab === tab.route;
+    const isCenter = index === 2; // Services tab (center)
+    const isCart = tab.route === routes.CART;
+    const showBadge = isCart && itemCount > 0;
+
+    if (isCenter) {
+      // Center button - larger, always gradient
+      return (
+        <TouchableOpacity
+          key={tab.route}
+          onPress={() => onTabPress(tab.route)}
+          style={styles.centerTabButton}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={tab.gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.centerTabGradient}
+          >
+            <Text style={styles.centerTabIcon}>{tab.icon}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={tab.route}
+        onPress={() => onTabPress(tab.route)}
+        style={styles.userTabButton}
+        activeOpacity={0.7}
+      >
+        {isActive ? (
+          <View style={styles.userActiveTabContainer}>
+            <View>
+              <LinearGradient
+                colors={tab.gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.userActiveTabGlow, { shadowColor: tab.gradientColors[0] }]}
+              >
+                <Text style={styles.userTabIcon}>{tab.icon}</Text>
+              </LinearGradient>
+              {showBadge && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.userTabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
+          </View>
+        ) : (
+          <View style={styles.userInactiveTabContainer}>
+            <View>
+              <LinearGradient
+                colors={[`${tab.gradientColors[0]}30`, `${tab.gradientColors[1]}15`]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.userInactiveGradientBorder}
+              >
+                <View style={[styles.userInactiveIconInner, { backgroundColor: colors.background }]}>
+                  <Text style={styles.userTabIconInactive}>{tab.icon}</Text>
+                </View>
+              </LinearGradient>
+              {showBadge && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.userTabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.surfaceElevated }}>
-      <View
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
+      <LinearGradient
+        colors={["rgba(30, 33, 39, 0.98)", "rgba(22, 24, 29, 0.98)", "rgba(18, 20, 26, 0.98)"]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={[
-          styles.footer,
+          styles.userFooter,
           {
-            paddingHorizontal: spacing.lg,
-            paddingTop: spacing.sm,
-            paddingBottom: spacing.sm,
-            backgroundColor: colors.surfaceElevated,
-            borderTopColor: colors.border,
+            paddingHorizontal: spacing.xs,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.xs,
           },
         ]}
       >
-        {renderButton("⌂", onHome, undefined, activeRoute === routes.DASHBOARD)}
-        {renderButton("🔍", onSearch)}
-        {renderButton("+", onCreate, colors.primaryLight)}
-        <TouchableOpacity
-          onPress={onCompanyPress}
-          onLongPress={onCompanyLongPress}
-          style={[
-            styles.companyPill,
-            {
-              borderColor: companyVisual.logoUrl ? "transparent" : colors.primary,
-              borderWidth: companyVisual.logoUrl ? 0 : 1,
-              backgroundColor: colors.surface,
-              borderRadius: radius.pill,
-            },
-          ]}
-        >
-          {companyVisual.logoUrl ? (
-            <Image source={{ uri: companyVisual.logoUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} resizeMode="cover" />
-          ) : (
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 14 }}>{companyVisual.initials}</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* Subtle gradient overlay */}
+        <LinearGradient
+          colors={["rgba(0, 178, 255, 0.05)", "transparent", "rgba(255, 107, 107, 0.05)"]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
+        />
+        {tabs.map(renderTab)}
+      </LinearGradient>
     </SafeAreaView>
   );
 };
 
+// ============================================================
+// ADMIN FOOTER BAR (4 tabs)
+// ============================================================
+const AdminFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
+  const { colors, spacing, radius } = useTheme();
+
+  const renderTab = (tab: RouteConfig) => {
+    const isActive = activeTab === tab.route;
+
+    return (
+      <TouchableOpacity
+        key={tab.route}
+        onPress={() => onTabPress(tab.route)}
+        style={styles.tabButton}
+        activeOpacity={0.7}
+      >
+        {isActive ? (
+          <View style={styles.activeTabContainer}>
+            <LinearGradient
+              colors={tab.gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.activeTabGlow, { borderRadius: radius.lg, shadowColor: tab.gradientColors[0] }]}
+            >
+              <Text style={styles.tabIcon}>{tab.icon}</Text>
+            </LinearGradient>
+            <Text style={[styles.tabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
+          </View>
+        ) : (
+          <View style={styles.inactiveTabContainer}>
+            <LinearGradient
+              colors={[`${tab.gradientColors[0]}40`, `${tab.gradientColors[1]}20`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.inactiveGradientBorder, { borderRadius: radius.lg }]}
+            >
+              <View style={[styles.inactiveIconInner, { borderRadius: radius.lg - 1.5, backgroundColor: colors.background }]}>
+                <Text style={styles.tabIconInactive}>{tab.icon}</Text>
+              </View>
+            </LinearGradient>
+            <Text style={[styles.tabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
+      <LinearGradient
+        colors={["rgba(30, 33, 39, 0.98)", "rgba(22, 24, 29, 0.98)", "rgba(18, 20, 26, 0.98)"]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[
+          styles.footer,
+          {
+            paddingHorizontal: spacing.sm,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.xs,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderTopWidth: 1,
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: "rgba(139, 92, 246, 0.2)",
+          },
+        ]}
+      >
+        {/* Admin purple gradient overlay */}
+        <LinearGradient
+          colors={["rgba(139, 92, 246, 0.1)", "transparent", "rgba(236, 72, 153, 0.08)"]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
+        />
+        {tabs.map(renderTab)}
+      </LinearGradient>
+    </SafeAreaView>
+  );
+};
+
+// ============================================================
+// STYLES
+// ============================================================
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  contentArea: { flex: 1 },
+
+  // Admin footer styles
   footer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    justifyContent: "space-around",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  footerButton: {
-    width: 52,
-    height: 52,
-    borderWidth: StyleSheet.hairlineWidth,
+  tabButton: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
+  activeTabContainer: { alignItems: "center", justifyContent: "center", gap: 4 },
+  inactiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 4 },
+  activeTabGlow: {
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  companyPill: {
+  inactiveGradientBorder: { width: 46, height: 46, padding: 1.5, alignItems: "center", justifyContent: "center" },
+  inactiveIconInner: { width: 43, height: 43, alignItems: "center", justifyContent: "center" },
+  tabIcon: { fontSize: 22 },
+  tabIconInactive: { fontSize: 20, opacity: 0.7 },
+  tabLabel: { fontSize: 10, fontWeight: "600" },
+  tabLabelActive: { fontSize: 10, fontWeight: "700" },
+
+  // User footer styles (5 tabs)
+  userFooter: {
     flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-around",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  userTabButton: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
+  userActiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 3 },
+  userInactiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 3 },
+  userActiveTabGlow: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
-    height: 52,
-    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    maxHeight: "80%",
-    borderWidth: 1,
-    width: "100%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  userInactiveGradientBorder: { width: 40, height: 40, borderRadius: 12, padding: 1.5, alignItems: "center", justifyContent: "center" },
+  userInactiveIconInner: { width: 37, height: 37, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  userTabIcon: { fontSize: 20 },
+  userTabIconInactive: { fontSize: 18, opacity: 0.7 },
+  userTabLabel: { fontSize: 9, fontWeight: "600" },
+  userTabLabelActive: { fontSize: 9, fontWeight: "700" },
+
+  // Center button (Services)
+  centerTabButton: {
     alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "center",
+    marginTop: -20,
+    marginHorizontal: 4,
   },
-  modalTitle: {
-    fontSize: 16,
+  centerTabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#ee0979",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  centerTabIcon: { fontSize: 26 },
+
+  // Cart badge
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#FF4757",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "#0F1115",
+  },
+  cartBadgeText: {
+    color: "#fff",
+    fontSize: 10,
     fontWeight: "800",
   },
+
+  // Modal styles
+  modalBackdrop: { flex: 1, justifyContent: "flex-end" },
+  modalContent: { maxHeight: "80%", borderWidth: 1, width: "100%" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  modalTitle: { fontSize: 16, fontWeight: "800" },
 });
+
+// Legacy export
+export const UserTabs = MainTabs;

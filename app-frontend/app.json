@@ -1,30 +1,35 @@
 {
   "expo": {
-    "name": "app-frontend",
+    "name": "Manufacture App",
     "slug": "app-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1C1C1C",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.manufactureapp.frontend",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1C1C1C"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "usesCleartextTraffic": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dd80ff5b-6e67-4ea6-acf8-2ae5d3455602"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

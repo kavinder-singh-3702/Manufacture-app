@@ -1,6 +1,9 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 import { RouteName, routes } from "./routes";
 
+/**
+ * Root stack - single navigation structure for all users
+ */
 export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
@@ -10,14 +13,22 @@ export type RootStackParamList = {
   CompanyVerification: { companyId: string };
   VerificationSubmit: { companyId: string };
   Notifications: undefined;
+  AddInventoryItem: undefined;
+  EditInventoryItem: { itemId: string };
+  InventoryList: undefined;
+  InventoryCategory: { categoryId: string; categoryTitle: string };
+  FilteredInventory: { filter: "low_stock" | "out_of_stock"; title: string };
+  // Chat screens
+  Chat: { conversationId: string; recipientName: string; recipientPhone?: string };
 };
 
-// Helper mapped type ensures that every declared route has a tab entry.
+/**
+ * Unified tab navigation - contains all possible routes
+ * Role-based filtering happens at runtime in the navigator
+ */
 export type MainTabParamList = {
   [K in RouteName]: undefined;
 };
 
-export const MAIN_TAB_ORDER: Array<{ route: RouteName; label: string }> = [
-  { route: routes.DASHBOARD, label: "Operations" },
-  { route: routes.INVENTORY, label: "Inventory" },
-];
+// Re-export for convenience
+export { RouteName, routes };

@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import * as DocumentPicker from "expo-document-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/user.service";
+import { verificationService } from "../../services/verificationService";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
+import { ComplianceStatus } from "../../types/company";
 import { RootStackParamList } from "../../navigation/types";
 import { ProfileHero } from "./components/ProfileHero";
 import { ProfileSections } from "./components/ProfileSections";
@@ -16,7 +19,7 @@ import { ProfileEditorModal } from "./components/ProfileEditorModal";
 import { EditorType } from "./types";
 
 export const ProfileScreen = () => {
-  const { colors, spacing } = useTheme();
+  const { spacing } = useTheme();
   const { user, setUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -29,6 +32,30 @@ export const ProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Fetch verification status when screen focuses
+  useFocusEffect(
+    useCallback(() => {
+      const fetchVerificationStatus = async () => {
+        if (!user?.activeCompany) return;
+        try {
+          const response = await verificationService.getVerificationStatus(user.activeCompany);
+          // Check if there's a pending verification request (submitted status)
+          if (response.request && response.request.status === "pending") {
+            setVerificationStatus("submitted");
+          } else {
+            setVerificationStatus(response.company?.complianceStatus || null);
+          }
+          setCompanyName(response.company?.displayName || null);
+        } catch (error) {
+          console.error("Failed to fetch verification status:", error);
+        }
+      };
+      fetchVerificationStatus();
+    }, [user?.activeCompany])
+  );
 
   useEffect(() => {
     setIdentityForm(createIdentityFormState(user));
@@ -184,7 +211,9 @@ export const ProfileScreen = () => {
       });
 
       const uploadedUrl = response.file?.url ?? undefined;
-      setUser((prev) => (prev ? { ...prev, avatarUrl: uploadedUrl ?? prev.avatarUrl } : prev));
+      if (user) {
+        setUser({ ...user, avatarUrl: uploadedUrl ?? user.avatarUrl });
+      }
       setBanner({ type: "success", message: "Profile photo updated." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to upload photo";
@@ -195,36 +224,55 @@ export const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <LinearGradient
+      colors={["#0F1115", "#101318", "#0F1115"]}
+      locations={[0, 0.5, 1]}
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
+      {/* Indigo glow - top left */}
+      <LinearGradient
+        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.7, y: 0.7 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Salmon glow - bottom right */}
+      <LinearGradient
+        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
+        locations={[0, 0.6, 1]}
+        start={{ x: 0.3, y: 0.3 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <ProfileHero
-          fullName={fullName}
-          email={user?.email}
-          avatarUrl={avatarUrl}
-          avatarInitials={avatarInitials}
-          role={user?.role}
-          accountType={user?.accountType}
-          onUploadAvatar={handleUploadAvatar}
-          uploading={avatarUploading}
-        />
+        <Text style={styles.headerTitle}>Profile</Text>
       </View>
-      {avatarError ? <Text style={[styles.errorText, { marginHorizontal: spacing.lg }]}>{avatarError}</Text> : null}
+
+      {avatarError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{avatarError}</Text>
+        </View>
+      ) : null}
+
       {banner ? (
         <View
           style={[
             styles.banner,
             {
-              backgroundColor: banner.type === "success" ? "rgba(16, 185, 129, 0.12)" : "rgba(248, 113, 113, 0.12)",
-              borderColor: banner.type === "success" ? "rgba(16, 185, 129, 0.4)" : "rgba(248, 113, 113, 0.4)",
+              backgroundColor: banner.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(248, 113, 113, 0.15)",
+              borderColor: banner.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(248, 113, 113, 0.3)",
             },
           ]}
         >
           <Text
             style={{
-              color: banner.type === "success" ? "#059669" : "#B91C1C",
+              color: banner.type === "success" ? "#4ADE80" : "#FF6B6B",
               fontWeight: "600",
             }}
           >
@@ -232,10 +280,28 @@ export const ProfileScreen = () => {
           </Text>
         </View>
       ) : null}
+
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg }}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg + insets.bottom }}
+        showsVerticalScrollIndicator={false}
       >
+        {/* Profile Hero */}
+        <View style={styles.heroContainer}>
+          <ProfileHero
+            fullName={fullName}
+            email={user?.email}
+            avatarUrl={avatarUrl}
+            avatarInitials={avatarInitials}
+            role={user?.role}
+            accountType={user?.accountType}
+            onUploadAvatar={handleUploadAvatar}
+            uploading={avatarUploading}
+            verificationStatus={verificationStatus === "approved" ? "approved" : null}
+            companyName={companyName}
+          />
+        </View>
+
         <ProfileSections
           user={user}
           tags={tags}
@@ -313,7 +379,7 @@ export const ProfileScreen = () => {
                   style={[styles.segmentButton, isActive ? styles.segmentButtonActive : null]}
                   onPress={() => setPreferencesForm((prev) => ({ ...prev, theme: option }))}
                 >
-                  <Text style={[styles.segmentButtonText, { color: isActive ? "#fff" : colors.text }]}>{option}</Text>
+                  <Text style={[styles.segmentButtonText, { color: isActive ? "#fff" : "rgba(255,255,255,0.6)" }]}>{option}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -337,15 +403,13 @@ export const ProfileScreen = () => {
           />
         </View>
       </ProfileEditorModal>
-    </SafeAreaView>
+    </LinearGradient>
   );
 };
 
- type IdentityFormState = ReturnType<typeof createIdentityFormState>;
- type ProfessionalFormState = ReturnType<typeof createProfessionalFormState>;
- type PreferencesFormState = ReturnType<typeof createPreferencesFormState>;
+type IdentityFormState = ReturnType<typeof createIdentityFormState>;
 
- const createIdentityFormState = (user?: AuthUser | null) => ({
+const createIdentityFormState = (user?: AuthUser | null) => ({
   firstName: user?.firstName ?? "",
   lastName: user?.lastName ?? "",
   displayName: user?.displayName ?? "",
@@ -358,7 +422,7 @@ export const ProfileScreen = () => {
   country: user?.address?.country ?? "",
 });
 
- const createProfessionalFormState = (user?: AuthUser | null) => ({
+const createProfessionalFormState = (user?: AuthUser | null) => ({
   bio: user?.bio ?? "",
   website: user?.socialLinks?.website ?? "",
   linkedin: user?.socialLinks?.linkedin ?? "",
@@ -367,7 +431,7 @@ export const ProfileScreen = () => {
   activityTags: Array.isArray(user?.activityTags) ? user?.activityTags.join(", ") : "",
 });
 
- const createPreferencesFormState = (user?: AuthUser | null) => ({
+const createPreferencesFormState = (user?: AuthUser | null) => ({
   locale: user?.preferences?.locale ?? "",
   timezone: user?.preferences?.timezone ?? "",
   theme: (user?.preferences?.theme as "system" | "light" | "dark" | undefined) ?? "system",
@@ -376,7 +440,7 @@ export const ProfileScreen = () => {
   push: Boolean(user?.preferences?.communications?.push ?? true),
 });
 
- const buildAddressPayload = (form: IdentityFormState) => {
+const buildAddressPayload = (form: IdentityFormState) => {
   const payload = cleanObject({
     line1: form.line1.trim() || undefined,
     line2: form.line2.trim() || undefined,
@@ -400,51 +464,77 @@ const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
+    backgroundColor: "#0F1115",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 15,
+    backgroundColor: "transparent",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: -0.5,
   },
   backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F3F4F6",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
   backIcon: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginLeft: -2,
+  },
+  heroContainer: {
+    marginBottom: 24,
   },
   banner: {
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 12,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
+  },
+  errorBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 107, 107, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 107, 107, 0.3)",
+  },
+  errorText: {
+    color: "#FF6B6B",
+    fontWeight: "600",
   },
   formLabel: {
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 6,
     textTransform: "uppercase",
-  },
-  errorText: {
-    color: "#DC2626",
-    marginBottom: 8,
+    color: "rgba(255, 255, 255, 0.6)",
   },
   segmentLabelRow: {
     marginBottom: 12,
   },
   segmentRow: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 999,
     padding: 4,
   },
@@ -455,7 +545,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentButtonActive: {
-    backgroundColor: "#111",
+    backgroundColor: "#6C63FF",
   },
   segmentButtonText: {
     textTransform: "capitalize",

@@ -3,6 +3,7 @@ const {
   verifySignupOtp,
   completeSignup
 } = require('../services/signup.service');
+const { signToken } = require('../../../utils/token');
 
 const beginSignup = async (req, res, next) => {
   try {
@@ -25,7 +26,9 @@ const verifyOtp = async (req, res, next) => {
 const finalizeSignup = async (req, res, next) => {
   try {
     const user = await completeSignup(req.body, req);
-    return res.status(201).json({ user });
+    // Generate JWT token for mobile clients that can't use session cookies
+    const token = signToken({ _id: user.id || user._id, role: user.role });
+    return res.status(201).json({ user, token });
   } catch (error) {
     return next(error);
   }

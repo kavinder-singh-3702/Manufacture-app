@@ -1,7 +1,14 @@
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ImageSourcePropType } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
 import { colors, palette } from "../../theme/colors";
+
+// Hero gradient colors (sky blue to coral)
+const HERO_GRADIENT = {
+  start: "#00B2FF",
+  end: "#FF6B6B",
+} as const;
 
 type HeroHeaderProps = {
   brandName: string;
@@ -27,7 +34,12 @@ export const HeroHeader = ({
   const { spacing, radius } = useTheme();
 
   return (
-    <View style={[styles.container, { padding: spacing.md, borderRadius: radius.lg }]}>
+    <LinearGradient
+      colors={[HERO_GRADIENT.start, HERO_GRADIENT.end]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.container, { padding: spacing.md, borderRadius: radius.lg }]}
+    >
       <View style={styles.heroTopRow}>
         <TouchableOpacity style={styles.hamburgerButton} onPress={onMenuPress} accessibilityLabel="Open navigation">
           <View style={styles.hamburgerLine} />
@@ -78,13 +90,12 @@ export const HeroHeader = ({
           </View>
         ))}
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: palette.charcoalGreen,
     overflow: "hidden",
   },
   heroTopRow: {

@@ -5,7 +5,7 @@ import { CompanyAvatar } from "../../../navigation/components/MainTabs/component
 
 type Props = {
   company: Company;
-  complianceStatus: Company["complianceStatus"] | string;
+  complianceStatus: string;
   onUploadLogo?: () => void;
   uploading?: boolean;
 };
@@ -50,7 +50,7 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
         </Text>
         <View style={styles.pillRow}>
           <StatusPill label={company.type ?? "normal"} tone="secondary" />
-          <StatusPill label={complianceStatus} tone={complianceStatus === "approved" ? "success" : "warning"} />
+          <StatusPill label={complianceStatus ?? "pending"} tone={complianceStatus === "approved" ? "success" : "warning"} />
         </View>
         {onUploadLogo ? (
           <TouchableOpacity

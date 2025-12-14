@@ -1,4 +1,5 @@
 import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
 
@@ -7,6 +8,7 @@ type MenuItem = {
   description?: string;
   onPress: () => void;
   tone?: "default" | "danger";
+  isActive?: boolean;
 };
 
 type SidebarMenuProps = {
@@ -24,42 +26,95 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.wrapper}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+          <View style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.6)" }]} />
         </TouchableWithoutFeedback>
         <SafeAreaView style={styles.panelSafeArea}>
-          <View
+          <LinearGradient
+            colors={[
+              "#16181D",
+              "#12141A",
+              "#0F1115",
+            ]}
+            locations={[0, 0.5, 1]}
             style={[
               styles.panel,
               {
-                backgroundColor: colors.surface,
                 padding: spacing.lg,
                 borderTopRightRadius: radius.lg,
                 borderBottomRightRadius: radius.lg,
-                shadowColor: colors.text,
               },
             ]}
           >
-            {/* Header Section with Brand Colors */}
-            <View style={[styles.header, {
-              backgroundColor: colors.secondary,
-              padding: spacing.lg,
-              borderRadius: radius.md,
-              marginBottom: spacing.lg,
-            }]}>
-              <Typography variant="subheading" color={colors.textOnSecondary} style={styles.headerTitle}>
+            {/* Accent glow overlay */}
+            <LinearGradient
+              colors={[
+                "rgba(108, 99, 255, 0.1)",
+                "transparent",
+                "rgba(255, 140, 60, 0.05)",
+              ]}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[StyleSheet.absoluteFill, { borderTopRightRadius: radius.lg, borderBottomRightRadius: radius.lg }]}
+            />
+            {/* Header Section with Premium Gradient */}
+            <LinearGradient
+              colors={["#6C63FF", "#5248E6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, {
+                padding: spacing.lg,
+                borderRadius: radius.md,
+                marginBottom: spacing.lg,
+              }]}
+            >
+              {/* Subtle inner glow */}
+              <LinearGradient
+                colors={["rgba(255,255,255,0.1)", "transparent"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]}
+              />
+              <Typography variant="subheading" color="#FFFFFF" style={styles.headerTitle}>
                 {headerTitle}
               </Typography>
               {headerSubtitle ? (
-                <Typography variant="body" color={colors.primary} style={{ marginTop: spacing.xs, fontSize: 13 }}>
+                <Typography variant="body" color="rgba(255,255,255,0.8)" style={{ marginTop: spacing.xs, fontSize: 13 }}>
                   {headerSubtitle}
                 </Typography>
               ) : null}
-            </View>
+            </LinearGradient>
 
             {/* Menu Items */}
             {menuItems.map((item, index) => {
               const isDanger = item.tone === "danger";
+              const isActive = item.isActive || false;
               const isLastItem = index === menuItems.length - 1;
+
+              // Determine styling based on item type
+              const getItemStyles = () => {
+                if (isDanger) {
+                  return {
+                    bg: "rgba(255, 107, 107, 0.1)",
+                    border: "#FF6B6B",
+                    shadowColor: "#FF6B6B",
+                  };
+                }
+                if (isActive) {
+                  return {
+                    bg: "rgba(108, 99, 255, 0.15)",
+                    border: "#6C63FF",
+                    shadowColor: "#6C63FF",
+                  };
+                }
+                return {
+                  bg: "rgba(30, 33, 39, 0.8)",
+                  border: "transparent",
+                  shadowColor: "#000",
+                };
+              };
+
+              const itemStyles = getItemStyles();
 
               return (
                 <TouchableOpacity
@@ -68,21 +123,25 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   style={[
                     styles.menuItem,
                     {
-                      backgroundColor: isDanger ? colors.errorBg : colors.surfaceElevated,
+                      backgroundColor: itemStyles.bg,
                       borderLeftWidth: 3,
-                      borderLeftColor: isDanger ? colors.error : colors.primary,
+                      borderLeftColor: itemStyles.border,
                       borderRadius: radius.md,
                       paddingVertical: spacing.md,
                       paddingHorizontal: spacing.md,
                       marginBottom: isLastItem ? 0 : spacing.sm,
-                      shadowColor: colors.text,
+                      shadowColor: itemStyles.shadowColor,
+                      shadowOffset: { width: 0, height: isActive ? 4 : 2 },
+                      shadowOpacity: isActive ? 0.25 : 0.1,
+                      shadowRadius: isActive ? 8 : 4,
+                      elevation: isActive ? 6 : 2,
                     },
                   ]}
                   activeOpacity={0.7}
                 >
                   <Typography
                     variant="body"
-                    color={isDanger ? colors.error : colors.text}
+                    color={isDanger ? "#FF6B6B" : colors.text}
                     style={styles.menuLabel}
                   >
                     {item.label}
@@ -90,7 +149,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   {item.description ? (
                     <Typography
                       variant="caption"
-                      color={isDanger ? colors.errorLight : colors.textMuted}
+                      color={isDanger ? "#FF9B9B" : colors.textMuted}
                       style={{ marginTop: spacing.xs, fontSize: 12 }}
                     >
                       {item.description}
@@ -99,7 +158,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </LinearGradient>
         </SafeAreaView>
       </View>
     </Modal>
