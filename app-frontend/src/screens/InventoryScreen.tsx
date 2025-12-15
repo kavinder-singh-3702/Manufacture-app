@@ -3,7 +3,7 @@ import { Card } from "../components/common/Card";
 import { Typography } from "../components/common/Typography";
 import { useTheme } from "../hooks/useTheme";
 
-const inventory = [
+const products = [
   { id: "steel", name: "Cold Rolled Steel", quantity: 124, status: "Healthy" },
   { id: "aluminum", name: "Aluminum Sheets", quantity: 48, status: "Low" },
   { id: "pcb", name: "Control PCBs", quantity: 210, status: "Healthy" },
@@ -15,13 +15,13 @@ export const InventoryScreen = () => {
 
   return (
     <View style={{ flex: 1, padding: spacing.lg }}>
-      <Typography variant="heading">Inventory Health</Typography>
+      <Typography variant="heading">Product Health</Typography>
       <Typography variant="body" color={colors.muted} style={{ marginTop: spacing.xs }}>
         Visibility into incoming materials and bottlenecks.
       </Typography>
 
       <FlatList
-        data={inventory}
+        data={products}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: spacing.lg }}
         renderItem={({ item }) => (

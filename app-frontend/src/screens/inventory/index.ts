@@ -1,4 +1,4 @@
-export { AddInventoryItemScreen } from "./AddInventoryItemScreen";
-export { EditInventoryItemScreen } from "./EditInventoryItemScreen";
-export { InventoryListScreen } from "./InventoryListScreen";
-export { FilteredInventoryScreen } from "./FilteredInventoryScreen";
+export { AddProductScreen } from "./AddInventoryItemScreen";
+export { EditProductScreen } from "./EditInventoryItemScreen";
+export { ProductListScreen } from "./InventoryListScreen";
+export { FilteredProductsScreen } from "./FilteredInventoryScreen";

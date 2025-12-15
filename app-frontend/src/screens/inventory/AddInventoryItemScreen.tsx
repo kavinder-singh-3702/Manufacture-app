@@ -15,57 +15,66 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
-import { inventoryService, CreateInventoryItemInput } from "../../services/inventory.service";
+import { productService, CreateProductInput } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 
-// Category options matching backend
 const CATEGORIES = [
+  { id: "finished-goods", title: "Finished Goods", icon: "📦" },
+  { id: "components", title: "Components & Parts", icon: "🧩" },
   { id: "raw-materials", title: "Raw Materials", icon: "🧱" },
-  { id: "packaging", title: "Packaging & Supplies", icon: "📦" },
-  { id: "machinery", title: "Machinery Parts", icon: "⚙️" },
-  { id: "safety", title: "Safety Equipment", icon: "🦺" },
-  { id: "chemicals", title: "Chemicals & Solvents", icon: "🧪" },
-  { id: "tools", title: "Tools & Hardware", icon: "🔧" },
+  { id: "machinery", title: "Machinery & Equipment", icon: "⚙️" },
+  { id: "packaging", title: "Packaging", icon: "🎁" },
+  { id: "services", title: "Services", icon: "🛠️" },
 ];
 
-const UNITS = ["pieces", "kg", "liters", "meters", "boxes", "pallets", "units"];
+const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];
 
-export const AddInventoryItemScreen = () => {
+export const AddProductScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateInventoryItemInput>({
+  const [formData, setFormData] = useState<CreateProductInput>({
     name: "",
     description: "",
     sku: "",
     category: "",
-    quantity: 0,
-    unit: "pieces",
-    minStockLevel: 10,
-    costPrice: 0,
-    sellingPrice: 0,
+    price: { amount: 0, currency: "INR", unit: "unit" },
+    availableQuantity: 0,
+    minStockQuantity: 0,
+    unit: "units",
+    visibility: "public",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = useCallback((field: keyof CreateInventoryItemInput, value: any) => {
+  const updateField = useCallback((field: keyof CreateProductInput, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   }, [errors]);
 
+  const updatePriceField = useCallback((field: "amount" | "currency" | "unit", value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      price: { ...prev.price, [field]: value },
+    }));
+  }, []);
+
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Item name is required";
+      newErrors.name = "Product name is required";
     }
     if (!formData.category) {
       newErrors.category = "Please select a category";
     }
-    if (formData.quantity < 0) {
-      newErrors.quantity = "Quantity cannot be negative";
+    if (formData.price.amount < 0) {
+      newErrors.price = "Price cannot be negative";
+    }
+    if (formData.availableQuantity !== undefined && formData.availableQuantity < 0) {
+      newErrors.availableQuantity = "Quantity cannot be negative";
     }
 
     setErrors(newErrors);
@@ -77,12 +86,12 @@ export const AddInventoryItemScreen = () => {
 
     setLoading(true);
     try {
-      await inventoryService.createItem(formData);
-      Alert.alert("Success", "Inventory item added successfully!", [
+      await productService.create(formData);
+      Alert.alert("Success", "Product added successfully!", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to add item. Please try again.");
+      Alert.alert("Error", error.message || "Failed to add product. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -100,7 +109,7 @@ export const AddInventoryItemScreen = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Inventory Item</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Product</Text>
           <View style={{ width: 50 }} />
         </View>
 
@@ -117,8 +126,8 @@ export const AddInventoryItemScreen = () => {
           </Text>
 
           <InputField
-            label="Item Name"
-            placeholder="Enter item name"
+            label="Product Name"
+            placeholder="Enter product name"
             value={formData.name}
             onChangeText={(text) => updateField("name", text)}
             errorText={errors.name}
@@ -126,7 +135,7 @@ export const AddInventoryItemScreen = () => {
 
           <InputField
             label="Description"
-            placeholder="Enter item description (optional)"
+            placeholder="Describe your product (optional)"
             value={formData.description}
             onChangeText={(text) => updateField("description", text)}
             multiline
@@ -191,15 +200,15 @@ export const AddInventoryItemScreen = () => {
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <InputField
-                label="Quantity"
+                label="Current Stock"
                 placeholder="0"
-                value={formData.quantity === 0 ? "" : formData.quantity.toString()}
+                value={formData.availableQuantity === 0 ? "" : formData.availableQuantity?.toString() || ""}
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9]/g, "");
-                  updateField("quantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
+                  updateField("availableQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
                 }}
                 keyboardType="numeric"
-                errorText={errors.quantity}
+                errorText={errors.availableQuantity}
               />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
@@ -238,45 +247,43 @@ export const AddInventoryItemScreen = () => {
           </View>
 
           <InputField
-            label="Minimum Stock Level"
+            label="Minimum Stock Threshold"
             placeholder="10"
-            value={formData.minStockLevel === 0 ? "" : formData.minStockLevel?.toString() || ""}
+            value={formData.minStockQuantity === 0 ? "" : formData.minStockQuantity?.toString() || ""}
             onChangeText={(text) => {
               const cleaned = text.replace(/[^0-9]/g, "");
-              updateField("minStockLevel", cleaned === "" ? 0 : parseInt(cleaned, 10));
+              updateField("minStockQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
             }}
             keyboardType="numeric"
-            helperText="Alert when stock falls below this level"
+            helperText="Alerts when stock falls below this level"
           />
 
           {/* Pricing Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
-            Pricing (Optional)
+            Pricing
           </Text>
 
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <InputField
-                label="Cost Price (₹)"
+                label="Price Amount"
                 placeholder="0.00"
-                value={formData.costPrice === 0 ? "" : formData.costPrice?.toString() || ""}
+                value={formData.price.amount === 0 ? "" : formData.price.amount.toString()}
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9.]/g, "");
-                  updateField("costPrice", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
+                  updatePriceField("amount", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
                 }}
                 keyboardType="decimal-pad"
+                errorText={errors.price}
               />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <InputField
-                label="Selling Price (₹)"
-                placeholder="0.00"
-                value={formData.sellingPrice === 0 ? "" : formData.sellingPrice?.toString() || ""}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  updateField("sellingPrice", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
-                }}
-                keyboardType="decimal-pad"
+                label="Currency"
+                placeholder="INR"
+                value={formData.price.currency || "INR"}
+                onChangeText={(text) => updatePriceField("currency", text.toUpperCase())}
+                autoCapitalize="characters"
               />
             </View>
           </View>
@@ -284,7 +291,7 @@ export const AddInventoryItemScreen = () => {
           {/* Submit Button */}
           <View style={{ marginTop: spacing.xl }}>
             <Button
-              label={loading ? "Adding..." : "Add Item"}
+              label={loading ? "Adding..." : "Add Product"}
               onPress={handleSubmit}
               disabled={loading}
               variant="primary"

@@ -14,7 +14,7 @@ import { BarChart, PieChart } from "react-native-gifted-charts";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
-import { inventoryService, InventoryStats } from "../services/inventory.service";
+import { productService, ProductStats } from "../services/product.service";
 import { RootStackParamList } from "../navigation/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -22,12 +22,12 @@ const CHART_WIDTH = SCREEN_WIDTH - 64;
 
 // Chart colors for categories
 const CATEGORY_COLORS: Record<string, string> = {
-  "raw-materials": "#6C63FF",
-  "packaging": "#FF8C3C",
-  "machinery": "#4AC9FF",
-  "safety": "#4ADE80",
-  "chemicals": "#EC4899",
-  "tools": "#FBBF24",
+  "finished-goods": "#6C63FF",
+  "components": "#FF8C3C",
+  "raw-materials": "#4AC9FF",
+  "machinery": "#4ADE80",
+  "packaging": "#EC4899",
+  "services": "#FBBF24",
 };
 
 // ============================================================
@@ -39,14 +39,14 @@ export const StatsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<InventoryStats | null>(null);
+  const [stats, setStats] = useState<ProductStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBarValue, setSelectedBarValue] = useState<{ label: string; value: number } | null>(null);
 
   const fetchStats = useCallback(async () => {
     try {
       setError(null);
-      const data = await inventoryService.getStats();
+      const data = await productService.getStats();
       setStats(data);
     } catch (err: any) {
       console.error("Failed to fetch stats:", err);
@@ -84,11 +84,11 @@ export const StatsScreen = () => {
 
   // Navigation handlers for clickable stats
   const handleLowStockPress = useCallback(() => {
-    navigation.navigate("FilteredInventory", { filter: "low_stock", title: "Low Stock Items" });
+    navigation.navigate("FilteredProducts", { filter: "low_stock", title: "Low Stock Products" });
   }, [navigation]);
 
   const handleOutOfStockPress = useCallback(() => {
-    navigation.navigate("FilteredInventory", { filter: "out_of_stock", title: "Out of Stock Items" });
+    navigation.navigate("FilteredProducts", { filter: "out_of_stock", title: "Out of Stock Products" });
   }, [navigation]);
 
   // Quick stats cards from real data
@@ -102,7 +102,7 @@ export const StatsScreen = () => {
       onPress: undefined,
     },
     {
-      label: "Inventory Value",
+      label: "Product Value",
       value: `₹${(totalValue / 1000).toFixed(1)}K`,
       trend: "neutral" as const,
       trendValue: "Cost value",
@@ -167,9 +167,9 @@ export const StatsScreen = () => {
       >
         {/* Header */}
         <View style={{ marginBottom: spacing.lg }}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Inventory Stats</Text>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Product Stats</Text>
           <Text style={[styles.pageSubtitle, { color: colors.textMuted }]}>
-            Track your inventory performance
+            Track your catalog performance
           </Text>
         </View>
 
@@ -272,12 +272,12 @@ export const StatsScreen = () => {
             </View>
           </ChartCard>
         ) : (
-          <ChartCard title="Items by Category">
+          <ChartCard title="Products by Category">
             <View style={[styles.emptyState, { padding: spacing.xl }]}>
               <Text style={[styles.emptyIcon]}>📦</Text>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No inventory yet</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No products yet</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Add items to see distribution
+                Add products to see distribution
               </Text>
             </View>
           </ChartCard>
@@ -287,8 +287,8 @@ export const StatsScreen = () => {
         <ChartCard title="Stock Status">
           <View style={{ gap: spacing.md }}>
             <StatusRow
-              label="Active"
-              count={stats?.statusBreakdown.active || 0}
+              label="In Stock"
+              count={stats?.statusBreakdown.in_stock || 0}
               total={totalItems}
               color="#4ADE80"
             />
@@ -303,12 +303,6 @@ export const StatsScreen = () => {
               count={stats?.statusBreakdown.out_of_stock || 0}
               total={totalItems}
               color="#FF6B6B"
-            />
-            <StatusRow
-              label="Discontinued"
-              count={stats?.statusBreakdown.discontinued || 0}
-              total={totalItems}
-              color="#6B7280"
             />
           </View>
         </ChartCard>
@@ -330,9 +324,9 @@ export const StatsScreen = () => {
             />
             <HighlightItem
               icon="💰"
-              title="Inventory Value"
+              title="Product Value"
               value={`₹${totalValue.toLocaleString()}`}
-              detail="Total cost value"
+              detail="Total value"
             />
             <HighlightItem
               icon="⚠️"

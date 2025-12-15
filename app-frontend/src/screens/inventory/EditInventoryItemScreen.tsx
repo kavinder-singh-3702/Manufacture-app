@@ -16,86 +16,96 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
-import { inventoryService, CreateInventoryItemInput, InventoryItem } from "../../services/inventory.service";
+import { productService, CreateProductInput, Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 
-// Category options matching backend
 const CATEGORIES = [
+  { id: "finished-goods", title: "Finished Goods", icon: "📦" },
+  { id: "components", title: "Components & Parts", icon: "🧩" },
   { id: "raw-materials", title: "Raw Materials", icon: "🧱" },
-  { id: "packaging", title: "Packaging & Supplies", icon: "📦" },
-  { id: "machinery", title: "Machinery Parts", icon: "⚙️" },
-  { id: "safety", title: "Safety Equipment", icon: "🦺" },
-  { id: "chemicals", title: "Chemicals & Solvents", icon: "🧪" },
-  { id: "tools", title: "Tools & Hardware", icon: "🔧" },
+  { id: "machinery", title: "Machinery & Equipment", icon: "⚙️" },
+  { id: "packaging", title: "Packaging", icon: "🎁" },
+  { id: "services", title: "Services", icon: "🛠️" },
 ];
 
-const UNITS = ["pieces", "kg", "liters", "meters", "boxes", "pallets", "units"];
+const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];
 
-export const EditInventoryItemScreen = () => {
+export const EditProductScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, "EditInventoryItem">>();
-  const { itemId } = route.params;
+  const route = useRoute<RouteProp<RootStackParamList, "EditProduct">>();
+  const { productId } = route.params;
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [formData, setFormData] = useState<CreateInventoryItemInput>({
+  const [formData, setFormData] = useState<CreateProductInput>({
     name: "",
     description: "",
     sku: "",
     category: "",
-    quantity: 0,
-    unit: "pieces",
-    minStockLevel: 10,
-    costPrice: 0,
-    sellingPrice: 0,
+    price: { amount: 0, currency: "INR", unit: "unit" },
+    availableQuantity: 0,
+    minStockQuantity: 0,
+    unit: "units",
+    visibility: "public",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Fetch existing item data
   useEffect(() => {
     const fetchItem = async () => {
       try {
-        const item = await inventoryService.getItemById(itemId);
+        const item: Product = await productService.getById(productId);
         setFormData({
           name: item.name,
           description: item.description || "",
           sku: item.sku || "",
           category: item.category,
-          quantity: item.quantity,
-          unit: item.unit,
-          minStockLevel: item.minStockLevel,
-          costPrice: item.costPrice,
-          sellingPrice: item.sellingPrice,
+          price: {
+            amount: item.price?.amount || 0,
+            currency: item.price?.currency || "INR",
+            unit: item.price?.unit || "unit",
+          },
+          availableQuantity: item.availableQuantity,
+          minStockQuantity: item.minStockQuantity,
+          unit: item.unit || "units",
+          visibility: item.visibility || "public",
+          status: item.status,
         });
       } catch (error: any) {
-        Alert.alert("Error", error.message || "Failed to load item");
+        Alert.alert("Error", error.message || "Failed to load product");
         navigation.goBack();
       } finally {
         setFetching(false);
       }
     };
     fetchItem();
-  }, [itemId, navigation]);
+  }, [productId, navigation]);
 
-  const updateField = useCallback((field: keyof CreateInventoryItemInput, value: any) => {
+  const updateField = useCallback((field: keyof CreateProductInput, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   }, [errors]);
 
+  const updatePriceField = useCallback((field: "amount" | "currency" | "unit", value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      price: { ...prev.price, [field]: value },
+    }));
+  }, []);
+
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Item name is required";
+      newErrors.name = "Product name is required";
     }
     if (!formData.category) {
       newErrors.category = "Please select a category";
     }
-    if (formData.quantity < 0) {
-      newErrors.quantity = "Quantity cannot be negative";
+    if (formData.availableQuantity !== undefined && formData.availableQuantity < 0) {
+      newErrors.availableQuantity = "Quantity cannot be negative";
     }
 
     setErrors(newErrors);
@@ -107,49 +117,45 @@ export const EditInventoryItemScreen = () => {
 
     setLoading(true);
     try {
-      await inventoryService.updateItem(itemId, formData);
-      Alert.alert("Success", "Inventory item updated successfully!", [
+      await productService.update(productId, formData);
+      Alert.alert("Success", "Product updated successfully!", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update item. Please try again.");
+      Alert.alert("Error", error.message || "Failed to update product. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [formData, itemId, navigation, validate]);
+  }, [formData, productId, navigation, validate]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      "Delete Item",
-      "Are you sure you want to delete this item? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await inventoryService.deleteItem(itemId);
-              Alert.alert("Deleted", "Item has been removed.", [
-                { text: "OK", onPress: () => navigation.goBack() },
-              ]);
-            } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to delete item.");
-              setLoading(false);
-            }
-          },
+    Alert.alert("Delete Product", "Are you sure you want to delete this product?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await productService.delete(productId);
+            Alert.alert("Deleted", "Product has been removed.", [
+              { text: "OK", onPress: () => navigation.goBack() },
+            ]);
+          } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to delete product.");
+            setLoading(false);
+          }
         },
-      ]
-    );
-  }, [itemId, navigation]);
+      },
+    ]);
+  }, [productId, navigation]);
 
   if (fetching) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading item...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading product...</Text>
         </View>
       </SafeAreaView>
     );
@@ -162,12 +168,11 @@ export const EditInventoryItemScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Item</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Product</Text>
           <TouchableOpacity onPress={handleDelete}>
             <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>
           </TouchableOpacity>
@@ -180,14 +185,13 @@ export const EditInventoryItemScreen = () => {
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets={true}
         >
-          {/* Basic Info Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>
             Basic Information
           </Text>
 
           <InputField
-            label="Item Name"
-            placeholder="Enter item name"
+            label="Product Name"
+            placeholder="Enter product name"
             value={formData.name}
             onChangeText={(text) => updateField("name", text)}
             errorText={errors.name}
@@ -195,7 +199,7 @@ export const EditInventoryItemScreen = () => {
 
           <InputField
             label="Description"
-            placeholder="Enter item description (optional)"
+            placeholder="Describe your product (optional)"
             value={formData.description}
             onChangeText={(text) => updateField("description", text)}
             multiline
@@ -211,7 +215,6 @@ export const EditInventoryItemScreen = () => {
             autoCapitalize="characters"
           />
 
-          {/* Category Selection */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
             Category
           </Text>
@@ -252,7 +255,6 @@ export const EditInventoryItemScreen = () => {
             })}
           </View>
 
-          {/* Quantity Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
             Stock Details
           </Text>
@@ -260,104 +262,88 @@ export const EditInventoryItemScreen = () => {
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <InputField
-                label="Quantity"
+                label="Current Stock"
                 placeholder="0"
-                value={formData.quantity === 0 ? "" : formData.quantity.toString()}
+                value={formData.availableQuantity === 0 ? "" : formData.availableQuantity?.toString() || ""}
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9]/g, "");
-                  updateField("quantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
+                  updateField("availableQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
                 }}
                 keyboardType="numeric"
-                errorText={errors.quantity}
+                errorText={errors.availableQuantity}
               />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Text style={[styles.label, { color: colors.textMuted }]}>Unit</Text>
               <View style={[styles.unitSelector, { borderRadius: radius.md, marginTop: 8 }]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {UNITS.map((unit) => {
-                    const isSelected = formData.unit === unit;
-                    return (
-                      <TouchableOpacity
-                        key={unit}
-                        onPress={() => updateField("unit", unit)}
-                        style={[
-                          styles.unitChip,
-                          {
-                            backgroundColor: isSelected ? colors.primary : colors.surface,
-                            borderColor: isSelected ? colors.primary : colors.border,
-                            borderRadius: radius.sm,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.unitText,
-                            { color: isSelected ? "#fff" : colors.textSecondary },
-                          ]}
-                        >
-                          {unit}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                {UNITS.map((unit) => {
+                  const isSelected = formData.unit === unit;
+                  return (
+                    <TouchableOpacity
+                      key={unit}
+                      onPress={() => updateField("unit", unit)}
+                      style={[
+                        styles.unitChip,
+                        {
+                          backgroundColor: isSelected ? colors.primary : colors.surface,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                          borderRadius: radius.sm,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.unitText, { color: isSelected ? "#fff" : colors.textSecondary }]}>
+                        {unit}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>
 
           <InputField
-            label="Minimum Stock Level"
+            label="Minimum Stock Threshold"
             placeholder="10"
-            value={formData.minStockLevel === 0 ? "" : formData.minStockLevel?.toString() || ""}
+            value={formData.minStockQuantity === 0 ? "" : formData.minStockQuantity?.toString() || ""}
             onChangeText={(text) => {
               const cleaned = text.replace(/[^0-9]/g, "");
-              updateField("minStockLevel", cleaned === "" ? 0 : parseInt(cleaned, 10));
+              updateField("minStockQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
             }}
             keyboardType="numeric"
-            helperText="Alert when stock falls below this level"
+            helperText="Alerts when stock falls below this level"
           />
 
-          {/* Pricing Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
-            Pricing (Optional)
+            Pricing
           </Text>
 
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
               <InputField
-                label="Cost Price (₹)"
+                label="Price Amount"
                 placeholder="0.00"
-                value={formData.costPrice === 0 ? "" : formData.costPrice?.toString() || ""}
+                value={formData.price.amount === 0 ? "" : formData.price.amount.toString()}
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9.]/g, "");
-                  updateField("costPrice", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
+                  updatePriceField("amount", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
                 }}
                 keyboardType="decimal-pad"
+                errorText={errors.price}
               />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <InputField
-                label="Selling Price (₹)"
-                placeholder="0.00"
-                value={formData.sellingPrice === 0 ? "" : formData.sellingPrice?.toString() || ""}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  updateField("sellingPrice", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
-                }}
-                keyboardType="decimal-pad"
+                label="Currency"
+                placeholder="INR"
+                value={formData.price.currency || "INR"}
+                onChangeText={(text) => updatePriceField("currency", text.toUpperCase())}
+                autoCapitalize="characters"
               />
             </View>
           </View>
 
-          {/* Submit Button */}
           <View style={{ marginTop: spacing.xl }}>
-            <Button
-              label={loading ? "Saving..." : "Save Changes"}
-              onPress={handleSubmit}
-              disabled={loading}
-              variant="primary"
-            />
+            <Button label={loading ? "Updating..." : "Save Product"} onPress={handleSubmit} disabled={loading} variant="primary" />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -366,16 +352,6 @@ export const EditInventoryItemScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -392,7 +368,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   sectionTitle: {
     fontSize: 16,
@@ -434,15 +410,27 @@ const styles = StyleSheet.create({
   },
   unitSelector: {
     marginBottom: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   unitChip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginRight: 8,
     borderWidth: 1,
   },
   unitText: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

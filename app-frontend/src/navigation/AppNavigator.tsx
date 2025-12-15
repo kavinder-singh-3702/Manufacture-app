@@ -14,7 +14,7 @@ import { VerificationSubmitScreen } from "../screens/verification/VerificationSu
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
-import { AddInventoryItemScreen, EditInventoryItemScreen, InventoryListScreen, FilteredInventoryScreen } from "../screens/inventory";
+import { AddProductScreen, EditProductScreen, ProductListScreen, FilteredProductsScreen } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
 
 enableScreens(true);
@@ -111,23 +111,23 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
-              name="AddInventoryItem"
-              component={AddInventoryItemScreen}
+              name="AddProduct"
+              component={AddProductScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
-              name="InventoryList"
-              component={InventoryListScreen}
+              name="ProductList"
+              component={ProductListScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
-              name="EditInventoryItem"
-              component={EditInventoryItemScreen}
+              name="EditProduct"
+              component={EditProductScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
-              name="FilteredInventory"
-              component={FilteredInventoryScreen}
+              name="FilteredProducts"
+              component={FilteredProductsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

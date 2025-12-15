@@ -13,16 +13,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
-import { inventoryService, InventoryItem } from "../../services/inventory.service";
+import { productService, Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 
-export const FilteredInventoryScreen = () => {
+export const FilteredProductsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, "FilteredInventory">>();
+  const route = useRoute<RouteProp<RootStackParamList, "FilteredProducts">>();
   const { filter, title } = route.params;
 
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +30,10 @@ export const FilteredInventoryScreen = () => {
   const fetchItems = useCallback(async () => {
     try {
       setError(null);
-      const response = await inventoryService.getAllItems({ status: filter, limit: 100 });
-      setItems(response.items);
+      const response = await productService.getAll({ status: filter, limit: 100 });
+      setItems(response.products);
     } catch (err: any) {
-      setError(err.message || "Failed to load inventory");
+      setError(err.message || "Failed to load products");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -49,34 +49,18 @@ export const FilteredInventoryScreen = () => {
     fetchItems();
   }, [fetchItems]);
 
-  const handleEditItem = useCallback((itemId: string) => {
-    navigation.navigate("EditInventoryItem", { itemId });
-  }, [navigation]);
+  const handleEditItem = useCallback(
+    (productId: string) => {
+      navigation.navigate("EditProduct", { productId });
+    },
+    [navigation]
+  );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "#10B981";
-      case "low_stock": return "#F59E0B";
-      case "out_of_stock": return "#EF4444";
-      default: return "#6B7280";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active": return "Active";
-      case "low_stock": return "Low Stock";
-      case "out_of_stock": return "Out of Stock";
-      case "discontinued": return "Discontinued";
-      default: return status;
-    }
-  };
+  const statusColor = filter === "low_stock" ? "#F59E0B" : "#EF4444";
 
   const renderItem = useCallback(
-    ({ item }: { item: InventoryItem }) => {
-      const statusColor = getStatusColor(item.status);
-      const price = item.sellingPrice || item.costPrice || 0;
-
+    ({ item }: { item: Product }) => {
+      const price = item.price?.amount || 0;
       return (
         <TouchableOpacity
           onPress={() => handleEditItem(item._id)}
@@ -103,7 +87,7 @@ export const FilteredInventoryScreen = () => {
             </View>
             <View style={[styles.statusBadge, { backgroundColor: statusColor + "20", borderColor: statusColor }]}>
               <Text style={[styles.statusText, { color: statusColor }]}>
-                {getStatusLabel(item.status)}
+                {filter === "low_stock" ? "Low Stock" : "Out of Stock"}
               </Text>
             </View>
           </View>
@@ -111,21 +95,21 @@ export const FilteredInventoryScreen = () => {
           <View style={styles.itemDetails}>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Current Stock:</Text>
-              <Text style={[styles.detailValue, { color: item.quantity === 0 ? colors.error : colors.text }]}>
-                {item.quantity} {item.unit}
+              <Text style={[styles.detailValue, { color: item.availableQuantity === 0 ? colors.error : colors.text }]}>
+                {item.availableQuantity} {item.unit || item.price?.unit || "units"}
               </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Min Level:</Text>
               <Text style={[styles.detailValue, { color: colors.textSecondary }]}>
-                {item.minStockLevel} {item.unit}
+                {item.minStockQuantity} {item.unit || item.price?.unit || "units"}
               </Text>
             </View>
             {price > 0 && (
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Price:</Text>
                 <Text style={[styles.detailValue, { color: colors.primary }]}>
-                  ₹{price.toFixed(2)}
+                  {(item.price?.currency || "INR")} {price.toFixed(2)}
                 </Text>
               </View>
             )}
@@ -136,14 +120,14 @@ export const FilteredInventoryScreen = () => {
               onPress={() => handleEditItem(item._id)}
               style={[styles.editButton, { borderColor: colors.primary }]}
             >
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit Item</Text>
+              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit Product</Text>
             </TouchableOpacity>
-            {item.status === "low_stock" && (
+            {filter === "low_stock" && (
               <View style={[styles.alertBadge, { backgroundColor: "#FEF3C7" }]}>
                 <Text style={styles.alertText}>⚠️ Restock Soon</Text>
               </View>
             )}
-            {item.status === "out_of_stock" && (
+            {filter === "out_of_stock" && (
               <View style={[styles.alertBadge, { backgroundColor: "#FEE2E2" }]}>
                 <Text style={styles.alertText}>🚨 Urgent Restock</Text>
               </View>
@@ -152,7 +136,7 @@ export const FilteredInventoryScreen = () => {
         </TouchableOpacity>
       );
     },
-    [colors, radius, spacing, handleEditItem]
+    [colors, radius, spacing, statusColor, handleEditItem, filter]
   );
 
   if (loading) {
@@ -160,9 +144,7 @@ export const FilteredInventoryScreen = () => {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            Loading items...
-          </Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading products...</Text>
         </View>
       </SafeAreaView>
     );
@@ -170,13 +152,11 @@ export const FilteredInventoryScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Background */}
       <LinearGradient
         colors={filter === "low_stock" ? ["rgba(245, 158, 11, 0.06)", "transparent"] : ["rgba(239, 68, 68, 0.06)", "transparent"]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Header */}
       <View style={[styles.header, { padding: spacing.lg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
@@ -185,14 +165,11 @@ export const FilteredInventoryScreen = () => {
         <View style={{ width: 50 }} />
       </View>
 
-      {/* Summary Card */}
       <View style={[styles.summaryCard, { backgroundColor: colors.surface, margin: spacing.md, padding: spacing.md, borderRadius: radius.md }]}>
-        <Text style={[styles.summaryIcon]}>
-          {filter === "low_stock" ? "⚠️" : "🚨"}
-        </Text>
+        <Text style={[styles.summaryIcon]}>{filter === "low_stock" ? "⚠️" : "🚨"}</Text>
         <View style={styles.summaryInfo}>
-          <Text style={[styles.summaryCount, { color: filter === "low_stock" ? "#F59E0B" : "#EF4444" }]}>
-            {items.length} {items.length === 1 ? "Item" : "Items"}
+          <Text style={[styles.summaryCount, { color: statusColor }]}>
+            {items.length} {items.length === 1 ? "Product" : "Products"}
           </Text>
           <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>
             {filter === "low_stock" ? "need restocking soon" : "need urgent restocking"}
@@ -200,9 +177,13 @@ export const FilteredInventoryScreen = () => {
         </View>
       </View>
 
-      {/* Error State */}
       {error && (
-        <View style={[styles.errorContainer, { backgroundColor: colors.error + "20", margin: spacing.md, padding: spacing.md, borderRadius: radius.md }]}>
+        <View
+          style={[
+            styles.errorContainer,
+            { backgroundColor: colors.error + "20", margin: spacing.md, padding: spacing.md, borderRadius: radius.md },
+          ]}
+        >
           <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           <TouchableOpacity onPress={handleRefresh}>
             <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
@@ -210,7 +191,6 @@ export const FilteredInventoryScreen = () => {
         </View>
       )}
 
-      {/* Items List */}
       {!error && (
         <FlatList
           data={items}
@@ -218,19 +198,13 @@ export const FilteredInventoryScreen = () => {
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>✅</Text>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                All Clear!
-              </Text>
+              <Text style={styles.emptyIcon}>📦</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No products</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                {filter === "low_stock"
-                  ? "No items are running low on stock"
-                  : "No items are out of stock"}
+                Nothing matches this stock status right now
               </Text>
             </View>
           }
@@ -241,160 +215,38 @@ export const FilteredInventoryScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  summaryCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  summaryIcon: {
-    fontSize: 32,
-  },
-  summaryInfo: {
-    flex: 1,
-  },
-  summaryCount: {
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  summaryLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  errorContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  errorText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  retryText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 100,
-    gap: 8,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    textAlign: "center",
-  },
-  itemCard: {
-    borderWidth: 1.5,
-  },
-  itemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  itemInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  itemCategory: {
-    fontSize: 12,
-    fontWeight: "500",
-    marginTop: 2,
-    textTransform: "capitalize",
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  itemDetails: {
-    gap: 6,
-    marginBottom: 12,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  detailLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-  },
-  editButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
-  editButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  alertBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  alertText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { fontSize: 14, fontWeight: "500" },
+  header: { borderBottomWidth: 1 },
+  backButton: { fontSize: 16, fontWeight: "600" },
+  headerTitle: { fontSize: 18, fontWeight: "700" },
+  summaryCard: { flexDirection: "row", alignItems: "center", gap: 12 },
+  summaryIcon: { fontSize: 32 },
+  summaryInfo: { flex: 1 },
+  summaryCount: { fontSize: 18, fontWeight: "800" },
+  summaryLabel: { fontSize: 14, fontWeight: "500" },
+  errorContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  errorText: { fontSize: 14, fontWeight: "500" },
+  retryText: { fontSize: 14, fontWeight: "600" },
+  itemCard: { borderWidth: 1 },
+  itemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  itemInfo: { flex: 1 },
+  itemName: { fontSize: 15, fontWeight: "700" },
+  itemCategory: { fontSize: 12, fontWeight: "500", marginTop: 2, textTransform: "capitalize" },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 999 },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  itemDetails: { marginTop: 12, gap: 8 },
+  detailRow: { flexDirection: "row", justifyContent: "space-between" },
+  detailLabel: { fontSize: 12, fontWeight: "600" },
+  detailValue: { fontSize: 14, fontWeight: "700" },
+  actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
+  editButton: { paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1.5, borderRadius: 10 },
+  editButtonText: { fontSize: 12, fontWeight: "700" },
+  alertBadge: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  alertText: { fontSize: 12, fontWeight: "700" },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100, gap: 8 },
+  emptyIcon: { fontSize: 48, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptySubtitle: { fontSize: 14, fontWeight: "500" },
 });

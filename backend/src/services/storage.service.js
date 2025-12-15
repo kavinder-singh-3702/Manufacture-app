@@ -104,6 +104,13 @@ const buildUserObjectKey = ({ userId, purpose = 'general', fileName }) => {
   return `${prefix}/user-uploads/${userId}/${purpose}-${timeSegment}-${normalizedFileName}`;
 };
 
+const buildProductObjectKey = ({ companyId, productId, fileName }) => {
+  const prefix = (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
+  const normalizedFileName = sanitizeFileName(fileName) || `product-${Date.now()}`;
+  const timeSegment = Date.now();
+  return `${prefix}/products/${companyId}/${productId}/${timeSegment}-${normalizedFileName}`;
+};
+
 
 //=====>>>Upload user documents <<<===-
 const uploadUserDocument = async ({ userId, purpose = 'general', fileName, mimeType, base64 }) => {
@@ -143,7 +150,46 @@ const uploadUserDocument = async ({ userId, purpose = 'general', fileName, mimeT
   };
 };
 
+const uploadProductImage = async ({ companyId, productId, userId, fileName, mimeType, base64 }) => {
+  if (!base64 || typeof base64 !== 'string') {
+    throw createError(400, 'Invalid image payload supplied');
+  }
+
+  const s3 = getS3Client();
+  const objectKey = buildProductObjectKey({ companyId, productId, fileName });
+  const cleanedBase64 = normalizeBase64Payload(base64);
+  const buffer = Buffer.from(cleanedBase64, 'base64');
+
+  if (!buffer.length) {
+    throw createError(400, 'Image content cannot be empty');
+  }
+
+  if (buffer.length > MAX_DOCUMENT_SIZE_BYTES) {
+    throw createError(413, 'Image exceeds the 5 MB limit');
+  }
+
+  const putCommand = new PutObjectCommand({
+    Bucket: config.awsS3Bucket,
+    Key: objectKey,
+    Body: buffer,
+    ContentType: mimeType || 'application/octet-stream'
+  });
+
+  await s3.send(putCommand);
+
+  return {
+    key: objectKey,
+    url: buildPublicUrl(objectKey),
+    fileName,
+    contentType: mimeType,
+    size: buffer.length,
+    uploadedAt: new Date(),
+    uploadedBy: userId
+  };
+};
+
 module.exports = {
   uploadCompanyDocument,
-  uploadUserDocument
+  uploadUserDocument,
+  uploadProductImage
 };

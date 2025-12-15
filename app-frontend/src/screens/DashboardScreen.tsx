@@ -51,7 +51,7 @@ const pipeline: PipelineItem[] = [
 const tasks: TaskItem[] = [
   { id: "qc", title: "QC approvals for batch #204", owner: "Quality", time: "Due in 2h", tag: "Compliance" },
   { id: "booking", title: "Lock trucking slots for Delhi", owner: "Logistics", time: "Today 5 PM", tag: "Dispatch" },
-  { id: "inventory", title: "Count critical SKUs (motors)", owner: "Inventory", time: "Tomorrow 9 AM", tag: "Stock" },
+  { id: "inventory", title: "Count critical SKUs (motors)", owner: "Products", time: "Tomorrow 9 AM", tag: "Stock" },
 ];
 
 const updates: UpdateItem[] = [
@@ -416,7 +416,7 @@ const UserDashboardContent = () => {
           {/* Inventory Action Buttons */}
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <TouchableOpacity
-              onPress={() => navigation.navigate("InventoryList")}
+              onPress={() => navigation.navigate("ProductList")}
               activeOpacity={0.8}
               style={{
                 flex: 1,
@@ -444,7 +444,7 @@ const UserDashboardContent = () => {
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.navigate("AddInventoryItem")}
+              onPress={() => navigation.navigate("AddProduct")}
               activeOpacity={0.8}
               style={{
                 backgroundColor: colors.surface,

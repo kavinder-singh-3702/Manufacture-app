@@ -18,34 +18,40 @@ import { useNavigation, CommonActions } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useCart } from "../../hooks/useCart";
-import { inventoryService, InventoryItem } from "../../services/inventory.service";
+import { productService, Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = -80;
 
 // ============================================================
-// INVENTORY ITEM CARD
+// PRODUCT CARD
 // ============================================================
-type InventoryItemCardProps = {
-  item: InventoryItem;
-  onAddToCart: (item: InventoryItem) => void;
+type ProductCardProps = {
+  item: Product;
+  onAddToCart: (item: Product) => void;
   onRemoveFromCart: (itemId: string) => void;
   onEdit: (itemId: string) => void;
   isInCart: boolean;
   cartQuantity: number;
 };
 
-const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCart, cartQuantity }: InventoryItemCardProps) => {
+const ProductCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCart, cartQuantity }: ProductCardProps) => {
   const { colors, spacing, radius } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const itemHeight = useRef(new Animated.Value(1)).current;
 
-  const price = item.sellingPrice || item.costPrice || 0;
+  const price = item.price?.amount || 0;
+  const stockStatus =
+    item.availableQuantity <= 0
+      ? "out_of_stock"
+      : item.availableQuantity <= item.minStockQuantity
+      ? "low_stock"
+      : "in_stock";
   const statusColor =
-    item.status === "active"
+    stockStatus === "in_stock"
       ? "#10B981"
-      : item.status === "low_stock"
+      : stockStatus === "low_stock"
       ? "#F59E0B"
       : "#EF4444";
 
@@ -53,18 +59,15 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to horizontal swipes when item is in cart
         return isInCart && Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10;
       },
       onPanResponderMove: (_, gestureState) => {
-        // Only allow left swipe (negative dx)
         if (gestureState.dx < 0) {
           translateX.setValue(Math.max(gestureState.dx, -100));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < SWIPE_THRESHOLD) {
-          // Swipe past threshold - animate out and remove
           Animated.parallel([
             Animated.timing(translateX, {
               toValue: -SCREEN_WIDTH,
@@ -80,7 +83,6 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
             onRemoveFromCart(item._id);
           });
         } else {
-          // Snap back
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
@@ -91,7 +93,6 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
     })
   ).current;
 
-  // Reset animation when cart status changes
   useEffect(() => {
     if (!isInCart) {
       translateX.setValue(0);
@@ -110,7 +111,6 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
         },
       ]}
     >
-      {/* Delete background (revealed on swipe) */}
       {isInCart && (
         <View style={[styles.deleteBackground, { borderRadius: radius.md }]}>
           <TouchableOpacity
@@ -138,7 +138,6 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
         </View>
       )}
 
-      {/* Card content */}
       <Animated.View
         {...(isInCart ? panResponder.panHandlers : {})}
         style={[
@@ -152,7 +151,6 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
           },
         ]}
       >
-        {/* Item Info */}
         <View style={styles.itemInfo}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
@@ -165,15 +163,14 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
           </Text>
           <View style={styles.itemMeta}>
             <Text style={[styles.itemStock, { color: colors.textSecondary }]}>
-              Stock: {item.quantity} {item.unit}
+              Stock: {item.availableQuantity} {item.unit || item.price?.unit || "units"}
             </Text>
             <Text style={[styles.itemPrice, { color: colors.primary }]}>
-              {item.currency || "INR"} {price.toFixed(2)}
+              {(item.price?.currency || "INR")} {price.toFixed(2)}
             </Text>
           </View>
         </View>
 
-        {/* Edit & Add to Cart Buttons */}
         <View style={styles.buttonGroup}>
           <TouchableOpacity
             onPress={() => onEdit(item._id)}
@@ -216,14 +213,14 @@ const InventoryItemCard = ({ item, onAddToCart, onRemoveFromCart, onEdit, isInCa
 };
 
 // ============================================================
-// INVENTORY LIST SCREEN
+// PRODUCT LIST SCREEN
 // ============================================================
-export const InventoryListScreen = () => {
+export const ProductListScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { addToCart, removeFromCart, isInCart, getCartItem, itemCount } = useCart();
 
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,10 +229,10 @@ export const InventoryListScreen = () => {
   const fetchItems = useCallback(async () => {
     try {
       setError(null);
-      const response = await inventoryService.getAllItems({ limit: 100 });
-      setItems(response.items);
+      const response = await productService.getAll({ limit: 100 });
+      setItems(response.products);
     } catch (err: any) {
-      setError(err.message || "Failed to load inventory");
+      setError(err.message || "Failed to load products");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -252,7 +249,7 @@ export const InventoryListScreen = () => {
   }, [fetchItems]);
 
   const handleAddToCart = useCallback(
-    (item: InventoryItem) => {
+    (item: Product) => {
       addToCart(item, 1);
     },
     [addToCart]
@@ -267,13 +264,12 @@ export const InventoryListScreen = () => {
 
   const handleEditItem = useCallback(
     (itemId: string) => {
-      navigation.navigate("EditInventoryItem", { itemId });
+      navigation.navigate("EditProduct", { productId: itemId });
     },
     [navigation]
   );
 
   const handleGoToCart = useCallback(() => {
-    // Reset navigation stack and go directly to cart tab
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -289,19 +285,21 @@ export const InventoryListScreen = () => {
     );
   }, [navigation]);
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredItems = items.filter((item) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(query) ||
+      item.category.toLowerCase().includes(query) ||
+      (item.sku && item.sku.toLowerCase().includes(query))
+    );
+  });
 
   const renderItem = useCallback(
-    ({ item }: { item: InventoryItem }) => {
+    ({ item }: { item: Product }) => {
       const inCart = isInCart(item._id);
       const cartItem = getCartItem(item._id);
       return (
-        <InventoryItemCard
+        <ProductCard
           item={item}
           onAddToCart={handleAddToCart}
           onRemoveFromCart={handleRemoveFromCart}
@@ -314,16 +312,14 @@ export const InventoryListScreen = () => {
     [handleAddToCart, handleRemoveFromCart, handleEditItem, isInCart, getCartItem]
   );
 
-  const keyExtractor = useCallback((item: InventoryItem) => item._id, []);
+  const keyExtractor = useCallback((item: Product) => item._id, []);
 
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            Loading inventory...
-          </Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading products...</Text>
         </View>
       </SafeAreaView>
     );
@@ -331,19 +327,14 @@ export const InventoryListScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Background */}
-      <LinearGradient
-        colors={["rgba(108, 99, 255, 0.06)", "transparent"]}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} />
 
-      {/* Header */}
       <View style={[styles.header, { padding: spacing.lg, borderBottomColor: colors.border }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Browse Inventory</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Browse Products</Text>
           <TouchableOpacity onPress={handleGoToCart} style={styles.cartButton}>
             <Text style={styles.cartIcon}>🛒</Text>
             {itemCount > 0 && (
@@ -354,12 +345,11 @@ export const InventoryListScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
         <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderRadius: radius.md, marginTop: spacing.md }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search items..."
+            placeholder="Search products..."
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -367,9 +357,13 @@ export const InventoryListScreen = () => {
         </View>
       </View>
 
-      {/* Error State */}
       {error && (
-        <View style={[styles.errorContainer, { backgroundColor: colors.error + "20", margin: spacing.md, padding: spacing.md, borderRadius: radius.md }]}>
+        <View
+          style={[
+            styles.errorContainer,
+            { backgroundColor: colors.error + "20", margin: spacing.md, padding: spacing.md, borderRadius: radius.md },
+          ]}
+        >
           <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           <TouchableOpacity onPress={handleRefresh}>
             <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
@@ -377,7 +371,6 @@ export const InventoryListScreen = () => {
         </View>
       )}
 
-      {/* Items List */}
       {!error && (
         <FlatList
           data={filteredItems}
@@ -385,30 +378,23 @@ export const InventoryListScreen = () => {
           keyExtractor={keyExtractor}
           contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📦</Text>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {searchQuery ? "No items found" : "No inventory items"}
+                {searchQuery ? "No products found" : "No products yet"}
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                {searchQuery ? "Try a different search term" : "Add items to get started"}
+                {searchQuery ? "Try a different search term" : "Add products to get started"}
               </Text>
             </View>
           }
         />
       )}
 
-      {/* Floating Cart Button when items are in cart */}
       {itemCount > 0 && (
-        <TouchableOpacity
-          style={styles.floatingCartButton}
-          onPress={handleGoToCart}
-          activeOpacity={0.9}
-        >
+        <TouchableOpacity style={styles.floatingCartButton} onPress={handleGoToCart} activeOpacity={0.9}>
           <LinearGradient
             colors={["#FF4757", "#FF6348"]}
             start={{ x: 0, y: 0 }}
@@ -526,8 +512,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-
-  // Item card with swipe
   swipeContainer: {
     position: "relative",
     overflow: "hidden",
@@ -642,8 +626,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-
-  // Floating cart button
   floatingCartButton: {
     position: "absolute",
     bottom: 24,

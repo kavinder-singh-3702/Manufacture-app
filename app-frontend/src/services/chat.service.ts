@@ -114,7 +114,7 @@ const MOCK_MESSAGES: Record<string, ChatMessage[]> = {
       senderId: "user-001",
       senderName: "Rahul Sharma",
       senderRole: "user",
-      content: "Hello, I need some help with my inventory.",
+      content: "Hello, I need some help with my product catalog.",
       timestamp: new Date(Date.now() - 7200000).toISOString(),
       read: true,
     },

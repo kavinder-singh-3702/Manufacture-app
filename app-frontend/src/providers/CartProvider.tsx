@@ -1,12 +1,12 @@
 import { createContext, ReactNode, useCallback, useMemo, useState } from "react";
-import { InventoryItem } from "../services/inventory.service";
+import { Product } from "../services/product.service";
 
 // ============================================================
 // CART TYPES
 // ============================================================
 
 export type CartItem = {
-  item: InventoryItem;
+  item: Product;
   quantity: number;
   addedAt: Date;
 };
@@ -15,7 +15,7 @@ type CartContextValue = {
   items: CartItem[];
   itemCount: number;
   totalItems: number;
-  addToCart: (item: InventoryItem, quantity?: number) => void;
+  addToCart: (item: Product, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -32,7 +32,7 @@ type CartProviderProps = {
 export const CartProvider = ({ children }: CartProviderProps) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = useCallback((item: InventoryItem, quantity: number = 1) => {
+  const addToCart = useCallback((item: Product, quantity: number = 1) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex((ci) => ci.item._id === item._id);
       if (existingIndex >= 0) {

@@ -47,7 +47,9 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove }: CartItemCardProp
     ]);
   };
 
-  const totalPrice = (item.sellingPrice || item.costPrice || 0) * quantity;
+  const unitPrice = item.price?.amount || 0;
+  const currency = item.price?.currency || "INR";
+  const totalPrice = unitPrice * quantity;
 
   return (
     <View
@@ -97,10 +99,10 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove }: CartItemCardProp
 
         <View style={styles.priceContainer}>
           <Text style={[styles.unitPrice, { color: colors.textMuted }]}>
-            {item.sellingPrice || item.costPrice || 0} x {quantity}
+            {unitPrice} x {quantity}
           </Text>
           <Text style={[styles.totalPrice, { color: colors.primary }]}>
-            {item.currency || "INR"} {totalPrice.toFixed(2)}
+            {currency} {totalPrice.toFixed(2)}
           </Text>
         </View>
       </View>
@@ -119,7 +121,7 @@ const EmptyCart = () => {
       <Text style={styles.emptyIcon}>🛒</Text>
       <Text style={[styles.emptyTitle, { color: colors.text }]}>Your Cart is Empty</Text>
       <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-        Add inventory items to get started
+        Add products to get started
       </Text>
     </View>
   );
@@ -141,7 +143,7 @@ export const CartScreen = () => {
   }, [items.length, clearCart]);
 
   const totalValue = items.reduce((sum, ci) => {
-    const price = ci.item.sellingPrice || ci.item.costPrice || 0;
+    const price = ci.item.price?.amount || 0;
     return sum + price * ci.quantity;
   }, 0);
 
