@@ -101,58 +101,34 @@ export const ChatScreen = () => {
   );
 
   const handleCallUser = async () => {
-    if (!userPhone) {
+    console.log("[ChatScreen] handleCallUser - userPhone:", userPhone, "recipientPhone:", recipientPhone);
+
+    const phoneToCall = userPhone || recipientPhone;
+
+    if (!phoneToCall) {
       Alert.alert("No Phone Number", "This user hasn't provided a phone number.");
       return;
     }
 
-    const cleanedNumber = userPhone.replace(/[^\d+]/g, "");
+    const cleanedNumber = phoneToCall.replace(/[^\d+]/g, "");
     const phoneUrl = Platform.OS === "android" ? `tel:${cleanedNumber}` : `telprompt:${cleanedNumber}`;
-    const startTime = new Date();
+
+    console.log("[ChatScreen] Calling:", phoneUrl);
 
     try {
       const canOpen = await Linking.canOpenURL(phoneUrl);
+      console.log("[ChatScreen] canOpen:", canOpen);
+
       if (canOpen) {
         await Linking.openURL(phoneUrl);
       } else {
-        Alert.alert("Call User", `Phone: ${userPhone}`, [{ text: "OK" }]);
+        // Fallback: try opening directly without checking
+        await Linking.openURL(phoneUrl);
       }
     } catch (err) {
       console.error("Error opening phone:", err);
-      Alert.alert("Error", "Could not open phone app.");
-      return;
+      Alert.alert("Call User", `Phone: ${phoneToCall}`, [{ text: "OK" }]);
     }
-
-    const durationOptions = [
-      { label: "30 sec", seconds: 30 },
-      { label: "1 min", seconds: 60 },
-      { label: "5 min", seconds: 300 },
-      { label: "Skip", seconds: 0 },
-    ];
-
-    Alert.alert(
-      "Log Call Duration",
-      "Select the call duration to log:",
-      durationOptions.map((opt) => ({
-        text: opt.label,
-        onPress: async () => {
-          if (!recipientId) {
-            return;
-          }
-          try {
-            await chatService.logCall({
-              conversationId,
-              calleeId: recipientId,
-              startedAt: startTime,
-              endedAt: opt.seconds ? new Date(startTime.getTime() + opt.seconds * 1000) : startTime,
-              durationSeconds: opt.seconds,
-            });
-          } catch (error) {
-            console.error("Failed to log call", error);
-          }
-        },
-      }))
-    );
   };
 
   if (loading) {

@@ -19,8 +19,8 @@ import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../s
 import { CartScreen } from "../screens/cart";
 import { UserServicesScreen, AdminChatScreen } from "../screens/chat";
 
-// Hooks
-import { useCart } from "../hooks/useCart";
+// Components
+import { FloatingCartBar } from "../components/cart";
 
 // Navigation
 import { routes, RouteName, getTabsForRole, RouteConfig } from "./routes";
@@ -103,6 +103,9 @@ export const MainTabs = () => {
   const isAdmin = userRole === AppRole.ADMIN;
   const isGuest = userRole === "guest";
   const isAuthenticated = Boolean(user) && !isGuest;
+
+  // DEBUG: Log user info to understand role assignment
+  console.log("[MainTabs] User:", { id: user?.id, role: user?.role, userRole, isAdmin, isAuthenticated });
 
   // Get tabs for current user's role
   const tabs = useMemo(() => getTabsForRole(userRole), [userRole]);
@@ -254,6 +257,9 @@ export const MainTabs = () => {
           </Tab.Navigator>
         </View>
 
+        {/* Floating Cart Bar - shows above footer when items in cart (for non-admin users only) */}
+        {!isAdmin && <FloatingCartBar />}
+
         {/* Different footer bar for admin vs user */}
         {isAdmin ? (
           <AdminFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
@@ -308,34 +314,9 @@ type FooterBarProps = {
 
 const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   const { colors, spacing } = useTheme();
-  const { itemCount } = useCart();
 
-  const renderTab = (tab: RouteConfig, index: number) => {
+  const renderTab = (tab: RouteConfig) => {
     const isActive = activeTab === tab.route;
-    const isCenter = index === 2; // Services tab (center)
-    const isCart = tab.route === routes.CART;
-    const showBadge = isCart && itemCount > 0;
-
-    if (isCenter) {
-      // Center button - larger, always gradient
-      return (
-        <TouchableOpacity
-          key={tab.route}
-          onPress={() => onTabPress(tab.route)}
-          style={styles.centerTabButton}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={tab.gradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.centerTabGradient}
-          >
-            <Text style={styles.centerTabIcon}>{tab.icon}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      );
-    }
 
     return (
       <TouchableOpacity
@@ -346,42 +327,28 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
       >
         {isActive ? (
           <View style={styles.userActiveTabContainer}>
-            <View>
-              <LinearGradient
-                colors={tab.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.userActiveTabGlow, { shadowColor: tab.gradientColors[0] }]}
-              >
-                <Text style={styles.userTabIcon}>{tab.icon}</Text>
-              </LinearGradient>
-              {showBadge && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
-                </View>
-              )}
-            </View>
+            <LinearGradient
+              colors={tab.gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.userActiveTabGlow, { shadowColor: tab.gradientColors[0] }]}
+            >
+              <Text style={styles.userTabIcon}>{tab.icon}</Text>
+            </LinearGradient>
             <Text style={[styles.userTabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
           </View>
         ) : (
           <View style={styles.userInactiveTabContainer}>
-            <View>
-              <LinearGradient
-                colors={[`${tab.gradientColors[0]}30`, `${tab.gradientColors[1]}15`]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.userInactiveGradientBorder}
-              >
-                <View style={[styles.userInactiveIconInner, { backgroundColor: colors.background }]}>
-                  <Text style={styles.userTabIconInactive}>{tab.icon}</Text>
-                </View>
-              </LinearGradient>
-              {showBadge && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{itemCount > 99 ? "99+" : itemCount}</Text>
-                </View>
-              )}
-            </View>
+            <LinearGradient
+              colors={[`${tab.gradientColors[0]}30`, `${tab.gradientColors[1]}15`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.userInactiveGradientBorder}
+            >
+              <View style={[styles.userInactiveIconInner, { backgroundColor: colors.background }]}>
+                <Text style={styles.userTabIconInactive}>{tab.icon}</Text>
+              </View>
+            </LinearGradient>
             <Text style={[styles.userTabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
           </View>
         )}

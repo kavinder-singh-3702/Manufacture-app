@@ -71,11 +71,11 @@ export const AddProductScreen = () => {
     if (!formData.category) {
       newErrors.category = "Please select a category";
     }
-    if (formData.price.amount < 0) {
-      newErrors.price = "Price cannot be negative";
+    if (formData.price.amount <= 0) {
+      newErrors.price = "Price is required and must be greater than 0";
     }
-    if (formData.availableQuantity !== undefined && formData.availableQuantity < 0) {
-      newErrors.availableQuantity = "Quantity cannot be negative";
+    if (formData.availableQuantity === undefined || formData.availableQuantity <= 0) {
+      newErrors.availableQuantity = "At least 1 item is required";
     }
 
     setErrors(newErrors);
@@ -246,18 +246,6 @@ export const AddProductScreen = () => {
               </View>
             </View>
           </View>
-
-          <InputField
-            label="Minimum Stock Threshold"
-            placeholder="10"
-            value={formData.minStockQuantity === 0 ? "" : formData.minStockQuantity?.toString() || ""}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/[^0-9]/g, "");
-              updateField("minStockQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
-            }}
-            keyboardType="numeric"
-            helperText="Alerts when stock falls below this level"
-          />
 
           {/* Pricing Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>

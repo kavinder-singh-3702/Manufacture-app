@@ -302,18 +302,6 @@ export const EditProductScreen = () => {
             </View>
           </View>
 
-          <InputField
-            label="Minimum Stock Threshold"
-            placeholder="10"
-            value={formData.minStockQuantity === 0 ? "" : formData.minStockQuantity?.toString() || ""}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/[^0-9]/g, "");
-              updateField("minStockQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
-            }}
-            keyboardType="numeric"
-            helperText="Alerts when stock falls below this level"
-          />
-
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
             Pricing
           </Text>

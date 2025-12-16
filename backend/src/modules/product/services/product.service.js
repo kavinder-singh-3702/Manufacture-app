@@ -131,8 +131,14 @@ const getProductById = async (productId, companyId) => {
 };
 
 const createProduct = async (payload, userId, companyId) => {
+  // Clean empty SKU to avoid unique constraint issues (sparse index skips null/undefined but not empty string)
+  const cleanedPayload = { ...payload };
+  if (cleanedPayload.sku === '' || cleanedPayload.sku === null) {
+    delete cleanedPayload.sku;
+  }
+
   const product = new Product({
-    ...payload,
+    ...cleanedPayload,
     company: companyId,
     createdBy: userId,
     lastUpdatedBy: userId
@@ -148,9 +154,15 @@ const updateProduct = async (productId, updates, userId, companyId) => {
     query.company = companyId;
   }
 
+  // Clean empty SKU to avoid unique constraint issues
+  const cleanedUpdates = { ...updates };
+  if (cleanedUpdates.sku === '' || cleanedUpdates.sku === null) {
+    cleanedUpdates.sku = undefined; // Use $unset behavior
+  }
+
   const product = await Product.findOneAndUpdate(
     query,
-    { ...updates, lastUpdatedBy: userId, updatedAt: new Date() },
+    { ...cleanedUpdates, lastUpdatedBy: userId, updatedAt: new Date() },
     { new: true, runValidators: true }
   );
 

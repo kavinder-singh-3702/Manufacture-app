@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BarChart, PieChart } from "react-native-gifted-charts";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { productService, ProductStats } from "../services/product.service";
@@ -57,9 +57,12 @@ export const StatsScreen = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  // Refresh stats whenever screen comes into focus (e.g., after deleting a product)
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [fetchStats])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

@@ -8,6 +8,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Profile: undefined;
+  Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   CompanyCreate: undefined;
   CompanyVerification: { companyId: string };

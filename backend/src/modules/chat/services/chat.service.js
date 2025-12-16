@@ -4,26 +4,36 @@ const ChatMessage = require('../../../models/chatMessage.model');
 const CallLog = require('../../../models/callLog.model');
 const User = require('../../../models/user.model');
 
-const ensureObjectId = (value) => new mongoose.Types.ObjectId(value);
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === String(value);
+
+const ensureObjectId = (value) => {
+  if (!isValidObjectId(value)) {
+    throw new Error(`Invalid ObjectId: ${value}`);
+  }
+  return new mongoose.Types.ObjectId(value);
+};
 
 const getOrCreateConversation = async (userId, participantId) => {
-  const participantObjIds = [ensureObjectId(userId), ensureObjectId(participantId)];
+  const userObjId = ensureObjectId(userId);
+  const participantObjId = ensureObjectId(participantId);
 
   const existing = await ChatConversation.findOne({
-    'participants.user': { $all: participantObjIds }
+    'participants.user': { $all: [userObjId, participantObjId] }
   });
 
   if (existing) return existing;
 
+  // Fetch users from database (may not exist for test admin)
   const [user, participant] = await Promise.all([
     User.findById(userId).lean(),
     User.findById(participantId).lean()
   ]);
 
+  // Use ObjectId directly if user not found in DB (e.g., test admin)
   const conversation = new ChatConversation({
     participants: [
-      { user: user?._id, role: user?.role || 'user', lastReadAt: new Date() },
-      { user: participant?._id, role: participant?.role || 'user', lastReadAt: null }
+      { user: user?._id || userObjId, role: user?.role || 'user', lastReadAt: new Date() },
+      { user: participant?._id || participantObjId, role: participant?.role || 'admin', lastReadAt: null }
     ]
   });
   await conversation.save();

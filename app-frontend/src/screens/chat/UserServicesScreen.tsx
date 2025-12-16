@@ -11,6 +11,9 @@ import type { ChatConversation } from "../../types/chat";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// Support admin ID from environment
+const SUPPORT_ADMIN_ID = process.env.EXPO_PUBLIC_SUPPORT_ADMIN_ID || "000000000000000000000001";
+
 export const UserServicesScreen = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -112,11 +115,11 @@ export const UserServicesScreen = () => {
 
     try {
       setScheduleLoading(true);
-      const conversationId = conversation?.id || (await chatService.startConversation(conversation?.otherParticipant?.id));
-      const calleeId = conversation?.otherParticipant?.id;
-      if (!calleeId) {
-        throw new Error("Support participant not configured.");
-      }
+      // Get or create conversation with support admin
+      const conversationId = conversation?.id || (await chatService.startConversation());
+      // Use conversation's other participant or fallback to configured support admin
+      const calleeId = conversation?.otherParticipant?.id || SUPPORT_ADMIN_ID;
+
       await chatService.logCall({
         conversationId,
         calleeId,
@@ -127,6 +130,8 @@ export const UserServicesScreen = () => {
       Alert.alert("Scheduled", "We've logged your call request. Our team will reach out.");
       setCallReason("");
       setShowScheduleForm(false);
+      // Refresh conversation to get updated state
+      await loadConversation();
     } catch (err) {
       console.error("Error scheduling call:", err);
       Alert.alert("Error", "Could not schedule your call. Please try again.");

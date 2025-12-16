@@ -449,58 +449,28 @@ const UserDashboardContent = () => {
             </View>
           )}
 
-          {/* Inventory Action Buttons */}
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("ProductList")}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                overflow: "hidden",
-                borderRadius: 12,
-              }}
-            >
-              <LinearGradient
-                colors={["#FF4757", "#FF6348"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.md,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 18 }}>🛒</Text>
-                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-                  Browse & Add to Cart
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("AddProduct")}
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: colors.surface,
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.md,
-                borderRadius: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Text style={{ color: colors.primary, fontSize: 18, fontWeight: "700" }}>+</Text>
-              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600" }}>
-                Add New
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Add New Product Button */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate("AddProduct")}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: colors.surface,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.lg,
+              borderRadius: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Text style={{ color: colors.primary, fontSize: 20, fontWeight: "700" }}>+</Text>
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
+              Add New Product
+            </Text>
+          </TouchableOpacity>
 
           <View style={{ gap: spacing.sm }}>
             <SectionHeader title="Browse by category" />

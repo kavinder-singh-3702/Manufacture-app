@@ -6,16 +6,23 @@ const { recordActivitySafe, extractRequestContext } = require('../modules/activi
 
 const sanitizeUser = (user) => {
   const { password, __v, ...rest } = user.toObject({ versionKey: false });
-  return rest;
+  // Add 'id' field for frontend compatibility (frontend expects 'id', MongoDB uses '_id')
+  return {
+    ...rest,
+    id: rest._id?.toString() || rest._id,
+  };
 };
+
+const TEST_ADMIN_OBJECT_ID = '000000000000000000000001';
 
 const getCurrentUser = async (req, res, next) => {
   try {
     // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
-    if (req.user.id === 'test-admin-id') {
+    if (req.user.id === TEST_ADMIN_OBJECT_ID) {
       return res.json({
         user: {
-          id: 'test-admin-id',
+          id: TEST_ADMIN_OBJECT_ID,
+          _id: TEST_ADMIN_OBJECT_ID,
           email: 'admin@example.com',
           phone: '+15551234567',
           firstName: 'Jane',

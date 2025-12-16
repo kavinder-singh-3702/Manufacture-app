@@ -16,11 +16,12 @@ const loginWithPassword = async (req, { email, phone, password }) => {
   // ============ TEST ADMIN CREDENTIALS - REMOVE AFTER TESTING ============
   const TEST_ADMIN_EMAIL = 'admin@example.com';
   const TEST_ADMIN_PASSWORD = 'AdminPass!234';
+  const TEST_ADMIN_OBJECT_ID = '000000000000000000000001'; // Valid 24-char hex ObjectId
 
   if (email === TEST_ADMIN_EMAIL && password === TEST_ADMIN_PASSWORD) {
     const testAdminUser = {
-      id: 'test-admin-id',
-      _id: 'test-admin-id',
+      id: TEST_ADMIN_OBJECT_ID,
+      _id: TEST_ADMIN_OBJECT_ID,
       email: TEST_ADMIN_EMAIL,
       firstName: 'Jane',
       lastName: 'Admin',

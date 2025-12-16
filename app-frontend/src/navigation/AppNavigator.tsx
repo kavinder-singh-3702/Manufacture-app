@@ -16,6 +16,7 @@ import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { AddProductScreen, EditProductScreen, ProductListScreen, FilteredProductsScreen, CategoryProductsScreen } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
+import { CartScreen } from "../screens/cart";
 
 enableScreens(true);
 
@@ -84,6 +85,11 @@ export const AppNavigator = () => {
               name="Profile"
               component={ProfileScreen}
               options={{ presentation: "modal", animation: "fade_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="Cart"
+              component={CartScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
               name="CompanyProfile"

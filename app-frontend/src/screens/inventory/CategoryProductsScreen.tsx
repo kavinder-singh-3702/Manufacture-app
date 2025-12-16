@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   View,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { productService, Product } from "../../services/product.service";
@@ -34,7 +35,7 @@ export const CategoryProductsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title } = route.params;
-  const { addToCart, removeFromCart, isInCart, getCartItem } = useCart();
+  const { addToCart, removeFromCart, isInCart, getCartItem, items: cartItems } = useCart();
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,9 +73,39 @@ export const CategoryProductsScreen = () => {
     [categoryId]
   );
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  // Refresh list whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [loadProducts])
+  );
+
+  const handleDeleteProduct = useCallback(
+    (product: Product) => {
+      Alert.alert(
+        "Delete Product",
+        `Are you sure you want to delete "${product.name}"? This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await productService.delete(product._id);
+                // Remove from local state immediately
+                setItems((prev) => prev.filter((item) => item._id !== product._id));
+                setPagination((prev) => ({ ...prev, total: prev.total - 1 }));
+              } catch (error: any) {
+                Alert.alert("Error", error.message || "Failed to delete product");
+              }
+            },
+          },
+        ]
+      );
+    },
+    []
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -100,13 +131,17 @@ export const CategoryProductsScreen = () => {
       const cartQty = getCartItem(item._id)?.quantity || 0;
       const price = item.price?.amount || 0;
 
+      // Green border for items in cart, yellow for items not in cart
+      const cardBorderColor = inCart ? "#10B981" : "#F59E0B";
+
       return (
         <View
           style={[
             styles.card,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.border,
+              borderColor: cardBorderColor,
+              borderWidth: 2,
               borderRadius: radius.md,
               padding: spacing.md,
             },
@@ -131,10 +166,6 @@ export const CategoryProductsScreen = () => {
               <Text style={[styles.label, { color: colors.textMuted }]}>Available</Text>
               <Text style={[styles.value, { color: colors.text }]}>{item.availableQuantity} {item.unit || item.price?.unit || "units"}</Text>
             </View>
-            <View>
-              <Text style={[styles.label, { color: colors.textMuted }]}>Min stock</Text>
-              <Text style={[styles.value, { color: colors.textSecondary }]}>{item.minStockQuantity}</Text>
-            </View>
             <View style={{ alignItems: "flex-end" }}>
               <Text style={[styles.label, { color: colors.textMuted }]}>Price</Text>
               <Text style={[styles.value, { color: colors.primary }]}>
@@ -144,13 +175,22 @@ export const CategoryProductsScreen = () => {
           </View>
 
           <View style={[styles.actionsRow, { marginTop: spacing.sm }]}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("EditProduct", { productId: item._id })}
-              style={[styles.editButton, { borderColor: colors.primary, borderRadius: radius.sm }]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
-            </TouchableOpacity>
+            <View style={styles.leftActions}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("EditProduct", { productId: item._id })}
+                style={[styles.editButton, { borderColor: colors.primary, borderRadius: radius.sm }]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDeleteProduct(item)}
+                style={[styles.deleteButton, { borderColor: colors.error, borderRadius: radius.sm }]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.deleteButtonText, { color: colors.error }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.cartActions}>
               {inCart && (
@@ -177,7 +217,7 @@ export const CategoryProductsScreen = () => {
         </View>
       );
     },
-    [colors.border, colors.primary, colors.surface, colors.text, colors.textMuted, colors.textSecondary, navigation, radius.md, radius.sm, spacing.md, spacing.sm, addToCart, getCartItem, isInCart, removeFromCart]
+    [colors.border, colors.error, colors.primary, colors.surface, colors.text, colors.textMuted, navigation, radius.md, radius.sm, spacing.md, spacing.sm, addToCart, getCartItem, isInCart, removeFromCart, handleDeleteProduct]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);
@@ -241,6 +281,7 @@ export const CategoryProductsScreen = () => {
         data={items}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        extraData={cartItems}
         contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: spacing.xxl }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         onEndReached={handleLoadMore}
@@ -292,7 +333,7 @@ const styles = StyleSheet.create({
   errorBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   errorText: { fontSize: 14, fontWeight: "600" },
   retryText: { fontSize: 14, fontWeight: "700" },
-  card: { borderWidth: 1, marginBottom: 12 },
+  card: { marginBottom: 12 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   productName: { fontSize: 16, fontWeight: "800" },
   productMeta: { fontSize: 12, fontWeight: "600" },
@@ -302,8 +343,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: "600" },
   value: { fontSize: 14, fontWeight: "700" },
   actionsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  editButton: { paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1.5 },
-  editButtonText: { fontSize: 12, fontWeight: "700" },
+  leftActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  editButton: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1.5 },
+  editButtonText: { fontSize: 11, fontWeight: "700" },
+  deleteButton: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1.5 },
+  deleteButtonText: { fontSize: 11, fontWeight: "700" },
   cartActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   secondaryButton: { paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1.5 },
   secondaryText: { fontSize: 12, fontWeight: "700" },

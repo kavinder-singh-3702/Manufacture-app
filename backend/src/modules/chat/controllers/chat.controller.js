@@ -10,9 +10,11 @@ const {
 
 const listConversationsController = async (req, res, next) => {
   try {
+    console.log('[Chat] listConversations called with user:', req.user);
     const conversations = await listConversations(req.user.id);
     return res.json({ conversations });
   } catch (error) {
+    console.error('[Chat] listConversations error:', error.message);
     return next(error);
   }
 };

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { productService, Product } from "../../services/product.service";
@@ -40,9 +40,12 @@ export const FilteredProductsScreen = () => {
     }
   }, [filter]);
 
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+  // Refresh list whenever screen comes into focus (e.g., after deleting a product)
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, [fetchItems])
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -97,12 +100,6 @@ export const FilteredProductsScreen = () => {
               <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Current Stock:</Text>
               <Text style={[styles.detailValue, { color: item.availableQuantity === 0 ? colors.error : colors.text }]}>
                 {item.availableQuantity} {item.unit || item.price?.unit || "units"}
-              </Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Min Level:</Text>
-              <Text style={[styles.detailValue, { color: colors.textSecondary }]}>
-                {item.minStockQuantity} {item.unit || item.price?.unit || "units"}
               </Text>
             </View>
             {price > 0 && (

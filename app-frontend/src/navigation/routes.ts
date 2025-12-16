@@ -40,7 +40,7 @@ export type RouteConfig = {
  * The navigation component filters these based on user role
  */
 export const TAB_CONFIG: RouteConfig[] = [
-  // User tabs (5 tabs like original footer)
+  // User tabs (4 tabs - cart removed, use floating button instead)
   {
     route: routes.DASHBOARD,
     label: "Home",
@@ -49,19 +49,11 @@ export const TAB_CONFIG: RouteConfig[] = [
     roles: ["user", "guest"],
   },
   {
-    route: routes.CART,
-    label: "Cart",
-    icon: "🛒",
-    gradientColors: ["#FF4757", "#FF6348"],
-    roles: ["user", "guest"],
-  },
-  {
     route: routes.SERVICES,
     label: "Services",
     icon: "🛎️",
     gradientColors: ["#ee0979", "#ff6a00"],
     roles: ["user", "guest"],
-    // No longer a placeholder - now has chat functionality!
   },
   {
     route: routes.STATS,

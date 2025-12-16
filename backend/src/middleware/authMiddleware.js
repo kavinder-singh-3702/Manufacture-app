@@ -22,9 +22,13 @@ const authenticate = async (req, res, next) => {
 
     // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
     // This allows the test admin to authenticate without being in the database
-    if (userId === 'test-admin-id') {
+    // Using a valid ObjectId format for compatibility with MongoDB queries
+    const TEST_ADMIN_OBJECT_ID = '000000000000000000000001';
+    // Handle both old sessions ('test-admin-id') and new sessions (valid ObjectId)
+    if (userId === 'test-admin-id' || userId === TEST_ADMIN_OBJECT_ID) {
       req.user = {
-        id: 'test-admin-id',
+        id: TEST_ADMIN_OBJECT_ID,
+        _id: TEST_ADMIN_OBJECT_ID,
         role: 'admin',
         email: 'admin@example.com',
         phone: '+15551234567',

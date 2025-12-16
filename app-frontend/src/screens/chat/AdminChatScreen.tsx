@@ -53,6 +53,8 @@ export const AdminChatScreen = () => {
 
   const handleCallUser = async (conversation: ChatConversation) => {
     const phone = conversation.otherParticipant?.phone;
+    console.log("[AdminChatScreen] handleCallUser - phone:", phone);
+
     if (!phone) {
       Alert.alert("No Phone Number", "This user hasn't provided a phone number.");
       return;
@@ -61,16 +63,21 @@ export const AdminChatScreen = () => {
     const cleanedNumber = phone.replace(/[^\d+]/g, "");
     const phoneUrl = Platform.OS === "android" ? `tel:${cleanedNumber}` : `telprompt:${cleanedNumber}`;
 
+    console.log("[AdminChatScreen] Calling:", phoneUrl);
+
     try {
       const supported = await Linking.canOpenURL(phoneUrl);
+      console.log("[AdminChatScreen] canOpen:", supported);
+
       if (supported) {
         await Linking.openURL(phoneUrl);
       } else {
-        Alert.alert(`Call ${conversation.otherParticipant?.name || "User"}`, `Phone: ${phone}`, [{ text: "OK" }]);
+        // Fallback: try opening directly without checking
+        await Linking.openURL(phoneUrl);
       }
     } catch (err) {
       console.error("Error opening phone:", err);
-      Alert.alert("Error", "Could not open phone app.");
+      Alert.alert("Call User", `Phone: ${phone}`, [{ text: "OK" }]);
     }
   };
 

@@ -1,5 +1,5 @@
-import { createContext, ReactNode, useCallback, useMemo, useState } from "react";
-import { Product } from "../services/product.service";
+import { createContext, ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { Product, productService } from "../services/product.service";
 
 // ============================================================
 // CART TYPES
@@ -18,6 +18,8 @@ type CartContextValue = {
   addToCart: (item: Product, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
+  updateCartItem: (itemId: string, updatedProduct: Product) => void;
+  refreshCartItems: () => Promise<void>;
   clearCart: () => void;
   isInCart: (itemId: string) => boolean;
   getCartItem: (itemId: string) => CartItem | undefined;
@@ -31,6 +33,10 @@ type CartProviderProps = {
 
 export const CartProvider = ({ children }: CartProviderProps) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const itemsRef = useRef<CartItem[]>(items);
+
+  // Keep ref in sync with state
+  itemsRef.current = items;
 
   const addToCart = useCallback((item: Product, quantity: number = 1) => {
     setItems((prev) => {
@@ -69,6 +75,43 @@ export const CartProvider = ({ children }: CartProviderProps) => {
     setItems([]);
   }, []);
 
+  const updateCartItem = useCallback((itemId: string, updatedProduct: Product) => {
+    setItems((prev) =>
+      prev.map((ci) =>
+        ci.item._id === itemId ? { ...ci, item: updatedProduct } : ci
+      )
+    );
+  }, []);
+
+  const refreshCartItems = useCallback(async () => {
+    const currentItems = itemsRef.current;
+    if (currentItems.length === 0) return;
+
+    try {
+      const updatedItems = await Promise.all(
+        currentItems.map(async (ci) => {
+          try {
+            const updatedProduct = await productService.getById(ci.item._id);
+            // Adjust cart quantity if it exceeds available stock
+            const availableQty = updatedProduct.availableQuantity || 0;
+            const adjustedQuantity = Math.min(ci.quantity, availableQty);
+            // If no stock available, set to 1 (user can remove manually)
+            const finalQuantity = adjustedQuantity > 0 ? adjustedQuantity : 1;
+            return { ...ci, item: updatedProduct, quantity: finalQuantity };
+          } catch {
+            // If product not found (deleted), keep the old item data
+            // It will be displayed but can be removed by user
+            return ci;
+          }
+        })
+      );
+      // Filter out items with 0 available quantity if needed
+      setItems(updatedItems);
+    } catch (error) {
+      console.error("Error refreshing cart items:", error);
+    }
+  }, []);
+
   const isInCart = useCallback(
     (itemId: string) => items.some((ci) => ci.item._id === itemId),
     [items]
@@ -96,11 +139,13 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       addToCart,
       removeFromCart,
       updateQuantity,
+      updateCartItem,
+      refreshCartItems,
       clearCart,
       isInCart,
       getCartItem,
     }),
-    [items, itemCount, totalItems, addToCart, removeFromCart, updateQuantity, clearCart, isInCart, getCartItem]
+    [items, itemCount, totalItems, addToCart, removeFromCart, updateQuantity, updateCartItem, refreshCartItems, clearCart, isInCart, getCartItem]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

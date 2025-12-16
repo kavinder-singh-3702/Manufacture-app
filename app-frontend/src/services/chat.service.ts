@@ -7,7 +7,8 @@ import type {
   SendMessageResponse
 } from "../types/chat";
 
-const SUPPORT_ADMIN_ID = process.env.EXPO_PUBLIC_SUPPORT_ADMIN_ID || "";
+// Support admin ID - hardcoded fallback if env var not available in runtime
+const SUPPORT_ADMIN_ID = process.env.EXPO_PUBLIC_SUPPORT_ADMIN_ID || "000000000000000000000001";
 
 class ChatService {
   async listConversations(): Promise<GetConversationsResponse> {
