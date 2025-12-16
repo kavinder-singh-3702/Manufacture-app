@@ -7,6 +7,7 @@ const activityRouter = require('../modules/activity/routes/activity.routes');
 const companyVerificationAdminRouter = require('../modules/companyVerification/routes/companyVerificationAdmin.routes');
 const adminRouter = require('../modules/admin/routes/admin.routes');
 const productRouter = require('../modules/product/routes/product.routes');
+const chatRouter = require('../modules/chat/routes/chat.routes');
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/activity', activityRouter);
 router.use('/verification-requests', companyVerificationAdminRouter);
 router.use('/admin', adminRouter);
 router.use('/products', productRouter);
+router.use('/chat', chatRouter);
 
 module.exports = router;

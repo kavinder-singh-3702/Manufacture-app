@@ -9,38 +9,31 @@
  * - ChatUser: Represents a user that admin can chat with
  */
 
-// A single chat message
 export type ChatMessage = {
   id: string;
   conversationId: string;
-  senderId: string;       // Who sent this message
-  senderName: string;     // Display name of sender
-  senderRole: "admin" | "user";
-  content: string;        // The message text
-  timestamp: string;      // ISO date string
-  read: boolean;          // Has the recipient read this?
+  senderId: string;
+  senderRole: "admin" | "user" | "support";
+  content: string;
+  timestamp: string;
+  read: boolean;
 };
 
-// A conversation thread between admin and user
+export type ChatParticipant = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+};
+
 export type ChatConversation = {
   id: string;
-
-  // User info (the non-admin participant)
-  userId: string;
-  userName: string;
-  userEmail: string;
-  userPhone?: string; // Phone number for admin to call
-  userCompany?: string;
-
-  // Admin info
-  adminId: string;
-  adminName: string;
-
-  // Conversation metadata
+  otherParticipant: ChatParticipant | null;
   lastMessage?: string;
-  lastMessageTime?: string;
+  lastMessageAt?: string;
   unreadCount: number;
-
+  participantIds: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -71,7 +64,7 @@ export type SendMessageResponse = {
 
 export type GetMessagesResponse = {
   messages: ChatMessage[];
-  hasMore: boolean;
+  pagination: { total: number; limit: number; offset: number; hasMore: boolean };
 };
 
 export type GetConversationsResponse = {
@@ -82,10 +75,6 @@ export type GetUsersForChatResponse = {
   users: ChatUser[];
 };
 
-export type StartConversationRequest = {
-  userId: string;
-};
-
 export type StartConversationResponse = {
-  conversation: ChatConversation;
+  conversationId: string;
 };
