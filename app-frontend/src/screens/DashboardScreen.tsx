@@ -14,9 +14,9 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
-import { useCart } from "../hooks/useCart";
 import { adminService, AdminStats } from "../services/admin.service";
 import { verificationService } from "../services/verificationService";
+import { productService, ProductCategory } from "../services/product.service";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
@@ -25,7 +25,7 @@ import { ComplianceStatus } from "../types/company";
 // ============================================================
 // TYPES
 // ============================================================
-type CategoryItem = { id: string; title: string; count: number; image: any; bgColor: string };
+type CategoryItem = { id: string; title: string; count: number; icon: string; bgColor: string; totalQuantity?: number };
 type PipelineItem = { id: string; title: string; progress: number; owner: string; status: "accepted" | "pending" | "cancelled" | "in-progress" };
 type TaskItem = { id: string; title: string; owner: string; time: string; tag: string };
 type UpdateItem = { id: string; title: string; detail: string; tag: string; tone?: "info" | "warning" };
@@ -33,14 +33,25 @@ type UpdateItem = { id: string; title: string; detail: string; tag: string; tone
 // ============================================================
 // STATIC DATA (User Dashboard)
 // ============================================================
-const defaultCategories: CategoryItem[] = [
-  { id: "raw-materials", title: "Raw Materials", count: 0, image: null, bgColor: "#E8F5E9" },
-  { id: "packaging", title: "Packaging & Supplies", count: 0, image: null, bgColor: "#FFF3E0" },
-  { id: "machinery", title: "Machinery Parts", count: 0, image: null, bgColor: "#FFEBEE" },
-  { id: "safety", title: "Safety Equipment", count: 0, image: null, bgColor: "#E3F2FD" },
-  { id: "chemicals", title: "Chemicals & Solvents", count: 0, image: null, bgColor: "#F3E5F5" },
-  { id: "tools", title: "Tools & Hardware", count: 0, image: null, bgColor: "#FFF8E1" },
+const fallbackCategories: ProductCategory[] = [
+  { id: "finished-goods", title: "Finished Goods", count: 0, totalQuantity: 0 },
+  { id: "components", title: "Components & Parts", count: 0, totalQuantity: 0 },
+  { id: "raw-materials", title: "Raw Materials", count: 0, totalQuantity: 0 },
+  { id: "machinery", title: "Machinery & Equipment", count: 0, totalQuantity: 0 },
+  { id: "packaging", title: "Packaging", count: 0, totalQuantity: 0 },
+  { id: "services", title: "Services", count: 0, totalQuantity: 0 },
+  { id: "other", title: "Other", count: 0, totalQuantity: 0 },
 ];
+
+const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
+  "finished-goods": { icon: "📦", bgColor: "#E0EAFF" },
+  components: { icon: "🧩", bgColor: "#E9D5FF" },
+  "raw-materials": { icon: "🧱", bgColor: "#DCFCE7" },
+  machinery: { icon: "⚙️", bgColor: "#FFE4E6" },
+  packaging: { icon: "🎁", bgColor: "#FFF7ED" },
+  services: { icon: "🛠️", bgColor: "#E0F2FE" },
+  other: { icon: "🗂️", bgColor: "#F3F4F6" },
+};
 
 const pipeline: PipelineItem[] = [
   { id: "assembly", title: "Assembly line A", progress: 82, owner: "Floor", status: "in-progress" },
@@ -222,12 +233,25 @@ const UserDashboardContent = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { items: cartItems } = useCart();
 
   // Verification status state
   const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(true);
+
+  // Categories
+  const [categories, setCategories] = useState<CategoryItem[]>(
+    fallbackCategories.map((cat) => ({
+      id: cat.id,
+      title: cat.title,
+      count: cat.count,
+      totalQuantity: cat.totalQuantity,
+      icon: CATEGORY_META[cat.id]?.icon || "📦",
+      bgColor: CATEGORY_META[cat.id]?.bgColor || "#E5E7EB",
+    }))
+  );
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   // Fetch verification status
   const fetchVerificationStatus = useCallback(async () => {
@@ -261,24 +285,36 @@ const UserDashboardContent = () => {
       fetchVerificationStatus();
     }, [fetchVerificationStatus])
   );
+  const fetchCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    try {
+      const response = await productService.getCategoryStats();
+      const mapped = response.categories.map((cat) => {
+        const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
+        return {
+          id: cat.id,
+          title: cat.title,
+          count: cat.count,
+          totalQuantity: cat.totalQuantity,
+          icon: meta.icon,
+          bgColor: meta.bgColor,
+        } as CategoryItem;
+      });
+      setCategories(mapped);
+    } catch (err: any) {
+      console.error("Failed to fetch categories:", err);
+      setCategoriesError(err.message || "Failed to load categories");
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
 
-  // Calculate cart counts per category
-  const cartCountsByCategory = useMemo(() => {
-    const counts: Record<string, number> = {};
-    cartItems.forEach((cartItem) => {
-      const category = cartItem.item.category;
-      counts[category] = (counts[category] || 0) + cartItem.quantity;
-    });
-    return counts;
-  }, [cartItems]);
-
-  // Categories with cart counts
-  const categories = useMemo(() => {
-    return defaultCategories.map((cat) => ({
-      ...cat,
-      count: cartCountsByCategory[cat.id] || 0,
-    }));
-  }, [cartCountsByCategory]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+    }, [fetchCategories])
+  );
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -466,10 +502,46 @@ const UserDashboardContent = () => {
             </TouchableOpacity>
           </View>
 
-          <CategoryGrid items={categories} onCategoryPress={(cat) => {
-            // TODO: Navigate to category detail screen
-            console.log("Category pressed:", cat.id);
-          }} />
+          <View style={{ gap: spacing.sm }}>
+            <SectionHeader title="Browse by category" />
+            {categoriesError && (
+              <View
+                style={{
+                  backgroundColor: colors.error + "15",
+                  borderColor: colors.error,
+                  borderWidth: 1,
+                  padding: spacing.sm,
+                  borderRadius: radius.md,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.error, fontWeight: "700" }}>{categoriesError}</Text>
+                <TouchableOpacity onPress={fetchCategories}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {categoriesLoading ? (
+              <View style={{ paddingVertical: spacing.lg, alignItems: "center", gap: 8 }}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={{ color: colors.textMuted, fontWeight: "600" }}>Loading categories...</Text>
+              </View>
+            ) : categories.length === 0 ? (
+              <View style={{ paddingVertical: spacing.md, alignItems: "center", gap: 4 }}>
+                <Text style={{ color: colors.text, fontWeight: "700" }}>No categories yet</Text>
+                <Text style={{ color: colors.textMuted, fontWeight: "500" }}>Add products to see categories here</Text>
+              </View>
+            ) : (
+              <CategoryGrid
+                items={categories}
+                onCategoryPress={(cat) =>
+                  navigation.navigate("CategoryProducts", { categoryId: cat.id, title: cat.title })
+                }
+              />
+            )}
+          </View>
           <PipelineList items={pipeline} />
           <TaskBoard items={tasks} />
           <UpdatesPanel items={updates} />
@@ -640,30 +712,6 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
     return acc;
   }, []);
 
-  const getIcon = (id: string) => {
-    const icons: Record<string, string> = {
-      "raw-materials": "🧱",
-      "packaging": "📦",
-      "machinery": "⚙️",
-      "safety": "🦺",
-      "chemicals": "🧪",
-      "tools": "🔧",
-    };
-    return icons[id] || "📦";
-  };
-
-  const getBgColor = (id: string): string => {
-    const bgColors: Record<string, string> = {
-      "raw-materials": "#D1FAE5",
-      "packaging": "#FED7AA",
-      "machinery": "#FECACA",
-      "safety": "#BFDBFE",
-      "chemicals": "#DDD6FE",
-      "tools": "#FEF3C7",
-    };
-    return bgColors[id] || "#E8F5E9";
-  };
-
   return (
     <View style={{ gap: spacing.lg }}>
       {rows.map((row, rowIndex) => (
@@ -676,8 +724,8 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
               onPress={() => onCategoryPress?.(item)}
             >
               <View style={styles.categoryCircleOuter}>
-                <View style={[styles.categoryCircleSolid, { backgroundColor: getBgColor(item.id) }]}>
-                  <Text style={styles.categoryIcon}>{getIcon(item.id)}</Text>
+                <View style={[styles.categoryCircleSolid, { backgroundColor: item.bgColor }]}>
+                  <Text style={styles.categoryIcon}>{item.icon}</Text>
                 </View>
                 {item.count > 0 && (
                   <View style={styles.countBadgeSolid}>
@@ -687,6 +735,9 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
               </View>
               <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>
                 {item.title}
+              </Text>
+              <Text style={[styles.categorySubtitle, { color: colors.textMuted }]}>
+                {item.count} {item.count === 1 ? "item" : "items"}
               </Text>
             </TouchableOpacity>
           ))}
@@ -883,6 +934,7 @@ const styles = StyleSheet.create({
   countBadgeSolid: { position: "absolute", top: -4, right: -4, backgroundColor: "#6366F1", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, zIndex: 1 },
   countBadgeTextSolid: { color: "#FFFFFF", fontSize: 10, fontWeight: "700" },
   categoryTitleCircle: { fontSize: 12, fontWeight: "600", textAlign: "center", lineHeight: 16, maxWidth: 90 },
+  categorySubtitle: { fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 2 },
 
   // Pipeline
   pipelineCard: { borderWidth: 1 },

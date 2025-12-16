@@ -17,6 +17,7 @@ export type RootStackParamList = {
   EditProduct: { productId: string };
   ProductList: undefined;
   FilteredProducts: { filter: "low_stock" | "out_of_stock"; title: string };
+  CategoryProducts: { categoryId: string; title: string };
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
 };

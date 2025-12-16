@@ -1,9 +1,9 @@
 import { HttpClient } from "./httpClient";
 
-// IMPORTANT: Change this URL based on your environment
-// For APK build: use "http://3.108.52.140/api"
-// For local dev: use "http://192.168.0.198:4000/api"
-const API_BASE_URL = "http://3.108.52.140/api";
+// Respect Expo env var when present; default to local in dev and deployed API in production builds.
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (__DEV__ ? "http://localhost:4000/api" : "http://3.108.52.140/api");
 
 export const httpClient = new HttpClient({
   baseURL: API_BASE_URL,

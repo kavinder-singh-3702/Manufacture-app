@@ -25,6 +25,7 @@ const CATEGORIES = [
   { id: "machinery", title: "Machinery & Equipment", icon: "⚙️" },
   { id: "packaging", title: "Packaging", icon: "🎁" },
   { id: "services", title: "Services", icon: "🛠️" },
+  { id: "other", title: "Other", icon: "🗂️" },
 ];
 
 const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];

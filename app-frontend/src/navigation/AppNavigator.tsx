@@ -14,7 +14,7 @@ import { VerificationSubmitScreen } from "../screens/verification/VerificationSu
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
-import { AddProductScreen, EditProductScreen, ProductListScreen, FilteredProductsScreen } from "../screens/inventory";
+import { AddProductScreen, EditProductScreen, ProductListScreen, FilteredProductsScreen, CategoryProductsScreen } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
 
 enableScreens(true);
@@ -128,6 +128,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="FilteredProducts"
               component={FilteredProductsScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="CategoryProducts"
+              component={CategoryProductsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
