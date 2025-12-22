@@ -16,9 +16,11 @@ export type RootStackParamList = {
   Notifications: undefined;
   AddProduct: undefined;
   EditProduct: { productId: string };
-  ProductList: undefined;
   FilteredProducts: { filter: "low_stock" | "out_of_stock"; title: string };
-  CategoryProducts: { categoryId: string; title: string };
+  CategoryProducts: { categoryId: string; title: string; subCategory?: string };
+  ProductDetails: { productId: string };
+  ProductSearch: { initialQuery?: string } | undefined;
+  UserPreferences: { userId: string; displayName?: string };
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
 };

@@ -28,13 +28,23 @@ export type Product = {
   description?: string;
   sku?: string;
   category: string;
+  subCategory?: string;
   price: ProductPrice;
   minStockQuantity: number;
   availableQuantity: number;
   unit?: string;
   visibility: "public" | "private";
   status: "draft" | "active" | "inactive" | "archived";
+  isFavorite?: boolean;
   stockStatus?: "in_stock" | "low_stock" | "out_of_stock";
+  company?: {
+    _id: string;
+    displayName?: string;
+    complianceStatus?: string;
+    contact?: {
+      phone?: string;
+    };
+  };
   contactPreferences?: {
     allowChat?: boolean;
     allowCall?: boolean;
@@ -50,6 +60,7 @@ export type CreateProductInput = {
   description?: string;
   sku?: string;
   category: string;
+  subCategory?: string;
   price: { amount: number; currency?: string; unit?: string };
   minStockQuantity?: number;
   availableQuantity?: number;
@@ -94,6 +105,12 @@ type PaginatedResponse = {
   };
 };
 
+export type UploadProductImagePayload = {
+  fileName: string;
+  mimeType?: string;
+  content: string; // base64 string
+};
+
 class ProductService {
   async getCategoryStats(): Promise<{ categories: ProductCategory[] }> {
     return apiClient.get<{ categories: ProductCategory[] }>("/products/categories");
@@ -101,7 +118,7 @@ class ProductService {
 
   async getProductsByCategory(
     categoryId: string,
-    params?: { limit?: number; offset?: number }
+    params?: { limit?: number; offset?: number; status?: string; sort?: string; minPrice?: number; maxPrice?: number }
   ): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>(`/products/categories/${categoryId}/products`, { params });
   }
@@ -143,6 +160,10 @@ class ProductService {
 
   async getStats(): Promise<ProductStats> {
     return apiClient.get<ProductStats>("/products/stats");
+  }
+
+  async uploadImage(productId: string, payload: UploadProductImagePayload): Promise<{ product: Product; image: ProductImage }> {
+    return apiClient.post<{ product: Product; image: ProductImage }>(`/products/${productId}/images`, payload);
   }
 }
 

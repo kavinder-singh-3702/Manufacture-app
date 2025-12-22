@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -17,6 +17,7 @@ import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
 import { verificationService } from "../services/verificationService";
 import { productService, ProductCategory } from "../services/product.service";
+import { preferenceService, PersonalizedOffer } from "../services/preference.service";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
@@ -26,9 +27,17 @@ import { ComplianceStatus } from "../types/company";
 // TYPES
 // ============================================================
 type CategoryItem = { id: string; title: string; count: number; icon: string; bgColor: string; totalQuantity?: number };
-type PipelineItem = { id: string; title: string; progress: number; owner: string; status: "accepted" | "pending" | "cancelled" | "in-progress" };
-type TaskItem = { id: string; title: string; owner: string; time: string; tag: string };
-type UpdateItem = { id: string; title: string; detail: string; tag: string; tone?: "info" | "warning" };
+type PromoOffer = {
+  id: string;
+  title: string;
+  description: string;
+  oldPrice: string;
+  newPrice: string;
+  discountLabel: string;
+  tag?: string;
+  accent: string;
+  gradient: [string, string];
+};
 
 // ============================================================
 // STATIC DATA (User Dashboard)
@@ -53,22 +62,17 @@ const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
   other: { icon: "🗂️", bgColor: "#F3F4F6" },
 };
 
-const pipeline: PipelineItem[] = [
-  { id: "assembly", title: "Assembly line A", progress: 82, owner: "Floor", status: "in-progress" },
-  { id: "finishing", title: "Finishing queue", progress: 54, owner: "Ops", status: "pending" },
-  { id: "packing", title: "Packing bay", progress: 68, owner: "Floor", status: "accepted" },
-];
-
-const tasks: TaskItem[] = [
-  { id: "qc", title: "QC approvals for batch #204", owner: "Quality", time: "Due in 2h", tag: "Compliance" },
-  { id: "booking", title: "Lock trucking slots for Delhi", owner: "Logistics", time: "Today 5 PM", tag: "Dispatch" },
-  { id: "inventory", title: "Count critical SKUs (motors)", owner: "Products", time: "Tomorrow 9 AM", tag: "Stock" },
-];
-
-const updates: UpdateItem[] = [
-  { id: "alert", title: "Voltage dip flagged on Line A", detail: "Sensor auto-paused one station for 3 mins.", tag: "Alert", tone: "warning" },
-  { id: "note", title: "Supplier Docs Cleared", detail: "Goyal Metals shared renewed compliance docs.", tag: "Supplier", tone: "info" },
-];
+const promoOffer: PromoOffer = {
+  id: "admin-promo-1",
+  title: "CNC Spares Kit",
+  description: "Admin pushed price drop for vetted buyers. Ship-ready in 24h.",
+  oldPrice: "₹3,200",
+  newPrice: "₹2,590",
+  discountLabel: "Save 19%",
+  tag: "Admin deal",
+  accent: "#FACC15",
+  gradient: ["#0EA5E9", "#6366F1"],
+};
 
 // ============================================================
 // MAIN DASHBOARD SCREEN
@@ -252,6 +256,8 @@ const UserDashboardContent = () => {
   );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [personalizedOffer, setPersonalizedOffer] = useState<PersonalizedOffer | null>(null);
+  const [offersLoading, setOffersLoading] = useState(false);
 
   // Fetch verification status
   const fetchVerificationStatus = useCallback(async () => {
@@ -315,6 +321,22 @@ const UserDashboardContent = () => {
       fetchCategories();
     }, [fetchCategories])
   );
+
+  useEffect(() => {
+    const fetchOffers = async () => {
+      setOffersLoading(true);
+      try {
+        const { offers } = await preferenceService.getMyOffers();
+        setPersonalizedOffer(offers?.[0] ?? null);
+      } catch (err) {
+        console.warn("Failed to fetch personalized offers", err?.message || err);
+        setPersonalizedOffer(null);
+      } finally {
+        setOffersLoading(false);
+      }
+    };
+    fetchOffers();
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -401,7 +423,38 @@ const UserDashboardContent = () => {
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
 
-          <HeroCard />
+          {/* <HeroCard /> */}
+          <PromoBanner
+            offer={
+              personalizedOffer
+                ? {
+                    id: personalizedOffer.id,
+                    title: personalizedOffer.title,
+                    description: personalizedOffer.message || "Special pick for you based on recent activity.",
+                    oldPrice: personalizedOffer.oldPrice ? `₹${personalizedOffer.oldPrice.toLocaleString()}` : undefined,
+                    newPrice: `₹${personalizedOffer.newPrice.toLocaleString()}`,
+                    discountLabel:
+                      personalizedOffer.discountPercent !== undefined
+                        ? `Save ${personalizedOffer.discountPercent}%`
+                        : personalizedOffer.offerType === "combo"
+                        ? "Combo offer"
+                        : "Special price",
+                    tag: personalizedOffer.product?.category || personalizedOffer.product?.name || "Personalized",
+                    accent: "#FACC15",
+                    gradient: ["#22C55E", "#16A34A"],
+                  }
+                : promoOffer
+            }
+            loading={offersLoading}
+            onPress={() =>
+              personalizedOffer?.product?.id
+                ? navigation.navigate("CategoryProducts", {
+                    categoryId: personalizedOffer.product.category || "",
+                    title: personalizedOffer.product.category || "Category",
+                  })
+                : navigation.navigate("ProductSearch")
+            }
+          />
 
           {/* Verification Status Card - Only show when NOT verified */}
           {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
@@ -506,15 +559,15 @@ const UserDashboardContent = () => {
             ) : (
               <CategoryGrid
                 items={categories}
-                onCategoryPress={(cat) =>
-                  navigation.navigate("CategoryProducts", { categoryId: cat.id, title: cat.title })
-                }
+                onCategoryPress={(cat) => {
+                  preferenceService
+                    .logEvent({ type: "view_category", category: cat.id })
+                    .catch((err) => console.warn("Failed to log category tap", err?.message || err));
+                  navigation.navigate("CategoryProducts", { categoryId: cat.id, title: cat.title });
+                }}
               />
             )}
           </View>
-          <PipelineList items={pipeline} />
-          <TaskBoard items={tasks} />
-          <UpdatesPanel items={updates} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -591,80 +644,118 @@ const AdminActionItem = ({ label, badge, onPress }: AdminActionItemProps) => {
 // ============================================================
 // USER DASHBOARD COMPONENTS
 // ============================================================
-const HeroCard = () => {
+// const HeroCard = () => {
+//   const { spacing, radius } = useTheme();
+//
+//   return (
+//     <LinearGradient
+//       colors={["#00B2FF", "#FF6B6B"]}
+//       start={{ x: 0, y: 0 }}
+//       end={{ x: 1, y: 1 }}
+//       style={[styles.heroCard, { borderRadius: radius.lg, padding: spacing.lg }]}
+//     >
+//       <View style={styles.heroHeader}>
+//         <View style={{ flex: 1 }}>
+//           {/* <Text style={[styles.heroTitle, { color: "#FFFFFF" }]}>Production pulse</Text> */}
+//           <Text style={[styles.heroSubtitle, { color: "rgba(255,255,255,0.85)" }]}>
+//             Keep dispatches on time and floor running smooth.
+//           </Text>
+//         </View>
+//         <View style={[styles.heroBadge, { borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.2)" }]}>
+//           <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>On track</Text>
+//         </View>
+//       </View>
+//
+//       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+//           <Text style={styles.statLabelWhite}>Next dispatch</Text>
+//           <Text style={styles.statValueWhite}>12:30 <Text style={styles.statValueSmall}>PM</Text></Text>
+//         </View>
+//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+//           <Text style={styles.statLabelWhite}>Pending QC</Text>
+//           <Text style={styles.statValueWhite}>4 lots</Text>
+//         </View>
+//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
+//           <Text style={styles.statLabelWhite}>Inbound trucks</Text>
+//           <Text style={styles.statValueWhite}>3</Text>
+//         </View>
+//       </View>
+//
+//       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
+//         <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
+//           <LinearGradient
+//             colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
+//             start={{ x: 0, y: 0 }}
+//             end={{ x: 1, y: 1 }}
+//             style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
+//           >
+//             <LinearGradient
+//               colors={["rgba(0,178,255,0.25)", "rgba(255,107,107,0.25)"]}
+//               start={{ x: 0, y: 0 }}
+//               end={{ x: 1, y: 1 }}
+//               style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
+//             >
+//               <Text style={styles.elegantButtonText}>Create order</Text>
+//             </LinearGradient>
+//           </LinearGradient>
+//         </TouchableOpacity>
+//         <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
+//           <LinearGradient
+//             colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
+//             start={{ x: 0, y: 0 }}
+//             end={{ x: 1, y: 1 }}
+//             style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
+//           >
+//             <LinearGradient
+//               colors={["rgba(255,107,107,0.25)", "rgba(0,178,255,0.25)"]}
+//               start={{ x: 0, y: 0 }}
+//               end={{ x: 1, y: 1 }}
+//               style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
+//             >
+//               <Text style={styles.elegantButtonText}>Plan capacity</Text>
+//             </LinearGradient>
+//           </LinearGradient>
+//         </TouchableOpacity>
+//       </View>
+//     </LinearGradient>
+//   );
+// };
+
+const PromoBanner = ({ offer, onPress, loading }: { offer: PromoOffer; onPress?: () => void; loading?: boolean }) => {
   const { spacing, radius } = useTheme();
 
   return (
-    <LinearGradient
-      colors={["#00B2FF", "#FF6B6B"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.heroCard, { borderRadius: radius.lg, padding: spacing.lg }]}
-    >
-      <View style={styles.heroHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.heroTitle, { color: "#FFFFFF" }]}>Production pulse</Text>
-          <Text style={[styles.heroSubtitle, { color: "rgba(255,255,255,0.85)" }]}>
-            Keep dispatches on time and floor running smooth.
-          </Text>
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+      <LinearGradient
+        colors={offer.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.promoCard, { borderRadius: radius.lg, padding: spacing.lg }]}
+      >
+        <View style={[styles.promoGlow, { backgroundColor: offer.accent }]} />
+        <View style={[styles.promoGlowSmall, { backgroundColor: offer.accent }]} />
+        <View style={[styles.promoBadgeRow, { marginBottom: spacing.sm }]}>
+          <View style={[styles.promoBadge, { borderRadius: radius.pill }]}>
+            <Text style={styles.promoBadgeText}>{offer.tag ?? "Special"}</Text>
+          </View>
+          <View style={[styles.promoDiscount, { backgroundColor: offer.accent, borderRadius: radius.pill }]}>
+            <Text style={styles.promoDiscountText}>{offer.discountLabel}</Text>
+          </View>
         </View>
-        <View style={[styles.heroBadge, { borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.2)" }]}>
-          <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>On track</Text>
+        <View style={{ gap: spacing.xs }}>
+          <Text style={styles.promoTitle}>{offer.title}</Text>
+          <Text style={styles.promoSubtitle}>{offer.description}</Text>
         </View>
-      </View>
-
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-          <Text style={styles.statLabelWhite}>Next dispatch</Text>
-          <Text style={styles.statValueWhite}>12:30 <Text style={styles.statValueSmall}>PM</Text></Text>
+        <View style={[styles.promoPriceRow, { marginTop: spacing.sm }]}>
+          {offer.oldPrice && <Text style={styles.promoOldPrice}>{offer.oldPrice}</Text>}
+          <Text style={styles.promoNewPrice}>{offer.newPrice}</Text>
         </View>
-        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-          <Text style={styles.statLabelWhite}>Pending QC</Text>
-          <Text style={styles.statValueWhite}>4 lots</Text>
+        <View style={[styles.promoCta, { borderRadius: radius.md }]}>
+          <Text style={styles.promoCtaText}>{loading ? "Checking offer..." : "Grab this price"}</Text>
+          <Text style={styles.promoCtaArrow}>→</Text>
         </View>
-        <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-          <Text style={styles.statLabelWhite}>Inbound trucks</Text>
-          <Text style={styles.statValueWhite}>3</Text>
-        </View>
-      </View>
-
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
-          <LinearGradient
-            colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
-          >
-            <LinearGradient
-              colors={["rgba(0,178,255,0.25)", "rgba(255,107,107,0.25)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
-            >
-              <Text style={styles.elegantButtonText}>Create order</Text>
-            </LinearGradient>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
-          <LinearGradient
-            colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
-          >
-            <LinearGradient
-              colors={["rgba(255,107,107,0.25)", "rgba(0,178,255,0.25)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
-            >
-              <Text style={styles.elegantButtonText}>Plan capacity</Text>
-            </LinearGradient>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 };
 
@@ -706,102 +797,12 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
               <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>
                 {item.title}
               </Text>
-              <Text style={[styles.categorySubtitle, { color: colors.textMuted }]}>
-                {item.count} {item.count === 1 ? "item" : "items"}
-              </Text>
             </TouchableOpacity>
           ))}
           {row.length < 3 &&
             Array(3 - row.length).fill(null).map((_, i) => <View key={`empty-${i}`} style={styles.categoryItem} />)}
         </View>
       ))}
-    </View>
-  );
-};
-
-const PipelineList = ({ items }: { items: PipelineItem[] }) => {
-  const { colors, spacing, radius } = useTheme();
-
-  const getStatusInfo = (status: PipelineItem["status"]) => {
-    switch (status) {
-      case "accepted": return { label: "Accepted", color: "#6BCF7F" };
-      case "pending": return { label: "Pending", color: "#F5D47E" };
-      case "cancelled": return { label: "Cancelled", color: "#EF6B6B" };
-      case "in-progress": return { label: "In Progress", color: "#7AC8F5" };
-    }
-  };
-
-  return (
-    <View style={{ gap: spacing.sm }}>
-      <SectionHeader title="Live pipeline" actionLabel="View all" />
-      <View style={{ gap: spacing.sm }}>
-        {items.map((item) => {
-          const statusInfo = getStatusInfo(item.status);
-          return (
-            <View
-              key={item.id}
-              style={[styles.pipelineCard, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }]}
-            >
-              <View style={styles.pipelineRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.pipelineTitle, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>Owner: {item.owner}</Text>
-                </View>
-                <Badge label={statusInfo.label} color={statusInfo.color} />
-              </View>
-              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                <View style={[styles.progressFill, { width: `${item.progress}%`, backgroundColor: statusInfo.color }]} />
-              </View>
-              <Text style={[styles.pipelineMeta, { color: colors.textMuted }]}>{item.progress}% complete</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-};
-
-const TaskBoard = ({ items }: { items: TaskItem[] }) => {
-  const { colors, spacing, radius } = useTheme();
-
-  return (
-    <View style={{ gap: spacing.sm }}>
-      <SectionHeader title="Priority lane" actionLabel="Open board" />
-      <View style={{ gap: spacing.sm }}>
-        {items.map((item) => (
-          <View key={item.id} style={[styles.taskCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }]}>
-            <View style={styles.taskHeader}>
-              <Text style={[styles.taskTitle, { color: colors.text }]}>{item.title}</Text>
-              <Badge label={item.tag} color="#7AC8F5" />
-            </View>
-            <View style={styles.taskFooter}>
-              <Text style={[styles.taskMeta, { color: colors.textMuted }]}>{item.owner}</Text>
-              <Text style={[styles.taskTime, { color: colors.warning }]}>{item.time}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-const UpdatesPanel = ({ items }: { items: UpdateItem[] }) => {
-  const { colors, spacing, radius } = useTheme();
-
-  return (
-    <View style={{ gap: spacing.sm }}>
-      <SectionHeader title="Alerts & updates" actionLabel="Activity" />
-      <View style={{ gap: spacing.sm }}>
-        {items.map((item) => (
-          <View key={item.id} style={[styles.updateCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }]}>
-            <View style={styles.updateHeader}>
-              <Badge label={item.tag} color={item.tone === "warning" ? "#F5D47E" : "#7AC8F5"} />
-              <Text style={[styles.updateTitle, { color: colors.text }]}>{item.title}</Text>
-            </View>
-            <Text style={[styles.updateDetail, { color: colors.textMuted }]}>{item.detail}</Text>
-          </View>
-        ))}
-      </View>
     </View>
   );
 };
@@ -895,6 +896,24 @@ const styles = StyleSheet.create({
   elegantButtonInner: { paddingVertical: 14, alignItems: "center" },
   elegantButtonText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
 
+  // Promo Banner
+  promoCard: { position: "relative", overflow: "hidden" },
+  promoGlow: { position: "absolute", width: 140, height: 140, borderRadius: 70, opacity: 0.35, top: -30, right: -30 },
+  promoGlowSmall: { position: "absolute", width: 90, height: 90, borderRadius: 45, opacity: 0.25, bottom: -20, left: -20 },
+  promoBadgeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  promoBadge: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "rgba(255,255,255,0.18)" },
+  promoBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700", letterSpacing: 0.5 },
+  promoDiscount: { paddingHorizontal: 12, paddingVertical: 6 },
+  promoDiscountText: { color: "#1F2937", fontSize: 12, fontWeight: "800" },
+  promoTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+  promoSubtitle: { color: "rgba(255,255,255,0.9)", fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  promoPriceRow: { flexDirection: "row", alignItems: "baseline", gap: 12 },
+  promoOldPrice: { color: "rgba(255,255,255,0.75)", fontSize: 14, fontWeight: "600", textDecorationLine: "line-through" },
+  promoNewPrice: { color: "#FFFFFF", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  promoCta: { marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.18)", paddingVertical: 10, paddingHorizontal: 12 },
+  promoCtaText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  promoCtaArrow: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+
   // Category Grid
   categoryRow: { flexDirection: "row", justifyContent: "space-between" },
   categoryItem: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
@@ -904,27 +923,4 @@ const styles = StyleSheet.create({
   countBadgeSolid: { position: "absolute", top: -4, right: -4, backgroundColor: "#6366F1", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, zIndex: 1 },
   countBadgeTextSolid: { color: "#FFFFFF", fontSize: 10, fontWeight: "700" },
   categoryTitleCircle: { fontSize: 12, fontWeight: "600", textAlign: "center", lineHeight: 16, maxWidth: 90 },
-  categorySubtitle: { fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 2 },
-
-  // Pipeline
-  pipelineCard: { borderWidth: 1 },
-  pipelineRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  pipelineTitle: { fontSize: 16, fontWeight: "700" },
-  pipelineMeta: { fontSize: 12, fontWeight: "600" },
-  progressTrack: { height: 8, borderRadius: 999, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 999 },
-
-  // Tasks
-  taskCard: { borderWidth: 1 },
-  taskHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  taskTitle: { fontSize: 15, fontWeight: "700", flex: 1, paddingRight: 12 },
-  taskFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  taskMeta: { fontSize: 13, fontWeight: "600" },
-  taskTime: { fontSize: 13, fontWeight: "700" },
-
-  // Updates
-  updateCard: { borderWidth: 1 },
-  updateHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  updateTitle: { fontSize: 15, fontWeight: "700", flex: 1, textAlign: "right" },
-  updateDetail: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
 });

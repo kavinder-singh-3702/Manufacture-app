@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActionSheetIOS, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -123,7 +123,7 @@ export const DocumentUploader: React.FC<Props> = ({
       setIsLoading(true);
 
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'],
+        type: ['image/*', 'application/pdf'],
         copyToCacheDirectory: true,
       });
 
@@ -158,31 +158,8 @@ export const DocumentUploader: React.FC<Props> = ({
   };
 
   const showOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Take Photo', 'Choose from Gallery', 'Choose PDF'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) captureFromCamera();
-          else if (buttonIndex === 2) pickFromGallery();
-          else if (buttonIndex === 3) pickDocument();
-        }
-      );
-    } else {
-      Alert.alert(
-        'Upload Document',
-        'Choose how to upload your document',
-        [
-          { text: 'Take Photo', onPress: captureFromCamera },
-          { text: 'Choose from Gallery', onPress: pickFromGallery },
-          { text: 'Choose PDF', onPress: pickDocument },
-          { text: 'Cancel', style: 'cancel' },
-        ],
-        { cancelable: true }
-      );
-    }
+    // Simple picker to match profile upload flow (image or PDF)
+    pickDocument().catch(() => setIsLoading(false));
   };
 
   return (

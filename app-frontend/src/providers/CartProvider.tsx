@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { Product, productService } from "../services/product.service";
+import { preferenceService } from "../services/preference.service";
 
 // ============================================================
 // CART TYPES
@@ -38,6 +39,12 @@ export const CartProvider = ({ children }: CartProviderProps) => {
   // Keep ref in sync with state
   itemsRef.current = items;
 
+  const logEventSafe = useCallback((payload: Parameters<typeof preferenceService.logEvent>[0]) => {
+    preferenceService.logEvent(payload).catch((err) => {
+      console.warn("Preference log failed", err?.message || err);
+    });
+  }, []);
+
   const addToCart = useCallback((item: Product, quantity: number = 1) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex((ci) => ci.item._id === item._id);
@@ -53,11 +60,24 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       // Add new item
       return [...prev, { item, quantity, addedAt: new Date() }];
     });
-  }, []);
+
+    logEventSafe({
+      type: "add_to_cart",
+      productId: item._id,
+      category: item.category,
+      quantity,
+    });
+  }, [logEventSafe]);
 
   const removeFromCart = useCallback((itemId: string) => {
+    const existing = itemsRef.current.find((ci) => ci.item._id === itemId);
     setItems((prev) => prev.filter((ci) => ci.item._id !== itemId));
-  }, []);
+    logEventSafe({
+      type: "remove_from_cart",
+      productId: itemId,
+      category: existing?.item?.category,
+    });
+  }, [logEventSafe]);
 
   const updateQuantity = useCallback((itemId: string, quantity: number) => {
     if (quantity <= 0) {

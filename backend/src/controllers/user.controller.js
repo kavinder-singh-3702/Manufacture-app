@@ -3,6 +3,7 @@ const User = require('../models/user.model');
 const { uploadUserDocument } = require('../services/storage.service');
 const { ACTIVITY_ACTIONS } = require('../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../modules/activity/services/activity.service');
+const { clearStaleActiveCompany } = require('../modules/auth/utils/activeCompany.util');
 
 const sanitizeUser = (user) => {
   const { password, __v, ...rest } = user.toObject({ versionKey: false });
@@ -44,6 +45,8 @@ const getCurrentUser = async (req, res, next) => {
     if (!user) {
       return next(createError(404, 'User not found'));
     }
+
+    await clearStaleActiveCompany(user);
 
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {

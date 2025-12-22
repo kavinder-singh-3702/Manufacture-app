@@ -14,9 +14,17 @@ import { VerificationSubmitScreen } from "../screens/verification/VerificationSu
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
-import { AddProductScreen, EditProductScreen, ProductListScreen, FilteredProductsScreen, CategoryProductsScreen } from "../screens/inventory";
+import {
+  AddProductScreen,
+  EditProductScreen,
+  FilteredProductsScreen,
+  CategoryProductsScreen,
+  ProductDetailsScreen,
+  ProductSearchScreen,
+} from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
+import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 
 enableScreens(true);
 
@@ -122,8 +130,8 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
-              name="ProductList"
-              component={ProductListScreen}
+              name="ProductSearch"
+              component={ProductSearchScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
@@ -142,8 +150,18 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
+              name="ProductDetails"
+              component={ProductDetailsScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
               name="Chat"
               component={ChatScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="UserPreferences"
+              component={UserPreferenceScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
           </>

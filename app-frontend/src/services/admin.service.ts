@@ -1,4 +1,5 @@
 import { apiClient } from "./apiClient";
+import { PreferenceSummary } from "./preference.service";
 
 // ============================================================
 // ADMIN STATS TYPES
@@ -174,6 +175,16 @@ class AdminService {
       notificationSent?: boolean;
     }>(`/admin/companies/${companyId}/request-documents`, payload ?? {});
     return response;
+  }
+
+  /**
+   * Get a summary of a user's product intent signals (admin only)
+   */
+  async getUserPreferences(userId: string, params?: { days?: number; limit?: number; companyId?: string }): Promise<PreferenceSummary> {
+    const response = await apiClient.get<{ summary: PreferenceSummary }>(`/preferences/admin/users/${userId}`, {
+      params,
+    });
+    return response.summary;
   }
 }
 

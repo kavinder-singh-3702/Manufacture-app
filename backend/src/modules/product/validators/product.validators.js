@@ -12,6 +12,7 @@ const createProductValidation = [
     .isString()
     .custom((value) => CATEGORY_IDS.includes(value))
     .withMessage('Category is invalid'),
+  body('subCategory').optional().isString().isLength({ max: 120 }),
   body('price').isObject().withMessage('Price details are required'),
   body('price.amount').isFloat({ min: 0 }).withMessage('Price amount must be 0 or greater'),
   body('price.currency').optional().isString(),
@@ -37,6 +38,7 @@ const updateProductValidation = [
     .isString()
     .custom((value) => CATEGORY_IDS.includes(value))
     .withMessage('Category is invalid'),
+  body('subCategory').optional().isString().isLength({ max: 120 }),
   body('price').optional().isObject(),
   body('price.amount').optional().isFloat({ min: 0 }),
   body('price.currency').optional().isString(),

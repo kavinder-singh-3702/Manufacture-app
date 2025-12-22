@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { View, Alert } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SidebarMenu } from "../../../components/navigation/SidebarMenu";
 import { BottomTabBar } from "../../../components/navigation/BottomTabBar";
 import { useAuth } from "../../../hooks/useAuth";
@@ -7,6 +9,7 @@ import { RouteName, routes } from "../../routes";
 import { tabDefinitions, tabScreens } from "../../config/mainTabs";
 import { HomeToolbar } from "./components/HomeToolbar";
 import { styles } from "./MainTabs.styles";
+import { RootStackParamList } from "../../types";
 
 const DEFAULT_ROUTE: RouteName = routes.DASHBOARD;
 
@@ -14,6 +17,7 @@ export const MainTabs = () => {
   const [activeRoute, setActiveRoute] = useState<RouteName>(DEFAULT_ROUTE);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, logout } = useAuth();
   const ActiveScreen = tabScreens[activeRoute];
   const displayName =
@@ -43,6 +47,11 @@ export const MainTabs = () => {
     setActiveRoute(route);
     setSidebarVisible(false);
   };
+
+  const handleSearchPress = useCallback(() => {
+    navigation.navigate("ProductSearch", { initialQuery: searchQuery.trim() || undefined });
+    setSearchQuery("");
+  }, [navigation, searchQuery]);
 
   const navigationItems = tabDefinitions.map((tab) => ({
     label: tab.label,
@@ -75,6 +84,7 @@ export const MainTabs = () => {
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
+          onSearchPress={handleSearchPress}
         />
         <View style={styles.screenContainer}>
           <ActiveScreen />

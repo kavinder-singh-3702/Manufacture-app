@@ -58,7 +58,12 @@ export const VerificationSubmitScreen = () => {
       Alert.alert(
         'Success',
         'Your verification request has been submitted. Our team will review it shortly.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('CompanyVerification', { companyId }),
+          },
+        ]
       );
     } catch (error: any) {
       console.error('Verification submission error:', error);

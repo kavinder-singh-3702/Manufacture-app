@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useMemo } from "react";
 import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../hooks/useTheme";
@@ -6,21 +6,31 @@ import { useAuth } from "../../../../hooks/useAuth";
 import { HamburgerButton } from "./HamburgerButton";
 import { LogoBadge } from "./LogoBadge";
 import { SearchBar } from "./SearchBar";
+import { Company } from "../../../../types/company";
+import { CompanyAvatar } from "./ProfileAvatar";
 
 type HomeToolbarProps = {
   onMenuPress: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
+  onSearchPress?: () => void;
   onNotificationsPress?: () => void;
   notificationCount?: number;
+  activeCompany?: Company | null;
+  onAvatarLongPress?: () => void;
+  onAvatarPress?: () => void;
 };
 
 export const HomeToolbar: FC<HomeToolbarProps> = ({
   onMenuPress,
   searchValue,
   onSearchChange,
+  onSearchPress,
   onNotificationsPress,
   notificationCount = 0,
+  activeCompany,
+  onAvatarLongPress,
+  onAvatarPress,
 }) => {
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
@@ -41,6 +51,19 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
 
   const avatarLabel = buildInitials();
   const avatarUri = typeof user?.avatarUrl === "string" && user.avatarUrl.trim().length ? user.avatarUrl : undefined;
+
+  const avatarNode = useMemo(() => {
+    if (activeCompany) {
+      return (
+        <CompanyAvatar
+          company={activeCompany}
+          size={42}
+          style={{ borderWidth: 2, borderColor: colors.border }}
+        />
+      );
+    }
+    return <LogoBadge label={avatarLabel} imageUri={avatarUri} />;
+  }, [activeCompany, avatarLabel, avatarUri, colors.border]);
 
   return (
     <View style={[styles.wrapper, { backgroundColor: "transparent" }]}>
@@ -69,12 +92,21 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         paddingVertical: spacing.sm,
       }]}>
         <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
-        <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ marginRight: spacing.xs  }} />
+        <TouchableOpacity
+          activeOpacity={onAvatarLongPress || onAvatarPress ? 0.8 : 1}
+          onPress={onAvatarPress}
+          onLongPress={onAvatarLongPress}
+          delayLongPress={220}
+          style={{ marginRight: spacing.xs }}
+        >
+          {avatarNode}
+        </TouchableOpacity>
         <View style={styles.searchContainer}>
           <SearchBar
             value={searchValue}
             onChangeText={onSearchChange}
             placeholder="Search"
+            onPress={onSearchPress}
           />
         </View>
         <TouchableOpacity

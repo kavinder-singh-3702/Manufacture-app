@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   ScrollView,
   View,
@@ -8,38 +8,44 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  TextInput,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
-import { productService, CreateProductInput } from "../../services/product.service";
+import { productService, CreateProductInput, ProductCategory, Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
-
-const CATEGORIES = [
-  { id: "finished-goods", title: "Finished Goods", icon: "📦" },
-  { id: "components", title: "Components & Parts", icon: "🧩" },
-  { id: "raw-materials", title: "Raw Materials", icon: "🧱" },
-  { id: "machinery", title: "Machinery & Equipment", icon: "⚙️" },
-  { id: "packaging", title: "Packaging", icon: "🎁" },
-  { id: "services", title: "Services", icon: "🛠️" },
-  { id: "other", title: "Other", icon: "🗂️" },
-];
+import { useToast } from "../../components/ui/Toast";
+import { ApiError } from "../../services/http";
 
 const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];
+type LocalImage = { uri: string; base64: string; fileName: string; mimeType: string };
 
 export const AddProductScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [coverImage, setCoverImage] = useState<LocalImage | null>(null);
+  const [galleryImages, setGalleryImages] = useState<LocalImage[]>([]);
+
   const [formData, setFormData] = useState<CreateProductInput>({
     name: "",
     description: "",
     sku: "",
     category: "",
+    subCategory: "",
     price: { amount: 0, currency: "INR", unit: "unit" },
     availableQuantity: 0,
     minStockQuantity: 0,
@@ -62,6 +68,28 @@ export const AddProductScreen = () => {
     }));
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await productService.getCategoryStats();
+      setCategories(res.categories || []);
+    } catch (err) {
+      console.warn("Failed to load categories", err?.message || err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const filteredCategories = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) => c.title.toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+  }, [categories, categorySearch]);
+
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
@@ -70,6 +98,9 @@ export const AddProductScreen = () => {
     }
     if (!formData.category) {
       newErrors.category = "Please select a category";
+    }
+    if (!formData.subCategory?.trim()) {
+      newErrors.subCategory = "Add a sub-category to help browsing";
     }
     if (formData.price.amount <= 0) {
       newErrors.price = "Price is required and must be greater than 0";
@@ -82,21 +113,100 @@ export const AddProductScreen = () => {
     return Object.keys(newErrors).length === 0;
   }, [formData]);
 
+  const pickImage = useCallback(async (): Promise<LocalImage | null> => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Please allow photo library access to add product images.");
+      return null;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (result.canceled || !result.assets?.length) return null;
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      toastError("Add image failed", "Could not read image data");
+      return null;
+    }
+
+    const fileName = asset.fileName || `image-${Date.now()}.jpg`;
+    const mimeType = asset.mimeType || "image/jpeg";
+
+    return {
+      uri: asset.uri,
+      base64: asset.base64,
+      fileName,
+      mimeType,
+    };
+  }, [toastError]);
+
+  const handlePickCover = useCallback(async () => {
+    const img = await pickImage();
+    if (img) setCoverImage(img);
+  }, [pickImage]);
+
+  const handleAddGalleryImage = useCallback(async () => {
+    const img = await pickImage();
+    if (img) setGalleryImages((prev) => [...prev, img]);
+  }, [pickImage]);
+
+  const removeGalleryImage = useCallback((index: number) => {
+    setGalleryImages((prev) => prev.filter((_, idx) => idx !== index));
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
 
     setLoading(true);
     try {
-      await productService.create(formData);
-      Alert.alert("Success", "Product added successfully!", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      const created: Product = await productService.create(formData);
+
+      let uploadIssue: string | null = null;
+      try {
+        // Upload cover first, then gallery to preserve order
+        if (coverImage) {
+          await productService.uploadImage(created._id, {
+            fileName: coverImage.fileName,
+            mimeType: coverImage.mimeType,
+            content: coverImage.base64,
+          });
+        }
+        if (galleryImages.length) {
+          for (const img of galleryImages) {
+            await productService.uploadImage(created._id, {
+              fileName: img.fileName,
+              mimeType: img.mimeType,
+              content: img.base64,
+            });
+          }
+        }
+      } catch (uploadErr: any) {
+        uploadIssue = uploadErr?.message || "Product saved, but images failed to upload";
+      }
+
+      if (uploadIssue) {
+        toastError("Image upload issue", uploadIssue);
+      } else {
+        toastSuccess("Product added", String(formData.name || "Created successfully"));
+      }
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to add product. Please try again.");
+      const apiMessage =
+        (error instanceof ApiError && (error.data as any)?.error) ||
+        (error instanceof ApiError && (error.data as any)?.message) ||
+        error?.message ||
+        "Failed to add product. Please try again.";
+      toastError("Add product failed", String(apiMessage));
     } finally {
       setLoading(false);
     }
-  }, [formData, navigation, validate]);
+  }, [formData, navigation, toastError, toastSuccess, validate]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -152,46 +262,146 @@ export const AddProductScreen = () => {
             autoCapitalize="characters"
           />
 
+          {/* Images */}
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm }]}>
+            Photos
+          </Text>
+          <View style={{ gap: spacing.sm }}>
+            <Text style={[styles.label, { color: colors.textMuted, marginBottom: spacing.xs }]}>Cover photo</Text>
+            <TouchableOpacity
+              onPress={handlePickCover}
+              activeOpacity={0.9}
+              style={[
+                styles.coverPicker,
+                { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.md },
+              ]}
+            >
+              {coverImage ? (
+                <Image source={{ uri: coverImage.uri }} style={[styles.coverImage, { borderRadius: radius.md }]} />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <Text style={{ fontSize: 18, color: colors.textMuted }}>Add cover photo</Text>
+                  <Text style={{ color: colors.textMuted }}>Recommended: clear pack shot</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <Text style={[styles.label, { color: colors.textMuted, marginTop: spacing.sm }]}>More photos</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {galleryImages.map((img, idx) => (
+                <View key={idx} style={[styles.thumbWrap, { borderColor: colors.border, borderRadius: radius.sm }]}>
+                  <Image source={{ uri: img.uri }} style={[styles.thumb, { borderRadius: radius.sm }]} />
+                  <TouchableOpacity
+                    onPress={() => removeGalleryImage(idx)}
+                    style={styles.removeThumb}
+                    hitSlop={8}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                onPress={handleAddGalleryImage}
+                activeOpacity={0.85}
+                style={[
+                  styles.thumbAdd,
+                  { borderColor: colors.border, borderRadius: radius.sm, backgroundColor: colors.surface },
+                ]}
+              >
+                <Text style={{ fontSize: 20, color: colors.textMuted }}>＋</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.helperText, { color: colors.textMuted }]}>Max size 5 MB each. First image becomes cover.</Text>
+          </View>
+
           {/* Category Selection */}
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.sm }]}>
             Category
           </Text>
           {errors.category && (
-            <Text style={[styles.errorText, { color: colors.error, marginBottom: spacing.sm }]}>
+            <Text style={[styles.errorText, { color: colors.error, marginBottom: spacing.xs }]}>
               {errors.category}
             </Text>
           )}
-          <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => {
-              const isSelected = formData.category === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => updateField("category", cat.id)}
-                  style={[
-                    styles.categoryCard,
-                    {
-                      backgroundColor: isSelected ? colors.primary + "20" : colors.surface,
-                      borderColor: isSelected ? colors.primary : colors.border,
-                      borderRadius: radius.md,
-                      padding: spacing.md,
-                    },
-                  ]}
-                >
-                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
-                  <Text
-                    style={[
-                      styles.categoryTitle,
-                      { color: isSelected ? colors.primary : colors.textSecondary },
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {cat.title}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <TouchableOpacity
+            onPress={() => setShowCategoryDropdown((prev) => !prev)}
+            activeOpacity={0.8}
+            style={[
+              styles.categorySelector,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                borderRadius: radius.md,
+                padding: spacing.md,
+              },
+            ]}
+          >
+            <Text style={{ color: formData.category ? colors.text : colors.textMuted, fontWeight: "700" }}>
+              {formData.category ? categories.find((c) => c.id === formData.category)?.title || formData.category : "Select category"}
+            </Text>
+            <Text style={{ color: colors.textMuted }}>▾</Text>
+          </TouchableOpacity>
+          {showCategoryDropdown && (
+            <View
+              style={[
+                styles.dropdown,
+                { borderColor: colors.border, backgroundColor: colors.surfaceElevated || colors.surface, borderRadius: radius.md },
+              ]}
+            >
+              <TextInput
+                placeholder="Search categories"
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+                placeholderTextColor={colors.textMuted}
+                style={[
+                  styles.categorySearch,
+                  {
+                    borderColor: colors.border,
+                    color: colors.text,
+                    borderRadius: radius.sm,
+                    marginBottom: spacing.sm,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+              />
+              {loadingCategories ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : filteredCategories.length === 0 ? (
+                <Text style={[styles.errorText, { color: colors.textMuted }]}>No categories match your search</Text>
+              ) : (
+                <ScrollView style={{ maxHeight: 220 }}>
+                  {filteredCategories.map((cat) => {
+                    const isSelected = formData.category === cat.id;
+                    return (
+                      <TouchableOpacity
+                        key={cat.id}
+                        onPress={() => {
+                          updateField("category", cat.id);
+                          setShowCategoryDropdown(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          {
+                            backgroundColor: isSelected ? colors.primary + "20" : "transparent",
+                          },
+                        ]}
+                      >
+                        <Text style={{ color: colors.text, fontWeight: isSelected ? "800" : "600" }}>{cat.title}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+          )}
+
+          <InputField
+            label="Sub-category"
+            placeholder="e.g., Carrots, Fasteners, Polybags"
+            value={formData.subCategory || ""}
+            onChangeText={(text) => updateField("subCategory", text)}
+            errorText={errors.subCategory}
+          />
 
           {/* Quantity Section */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>
@@ -315,27 +525,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  categoryCard: {
-    width: "30%",
-    alignItems: "center",
-    borderWidth: 1.5,
-    minHeight: 90,
-    justifyContent: "center",
-  },
-  categoryIcon: {
-    fontSize: 28,
-    marginBottom: 6,
-  },
-  categoryTitle: {
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
-  },
+  categorySelector: { borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  dropdown: { marginTop: 8, borderWidth: 1, padding: 10 },
+  dropdownItem: { paddingVertical: 8, paddingHorizontal: 4, borderRadius: 8 },
+  categoryTitle: { fontSize: 14, fontWeight: "700" },
+  categorySearch: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14 },
   row: {
     flexDirection: "row",
   },
@@ -357,5 +551,52 @@ const styles = StyleSheet.create({
   unitText: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  coverPicker: {
+    borderWidth: 1,
+    overflow: "hidden",
+    height: 180,
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
+  },
+  coverPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  thumbWrap: {
+    width: 72,
+    height: 72,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  thumb: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbAdd: {
+    width: 72,
+    height: 72,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeThumb: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helperText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

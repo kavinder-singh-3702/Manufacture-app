@@ -51,6 +51,7 @@ const productSchema = new Schema(
     description: { type: String, trim: true, maxlength: 2000 },
     sku: { type: String, trim: true, uppercase: true },
     category: { type: String, required: true, enum: CATEGORY_IDS },
+    subCategory: { type: String, trim: true, maxlength: 120 },
     price: { type: PriceSchema, required: true },
     minStockQuantity: { type: Number, default: 0, min: 0 },
     availableQuantity: { type: Number, default: 0, min: 0 },

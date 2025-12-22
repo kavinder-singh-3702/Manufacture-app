@@ -62,18 +62,19 @@ const switchActive = async (companyId: string) => {
 };
 
 const uploadFile = async (companyId: string, payload: UploadCompanyFilePayload) => {
+  const fetchRes = await fetch(payload.uri);
+  const blob = await fetchRes.blob();
+
   const form = new FormData();
-  form.append("file", {
-    uri: payload.uri,
-    name: payload.fileName,
-    type: payload.mimeType ?? "application/octet-stream",
-  } as any);
+  form.append("file", blob, payload.fileName);
   if (payload.purpose) {
     form.append("purpose", payload.purpose);
   }
-  const response = await apiClient.post<{ file: UploadedFile; company: RawCompany; purpose: string }>(`/companies/${companyId}/uploads`, form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+
+  const response = await apiClient.post<{ file: UploadedFile; company: RawCompany; purpose: string }>(
+    `/companies/${companyId}/uploads`,
+    form
+  );
   return {
     file: response.file,
     company: mapCompany(response.company),

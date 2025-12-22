@@ -3,6 +3,7 @@ const config = require('../../../config/env');
 const User = require('../../../models/user.model');
 const { regenerateSession, destroySession } = require('../../../services/session.service');
 const { buildUserResponse } = require('../utils/response.util');
+const { clearStaleActiveCompany } = require('../utils/activeCompany.util');
 const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
 
@@ -60,6 +61,8 @@ const loginWithPassword = async (req, { email, phone, password }) => {
   user.lastLoginAt = new Date();
   user.lastLoginIp = req.ip;
   await user.save({ validateBeforeSave: false });
+
+  await clearStaleActiveCompany(user);
 
   await attachUserToSession(req, user.id);
   await recordActivitySafe({

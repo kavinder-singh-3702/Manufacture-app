@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { StyleProp, StyleSheet, TextInput, View, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, TextInput, TouchableOpacity, View, ViewStyle } from "react-native";
 import { useTheme } from "../../../../hooks/useTheme";
 
 type SearchBarProps = {
@@ -7,13 +7,23 @@ type SearchBarProps = {
   placeholder?: string;
   onChangeText: (value: string) => void;
   style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
 };
 
-export const SearchBar: FC<SearchBarProps> = ({ value, placeholder = "Search", onChangeText, style }) => {
+export const SearchBar: FC<SearchBarProps> = ({
+  value,
+  placeholder = "Search",
+  onChangeText,
+  style,
+  onPress,
+}) => {
   const { colors, spacing, radius } = useTheme();
+  const isTriggerMode = Boolean(onPress);
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={isTriggerMode ? 0.8 : 1}
+      onPress={onPress}
       style={[
         styles.container,
         {
@@ -33,8 +43,12 @@ export const SearchBar: FC<SearchBarProps> = ({ value, placeholder = "Search", o
         style={[styles.input, { color: colors.text }]}
         autoCorrect={false}
         returnKeyType="search"
+        editable={!isTriggerMode}
+        selectTextOnFocus={!isTriggerMode}
+        onFocus={isTriggerMode ? onPress : undefined}
+        pointerEvents={isTriggerMode ? "none" : "auto"}
       />
-    </View>
+    </TouchableOpacity>
   );
 };
 

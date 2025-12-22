@@ -27,11 +27,16 @@ const getProductsByCategoryController = async (req, res, next) => {
   try {
     const companyId = req.user?.activeCompany;
     const { categoryId } = req.params;
-    const { limit, offset } = req.query;
+    const { limit, offset, status, minPrice, maxPrice, sort } = req.query;
 
     const result = await getProductsByCategory(companyId, categoryId, {
       limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined
+      offset: offset ? parseInt(offset, 10) : undefined,
+      status,
+      minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
+      sort,
+      userId: req.user?.id
     });
 
     return res.json(result);
@@ -51,7 +56,8 @@ const listProductsController = async (req, res, next) => {
       category,
       status,
       search,
-      visibility
+      visibility,
+      userId: req.user?.id
     });
 
     return res.json(result);
@@ -85,7 +91,7 @@ const createProductController = async (req, res, next) => {
     }
 
     const product = await createProduct(req.body, userId, companyId);
-    return res.status(201).json({ product });
+    return res.status(201).json({ product, message: 'Product created successfully' });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'A product with this SKU already exists' });

@@ -9,8 +9,11 @@ import {
   RefreshControl,
   TextInput,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminUser } from "../../services/admin.service";
+import { RootStackParamList } from "../../navigation/types";
 
 // ============================================================
 // FILTER STATUS TYPE
@@ -27,6 +30,7 @@ export const UserManagementScreen = () => {
   // HOOKS & THEME
   // ------------------------------------------------------------
   const { colors, spacing } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // ------------------------------------------------------------
   // STATE MANAGEMENT
@@ -374,6 +378,21 @@ export const UserManagementScreen = () => {
                     </Text>
                   </View>
                 )}
+
+                <View style={[styles.actionsRow, { marginTop: spacing.sm }]}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation.navigate("UserPreferences", {
+                        userId: user.id,
+                        displayName: user.displayName || user.email,
+                      })
+                    }
+                    style={[styles.preferenceButton, { borderColor: colors.primary, borderRadius: 8 }]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.preferenceText, { color: colors.primary }]}>View preferences</Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -514,5 +533,18 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     fontSize: 11,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  preferenceButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  preferenceText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

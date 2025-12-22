@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Product = require('../../../models/product.model');
+const UserFavorite = require('../../../models/userFavorite.model');
 const { uploadProductImage } = require('../../../services/storage.service');
 const { PRODUCT_CATEGORIES } = require('../../../constants/product');
 
@@ -48,15 +49,50 @@ const getCategoryStats = async (companyId) => {
   return { categories };
 };
 
-const getProductsByCategory = async (companyId, categoryId, { limit = 20, offset = 0 } = {}) => {
+const getProductsByCategory = async (
+  companyId,
+  categoryId,
+  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort } = {}
+) => {
   const query = { category: categoryId, deletedAt: { $exists: false } };
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
   }
+  if (status) {
+    const expr = buildStockStatusExpr(status);
+    if (expr) {
+      query.$expr = expr;
+    } else {
+      query.status = status;
+    }
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    query['price.amount'] = {};
+    if (minPrice !== undefined) query['price.amount'].$gte = minPrice;
+    if (maxPrice !== undefined) query['price.amount'].$lte = maxPrice;
+    // Clean empty operator object
+    if (Object.keys(query['price.amount']).length === 0) {
+      delete query['price.amount'];
+    }
+  }
+
+  const sortOptions = (() => {
+    if (sort === 'priceAsc') return { 'price.amount': 1 };
+    if (sort === 'priceDesc') return { 'price.amount': -1 };
+    if (sort === 'ratingDesc') return { 'attributes.rating': -1, 'attributes.stars': -1 };
+    return { createdAt: -1 };
+  })();
+
+  let favoritesSet = new Set();
+  if (userId) {
+    const favorites = await UserFavorite.find({ user: userId }).select('product').lean();
+    favoritesSet = new Set(favorites.map((f) => f.product?.toString()));
+  }
 
   const [products, total] = await Promise.all([
     Product.find(query)
-      .sort({ createdAt: -1 })
+      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone' })
+      .sort(sortOptions)
       .skip(offset)
       .limit(limit)
       .lean(),
@@ -64,7 +100,10 @@ const getProductsByCategory = async (companyId, categoryId, { limit = 20, offset
   ]);
 
   return {
-    products,
+    products: products.map((p) => ({
+      ...p,
+      isFavorite: favoritesSet.has(p._id?.toString())
+    })),
     pagination: {
       total,
       limit,
@@ -76,7 +115,7 @@ const getProductsByCategory = async (companyId, categoryId, { limit = 20, offset
 
 const getAllProducts = async (
   companyId,
-  { limit = 20, offset = 0, category, status, search, visibility } = {}
+  { limit = 20, offset = 0, category, status, search, visibility, userId } = {}
 ) => {
   const query = { deletedAt: { $exists: false } };
 
@@ -102,6 +141,12 @@ const getAllProducts = async (
     query.$or = [{ name: regex }, { description: regex }, { sku: regex }];
   }
 
+  let favoritesSet = new Set();
+  if (userId) {
+    const favorites = await UserFavorite.find({ user: userId }).select('product').lean();
+    favoritesSet = new Set(favorites.map((f) => f.product?.toString()));
+  }
+
   const [products, total] = await Promise.all([
     Product.find(query)
       .sort({ createdAt: -1 })
@@ -112,7 +157,10 @@ const getAllProducts = async (
   ]);
 
   return {
-    products,
+    products: products.map((p) => ({
+      ...p,
+      isFavorite: favoritesSet.has(p._id?.toString())
+    })),
     pagination: {
       total,
       limit,

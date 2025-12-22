@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
+  Animated,
   ScrollView,
   View,
   StyleSheet,
@@ -8,7 +9,9 @@ import {
   RefreshControl,
   Dimensions,
   ActivityIndicator,
+  Easing,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { BarChart, PieChart } from "react-native-gifted-charts";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -20,14 +23,13 @@ import { RootStackParamList } from "../navigation/types";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 64;
 
-// Chart colors for categories
 const CATEGORY_COLORS: Record<string, string> = {
   "finished-goods": "#6C63FF",
-  "components": "#FF8C3C",
+  components: "#FF8C3C",
   "raw-materials": "#4AC9FF",
-  "machinery": "#4ADE80",
-  "packaging": "#EC4899",
-  "services": "#FBBF24",
+  machinery: "#4ADE80",
+  packaging: "#EC4899",
+  services: "#FBBF24",
 };
 
 // ============================================================
@@ -42,6 +44,10 @@ export const StatsScreen = () => {
   const [stats, setStats] = useState<ProductStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBarValue, setSelectedBarValue] = useState<{ label: string; value: number } | null>(null);
+
+  const heroGlow = useRef(new Animated.Value(0)).current;
+  const heroReveal = useRef(new Animated.Value(0)).current;
+  const contentReveal = useRef(new Animated.Value(0)).current;
 
   const fetchStats = useCallback(async () => {
     try {
@@ -69,21 +75,89 @@ export const StatsScreen = () => {
     fetchStats();
   }, [fetchStats]);
 
+  // Subtle hero glow and reveal animation
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroGlow, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(heroGlow, {
+          toValue: 0,
+          duration: 2000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [heroGlow]);
+
+  useEffect(() => {
+    if (!loading) {
+      heroReveal.setValue(0);
+      contentReveal.setValue(0);
+
+      Animated.parallel([
+        Animated.timing(heroReveal, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentReveal, {
+          toValue: 1,
+          duration: 420,
+          delay: 80,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [contentReveal, heroReveal, loading]);
+
   // Build chart data from real stats
-  const categoryPieData = stats?.categoryDistribution
-    .filter((cat) => cat.count > 0)
-    .map((cat) => ({
-      value: cat.count,
-      color: CATEGORY_COLORS[cat.id] || "#6C63FF",
-      text: `${cat.count}`,
-      label: cat.label,
-    })) || [];
+  const categoryPieData = useMemo(
+    () =>
+      stats?.categoryDistribution
+        .filter((cat) => cat.count > 0)
+        .map((cat) => ({
+          value: cat.count,
+          color: CATEGORY_COLORS[cat.id] || colors.primary,
+          text: `${cat.count}`,
+          label: cat.label,
+        })) || [],
+    [colors.primary, stats?.categoryDistribution]
+  );
+
+  const categoryBarData = useMemo(
+    () =>
+      stats?.categoryDistribution.map((cat) => ({
+        value: cat.totalQuantity,
+        label: cat.label.split(" ")[0],
+        frontColor: CATEGORY_COLORS[cat.id] || colors.primary,
+        onPress: () => setSelectedBarValue({ label: cat.label, value: cat.totalQuantity }),
+      })) || [],
+    [colors.primary, stats?.categoryDistribution]
+  );
+
+  const maxQuantity = useMemo(
+    () => Math.max(...categoryBarData.map((d) => d.value), 10),
+    [categoryBarData]
+  );
 
   const totalItems = stats?.totalItems || 0;
   const totalQuantity = stats?.totalQuantity || 0;
   const totalValue = stats?.totalCostValue || 0;
   const lowStockCount = stats?.lowStockCount || 0;
   const outOfStockCount = stats?.outOfStockCount || 0;
+  const stockHealth =
+    totalItems > 0 ? Math.round(((stats?.statusBreakdown.in_stock || 0) / totalItems) * 100) : 0;
+  const averageUnits = totalItems > 0 ? Math.round(totalQuantity / totalItems) : 0;
 
   // Navigation handlers for clickable stats
   const handleLowStockPress = useCallback(() => {
@@ -95,55 +169,107 @@ export const StatsScreen = () => {
   }, [navigation]);
 
   // Quick stats cards from real data
-  const statCards = [
-    {
-      label: "Total Items",
-      value: totalItems.toString(),
-      trend: "neutral" as const,
-      trendValue: `${totalQuantity} units`,
-      color: "#6C63FF",
-      onPress: undefined,
-    },
-    {
-      label: "Product Value",
-      value: `₹${(totalValue / 1000).toFixed(1)}K`,
-      trend: "neutral" as const,
-      trendValue: "Cost value",
-      color: "#4ADE80",
-      onPress: undefined,
-    },
-    {
-      label: "Low Stock",
-      value: lowStockCount.toString(),
-      trend: lowStockCount > 0 ? ("down" as const) : ("neutral" as const),
-      trendValue: lowStockCount > 0 ? "Tap to view →" : "All good",
-      color: "#FBBF24",
-      onPress: lowStockCount > 0 ? handleLowStockPress : undefined,
-    },
-    {
-      label: "Out of Stock",
-      value: outOfStockCount.toString(),
-      trend: outOfStockCount > 0 ? ("down" as const) : ("neutral" as const),
-      trendValue: outOfStockCount > 0 ? "Tap to view →" : "All stocked",
-      color: "#FF6B6B",
-      onPress: outOfStockCount > 0 ? handleOutOfStockPress : undefined,
-    },
-  ];
+  const statCards = useMemo(
+    () => [
+      {
+        label: "Total Items",
+        value: totalItems.toString(),
+        trend: "neutral" as const,
+        trendValue: `${totalQuantity.toLocaleString()} units`,
+        color: colors.primary,
+        onPress: undefined,
+        icon: "📦",
+      },
+      {
+        label: "Product Value",
+        value: `₹${(totalValue / 1000).toFixed(1)}K`,
+        trend: "neutral" as const,
+        trendValue: "Cost basis",
+        color: colors.success,
+        onPress: undefined,
+        icon: "💰",
+      },
+      {
+        label: "Low Stock",
+        value: lowStockCount.toString(),
+        trend: lowStockCount > 0 ? ("down" as const) : ("neutral" as const),
+        trendValue: lowStockCount > 0 ? "Tap to view →" : "All good",
+        color: colors.warning,
+        onPress: lowStockCount > 0 ? handleLowStockPress : undefined,
+        icon: "⚠️",
+      },
+      {
+        label: "Out of Stock",
+        value: outOfStockCount.toString(),
+        trend: outOfStockCount > 0 ? ("down" as const) : ("neutral" as const),
+        trendValue: outOfStockCount > 0 ? "Tap to view →" : "All stocked",
+        color: colors.error,
+        onPress: outOfStockCount > 0 ? handleOutOfStockPress : undefined,
+        icon: "⛔️",
+      },
+    ],
+    [
+      colors.error,
+      colors.primary,
+      colors.success,
+      colors.warning,
+      handleLowStockPress,
+      handleOutOfStockPress,
+      lowStockCount,
+      outOfStockCount,
+      totalItems,
+      totalQuantity,
+      totalValue,
+    ]
+  );
 
-  // Category bar data with onPress for showing quantity
-  const categoryBarData = stats?.categoryDistribution.map((cat) => ({
-    value: cat.totalQuantity,
-    label: cat.label.split(" ")[0],
-    frontColor: CATEGORY_COLORS[cat.id] || "#6C63FF",
-    onPress: () => setSelectedBarValue({ label: cat.label, value: cat.totalQuantity }),
-  })) || [];
-
-  const maxQuantity = Math.max(...categoryBarData.map((d) => d.value), 10);
+  const actionPills = useMemo(
+    () => [
+      {
+        label: "Low stock queue",
+        value: `${lowStockCount} item${lowStockCount === 1 ? "" : "s"}`,
+        accent: colors.warning,
+        icon: "🩺",
+        onPress: lowStockCount > 0 ? handleLowStockPress : undefined,
+        hint: lowStockCount > 0 ? "Prioritize replenishment" : "No alerts",
+      },
+      {
+        label: "Stockouts",
+        value: `${outOfStockCount} item${outOfStockCount === 1 ? "" : "s"}`,
+        accent: colors.error,
+        icon: "🚫",
+        onPress: outOfStockCount > 0 ? handleOutOfStockPress : undefined,
+        hint: outOfStockCount > 0 ? "Hidden from buyers" : "All visible",
+      },
+      {
+        label: "Health score",
+        value: `${stockHealth}%`,
+        accent: colors.success,
+        icon: "✅",
+        hint: "In-stock coverage",
+      },
+    ],
+    [
+      colors.error,
+      colors.success,
+      colors.warning,
+      handleLowStockPress,
+      handleOutOfStockPress,
+      lowStockCount,
+      outOfStockCount,
+      stockHealth,
+    ]
+  );
 
   // Calculate proper chart width to prevent overflow
   const barCount = categoryBarData.length || 1;
   const calculatedBarWidth = Math.min(32, (CHART_WIDTH - 60) / barCount - 12);
   const calculatedSpacing = Math.min(16, (CHART_WIDTH - 60 - calculatedBarWidth * barCount) / (barCount + 1));
+
+  const heroTranslate = heroReveal.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+  const contentTranslate = contentReveal.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+  const heroGlowOpacity = heroGlow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.65] });
+  const heroGlowScale = heroGlow.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.08] });
 
   if (loading) {
     return (
@@ -151,7 +277,7 @@ export const StatsScreen = () => {
         <View style={[styles.centered, { flex: 1 }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: 12 }]}>
-            Loading statistics...
+            Preparing your inventory insights...
           </Text>
         </View>
       </SafeAreaView>
@@ -164,24 +290,95 @@ export const StatsScreen = () => {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* Header */}
-        <View style={{ marginBottom: spacing.lg }}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Product Stats</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textMuted }]}>
-            Track your catalog performance
-          </Text>
-        </View>
+        {/* Hero */}
+        <Animated.View
+          style={[
+            styles.heroWrapper,
+            {
+              opacity: heroReveal,
+              transform: [{ translateY: heroTranslate }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[colors.primary, colors.accentWarm, colors.backgroundSecondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              styles.heroCard,
+              {
+                borderRadius: radius.lg,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+              },
+            ]}
+          >
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.heroGlow,
+                {
+                  opacity: heroGlowOpacity,
+                  transform: [{ scale: heroGlowScale }],
+                  backgroundColor: colors.primaryGlow,
+                },
+              ]}
+            />
+            <View style={[styles.heroTopRow, { marginBottom: spacing.md }]}>
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <Text style={[styles.pageEyebrow, { color: colors.textMuted }]}>Product Intelligence</Text>
+                <Text style={[styles.pageTitle, { color: colors.text }]}>Product Stats</Text>
+                <Text style={[styles.pageSubtitle, { color: colors.textLight }]}>
+                  Premium dashboard for inventory momentum
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.heroBadge,
+                  {
+                    borderColor: colors.primary + "60",
+                    backgroundColor: colors.primary + "20",
+                  },
+                ]}
+              >
+                <Text style={[styles.heroBadgeText, { color: colors.text }]}>LIVE</Text>
+              </View>
+            </View>
+
+            <View style={[styles.heroMetricsRow, { marginBottom: spacing.sm }]}>
+              <HeroMetric
+                label="Catalog value"
+                value={`₹${(totalValue / 1000).toFixed(1)}K`}
+                hint="Cost basis"
+              />
+              <HeroMetric label="Stock health" value={`${stockHealth}%`} hint="Ready to ship" />
+            </View>
+            <View style={styles.heroMetricsRow}>
+              <HeroMetric
+                label="Total items"
+                value={totalItems.toString()}
+                hint={`${totalQuantity.toLocaleString()} units on hand`}
+              />
+              <HeroMetric label="Avg units / item" value={averageUnits.toString()} hint="Depth per SKU" />
+            </View>
+          </LinearGradient>
+        </Animated.View>
 
         {/* Error State */}
         {error && (
           <View
             style={[
               styles.errorBanner,
-              { backgroundColor: colors.error + "20", padding: spacing.md, borderRadius: 8, marginBottom: spacing.lg },
+              {
+                backgroundColor: colors.error + "18",
+                padding: spacing.md,
+                borderRadius: radius.md,
+                borderColor: colors.error + "30",
+                borderWidth: 1,
+                marginBottom: spacing.lg,
+              },
             ]}
           >
             <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
@@ -191,154 +388,175 @@ export const StatsScreen = () => {
           </View>
         )}
 
-        {/* Quick Stats Cards */}
-        <View style={[styles.statsGrid, { gap: spacing.md, marginBottom: spacing.xl }]}>
-          {statCards.map((stat, index) => (
-            <QuickStatCard key={index} data={stat} />
-          ))}
-        </View>
+        <Animated.View
+          style={{
+            opacity: contentReveal,
+            transform: [{ translateY: contentTranslate }],
+          }}
+        >
+          {/* Quick Stats Cards */}
+          <SectionHeader title="Inventory Pulse" subtitle="High-level view of your catalog" />
+          <View style={[styles.statsGrid, { marginBottom: spacing.lg }]}>
+            {statCards.map((stat, index) => (
+              <QuickStatCard key={index} data={stat} />
+            ))}
+          </View>
 
-        {/* Category Quantity Chart */}
-        {categoryBarData.length > 0 && (
-          <ChartCard title="Quantity by Category">
-            {selectedBarValue && (
-              <TouchableOpacity
-                onPress={() => setSelectedBarValue(null)}
-                style={[styles.selectedValueBanner, { backgroundColor: colors.primary + "15", borderRadius: radius.md }]}
-              >
-                <Text style={[styles.selectedValueText, { color: colors.primary }]}>
-                  {selectedBarValue.label}: <Text style={styles.selectedValueNumber}>{selectedBarValue.value.toLocaleString()} units</Text>
-                </Text>
-                <Text style={[styles.selectedValueHint, { color: colors.textMuted }]}>Tap to dismiss</Text>
-              </TouchableOpacity>
-            )}
-            <View style={styles.chartContainer}>
-              <BarChart
-                data={categoryBarData}
-                width={CHART_WIDTH - 40}
-                height={180}
-                barWidth={calculatedBarWidth}
-                spacing={calculatedSpacing}
-                initialSpacing={10}
-                endSpacing={10}
-                roundedTop
-                roundedBottom
-                hideRules
-                xAxisThickness={0}
-                yAxisThickness={0}
-                yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 8 }}
-                noOfSections={4}
-                maxValue={maxQuantity * 1.2}
-                isAnimated
-                animationDuration={500}
-                barBorderRadius={6}
-                showValuesAsTopLabel
-                topLabelTextStyle={{ color: colors.textMuted, fontSize: 9, fontWeight: "600" }}
+          {/* Action Pills */}
+          <SectionHeader title="Alerts & Actions" subtitle="Stay ahead of low stock and outages" />
+          <View style={styles.actionPillsRow}>
+            {actionPills.map((pill, index) => (
+              <InsightPill
+                key={`${pill.label}-${index}`}
+                {...pill}
+                muted={!pill.onPress}
               />
-            </View>
-            <Text style={[styles.chartHint, { color: colors.textMuted }]}>
-              Tap on bars to see exact quantity
-            </Text>
-          </ChartCard>
-        )}
+            ))}
+          </View>
 
-        {/* Category Distribution Pie */}
-        {categoryPieData.length > 0 ? (
-          <ChartCard title="Items by Category">
-            <View style={styles.pieContainer}>
-              <PieChart
-                data={categoryPieData}
-                donut
-                radius={80}
-                innerRadius={50}
-                innerCircleColor={colors.surface}
-                centerLabelComponent={() => (
-                  <View style={styles.pieCenter}>
-                    <Text style={[styles.pieCenterValue, { color: colors.text }]}>{totalItems}</Text>
-                    <Text style={[styles.pieCenterLabel, { color: colors.textMuted }]}>Items</Text>
-                  </View>
-                )}
-                isAnimated
-              />
-              <View style={[styles.pieLegend, { marginLeft: spacing.lg }]}>
-                {categoryPieData.map((item, index) => (
-                  <View key={index} style={styles.pieLegendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                      {item.label}
-                    </Text>
-                    <Text style={[styles.legendValue, { color: colors.text }]}>{item.text}</Text>
-                  </View>
-                ))}
+          {/* Category Quantity Chart */}
+          {categoryBarData.length > 0 && (
+            <ChartCard title="Quantity by Category" subtitle="Live on-hand quantity across categories">
+              {selectedBarValue && (
+                <TouchableOpacity
+                  onPress={() => setSelectedBarValue(null)}
+                  style={[
+                    styles.selectedValueBanner,
+                    {
+                      backgroundColor: colors.primary + "12",
+                      borderColor: colors.primary + "25",
+                    },
+                  ]}
+                >
+                  <Text style={[styles.selectedValueText, { color: colors.text }]}>
+                    {selectedBarValue.label}:{" "}
+                    <Text style={styles.selectedValueNumber}>{selectedBarValue.value.toLocaleString()} units</Text>
+                  </Text>
+                  <Text style={[styles.selectedValueHint, { color: colors.textMuted }]}>Tap to dismiss</Text>
+                </TouchableOpacity>
+              )}
+              <View style={styles.chartContainer}>
+                <BarChart
+                  data={categoryBarData}
+                  width={CHART_WIDTH - 40}
+                  height={190}
+                  barWidth={calculatedBarWidth}
+                  spacing={calculatedSpacing}
+                  initialSpacing={10}
+                  endSpacing={10}
+                  roundedTop
+                  roundedBottom
+                  hideRules
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
+                  noOfSections={4}
+                  maxValue={maxQuantity * 1.2}
+                  isAnimated
+                  animationDuration={600}
+                  barBorderRadius={10}
+                  showValuesAsTopLabel
+                  topLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: "700" }}
+                />
               </View>
+              <Text style={[styles.chartHint, { color: colors.textMuted }]}>Tap bars to see exact quantity</Text>
+            </ChartCard>
+          )}
+
+          {/* Category Distribution Pie */}
+          {categoryPieData.length > 0 ? (
+            <ChartCard title="Items by Category" subtitle="Catalog distribution by category">
+              <View style={styles.pieContainer}>
+                <PieChart
+                  data={categoryPieData}
+                  donut
+                  radius={82}
+                  innerRadius={50}
+                  innerCircleColor={colors.surface}
+                  centerLabelComponent={() => (
+                    <View style={styles.pieCenter}>
+                      <Text style={[styles.pieCenterValue, { color: colors.text }]}>{totalItems}</Text>
+                      <Text style={[styles.pieCenterLabel, { color: colors.textMuted }]}>Items</Text>
+                    </View>
+                  )}
+                  isAnimated
+                />
+                <View style={[styles.pieLegend, { marginLeft: spacing.lg }]}>
+                  {categoryPieData.map((item, index) => (
+                    <View key={index} style={styles.pieLegendItem}>
+                      <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                      <Text style={[styles.legendText, { color: colors.textSecondary }]}>{item.label}</Text>
+                      <Text style={[styles.legendValue, { color: colors.text }]}>{item.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </ChartCard>
+          ) : (
+            <ChartCard title="Products by Category" subtitle="Add products to unlock category insights">
+              <View style={[styles.emptyState, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.emptyIcon]}>📦</Text>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No products yet</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Add products to see distribution</Text>
+              </View>
+            </ChartCard>
+          )}
+
+          {/* Status Breakdown */}
+          <ChartCard title="Stock Status" subtitle="Where to focus your next actions">
+            <View style={{ gap: spacing.md }}>
+              <StatusRow
+                label="In Stock"
+                count={stats?.statusBreakdown.in_stock || 0}
+                total={totalItems}
+                color={colors.success}
+              />
+              <StatusRow
+                label="Low Stock"
+                count={stats?.statusBreakdown.low_stock || 0}
+                total={totalItems}
+                color={colors.warning}
+              />
+              <StatusRow
+                label="Out of Stock"
+                count={stats?.statusBreakdown.out_of_stock || 0}
+                total={totalItems}
+                color={colors.error}
+              />
             </View>
           </ChartCard>
-        ) : (
-          <ChartCard title="Products by Category">
-            <View style={[styles.emptyState, { padding: spacing.xl }]}>
-              <Text style={[styles.emptyIcon]}>📦</Text>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No products yet</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Add products to see distribution
-              </Text>
+
+          {/* Summary Highlights */}
+          <ChartCard title="Operational Signals" subtitle="Quick summary for your ops team">
+            <View style={{ gap: spacing.md }}>
+              <HighlightItem
+                icon="📦"
+                title="Total Unique Items"
+                value={totalItems.toString()}
+                detail="Across all categories"
+              />
+              <HighlightItem
+                icon="🔢"
+                title="Total Quantity"
+                value={totalQuantity.toLocaleString()}
+                detail="Units in stock"
+              />
+              <HighlightItem
+                icon="💰"
+                title="Product Value"
+                value={`₹${totalValue.toLocaleString()}`}
+                detail="Total value"
+              />
+              <HighlightItem
+                icon="⚠️"
+                title="Attention Needed"
+                value={(lowStockCount + outOfStockCount).toString()}
+                detail="Items need restocking"
+              />
             </View>
           </ChartCard>
-        )}
-
-        {/* Status Breakdown */}
-        <ChartCard title="Stock Status">
-          <View style={{ gap: spacing.md }}>
-            <StatusRow
-              label="In Stock"
-              count={stats?.statusBreakdown.in_stock || 0}
-              total={totalItems}
-              color="#4ADE80"
-            />
-            <StatusRow
-              label="Low Stock"
-              count={stats?.statusBreakdown.low_stock || 0}
-              total={totalItems}
-              color="#FBBF24"
-            />
-            <StatusRow
-              label="Out of Stock"
-              count={stats?.statusBreakdown.out_of_stock || 0}
-              total={totalItems}
-              color="#FF6B6B"
-            />
-          </View>
-        </ChartCard>
-
-        {/* Summary Highlights */}
-        <ChartCard title="Quick Summary">
-          <View style={{ gap: spacing.md }}>
-            <HighlightItem
-              icon="📦"
-              title="Total Unique Items"
-              value={totalItems.toString()}
-              detail="Across all categories"
-            />
-            <HighlightItem
-              icon="🔢"
-              title="Total Quantity"
-              value={totalQuantity.toLocaleString()}
-              detail="Units in stock"
-            />
-            <HighlightItem
-              icon="💰"
-              title="Product Value"
-              value={`₹${totalValue.toLocaleString()}`}
-              detail="Total value"
-            />
-            <HighlightItem
-              icon="⚠️"
-              title="Attention Needed"
-              value={(lowStockCount + outOfStockCount).toString()}
-              detail="Items need restocking"
-            />
-          </View>
-        </ChartCard>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -353,71 +571,97 @@ type StatCardData = {
   trend: "up" | "down" | "neutral";
   trendValue: string;
   color: string;
+  icon: string;
   onPress?: () => void;
 };
 
+const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => {
+  const { colors, spacing } = useTheme();
+
+  return (
+    <View style={[styles.sectionHeader, { marginBottom: spacing.sm }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
+    </View>
+  );
+};
+
+const HeroMetric = ({ label, value, hint }: { label: string; value: string; hint: string }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.heroMetric,
+        {
+          backgroundColor: colors.overlayLight,
+          borderColor: colors.border + "60",
+        },
+      ]}
+    >
+      <Text style={[styles.heroMetricLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.heroMetricValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.heroMetricHint, { color: colors.textMuted }]}>{hint}</Text>
+    </View>
+  );
+};
+
 const QuickStatCard = ({ data }: { data: StatCardData }) => {
-  const { colors, spacing, radius } = useTheme();
-  const trendIcon = data.trend === "up" ? "↑" : data.trend === "down" ? "↓" : "→";
-  const trendColor =
-    data.trend === "up" ? colors.success : data.trend === "down" ? colors.error : colors.textMuted;
+  const { colors, radius, spacing } = useTheme();
   const isClickable = !!data.onPress;
+  const tagLabel = isClickable ? "View" : "Live";
+  const tagColor = isClickable ? data.color : colors.textMuted;
+  const tagBorder = isClickable ? data.color + "35" : colors.border;
+  const tagBackground = isClickable ? data.color + "18" : colors.backgroundSecondary;
 
   const content = (
-    <>
-      <View style={[styles.statAccent, { backgroundColor: data.color }]} />
-      <Text style={[styles.quickStatLabel, { color: colors.textSecondary }]}>{data.label}</Text>
-      <Text style={[styles.quickStatValue, { color: colors.text }]}>{data.value}</Text>
-      <View style={styles.trendRow}>
-        <Text style={[styles.trendIcon, { color: isClickable ? data.color : trendColor }]}>{trendIcon}</Text>
-        <Text style={[styles.trendValue, { color: isClickable ? data.color : trendColor }]}>{data.trendValue}</Text>
+    <View
+      style={[
+        styles.quickStatCard,
+        {
+          backgroundColor: colors.surfaceElevated,
+          borderColor: data.color + "35",
+          borderRadius: radius.md,
+          padding: spacing.md,
+          shadowColor: data.color,
+        },
+      ]}
+    >
+      <View style={styles.quickStatHeader}>
+        <View style={[styles.quickStatIcon, { backgroundColor: data.color + "25" }]}>
+          <Text>{data.icon}</Text>
+        </View>
+        <Text style={[styles.quickStatLabel, { color: colors.textSecondary }]} numberOfLines={2}>
+          {data.label}
+        </Text>
+        <View style={[styles.quickStatTag, { backgroundColor: tagBackground, borderColor: tagBorder }]}>
+          <Text style={[styles.quickStatTagText, { color: tagColor }]}>{tagLabel}</Text>
+        </View>
       </View>
-    </>
+
+      <Text style={[styles.quickStatValue, { color: colors.text }]}>{data.value}</Text>
+      <Text style={[styles.quickStatHint, { color: colors.textMuted }]}>{data.trendValue}</Text>
+    </View>
   );
 
-  if (data.onPress) {
+  if (isClickable) {
     return (
-      <TouchableOpacity
-        onPress={data.onPress}
-        activeOpacity={0.7}
-        style={[
-          styles.quickStatCard,
-          {
-            backgroundColor: colors.surface,
-            borderColor: data.color + "40",
-            borderRadius: radius.md,
-            padding: spacing.md,
-          },
-        ]}
-      >
+      <TouchableOpacity onPress={data.onPress} activeOpacity={0.8} style={{ width: "48%" }}>
         {content}
       </TouchableOpacity>
     );
   }
 
-  return (
-    <View
-      style={[
-        styles.quickStatCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderRadius: radius.md,
-          padding: spacing.md,
-        },
-      ]}
-    >
-      {content}
-    </View>
-  );
+  return <View style={{ width: "48%" }}>{content}</View>;
 };
 
 type ChartCardProps = {
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
 };
 
-const ChartCard = ({ title, children }: ChartCardProps) => {
+const ChartCard = ({ title, subtitle, children }: ChartCardProps) => {
   const { colors, spacing, radius } = useTheme();
 
   return (
@@ -433,22 +677,19 @@ const ChartCard = ({ title, children }: ChartCardProps) => {
         },
       ]}
     >
-      <Text style={[styles.chartTitle, { color: colors.text, marginBottom: spacing.md }]}>
-        {title}
-      </Text>
+      <View style={styles.chartTitleRow}>
+        <Text style={[styles.chartTitle, { color: colors.text }]}>{title}</Text>
+        <View style={[styles.chartBadge, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "35" }]}>
+          <Text style={[styles.chartBadgeText, { color: colors.text }]}>{categoryLabelFromTitle(title)}</Text>
+        </View>
+      </View>
+      {subtitle ? <Text style={[styles.chartSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
       {children}
     </View>
   );
 };
 
-type StatusRowProps = {
-  label: string;
-  count: number;
-  total: number;
-  color: string;
-};
-
-const StatusRow = ({ label, count, total, color }: StatusRowProps) => {
+const StatusRow = ({ label, count, total, color }: { label: string; count: number; total: number; color: string }) => {
   const { colors, spacing, radius } = useTheme();
   const percentage = total > 0 ? (count / total) * 100 : 0;
 
@@ -458,12 +699,17 @@ const StatusRow = ({ label, count, total, color }: StatusRowProps) => {
         <View style={[styles.legendDot, { backgroundColor: color }]} />
         <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>{label}</Text>
         <Text style={[styles.statusCount, { color: colors.text }]}>{count}</Text>
+        <Text style={[styles.statusPercent, { color: colors.textMuted }]}>{percentage.toFixed(0)}%</Text>
       </View>
       <View style={[styles.statusBarBg, { backgroundColor: colors.border, borderRadius: radius.sm }]}>
         <View
           style={[
             styles.statusBarFill,
-            { width: `${percentage}%`, backgroundColor: color, borderRadius: radius.sm },
+            {
+              width: `${percentage}%`,
+              backgroundColor: color,
+              borderRadius: radius.sm,
+            },
           ]}
         />
       </View>
@@ -471,14 +717,7 @@ const StatusRow = ({ label, count, total, color }: StatusRowProps) => {
   );
 };
 
-type HighlightItemProps = {
-  icon: string;
-  title: string;
-  value: string;
-  detail: string;
-};
-
-const HighlightItem = ({ icon, title, value, detail }: HighlightItemProps) => {
+const HighlightItem = ({ icon, title, value, detail }: { icon: string; title: string; value: string; detail: string }) => {
   const { colors, spacing, radius } = useTheme();
 
   return (
@@ -486,9 +725,10 @@ const HighlightItem = ({ icon, title, value, detail }: HighlightItemProps) => {
       style={[
         styles.highlightItem,
         {
-          backgroundColor: colors.backgroundTertiary,
+          backgroundColor: colors.backgroundSecondary,
           borderRadius: radius.md,
           padding: spacing.md,
+          borderColor: colors.border,
         },
       ]}
     >
@@ -502,6 +742,64 @@ const HighlightItem = ({ icon, title, value, detail }: HighlightItemProps) => {
   );
 };
 
+const InsightPill = ({
+  label,
+  value,
+  accent,
+  icon,
+  hint,
+  onPress,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  accent: string;
+  icon: string;
+  hint: string;
+  onPress?: () => void;
+  muted?: boolean;
+}) => {
+  const { colors } = useTheme();
+
+  const content = (
+    <View
+      style={[
+        styles.actionPill,
+        {
+          borderColor: accent + "40",
+          backgroundColor: accent + "10",
+        },
+      ]}
+    >
+      <View style={[styles.quickStatIcon, { backgroundColor: accent + "25" }]}>
+        <Text>{icon}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.actionPillValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.actionPillLabel, { color: colors.textMuted }]}>{label}</Text>
+        <Text style={[styles.actionPillHint, { color: muted ? colors.textMuted : accent }]}>{hint}</Text>
+      </View>
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.actionPillWrapper}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={styles.actionPillWrapper}>{content}</View>;
+};
+
+// Helper to show short badge text
+const categoryLabelFromTitle = (title: string) => {
+  if (title.toLowerCase().includes("category")) return "By Category";
+  if (title.toLowerCase().includes("stock")) return "Health";
+  return "Live";
+};
+
 // ============================================================
 // STYLES
 // ============================================================
@@ -512,6 +810,78 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+  },
+  heroWrapper: {
+    marginBottom: 16,
+  },
+  heroCard: {
+    overflow: "hidden",
+    padding: 20,
+    borderWidth: 1,
+  },
+  heroGlow: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    top: -60,
+    right: -80,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  pageEyebrow: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  heroBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  heroMetricsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  heroMetric: {
+    flex: 1,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  heroMetricLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  heroMetricValue: {
+    fontSize: 22,
+    fontWeight: "900",
+    marginTop: 4,
+    letterSpacing: -0.2,
+  },
+  heroMetricHint: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: "600",
   },
   errorBanner: {
     flexDirection: "row",
@@ -524,65 +894,94 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  pageTitle: {
-    fontSize: 28,
+  sectionHeader: {},
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -0.2,
   },
-  pageSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
+  sectionSubtitle: {
+    fontSize: 13,
+    fontWeight: "600",
     marginTop: 4,
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    gap: 12,
   },
   quickStatCard: {
-    width: "48%",
+    width: "100%",
     borderWidth: 1,
     overflow: "hidden",
   },
-  statAccent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 4,
-    height: "100%",
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
+  quickStatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  quickStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   quickStatLabel: {
     fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontWeight: "700",
+    flex: 1,
   },
   quickStatValue: {
     fontSize: 24,
-    fontWeight: "800",
+    fontWeight: "900",
+    marginTop: 8,
   },
-  trendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-    gap: 4,
-  },
-  trendIcon: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  trendValue: {
+  quickStatHint: {
     fontSize: 12,
     fontWeight: "600",
+    marginTop: 2,
+  },
+  quickStatTag: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  quickStatTagText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.4,
   },
   chartCard: {
     borderWidth: 1,
     overflow: "hidden",
   },
+  chartTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
   chartTitle: {
     fontSize: 16,
+    fontWeight: "800",
+  },
+  chartSubtitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 10,
+  },
+  chartBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  chartBadgeText: {
+    fontSize: 11,
     fontWeight: "700",
   },
   chartContainer: {
@@ -591,7 +990,7 @@ const styles = StyleSheet.create({
   },
   chartHint: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "600",
     textAlign: "center",
     marginTop: 8,
   },
@@ -599,13 +998,15 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 12,
   },
   selectedValueText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   selectedValueNumber: {
-    fontWeight: "800",
+    fontWeight: "900",
     fontSize: 16,
   },
   selectedValueHint: {
@@ -613,33 +1014,34 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   legendText: {
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   legendValue: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     marginLeft: "auto",
   },
   pieContainer: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   pieCenter: {
     alignItems: "center",
   },
   pieCenterValue: {
     fontSize: 24,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   pieCenterLabel: {
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   pieLegend: {
     flex: 1,
@@ -652,18 +1054,21 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: "center",
+    paddingVertical: 24,
+    borderWidth: 1,
+    borderRadius: 12,
+    gap: 6,
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   emptySubtitle: {
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 2,
   },
   statusRow: {
     gap: 6,
@@ -675,15 +1080,19 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
     flex: 1,
   },
   statusCount: {
     fontSize: 13,
+    fontWeight: "800",
+  },
+  statusPercent: {
+    fontSize: 12,
     fontWeight: "700",
   },
   statusBarBg: {
-    height: 6,
+    height: 8,
     overflow: "hidden",
   },
   statusBarFill: {
@@ -695,22 +1104,56 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   highlightIcon: {
-    fontSize: 28,
+    fontSize: 20,
   },
   highlightContent: {
     flex: 1,
   },
   highlightTitle: {
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: "700",
   },
   highlightValue: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "900",
   },
   highlightDetail: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "700",
     textAlign: "right",
+  },
+  actionPillsRow: {
+    flexDirection: "row",
+    gap: 10,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  actionPillWrapper: {
+    width: "48%",
+    minWidth: 160,
+    flexGrow: 0,
+  },
+  actionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  actionPillValue: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  actionPillLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  actionPillHint: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
   },
 });

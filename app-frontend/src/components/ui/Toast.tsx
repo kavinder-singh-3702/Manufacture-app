@@ -25,6 +25,14 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type ToastType = "success" | "error" | "warning" | "info";
 
+type ToastInput =
+  | string
+  | {
+      title?: any;
+      message?: any;
+      duration?: number;
+    };
+
 interface Toast {
   id: string;
   type: ToastType;
@@ -34,10 +42,10 @@ interface Toast {
 }
 
 interface ToastContextType {
-  success: (title: string, message?: string) => void;
-  error: (title: string, message?: string) => void;
-  warning: (title: string, message?: string) => void;
-  info: (title: string, message?: string) => void;
+  success: (title: ToastInput, message?: any) => void;
+  error: (title: ToastInput, message?: any) => void;
+  warning: (title: ToastInput, message?: any) => void;
+  info: (title: ToastInput, message?: any) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -238,6 +246,41 @@ interface ToastProviderProps {
   children: React.ReactNode;
 }
 
+const toText = (value: any) => {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return value.message;
+  try {
+    return typeof value === "object" ? JSON.stringify(value) : String(value);
+  } catch (e) {
+    return String(value);
+  }
+};
+
+const defaultTitleForType: Record<ToastType, string> = {
+  success: "Success",
+  error: "Error",
+  warning: "Warning",
+  info: "Info",
+};
+
+const buildToast = (type: ToastType, title: ToastInput, message?: any) => {
+  if (typeof title === "string") {
+    return {
+      type,
+      title: toText(title) || defaultTitleForType[type],
+      message: message ? toText(message) : undefined,
+    };
+  }
+
+  return {
+    type,
+    title: toText(title?.title) || defaultTitleForType[type],
+    message: title?.message ? toText(title.message) : undefined,
+    duration: title?.duration,
+  };
+};
+
 export const ToastProvider = ({ children }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -251,26 +294,22 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
   }, []);
 
   const success = useCallback(
-    (title: string, message?: string) =>
-      addToast({ type: "success", title, message }),
+    (title: ToastInput, message?: any) => addToast(buildToast("success", title, message)),
     [addToast]
   );
 
   const error = useCallback(
-    (title: string, message?: string) =>
-      addToast({ type: "error", title, message }),
+    (title: ToastInput, message?: any) => addToast(buildToast("error", title, message)),
     [addToast]
   );
 
   const warning = useCallback(
-    (title: string, message?: string) =>
-      addToast({ type: "warning", title, message }),
+    (title: ToastInput, message?: any) => addToast(buildToast("warning", title, message)),
     [addToast]
   );
 
   const info = useCallback(
-    (title: string, message?: string) =>
-      addToast({ type: "info", title, message }),
+    (title: ToastInput, message?: any) => addToast(buildToast("info", title, message)),
     [addToast]
   );
 

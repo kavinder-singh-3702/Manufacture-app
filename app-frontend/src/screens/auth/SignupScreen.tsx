@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -78,6 +78,13 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
+  const [categorySearch, setCategorySearch] = useState("");
+
+  const filteredCategories = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return BUSINESS_CATEGORIES;
+    return BUSINESS_CATEGORIES.filter((c) => c.toLowerCase().includes(q));
+  }, [categorySearch]);
 
   const { setUser } = useAuth();
   const requiresCompany = account.accountType !== "normal";
@@ -341,8 +348,15 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             errorText={accountErrors.companyName}
           />
           <Text style={styles.sectionLabel}>Business Categories</Text>
+          <TextInput
+            style={styles.categorySearch}
+            placeholder="Search categories"
+            placeholderTextColor="#999"
+            value={categorySearch}
+            onChangeText={setCategorySearch}
+          />
           <View style={styles.categoryGrid}>
-            {BUSINESS_CATEGORIES.map((category) => {
+            {filteredCategories.map((category) => {
               const isSelected = account.categories.includes(category);
               return (
                 <TouchableOpacity
@@ -621,6 +635,17 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
     marginBottom: 8,
     marginTop: 12,
+  },
+  categorySearch: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 8,
+    color: "#fff",
+    fontSize: 14,
   },
   accountTypeRow: {
     flexDirection: "row",

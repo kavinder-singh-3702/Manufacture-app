@@ -1,13 +1,14 @@
 import { ComponentType } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import { DashboardScreen } from "../../screens/DashboardScreen";
 import { StatsScreen } from "../../screens/StatsScreen";
 import { RouteName, routes } from "../routes";
+import homeIcon from "../../assets/footer/home-button.svg";
+import statsIcon from "../../assets/footer/stats.png";
 
 export type TabDefinition = {
   route: RouteName;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: any;
 };
 
 export const tabScreens: Partial<Record<RouteName, ComponentType>> = {
@@ -16,6 +17,6 @@ export const tabScreens: Partial<Record<RouteName, ComponentType>> = {
 };
 
 export const tabDefinitions: TabDefinition[] = [
-  { route: routes.DASHBOARD, label: "Operations", icon: "home-outline" },
-  { route: routes.STATS, label: "Product Stats", icon: "stats-chart-outline" },
+  { route: routes.DASHBOARD, label: "Operations", icon: homeIcon },
+  { route: routes.STATS, label: "Product Stats", icon: statsIcon },
 ];
