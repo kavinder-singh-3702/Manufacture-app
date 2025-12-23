@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { authenticate, authorizeRoles } = require('../../../middleware/authMiddleware');
+const { authenticate, authenticateOptional, authorizeRoles } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
 const {
   getCategoryStatsController,
@@ -26,32 +26,33 @@ const {
 
 const router = Router();
 
-router.use(authenticate);
-
 // Categories and stats
-router.get('/categories', getCategoryStatsController);
+router.get('/categories', authenticateOptional, getCategoryStatsController);
 router.get(
   '/categories/:categoryId/products',
+  authenticateOptional,
   validate(categoryIdParamValidation),
   getProductsByCategoryController
 );
-router.get('/stats', getProductStatsController);
+router.get('/stats', authenticate, getProductStatsController);
 
 // Core CRUD
-router.get('/', listProductsController);
-router.get('/:productId', validate(productIdParamValidation), getProductController);
-router.post('/', validate(createProductValidation), createProductController);
-router.put('/:productId', validate([...productIdParamValidation, ...updateProductValidation]), updateProductController);
+router.get('/', authenticateOptional, listProductsController);
+router.get('/:productId', authenticateOptional, validate(productIdParamValidation), getProductController);
+router.post('/', authenticate, validate(createProductValidation), createProductController);
+router.put('/:productId', authenticate, validate([...productIdParamValidation, ...updateProductValidation]), updateProductController);
 router.patch(
   '/:productId/quantity',
+  authenticate,
   validate([...productIdParamValidation, ...adjustQuantityValidation]),
   adjustQuantityController
 );
-router.delete('/:productId', validate(productIdParamValidation), deleteProductController);
+router.delete('/:productId', authenticate, validate(productIdParamValidation), deleteProductController);
 
 // Admin-only targeted discounts
 router.post(
   '/:productId/discounts',
+  authenticate,
   authorizeRoles('admin'),
   validate([...productIdParamValidation, ...applyDiscountValidation]),
   applyDiscountController
@@ -60,6 +61,7 @@ router.post(
 // Media uploads
 router.post(
   '/:productId/images',
+  authenticate,
   validate([...productIdParamValidation, ...uploadProductImageValidation]),
   uploadProductImageController
 );

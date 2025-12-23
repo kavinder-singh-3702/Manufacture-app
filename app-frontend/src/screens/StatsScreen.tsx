@@ -17,6 +17,8 @@ import { BarChart, PieChart } from "react-native-gifted-charts";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../hooks/useAuth";
+import { AppRole } from "../constants/roles";
 import { productService, ProductStats } from "../services/product.service";
 import { RootStackParamList } from "../navigation/types";
 
@@ -37,6 +39,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // ============================================================
 export const StatsScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [refreshing, setRefreshing] = useState(false);
@@ -49,7 +52,16 @@ export const StatsScreen = () => {
   const heroReveal = useRef(new Animated.Value(0)).current;
   const contentReveal = useRef(new Animated.Value(0)).current;
 
+  const isGuest = user?.role === AppRole.GUEST;
+
   const fetchStats = useCallback(async () => {
+    if (isGuest) {
+      setStats(null);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       setError(null);
       const data = await productService.getStats();
@@ -61,7 +73,7 @@ export const StatsScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isGuest]);
 
   // Refresh stats whenever screen comes into focus (e.g., after deleting a product)
   useFocusEffect(
