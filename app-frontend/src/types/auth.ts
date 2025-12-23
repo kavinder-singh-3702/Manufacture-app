@@ -58,6 +58,10 @@ export type SignupCompletePayload = {
   accountType: string;
   companyName?: string;
   categories?: string[];
+  otp?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
 };
 
 export type ForgotPasswordPayload = {

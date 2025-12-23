@@ -190,11 +190,16 @@ export const SignupCard = () => {
     try {
       setLoading(true);
       setError(null);
+      const trimmedOtp = otp.trim();
       const payload = {
         password: account.password,
         accountType: account.accountType,
         companyName: requiresCompany ? account.companyName.trim() : undefined,
         categories: requiresCompany ? account.categories : undefined,
+        otp: trimmedOtp || undefined,
+        fullName: profile.fullName.trim(),
+        email: profile.email.trim().toLowerCase(),
+        phone: profile.phone.trim(),
       };
       const response = await authService.signup.complete(payload);
       setStatus("Signup complete! Redirecting...");
