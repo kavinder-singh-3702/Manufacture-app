@@ -4,7 +4,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
+import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../../services/chatSocket";
 import type { ChatConversation } from "../../types/chat";
 import type { RootStackParamList } from "../../navigation/types";
 
@@ -17,6 +19,7 @@ export const AdminChatScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { colors, spacing, radius } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<NavigationProp>();
 
   const loadConversations = useCallback(async () => {
@@ -36,6 +39,58 @@ export const AdminChatScreen = () => {
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let socketCleanup: (() => void) | null = null;
+
+    const upsertConversation = (summary: ChatConversation) => {
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.id === summary.id);
+        if (existingIndex === -1) {
+          return [summary, ...prev];
+        }
+        const next = [...prev];
+        const merged = { ...next[existingIndex], ...summary };
+        next.splice(existingIndex, 1);
+        next.unshift(merged);
+        return next;
+      });
+    };
+
+    const handleMessage = (payload: ChatMessageEvent) => {
+      if (payload.conversation) {
+        upsertConversation(payload.conversation);
+      }
+    };
+
+    const handleRead = (payload: ChatReadEvent) => {
+      if (payload.conversation) {
+        upsertConversation(payload.conversation);
+      }
+    };
+
+    (async () => {
+      try {
+        if (!user?.id) return;
+        const socket = await getChatSocket();
+        if (!isMounted) return;
+        socket.on("chat:message", handleMessage);
+        socket.on("chat:read", handleRead);
+        socketCleanup = () => {
+          socket.off("chat:message", handleMessage);
+          socket.off("chat:read", handleRead);
+        };
+      } catch (error: any) {
+        console.warn("Chat socket connection failed", error?.message || error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (socketCleanup) socketCleanup();
+    };
+  }, [user?.id]);
 
   const handleRefresh = () => {
     setRefreshing(true);

@@ -95,6 +95,8 @@ export type ProductStats = {
   outOfStockCount: number;
 };
 
+export type ProductListScope = "company" | "marketplace";
+
 type PaginatedResponse = {
   products: Product[];
   pagination: {
@@ -118,7 +120,15 @@ class ProductService {
 
   async getProductsByCategory(
     categoryId: string,
-    params?: { limit?: number; offset?: number; status?: string; sort?: string; minPrice?: number; maxPrice?: number }
+    params?: {
+      limit?: number;
+      offset?: number;
+      status?: string;
+      sort?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      scope?: ProductListScope;
+    }
   ): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>(`/products/categories/${categoryId}/products`, { params });
   }
@@ -130,6 +140,7 @@ class ProductService {
     status?: string;
     search?: string;
     visibility?: string;
+    scope?: ProductListScope;
   }): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>("/products", { params });
   }

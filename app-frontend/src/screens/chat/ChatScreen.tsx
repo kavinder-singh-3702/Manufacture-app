@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView } from "react-native";
 import { GiftedChat, IMessage, Bubble, InputToolbar, Send, Composer } from "react-native-gifted-chat";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
+import { getChatSocket, ChatMessageEvent } from "../../services/chatSocket";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
 
@@ -27,7 +28,6 @@ export const ChatScreen = () => {
   const route = useRoute<ChatScreenRouteProp>();
 
   const { conversationId, recipientName, recipientPhone, recipientId: recipientIdParam } = route.params;
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentUser = useMemo(
     () => ({
@@ -52,7 +52,7 @@ export const ChatScreen = () => {
           createdAt: new Date(msg.timestamp),
           user: {
             _id: msg.senderId,
-            name: msg.senderRole === "admin" ? "Admin" : "User",
+            name: msg.senderRole === "admin" ? "Admin" : msg.senderRole === "support" ? "Support" : "User",
           },
         }))
         .reverse();
@@ -68,17 +68,61 @@ export const ChatScreen = () => {
   useEffect(() => {
     setLoading(true);
     loadMessages();
+  }, [loadMessages]);
 
-    pollRef.current = setInterval(() => {
-      loadMessages();
-    }, 5000);
+  useEffect(() => {
+    let isMounted = true;
+    let socketCleanup: (() => void) | null = null;
+
+    const handleIncoming = (payload: ChatMessageEvent) => {
+      if (payload.conversationId !== conversationId) return;
+      if (payload.message.senderId === currentUser._id) return;
+
+      const senderName =
+        payload.message.senderRole === "admin"
+          ? "Admin"
+          : payload.message.senderRole === "support"
+          ? "Support"
+          : "User";
+
+      setMessages((prev) => {
+        const exists = prev.some((msg) => String(msg._id) === payload.message.id);
+        if (exists) return prev;
+        const incoming: IMessage = {
+          _id: payload.message.id,
+          text: payload.message.content,
+          createdAt: new Date(payload.message.timestamp),
+          user: {
+            _id: payload.message.senderId,
+            name: senderName,
+          },
+        };
+        return GiftedChat.append(prev, [incoming]);
+      });
+
+      chatService.markRead(conversationId).catch((err) => {
+        console.warn("Failed to mark chat as read", err?.message || err);
+      });
+    };
+
+    (async () => {
+      try {
+        const socket = await getChatSocket();
+        if (!isMounted) return;
+        socket.on("chat:message", handleIncoming);
+        socketCleanup = () => {
+          socket.off("chat:message", handleIncoming);
+        };
+      } catch (error: any) {
+        console.warn("Chat socket connection failed", error?.message || error);
+      }
+    })();
 
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-      }
+      isMounted = false;
+      if (socketCleanup) socketCleanup();
     };
-  }, [loadMessages]);
+  }, [conversationId, currentUser._id]);
 
   const onSend = useCallback(
     async (newMessages: IMessage[] = []) => {

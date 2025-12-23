@@ -25,7 +25,9 @@ const getCategoryStatsController = async (req, res, next) => {
 
 const getProductsByCategoryController = async (req, res, next) => {
   try {
-    const companyId = req.user?.activeCompany;
+    const { scope } = req.query;
+    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const excludeUserId = scope === 'marketplace' ? req.user?.id : undefined;
     const { categoryId } = req.params;
     const { limit, offset, status, minPrice, maxPrice, sort } = req.query;
 
@@ -36,7 +38,8 @@ const getProductsByCategoryController = async (req, res, next) => {
       minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
       sort,
-      userId: req.user?.id
+      userId: req.user?.id,
+      excludeUserId
     });
 
     return res.json(result);
@@ -47,7 +50,9 @@ const getProductsByCategoryController = async (req, res, next) => {
 
 const listProductsController = async (req, res, next) => {
   try {
-    const companyId = req.user?.activeCompany;
+    const { scope } = req.query;
+    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const excludeUserId = scope === 'marketplace' ? req.user?.id : undefined;
     const { limit, offset, category, status, search, visibility } = req.query;
 
     const result = await getAllProducts(companyId, {
@@ -57,7 +62,8 @@ const listProductsController = async (req, res, next) => {
       status,
       search,
       visibility,
-      userId: req.user?.id
+      userId: req.user?.id,
+      excludeUserId
     });
 
     return res.json(result);

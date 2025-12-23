@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
+import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../../services/chatSocket";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatConversation } from "../../types/chat";
 
@@ -47,6 +48,50 @@ export const UserServicesScreen = () => {
   useEffect(() => {
     loadConversation();
   }, [loadConversation]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let socketCleanup: (() => void) | null = null;
+
+    const applyConversationUpdate = (summary: ChatConversation) => {
+      if (conversation?.id && summary.id !== conversation.id) return;
+      setConversation(summary);
+      setUnreadCount(summary.unreadCount || 0);
+    };
+
+    const handleMessage = (payload: ChatMessageEvent) => {
+      if (payload.conversation) {
+        applyConversationUpdate(payload.conversation);
+      }
+    };
+
+    const handleRead = (payload: ChatReadEvent) => {
+      if (payload.conversation) {
+        applyConversationUpdate(payload.conversation);
+      }
+    };
+
+    (async () => {
+      try {
+        if (!user?.id) return;
+        const socket = await getChatSocket();
+        if (!isMounted) return;
+        socket.on("chat:message", handleMessage);
+        socket.on("chat:read", handleRead);
+        socketCleanup = () => {
+          socket.off("chat:message", handleMessage);
+          socket.off("chat:read", handleRead);
+        };
+      } catch (error: any) {
+        console.warn("Chat socket connection failed", error?.message || error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (socketCleanup) socketCleanup();
+    };
+  }, [conversation?.id, user?.id]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

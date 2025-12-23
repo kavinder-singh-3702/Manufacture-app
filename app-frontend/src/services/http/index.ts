@@ -1,9 +1,8 @@
 import { HttpClient } from "./httpClient";
 
-// Respect Expo env var when present; default to local in dev and deployed API in production builds.
+// Respect Expo env var when present; default to the deployed API.
 const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (__DEV__ ? "http://localhost:4000/api" : "http://3.108.52.140/api");
+  process.env.EXPO_PUBLIC_API_URL || "http://3.108.52.140/api";
 
 export const httpClient = new HttpClient({
   baseURL: API_BASE_URL,

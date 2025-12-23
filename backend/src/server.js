@@ -3,6 +3,7 @@ const app = require('./app');
 const config = require('./config/env');
 const { connectDatabase, disconnectDatabase } = require('./config/database');
 const createLogger = require('./utils/logger');
+const { initSocket } = require('./socket');
 
 const logger = createLogger('server');
 let server;
@@ -11,6 +12,7 @@ const start = async () => {
   try {
     await connectDatabase(config.mongoUri);
     server = http.createServer(app);
+    initSocket(server);
     server.listen(config.port, () => {
       logger.info(`Server running on port ${config.port}`);
     });

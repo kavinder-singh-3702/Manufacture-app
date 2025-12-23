@@ -52,11 +52,14 @@ const getCategoryStats = async (companyId) => {
 const getProductsByCategory = async (
   companyId,
   categoryId,
-  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort } = {}
+  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, excludeUserId } = {}
 ) => {
   const query = { category: categoryId, deletedAt: { $exists: false } };
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
+  }
+  if (excludeUserId) {
+    query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
   }
   if (status) {
     const expr = buildStockStatusExpr(status);
@@ -115,12 +118,15 @@ const getProductsByCategory = async (
 
 const getAllProducts = async (
   companyId,
-  { limit = 20, offset = 0, category, status, search, visibility, userId } = {}
+  { limit = 20, offset = 0, category, status, search, visibility, userId, excludeUserId } = {}
 ) => {
   const query = { deletedAt: { $exists: false } };
 
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
+  }
+  if (excludeUserId) {
+    query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
   }
   if (category) {
     query.category = category;

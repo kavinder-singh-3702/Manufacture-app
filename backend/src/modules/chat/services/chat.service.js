@@ -3,6 +3,7 @@ const ChatConversation = require('../../../models/chatConversation.model');
 const ChatMessage = require('../../../models/chatMessage.model');
 const CallLog = require('../../../models/callLog.model');
 const User = require('../../../models/user.model');
+const { emitToUser } = require('../../../socket');
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === String(value);
 
@@ -11,6 +12,53 @@ const ensureObjectId = (value) => {
     throw new Error(`Invalid ObjectId: ${value}`);
   }
   return new mongoose.Types.ObjectId(value);
+};
+
+const getConversationSummaryForUser = async (conversationId, userId) => {
+  const conversation = await ChatConversation.findById(conversationId).lean();
+  if (!conversation) return null;
+
+  const userIdString = String(userId);
+  const other = conversation.participants.find((p) => String(p.user) !== userIdString);
+  const self = conversation.participants.find((p) => String(p.user) === userIdString);
+
+  const otherUser = other
+    ? await User.findById(other.user)
+        .select('_id firstName lastName email phone role displayName')
+        .lean()
+    : null;
+
+  const unreadQuery = { conversation: conversation._id };
+  if (self?.lastReadAt) {
+    unreadQuery.createdAt = { $gt: self.lastReadAt };
+  }
+  if (other) {
+    unreadQuery.sender = other.user;
+  }
+
+  const unreadCount = await ChatMessage.countDocuments(unreadQuery);
+
+  return {
+    id: String(conversation._id),
+    lastMessage: conversation.lastMessage,
+    lastMessageAt: conversation.lastMessageAt,
+    unreadCount,
+    otherParticipant: otherUser
+      ? {
+          id: String(otherUser._id),
+          name:
+            otherUser.displayName ||
+            `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
+            otherUser.email,
+          email: otherUser.email,
+          phone: otherUser.phone,
+          role: otherUser.role
+        }
+      : null,
+    participantIds: conversation.participants.map((p) => String(p.user)),
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt
+  };
 };
 
 const getOrCreateConversation = async (userId, participantId) => {
@@ -145,7 +193,7 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
     updatedAt: new Date()
   });
 
-  return {
+  const payload = {
     id: String(message._id),
     conversationId: String(message.conversation),
     senderId: String(message.sender),
@@ -154,6 +202,26 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
     timestamp: message.createdAt,
     read: false
   };
+
+  try {
+    const conversation = await ChatConversation.findById(conversationId).lean();
+    if (conversation) {
+      await Promise.all(
+        conversation.participants.map(async (participant) => {
+          const summary = await getConversationSummaryForUser(conversationId, participant.user);
+          emitToUser(String(participant.user), 'chat:message', {
+            conversationId: String(conversationId),
+            message: payload,
+            conversation: summary
+          });
+        })
+      );
+    }
+  } catch (error) {
+    console.warn('[Chat] Failed to emit socket message', error.message);
+  }
+
+  return payload;
 };
 
 const markConversationRead = async (conversationId, userId) => {
@@ -165,6 +233,19 @@ const markConversationRead = async (conversationId, userId) => {
     { conversation: conversationId, readBy: { $ne: ensureObjectId(userId) } },
     { $addToSet: { readBy: ensureObjectId(userId) } }
   );
+
+  try {
+    const summary = await getConversationSummaryForUser(conversationId, userId);
+    if (summary) {
+      emitToUser(String(userId), 'chat:read', {
+        conversationId: String(conversationId),
+        conversation: summary,
+        readerId: String(userId)
+      });
+    }
+  } catch (error) {
+    console.warn('[Chat] Failed to emit read event', error.message);
+  }
 };
 
 const createCallLog = async ({ callerId, calleeId, conversationId, startedAt, endedAt, durationSeconds, notes }) => {

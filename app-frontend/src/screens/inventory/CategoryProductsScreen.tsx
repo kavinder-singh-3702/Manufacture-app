@@ -74,6 +74,7 @@ export const CategoryProductsScreen = () => {
           sort: effectiveSort,
           minPrice: effectiveMin,
           maxPrice: effectiveMax,
+          scope: "marketplace",
         });
         setItems((prev) => (append ? [...prev, ...response.products] : response.products));
         setPagination(response.pagination);

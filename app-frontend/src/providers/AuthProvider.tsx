@@ -6,6 +6,7 @@ import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
 import { AppRole, AppRoleType } from "../constants/roles";
 import { tokenStorage } from "../services/tokenStorage";
+import { disconnectChatSocket } from "../services/chatSocket";
 
 /**
  * Normalizes the user object to ensure it has a valid role
@@ -110,6 +111,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await authService.logout();
     // Remove the stored JWT token
     await tokenStorage.removeToken();
+    disconnectChatSocket();
     setUserState(null);
     setAuthView("login");
   }, []);

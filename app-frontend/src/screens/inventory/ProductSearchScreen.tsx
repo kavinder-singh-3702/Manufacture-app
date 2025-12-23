@@ -98,6 +98,7 @@ export const ProductSearchScreen = () => {
           search: term,
           limit: PAGE_SIZE,
           offset,
+          scope: "marketplace",
         });
 
         setResults((prev) => {

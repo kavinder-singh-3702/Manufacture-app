@@ -30,7 +30,7 @@ export const FilteredProductsScreen = () => {
   const fetchItems = useCallback(async () => {
     try {
       setError(null);
-      const response = await productService.getAll({ status: filter, limit: 100 });
+      const response = await productService.getAll({ status: filter, limit: 100, scope: "company" });
       setItems(response.products);
     } catch (err: any) {
       setError(err.message || "Failed to load products");
