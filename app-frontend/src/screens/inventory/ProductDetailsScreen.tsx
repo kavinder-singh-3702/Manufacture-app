@@ -19,6 +19,7 @@ import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { useCart } from "../../hooks/useCart";
 import { useAuth } from "../../hooks/useAuth";
+import { AppRole } from "../../constants/roles";
 
 export const ProductDetailsScreen = () => {
   const { colors, spacing, radius } = useTheme();
@@ -28,6 +29,7 @@ export const ProductDetailsScreen = () => {
 
   const { addToCart, isInCart, getCartItem, updateQuantity, removeFromCart } = useCart();
   const { user } = useAuth();
+  const isGuest = user?.role === AppRole.GUEST;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -254,84 +256,88 @@ export const ProductDetailsScreen = () => {
             ) : null}
           </View>
 
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                if (product?.createdBy) {
-                  navigation.navigate("Chat", {
-                    conversationId: product.createdBy,
-                    recipientId: product.createdBy,
-                    recipientName: product.company?.displayName || "Seller",
-                    meta: { productId: product._id, productName: product.name },
-                  } as any);
-                }
-              }}
-              style={[
-                styles.messageButton,
-                { borderRadius: radius.md, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={[styles.messageButtonText, { color: colors.primary }]}>Message</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                if (!companyPhone) return;
-                Linking.openURL(`tel:${companyPhone}`).catch(() => {
-                  Alert.alert("Call failed", "Could not start call on this device.");
-                });
-              }}
-              disabled={!companyPhone}
-              style={[
-                styles.callButton,
-                {
-                  borderRadius: radius.md,
-                  opacity: companyPhone ? 1 : 0.5,
-                  backgroundColor: companyPhone ? "#4f46e5" : colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.callButtonText, { color: companyPhone ? "#fff" : colors.textMuted }]}>
-                {companyPhone ? "Call" : "No Phone"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {!isGuest && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (product?.createdBy) {
+                    navigation.navigate("Chat", {
+                      conversationId: product.createdBy,
+                      recipientId: product.createdBy,
+                      recipientName: product.company?.displayName || "Seller",
+                      meta: { productId: product._id, productName: product.name },
+                    } as any);
+                  }
+                }}
+                style={[
+                  styles.messageButton,
+                  { borderRadius: radius.md, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={[styles.messageButtonText, { color: colors.primary }]}>Message</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  if (!companyPhone) return;
+                  Linking.openURL(`tel:${companyPhone}`).catch(() => {
+                    Alert.alert("Call failed", "Could not start call on this device.");
+                  });
+                }}
+                disabled={!companyPhone}
+                style={[
+                  styles.callButton,
+                  {
+                    borderRadius: radius.md,
+                    opacity: companyPhone ? 1 : 0.5,
+                    backgroundColor: companyPhone ? "#4f46e5" : colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.callButtonText, { color: companyPhone ? "#fff" : colors.textMuted }]}>
+                  {companyPhone ? "Call" : "No Phone"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-          <View style={{ marginTop: spacing.sm }}>
-            <View style={styles.quantityCard}>
-              <View style={styles.quantityHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Quantity</Text>
-                <Text style={[styles.qtyHint, { color: colors.textMuted }]}>{cartQty ? `${cartQty} in cart` : "Not added"}</Text>
-              </View>
-              <View style={styles.quantityRow}>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (!product) return;
-                    if (cartQty <= 1) {
-                      removeFromCart(product._id);
-                    } else {
-                      updateQuantity(product._id, cartQty - 1);
-                    }
-                  }}
-                  style={[styles.qtyButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  disabled={!product}
-                >
-                  <Text style={[styles.qtyButtonText, { color: colors.text }]}>−</Text>
-                </TouchableOpacity>
-                <Text style={[styles.qtyValue, { color: colors.text }]}>{cartQty || 0}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (product) addToCart(product, 1);
-                  }}
-                  style={[styles.qtyButton, { backgroundColor: "#4f46e5" }]}
-                  disabled={!product}
-                >
-                  <Text style={[styles.qtyButtonText, { color: "#fff" }]}>＋</Text>
-                </TouchableOpacity>
+          {!isGuest && (
+            <View style={{ marginTop: spacing.sm }}>
+              <View style={styles.quantityCard}>
+                <View style={styles.quantityHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Quantity</Text>
+                  <Text style={[styles.qtyHint, { color: colors.textMuted }]}>{cartQty ? `${cartQty} in cart` : "Not added"}</Text>
+                </View>
+                <View style={styles.quantityRow}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!product) return;
+                      if (cartQty <= 1) {
+                        removeFromCart(product._id);
+                      } else {
+                        updateQuantity(product._id, cartQty - 1);
+                      }
+                    }}
+                    style={[styles.qtyButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    disabled={!product}
+                  >
+                    <Text style={[styles.qtyButtonText, { color: colors.text }]}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.qtyValue, { color: colors.text }]}>{cartQty || 0}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (product) addToCart(product, 1);
+                    }}
+                    style={[styles.qtyButton, { backgroundColor: "#4f46e5" }]}
+                    disabled={!product}
+                  >
+                    <Text style={[styles.qtyButtonText, { color: "#fff" }]}>＋</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
+          )}
         </ScrollView>
       ) : null}
     </SafeAreaView>

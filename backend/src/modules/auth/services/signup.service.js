@@ -92,11 +92,23 @@ const startSignup = async ({ fullName, email, phone }, session) => {
   };
 };
 
-const verifySignupOtp = ({ otp }, session) => {
-  const sessionState = getSignupState(session);
+const verifySignupOtp = ({ otp, fullName, email, phone }, session) => {
+  let sessionState = getSignupState(session);
 
   if (!sessionState) {
-    throw createError(400, 'Start signup before verifying the OTP');
+    if (otp !== OTP_CODE) {
+      throw createError(400, 'Start signup before verifying the OTP');
+    }
+
+    sessionState = {
+      fullName: typeof fullName === 'string' ? fullName.trim().replace(/\s+/g, ' ') : undefined,
+      email: typeof email === 'string' ? email.trim().toLowerCase() : undefined,
+      phone: typeof phone === 'string' ? phone.trim() : undefined,
+      otp: OTP_CODE,
+      otpExpiresAt: Date.now() + OTP_TTL_MS,
+      otpVerified: false
+    };
+    setSignupState(session, sessionState);
   }
 
   if (Date.now() > sessionState.otpExpiresAt) {
@@ -113,11 +125,31 @@ const verifySignupOtp = ({ otp }, session) => {
   return { message: 'OTP verification successful' };
 };
 
-const completeSignup = async ({ password, accountType, companyName, categories }, req) => {
+const completeSignup = async (
+  { password, accountType, companyName, categories, fullName, email, phone },
+  req
+) => {
   const sessionState = getSignupState(req.session);
 
   if (!sessionState || !sessionState.otpVerified) {
     throw createError(400, 'Verify your OTP before completing signup');
+  }
+
+  const resolvedFullName = sessionState.fullName || fullName;
+  const resolvedEmail = sessionState.email || email;
+  const resolvedPhone = sessionState.phone || phone;
+
+  if (!resolvedFullName || !resolvedEmail || !resolvedPhone) {
+    throw createError(400, 'Start signup before completing signup');
+  }
+
+  const normalizedFullName = resolvedFullName.trim().replace(/\s+/g, ' ');
+  const normalizedEmail = resolvedEmail.trim().toLowerCase();
+  const normalizedPhone = resolvedPhone.trim();
+
+  const existingUser = await User.findOne({ $or: [{ email: normalizedEmail }, { phone: normalizedPhone }] });
+  if (existingUser) {
+    throw createError(409, 'User with provided email or phone already exists');
   }
 
   let normalizedCategories = [];
@@ -131,15 +163,15 @@ const completeSignup = async ({ password, accountType, companyName, categories }
     }
   }
 
-  const { firstName, lastName } = splitFullName(sessionState.fullName);
+  const { firstName, lastName } = splitFullName(normalizedFullName);
   const now = new Date();
 
   let user = await User.create({
     firstName,
     lastName,
-    displayName: sessionState.fullName,
-    email: sessionState.email,
-    phone: sessionState.phone,
+    displayName: normalizedFullName,
+    email: normalizedEmail,
+    phone: normalizedPhone,
     password,
     emailVerifiedAt: now,
     phoneVerifiedAt: now

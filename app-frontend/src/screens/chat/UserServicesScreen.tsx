@@ -5,6 +5,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
+import { AppRole } from "../../constants/roles";
 import { chatService } from "../../services/chat.service";
 import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../../services/chatSocket";
 import type { RootStackParamList } from "../../navigation/types";
@@ -25,10 +26,27 @@ export const UserServicesScreen = () => {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
 
   const { colors, spacing, radius } = useTheme();
-  const { user } = useAuth();
+  const { user, requestSignup } = useAuth();
   const navigation = useNavigation<NavigationProp>();
+  const isGuest = user?.role === AppRole.GUEST;
+
+  const promptSignup = useCallback(() => {
+    Alert.alert(
+      "Create an account",
+      "Create an account to use chat and call services.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Create account", onPress: requestSignup },
+      ]
+    );
+  }, [requestSignup]);
 
   const loadConversation = useCallback(async () => {
+    if (isGuest) {
+      setConversation(null);
+      setUnreadCount(0);
+      return;
+    }
     try {
       const response = await chatService.listConversations();
       const first = response.conversations[0] || null;
@@ -37,7 +55,7 @@ export const UserServicesScreen = () => {
     } catch (err) {
       console.error("Error loading conversation:", err);
     }
-  }, []);
+  }, [isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,7 +91,7 @@ export const UserServicesScreen = () => {
 
     (async () => {
       try {
-        if (!user?.id) return;
+        if (!user?.id || isGuest) return;
         const socket = await getChatSocket();
         if (!isMounted) return;
         socket.on("chat:message", handleMessage);
@@ -91,7 +109,7 @@ export const UserServicesScreen = () => {
       isMounted = false;
       if (socketCleanup) socketCleanup();
     };
-  }, [conversation?.id, user?.id]);
+  }, [conversation?.id, isGuest, user?.id]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -100,6 +118,10 @@ export const UserServicesScreen = () => {
   };
 
   const handleOpenChat = async () => {
+    if (isGuest) {
+      promptSignup();
+      return;
+    }
     if (!user?.id) {
       Alert.alert("Error", "Please log in to start a chat.");
       return;
@@ -136,6 +158,10 @@ export const UserServicesScreen = () => {
   };
 
   const handleScheduleCall = async () => {
+    if (isGuest) {
+      promptSignup();
+      return;
+    }
     if (!user?.id) {
       Alert.alert("Error", "Please log in to schedule a call.");
       return;

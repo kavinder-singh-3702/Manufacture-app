@@ -26,6 +26,7 @@ type AuthContextValue = {
   initializing: boolean;
   bootstrapError: string | null;
   requestLogin: () => void;
+  requestSignup: () => void;
   refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
@@ -146,6 +147,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAuthView("login");
   }, []);
 
+  const requestSignup = useCallback(() => {
+    setUserState(null);
+    setAuthView("signup");
+  }, []);
+
   const clearAuthView = useCallback(() => {
     setAuthView(null);
   }, []);
@@ -164,13 +170,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       initializing,
       bootstrapError,
       requestLogin,
+      requestSignup,
       refreshUser,
       authView,
       clearAuthView,
       pendingVerificationRedirect,
       clearPendingVerificationRedirect,
     }),
-    [authView, bootstrapError, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, setUser, switchCompany, user]
+    [authView, bootstrapError, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

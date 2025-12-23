@@ -319,7 +319,7 @@ export const MainTabs = () => {
         </View>
 
         {/* Floating Cart Bar - shows above footer when items in cart (for non-admin users only) */}
-        {!isAdmin && <FloatingCartBar />}
+        {!isAdmin && !isGuest && <FloatingCartBar />}
 
         {/* Different footer bar for admin vs user */}
         {isAdmin ? (

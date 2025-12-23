@@ -18,6 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
+import { AppRole } from "../../constants/roles";
 import { productService, Product } from "../../services/product.service";
 import { useCart } from "../../hooks/useCart";
 import { preferenceService } from "../../services/preference.service";
@@ -30,7 +32,9 @@ export const CategoryProductsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title, subCategory: initialSubCategory } = route.params;
+  const { user } = useAuth();
   const { isInCart, getCartItem, items: cartItems, addToCart } = useCart();
+  const isGuest = user?.role === AppRole.GUEST;
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -284,38 +288,40 @@ export const CategoryProductsScreen = () => {
             </View>
           </View>
 
-          <View style={styles.footerCard}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => addToCart(item, selectedQty)}
-              style={[
-                styles.addButton,
-                {
-                  borderRadius: radius.pill,
-                  borderColor: isAdded ? colors.primary + "60" : "transparent",
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={
-                  isAdded
-                    ? [colors.backgroundSecondary, colors.surface]
-                    : [colors.primary, colors.primaryDark]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.addButtonFill, { borderRadius: radius.pill }]}
+          {!isGuest && (
+            <View style={styles.footerCard}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => addToCart(item, selectedQty)}
+                style={[
+                  styles.addButton,
+                  {
+                    borderRadius: radius.pill,
+                    borderColor: isAdded ? colors.primary + "60" : "transparent",
+                  },
+                ]}
               >
-                <Text style={[styles.addButtonText, { color: isAdded ? colors.text : "#fff" }]}>
-                  {isAdded ? "Added to cart" : "Add to cart"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+                <LinearGradient
+                  colors={
+                    isAdded
+                      ? [colors.backgroundSecondary, colors.surface]
+                      : [colors.primary, colors.primaryDark]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.addButtonFill, { borderRadius: radius.pill }]}
+                >
+                  <Text style={[styles.addButtonText, { color: isAdded ? colors.text : "#fff" }]}>
+                    {isAdded ? "Added to cart" : "Add to cart"}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
         </TouchableOpacity>
       );
     },
-    [addToCart, colors.border, colors.primary, colors.surface, colors.text, colors.textMuted, getCartItem, isInCart, openDetails, radius.md]
+    [addToCart, colors.border, colors.primary, colors.surface, colors.text, colors.textMuted, getCartItem, isGuest, isInCart, openDetails, radius.md]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);

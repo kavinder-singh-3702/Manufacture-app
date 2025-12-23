@@ -14,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
+import { AppRole } from "../../constants/roles";
 import { productService, Product, ProductCategory } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 import { useCart } from "../../hooks/useCart";
@@ -38,6 +40,8 @@ export const ProductSearchScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { addToCart, isInCart, getCartItem } = useCart();
   const { success: toastSuccess } = useToast();
+  const { user } = useAuth();
+  const isGuest = user?.role === AppRole.GUEST;
 
   const [query, setQuery] = useState(route.params?.initialQuery || "");
   const [results, setResults] = useState<Product[]>([]);
@@ -227,22 +231,24 @@ export const ProductSearchScreen = () => {
             <View style={{ flex: 1 }}>
               <Text style={[styles.priceLabel, { color: colors.primary }]}>{priceLabel}</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => handleAddToCart(item, selectedQty)}
-              style={[
-                styles.addButton,
-                {
-                  backgroundColor: colors.primary,
-                  borderRadius: radius.md,
-                  flex: 1,
-                },
-              ]}
-            >
-              <Text style={[styles.addButtonText, { color: "#fff" }]}>
-                {inCart && cartQty > 0 ? "Added to cart" : "Add to cart"}
-              </Text>
-            </TouchableOpacity>
+            {!isGuest && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => handleAddToCart(item, selectedQty)}
+                style={[
+                  styles.addButton,
+                  {
+                    backgroundColor: colors.primary,
+                    borderRadius: radius.md,
+                    flex: 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.addButtonText, { color: "#fff" }]}>
+                  {inCart && cartQty > 0 ? "Added to cart" : "Add to cart"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       );
@@ -255,6 +261,7 @@ export const ProductSearchScreen = () => {
       colors.textMuted,
       getCartItem,
       handleAddToCart,
+      isGuest,
       isInCart,
       navigation,
       radius.lg,

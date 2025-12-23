@@ -7,6 +7,7 @@ import {
   Text,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -235,8 +236,20 @@ const AdminDashboardContent = () => {
 const UserDashboardContent = () => {
   const { spacing, colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, requestSignup } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isGuest = user?.role === AppRole.GUEST;
+
+  const promptSignup = useCallback(() => {
+    Alert.alert(
+      "Create an account",
+      "Create an account to use this feature.",
+      [
+        { text: "Not now", style: "cancel" },
+        { text: "Create account", onPress: requestSignup },
+      ]
+    );
+  }, [requestSignup]);
 
   // Verification status state
   const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
@@ -504,7 +517,13 @@ const UserDashboardContent = () => {
 
           {/* Add New Product Button */}
           <TouchableOpacity
-            onPress={() => navigation.navigate("AddProduct")}
+            onPress={() => {
+              if (isGuest) {
+                promptSignup();
+                return;
+              }
+              navigation.navigate("AddProduct");
+            }}
             activeOpacity={0.8}
             style={{
               backgroundColor: colors.surface,
