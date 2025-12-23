@@ -126,13 +126,40 @@ const verifySignupOtp = ({ otp, fullName, email, phone }, session) => {
 };
 
 const completeSignup = async (
-  { password, accountType, companyName, categories, fullName, email, phone },
+  { password, accountType, companyName, categories, fullName, email, phone, otp },
   req
 ) => {
-  const sessionState = getSignupState(req.session);
+  let sessionState = getSignupState(req.session);
 
   if (!sessionState || !sessionState.otpVerified) {
-    throw createError(400, 'Verify your OTP before completing signup');
+    if (!otp) {
+      throw createError(400, 'Verify your OTP before completing signup');
+    }
+
+    if (sessionState?.otpExpiresAt && Date.now() > sessionState.otpExpiresAt) {
+      throw createError(410, 'OTP has expired. Please request a new code.');
+    }
+
+    const expectedOtp = sessionState?.otp || OTP_CODE;
+    if (otp !== expectedOtp) {
+      throw createError(400, 'Invalid OTP provided');
+    }
+
+    if (!sessionState) {
+      sessionState = {
+        fullName: typeof fullName === 'string' ? fullName.trim().replace(/\s+/g, ' ') : undefined,
+        email: typeof email === 'string' ? email.trim().toLowerCase() : undefined,
+        phone: typeof phone === 'string' ? phone.trim() : undefined,
+        otp: expectedOtp,
+        otpExpiresAt: Date.now() + OTP_TTL_MS,
+        otpVerified: true,
+        otpVerifiedAt: new Date().toISOString()
+      };
+      setSignupState(req.session, sessionState);
+    } else {
+      sessionState.otpVerified = true;
+      sessionState.otpVerifiedAt = new Date().toISOString();
+    }
   }
 
   const resolvedFullName = sessionState.fullName || fullName;
@@ -140,7 +167,7 @@ const completeSignup = async (
   const resolvedPhone = sessionState.phone || phone;
 
   if (!resolvedFullName || !resolvedEmail || !resolvedPhone) {
-    throw createError(400, 'Start signup before completing signup');
+    throw createError(400, 'Full name, email, and phone are required to complete signup');
   }
 
   const normalizedFullName = resolvedFullName.trim().replace(/\s+/g, ' ');
