@@ -29,6 +29,7 @@ export type Product = {
   sku?: string;
   category: string;
   subCategory?: string;
+  createdByRole?: "admin" | "user";
   price: ProductPrice;
   minStockQuantity: number;
   availableQuantity: number;
@@ -114,8 +115,8 @@ export type UploadProductImagePayload = {
 };
 
 class ProductService {
-  async getCategoryStats(): Promise<{ categories: ProductCategory[] }> {
-    return apiClient.get<{ categories: ProductCategory[] }>("/products/categories");
+  async getCategoryStats(params?: { scope?: ProductListScope; createdByRole?: "admin" | "user" }): Promise<{ categories: ProductCategory[] }> {
+    return apiClient.get<{ categories: ProductCategory[] }>("/products/categories", { params });
   }
 
   async getProductsByCategory(
@@ -128,6 +129,7 @@ class ProductService {
       minPrice?: number;
       maxPrice?: number;
       scope?: ProductListScope;
+      createdByRole?: "admin" | "user";
     }
   ): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>(`/products/categories/${categoryId}/products`, { params });
@@ -141,6 +143,7 @@ class ProductService {
     search?: string;
     visibility?: string;
     scope?: ProductListScope;
+    createdByRole?: "admin" | "user";
   }): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>("/products", { params });
   }

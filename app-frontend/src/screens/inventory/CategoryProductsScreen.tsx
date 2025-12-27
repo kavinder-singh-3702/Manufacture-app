@@ -35,6 +35,7 @@ export const CategoryProductsScreen = () => {
   const { user } = useAuth();
   const { isInCart, getCartItem, items: cartItems, addToCart } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
+  const isAdmin = user?.role === AppRole.ADMIN;
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +80,7 @@ export const CategoryProductsScreen = () => {
           minPrice: effectiveMin,
           maxPrice: effectiveMax,
           scope: "marketplace",
+          createdByRole: isAdmin ? undefined : "admin",
         });
         setItems((prev) => (append ? [...prev, ...response.products] : response.products));
         setPagination(response.pagination);
@@ -93,7 +95,7 @@ export const CategoryProductsScreen = () => {
         }
       }
     },
-    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId]
+    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId, isAdmin]
   );
 
   // Refresh list whenever screen comes into focus

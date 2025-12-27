@@ -40,12 +40,19 @@ export type RouteConfig = {
  * The navigation component filters these based on user role
  */
 export const TAB_CONFIG: RouteConfig[] = [
-  // User tabs (4 tabs - cart removed, use floating button instead)
+  // User tabs (5 tabs - cart restored as admin catalog entry point)
   {
     route: routes.DASHBOARD,
     label: "Home",
     icon: "🏠",
     gradientColors: ["#FF6B6B", "#FF8E53"],
+    roles: ["user", "guest"],
+  },
+  {
+    route: routes.CART,
+    label: "Cart",
+    icon: "🛒",
+    gradientColors: ["#22C55E", "#16A34A"],
     roles: ["user", "guest"],
   },
   {

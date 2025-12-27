@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import { tokenStorage } from "./tokenStorage";
+import { API_BASE_URL } from "../config/api";
 import type { ChatConversation, ChatMessage } from "../types/chat";
 
 export type ChatMessageEvent = {
@@ -29,11 +30,7 @@ const resolveSocketUrl = () => {
   if (explicit) {
     return explicit.replace(/\/$/, "");
   }
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "";
-  if (apiUrl) {
-    return apiUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
-  }
-  return "http://localhost:4000";
+  return API_BASE_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
 };
 
 export const getChatSocket = async () => {

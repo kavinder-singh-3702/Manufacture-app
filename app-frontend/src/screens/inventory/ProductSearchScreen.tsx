@@ -42,6 +42,7 @@ export const ProductSearchScreen = () => {
   const { success: toastSuccess } = useToast();
   const { user } = useAuth();
   const isGuest = user?.role === AppRole.GUEST;
+  const isAdmin = user?.role === AppRole.ADMIN;
 
   const [query, setQuery] = useState(route.params?.initialQuery || "");
   const [results, setResults] = useState<Product[]>([]);
@@ -65,13 +66,16 @@ export const ProductSearchScreen = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await productService.getCategoryStats();
+      const res = await productService.getCategoryStats({
+        scope: "marketplace",
+        createdByRole: isAdmin ? undefined : "admin",
+      });
       setCategoryChips(res.categories || []);
     } catch (err) {
       // Non-blocking
       console.warn("Failed to load category chips", err?.message || err);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchCategories();
@@ -103,6 +107,7 @@ export const ProductSearchScreen = () => {
           limit: PAGE_SIZE,
           offset,
           scope: "marketplace",
+          createdByRole: isAdmin ? undefined : "admin",
         });
 
         setResults((prev) => {
@@ -150,7 +155,7 @@ export const ProductSearchScreen = () => {
         setFetchingMore(false);
       }
     },
-    [query]
+    [isAdmin, query]
   );
 
   useEffect(() => {

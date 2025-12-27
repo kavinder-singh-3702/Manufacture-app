@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Product = require('../../../models/product.model');
+const User = require('../../../models/user.model');
 const UserFavorite = require('../../../models/userFavorite.model');
 const { uploadProductImage } = require('../../../services/storage.service');
 const { PRODUCT_CATEGORIES } = require('../../../constants/product');
@@ -17,10 +18,29 @@ const buildStockStatusExpr = (status) => {
   return null;
 };
 
-const getCategoryStats = async (companyId) => {
+const buildAdminCreatorFilter = async (createdByRole) => {
+  if (createdByRole !== 'admin') return null;
+  const adminIds = await User.find({ role: 'admin' }).distinct('_id');
+  return {
+    $or: [
+      { createdByRole: 'admin' },
+      { createdBy: { $in: adminIds } }
+    ]
+  };
+};
+
+const getCategoryStats = async (companyId, { createdByRole } = {}) => {
   const matchQuery = { deletedAt: { $exists: false } };
   if (companyId) {
     matchQuery.company = new mongoose.Types.ObjectId(companyId);
+  }
+  if (createdByRole) {
+    const adminFilter = await buildAdminCreatorFilter(createdByRole);
+    if (adminFilter) {
+      matchQuery.$or = adminFilter.$or;
+    } else {
+      matchQuery.createdByRole = createdByRole;
+    }
   }
 
   const countsByCategory = await Product.aggregate([
@@ -52,7 +72,7 @@ const getCategoryStats = async (companyId) => {
 const getProductsByCategory = async (
   companyId,
   categoryId,
-  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, excludeUserId } = {}
+  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, excludeUserId, createdByRole } = {}
 ) => {
   const query = { category: categoryId, deletedAt: { $exists: false } };
   if (companyId) {
@@ -60,6 +80,14 @@ const getProductsByCategory = async (
   }
   if (excludeUserId) {
     query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
+  }
+  if (createdByRole) {
+    const adminFilter = await buildAdminCreatorFilter(createdByRole);
+    if (adminFilter) {
+      query.$or = adminFilter.$or;
+    } else {
+      query.createdByRole = createdByRole;
+    }
   }
   if (status) {
     const expr = buildStockStatusExpr(status);
@@ -118,7 +146,7 @@ const getProductsByCategory = async (
 
 const getAllProducts = async (
   companyId,
-  { limit = 20, offset = 0, category, status, search, visibility, userId, excludeUserId } = {}
+  { limit = 20, offset = 0, category, status, search, visibility, userId, excludeUserId, createdByRole } = {}
 ) => {
   const query = { deletedAt: { $exists: false } };
 
@@ -127,6 +155,14 @@ const getAllProducts = async (
   }
   if (excludeUserId) {
     query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
+  }
+  if (createdByRole) {
+    const adminFilter = await buildAdminCreatorFilter(createdByRole);
+    if (adminFilter) {
+      query.$or = adminFilter.$or;
+    } else {
+      query.createdByRole = createdByRole;
+    }
   }
   if (category) {
     query.category = category;
@@ -184,7 +220,7 @@ const getProductById = async (productId, companyId) => {
   return Product.findOne(query).lean();
 };
 
-const createProduct = async (payload, userId, companyId) => {
+const createProduct = async (payload, userId, companyId, creatorRole = 'user') => {
   // Clean empty SKU to avoid unique constraint issues (sparse index skips null/undefined but not empty string)
   const cleanedPayload = { ...payload };
   if (cleanedPayload.sku === '' || cleanedPayload.sku === null) {
@@ -195,6 +231,7 @@ const createProduct = async (payload, userId, companyId) => {
     ...cleanedPayload,
     company: companyId,
     createdBy: userId,
+    createdByRole: creatorRole || 'user',
     lastUpdatedBy: userId
   });
 
@@ -210,6 +247,9 @@ const updateProduct = async (productId, updates, userId, companyId) => {
 
   // Clean empty SKU to avoid unique constraint issues
   const cleanedUpdates = { ...updates };
+  if (cleanedUpdates.createdByRole) {
+    delete cleanedUpdates.createdByRole;
+  }
   if (cleanedUpdates.sku === '' || cleanedUpdates.sku === null) {
     cleanedUpdates.sku = undefined; // Use $unset behavior
   }

@@ -1,15 +1,9 @@
 import { HttpClient } from "./httpClient";
-
-// Respect Expo env var when present; default to the deployed API.
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://3.108.52.140/api";
+import { API_CONFIG } from "../../config/api";
 
 export const httpClient = new HttpClient({
-  baseURL: API_BASE_URL,
-  defaultHeaders: {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-  },
+  baseURL: API_CONFIG.baseURL,
+  defaultHeaders: API_CONFIG.defaultHeaders,
 });
 
 export type { HttpClient, HttpMethod, RequestConfig } from "./httpClient";

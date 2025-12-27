@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
+import { useCart } from "../hooks/useCart";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { CompanySwitcherCard } from "../components/company";
@@ -18,7 +19,7 @@ import { Company } from "../types/company";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { StatsScreen } from "../screens/StatsScreen";
 import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
-import { CartScreen } from "../screens/cart";
+import { AdminProductsScreen } from "../screens/cart";
 import { UserServicesScreen, AdminChatScreen } from "../screens/chat";
 
 // Components
@@ -32,9 +33,11 @@ import { MainTabParamList, RootStackParamList } from "./types";
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const homeIconXml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48px" height="48px" baseProfile="basic"><linearGradient id="87AqUxYxn4hxYY6Pzo9b5a" x1="4.57" x2="19.43" y1="5.952" y2="20.813" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></linearGradient><path fill="url(#87AqUxYxn4hxYY6Pzo9b5a)" d="M18,21H6c-1.657,0-3-1.343-3-3V8.765c0-1.09,0.591-2.093,1.543-2.622l6-3.333 c0.906-0.503,2.008-0.503,2.914,0l6,3.333C20.409,6.672,21,7.676,21,8.765V18C21,19.657,19.657,21,18,21z"/><linearGradient id="87AqUxYxn4hxYY6Pzo9b5b" x1="4.57" x2="19.43" y1="5.952" y2="20.813" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".493" stop-color="#fff" stop-opacity="0"/><stop offset=".997" stop-color="#fff" stop-opacity=".3"/></linearGradient><path fill="url(#87AqUxYxn4hxYY6Pzo9b5b)" d="M12,2.932 c0.424,0,0.844,0.109,1.214,0.315l6,3.333C20.007,7.02,20.5,7.858,20.5,8.765V18c0,1.378-1.122,2.5-2.5,2.5H6 c-1.379,0-2.5-1.122-2.5-2.5V8.765c0-0.907,0.493-1.745,1.286-2.185l6-3.333C11.156,3.041,11.576,2.932,12,2.932 M12,2.432 c-0.502,0-1.004,0.126-1.457,0.378l-6,3.333C3.591,6.672,3,7.676,3,8.765V18c0,1.657,1.343,3,3,3h12c1.657,0,3-1.343,3-3V8.765 c0-1.09-0.591-2.093-1.543-2.622l-6-3.333C13.004,2.558,12.502,2.432,12,2.432L12,2.432z"/><linearGradient id="87AqUxYxn4hxYY6Pzo9b5c" x1="8.793" x2="15.207" y1="14.379" y2="20.793" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".519" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></linearGradient><path fill="url(#87AqUxYxn4hxYY6Pzo9b5c)" d="M15,21H9v-6c0-1.105,0.895-2,2-2h2	c1.105,0,2,0.895,2,2V21z"/></svg>`;
+const cartIconXml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48px" height="48px"><defs><linearGradient id="cartGradient" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#22C55E" stop-opacity="0.95"/><stop offset="100%" stop-color="#16A34A" stop-opacity="0.85"/></linearGradient></defs><path fill="url(#cartGradient)" d="M7.2 6H20a1 1 0 0 1 .96 1.27l-1.75 6A1 1 0 0 1 18.25 14H9.1l-.35 1.38a1 1 0 0 1-.97.74H5a1 1 0 1 1 0-2h1.16l1.6-6.31A1 1 0 0 1 7.2 6Zm2.3 7h7.88l1.17-4H8.75l-.75 3h1.5ZM9 18a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg>`;
 
 const footerIcons: Partial<Record<RouteName, { type: "svg"; xml: string } | { type: "png"; src: any }>> = {
   [routes.DASHBOARD]: { type: "svg", xml: homeIconXml },
+  [routes.CART]: { type: "svg", xml: cartIconXml },
   [routes.SERVICES]: { type: "png", src: require("../../assets/footer/services.png") },
   [routes.STATS]: { type: "png", src: require("../../assets/footer/stats.png") },
   [routes.PROFILE_TAB]: { type: "png", src: require("../../assets/footer/profile.png") },
@@ -84,7 +87,7 @@ const ProfileTabScreen = () => <PlaceholderScreen title="Profile" icon="👤" />
 const screenRegistry: Record<RouteName, ComponentType> = {
   // User screens
   [routes.DASHBOARD]: DashboardScreen,
-  [routes.CART]: CartScreen,
+  [routes.CART]: AdminProductsScreen,
   [routes.SERVICES]: UserServicesScreen, // User's services screen (chat with admin)
   [routes.STATS]: StatsScreen,
   [routes.PROFILE_TAB]: ProfileTabScreen,
@@ -375,6 +378,7 @@ type FooterBarProps = {
 
 const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   const { colors, spacing } = useTheme();
+  const { totalItems } = useCart();
 
   const renderIcon = (tab: RouteConfig, isActive: boolean) => {
     const asset = footerIcons[tab.route];
@@ -389,6 +393,8 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
 
   const renderTab = (tab: RouteConfig) => {
     const isActive = activeTab === tab.route;
+    const isCartTab = tab.route === routes.CART;
+    const cartCount = isCartTab ? totalItems : 0;
 
     return (
       <TouchableOpacity
@@ -405,7 +411,14 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
               end={{ x: 1, y: 1 }}
               style={[styles.userActiveTabGlow, { shadowColor: tab.gradientColors[0] }]}
             >
-              {renderIcon(tab, true)}
+              <View style={{ position: "relative" }}>
+                {renderIcon(tab, true)}
+                {cartCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
+                  </View>
+                )}
+              </View>
             </LinearGradient>
             <Text style={[styles.userTabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
           </View>
@@ -418,7 +431,14 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
               style={styles.userInactiveGradientBorder}
             >
               <View style={[styles.userInactiveIconInner, { backgroundColor: colors.background }]}>
-                {renderIcon(tab, false)}
+                <View style={{ position: "relative" }}>
+                  {renderIcon(tab, false)}
+                  {cartCount > 0 && (
+                    <View style={styles.cartBadge}>
+                      <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </LinearGradient>
             <Text style={[styles.userTabLabel, { color: colors.textMuted }]}>{tab.label}</Text>

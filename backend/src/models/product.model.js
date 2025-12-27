@@ -58,6 +58,7 @@ const productSchema = new Schema(
     unit: { type: String, default: 'units', trim: true },
     status: { type: String, enum: PRODUCT_STATUSES, default: 'active' },
     visibility: { type: String, enum: PRODUCT_VISIBILITY, default: 'public' },
+    createdByRole: { type: String, enum: ['admin', 'user'], default: 'user', index: true },
     company: { type: Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     lastUpdatedBy: { type: Schema.Types.ObjectId, ref: 'User' },

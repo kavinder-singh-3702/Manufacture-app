@@ -221,6 +221,7 @@ const AdminDashboardContent = () => {
           Quick Actions
         </Text>
         <View style={{ gap: spacing.sm }}>
+          <AdminActionItem label="Add Product" onPress={() => navigation.navigate("AddProduct")} />
           <AdminActionItem label="Review Pending Verifications" badge={stats?.verifications.pending} onPress={() => navigateToTab(routes.VERIFICATIONS)} />
           <AdminActionItem label="Manage Users" badge={stats?.users.total} onPress={() => navigateToTab(routes.USERS)} />
           <AdminActionItem label="View All Companies" badge={stats?.companies.total} onPress={() => navigateToTab(routes.COMPANIES)} />
@@ -308,7 +309,10 @@ const UserDashboardContent = () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
-      const response = await productService.getCategoryStats();
+      const response = await productService.getCategoryStats({
+        scope: "marketplace",
+        createdByRole: "admin",
+      });
       const mapped = response.categories.map((cat) => {
         const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
         return {

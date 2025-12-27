@@ -13,7 +13,7 @@
       },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000/api"
       }
     },
     "production": {
@@ -21,7 +21,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000/api"
       }
     }
   },
