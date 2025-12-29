@@ -1,207 +1,454 @@
-import { Linking, Text, TouchableOpacity, View } from "react-native";
-import { useTheme } from "../../../hooks/useTheme";
-import { ProfileSection } from "./ProfileSection";
-import { ProfileField } from "./ProfileField";
-import { StatusPill, TagList } from "./ProfileForm";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthUser } from "../../../types/auth";
 
-const formatDate = (value?: string | Date | null) => {
-  if (!value) return "Not captured";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return String(value);
-  }
+type Props = {
+  user: AuthUser | null | undefined;
+  onEdit: (section: "identity" | "professional") => void;
 };
 
-const MetricCard = ({
+const SectionCard = ({
+  title,
+  icon,
+  children,
+  onEdit,
+}: {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  children: React.ReactNode;
+  onEdit?: () => void;
+}) => {
+  return (
+    <LinearGradient
+      colors={["rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.sectionCard}
+    >
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <LinearGradient
+            colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
+            style={styles.sectionIcon}
+          >
+            <Ionicons name={icon} size={18} color="#A78BFA" />
+          </LinearGradient>
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        {onEdit && (
+          <TouchableOpacity onPress={onEdit} activeOpacity={0.7}>
+            <LinearGradient
+              colors={["rgba(139, 92, 246, 0.18)", "rgba(99, 102, 241, 0.12)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.editButton}
+            >
+              <Text style={styles.editButtonText}>Edit</Text>
+              <Ionicons name="pencil" size={13} color="#A78BFA" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.sectionContent}>{children}</View>
+    </LinearGradient>
+  );
+};
+
+const InfoRow = ({
+  icon,
   label,
   value,
-  helper,
+  verified,
+  onPress,
 }: {
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  value: string | number;
-  helper?: string;
+  value?: string | null;
+  verified?: boolean;
+  onPress?: () => void;
 }) => {
-  const { colors, spacing, radius } = useTheme();
+  const content = (
+    <View style={styles.infoRow}>
+      <View style={styles.infoIconWrapper}>
+        <Ionicons name={icon} size={18} color="rgba(255, 255, 255, 0.4)" />
+      </View>
+      <View style={styles.infoContent}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <View style={styles.infoValueRow}>
+          <Text style={[styles.infoValue, onPress && styles.infoValueLink]} numberOfLines={2}>
+            {value || "Not provided"}
+          </Text>
+          {verified && (
+            <View style={styles.verifiedTag}>
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
+  if (onPress && value) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
+};
+
+const TagPill = ({ label }: { label: string }) => (
+  <LinearGradient
+    colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={styles.tagPill}
+  >
+    <Text style={styles.tagText}>{label}</Text>
+  </LinearGradient>
+);
+
+// Featured card for Company About and Bio
+const FeaturedCard = ({
+  icon,
+  title,
+  content,
+  placeholder,
+  gradientColors,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  content?: string | null;
+  placeholder: string;
+  gradientColors: [string, string];
+}) => {
+  const hasContent = !!content;
+
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 140,
-        borderWidth: 1,
-        borderColor: colors.border,
-        backgroundColor: colors.surface,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-      }}
-    >
-      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, textTransform: "uppercase" }}>{label}</Text>
-      <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, marginTop: spacing.xs }}>{value}</Text>
-      {helper ? (
-        <Text style={{ fontSize: 13, color: colors.muted, marginTop: spacing.xs }} numberOfLines={2}>
-          {helper}
+    <View style={styles.featuredCard}>
+      <LinearGradient
+        colors={hasContent ? gradientColors : ["rgba(255,255,255,0.03)", "rgba(255,255,255,0.01)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.featuredCardGradient}
+      >
+        <View style={styles.featuredCardHeader}>
+          <View style={[styles.featuredCardIcon, hasContent && { backgroundColor: "rgba(255,255,255,0.15)" }]}>
+            <Ionicons name={icon} size={16} color={hasContent ? "#FFFFFF" : "rgba(255,255,255,0.4)"} />
+          </View>
+          <Text style={[styles.featuredCardTitle, hasContent && { color: "#FFFFFF" }]}>{title}</Text>
+        </View>
+        <Text style={[styles.featuredCardContent, !hasContent && styles.featuredCardPlaceholder]} numberOfLines={3}>
+          {content || placeholder}
         </Text>
-      ) : null}
+        {hasContent && (
+          <View style={styles.featuredCardQuote}>
+            <Ionicons name="chatbox-ellipses" size={18} color="rgba(255,255,255,0.1)" />
+          </View>
+        )}
+      </LinearGradient>
     </View>
   );
 };
 
-type Props = {
-  user: AuthUser | null | undefined;
-  tags: string[];
-  commsPrefs: Record<string, boolean>;
-  activeCompanyCount: number;
-  onEdit: (section: "identity" | "professional" | "preferences") => void;
-};
+export const ProfileSections = ({ user, onEdit }: Props) => {
+  const tags = (user?.activityTags as string[]) ?? [];
 
-const Link = ({ label, url }: { label: string; url?: string | null }) => {
-  const { colors } = useTheme();
-  if (!url) {
-    return <Text style={{ color: colors.muted }}>Not provided</Text>;
-  }
-  const handlePress = () => {
-    Linking.openURL(url).catch(() => null);
+  const formatAddress = () => {
+    if (!user?.address) return null;
+    const parts = [
+      user.address.line1,
+      user.address.line2,
+      user.address.city,
+      user.address.state,
+      user.address.postalCode,
+      user.address.country,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
   };
-  return (
-    <TouchableOpacity onPress={handlePress}>
-      <Text style={{ color: colors.primary, fontWeight: "600" }}>{label}</Text>
-    </TouchableOpacity>
-  );
-};
 
-export const ProfileSections = ({ user, tags, commsPrefs, activeCompanyCount, onEdit }: Props) => {
-  const { colors } = useTheme();
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null;
 
   return (
-    <>
-      <View style={{ marginBottom: 24 }}>
-        <ProfileSection title="Account Highlights" description="Snapshot of access level and engagement.">
-          <View style={{ flexDirection: "row", marginBottom: 12 }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <MetricCard label="Workspace Role" value={user?.role ?? "user"} helper="Controls what features you see" />
+    <View style={styles.container}>
+      {/* Identity & Contact Section */}
+      <SectionCard title="Personal Info" icon="person-outline" onEdit={() => onEdit("identity")}>
+        <InfoRow icon="person" label="Full Name" value={fullName} />
+        <InfoRow icon="at" label="Display Name" value={user?.displayName} />
+        <InfoRow icon="mail" label="Email" value={user?.email} verified={!!user?.emailVerifiedAt} />
+        <InfoRow icon="call" label="Phone" value={user?.phone} verified={!!user?.phoneVerifiedAt} />
+        <InfoRow icon="location" label="Address" value={formatAddress()} />
+      </SectionCard>
+
+      {/* Professional Section - Redesigned */}
+      <SectionCard title="Professional" icon="briefcase-outline" onEdit={() => onEdit("professional")}>
+        {/* Featured Cards Row */}
+        <View style={styles.featuredCardsRow}>
+          <FeaturedCard
+            icon="business"
+            title="Company"
+            content={user?.companyAbout}
+            placeholder="Share what your company does..."
+            gradientColors={["rgba(99, 102, 241, 0.25)", "rgba(139, 92, 246, 0.15)"]}
+          />
+          <FeaturedCard
+            icon="person-circle"
+            title="About Me"
+            content={user?.bio}
+            placeholder="Tell your story..."
+            gradientColors={["rgba(236, 72, 153, 0.2)", "rgba(168, 85, 247, 0.15)"]}
+          />
+        </View>
+
+        {/* Activity Tags */}
+        <View style={styles.tagsSection}>
+          <View style={styles.tagsSectionHeader}>
+            <View style={styles.tagsIconWrapper}>
+              <Ionicons name="sparkles" size={16} color="#F59E0B" />
             </View>
-            <View style={{ flex: 1 }}>
-              <MetricCard label="Companies" value={activeCompanyCount} helper="Organizations you own or collaborate with" />
-            </View>
+            <Text style={styles.tagsTitle}>Interests & Skills</Text>
           </View>
-        </ProfileSection>
-      </View>
+          {tags.length > 0 ? (
+            <View style={styles.tagsContainer}>
+              {tags.map((tag) => (
+                <TagPill key={tag} label={tag} />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.tagsPlaceholder}>Add tags to highlight your expertise</Text>
+          )}
+        </View>
 
-      <View style={{ marginBottom: 24 }}>
-        <ProfileSection
-          title="Identity & Contact"
-          description="Primary handles we use to reach you."
-          actionLabel="Edit"
-          onAction={() => onEdit("identity")}
-        >
-          <ProfileField label="Legal Name" value={user?.firstName || user?.lastName ? `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() : "Unnamed operator"} helperText="Used for agreements and invoicing." />
-          <ProfileField label="Display Name" value={user?.displayName} helperText="Shown across collaboration surfaces." />
-          <ProfileField label="Username" value={user?.username} helperText="Your unique handle across the network." />
-          <ProfileField
-            label="Primary Email"
-            value={`${user?.email ?? "Not provided"}`}
-            helperText={user?.emailVerifiedAt ? `Verified ${formatDate(user.emailVerifiedAt)}` : "Waiting for verification"}
-          />
-          <ProfileField
-            label="Secondary Emails"
-            value={
-              Array.isArray(user?.secondaryEmails) && user.secondaryEmails.length ? (
-                <TagList items={user.secondaryEmails} />
-              ) : undefined
-            }
-            helperText="Backup addresses we can escalate to."
-          />
-          <ProfileField
-            label="Phone"
-            value={user?.phone}
-            helperText={user?.phoneVerifiedAt ? `Verified ${formatDate(user.phoneVerifiedAt)}` : "SMS delivery pending verification"}
-          />
-          <ProfileField
-            label="Address"
-            value={
-              user?.address ? (
-                <Text style={{ color: colors.text }}>
-                  {[user.address.line1, user.address.line2, user.address.city, user.address.state, user.address.postalCode, user.address.country]
-                    .filter(Boolean)
-                    .join(", ")}
-                </Text>
-              ) : undefined
-            }
-          />
-        </ProfileSection>
-      </View>
-
-      <View style={{ marginBottom: 24 }}>
-        <ProfileSection
-          title="Professional Footprint"
-          description="How you engage with partner organizations."
-          actionLabel="Edit"
-          onAction={() => onEdit("professional")}
-        >
-          <ProfileField label="Account Type" value={user?.accountType} helperText="Drives workspace defaults and workflows." />
-          <ProfileField
-            label="Active Company"
-            value={user?.activeCompany ? String(user.activeCompany) : undefined}
-            helperText="Switch inside the workspace to change context."
-          />
-          <ProfileField
-            label="Activity Tags"
-            value={tags.length ? <TagList items={tags} /> : undefined}
-            helperText="Smart segmentation used for betas and rollouts."
-          />
-          <ProfileField
-            label="Social Links"
-            value={
-              user?.socialLinks ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                  <View style={{ marginRight: 12, marginBottom: 6 }}>
-                    <Link label="Website" url={user.socialLinks.website} />
-                  </View>
-                  <View style={{ marginRight: 12, marginBottom: 6 }}>
-                    <Link label="LinkedIn" url={user.socialLinks.linkedin} />
-                  </View>
-                  <View style={{ marginRight: 12, marginBottom: 6 }}>
-                    <Link label="Twitter" url={user.socialLinks.twitter} />
-                  </View>
-                  <View style={{ marginRight: 12, marginBottom: 6 }}>
-                    <Link label="GitHub" url={user.socialLinks.github} />
-                  </View>
-                </View>
-              ) : undefined
-            }
-          />
-          <ProfileField label="Bio" value={user?.bio} />
-        </ProfileSection>
-      </View>
-
-      <View style={{ marginBottom: 24 }}>
-        <ProfileSection
-          title="Preferences & Notifications"
-          description="Control how we personalize and alert."
-          actionLabel="Edit"
-          onAction={() => onEdit("preferences")}
-        >
-          <ProfileField label="Locale" value={user?.preferences?.locale} />
-          <ProfileField label="Timezone" value={user?.preferences?.timezone} />
-          <ProfileField label="Theme" value={user?.preferences?.theme} helperText="Syncs across devices." />
-          <ProfileField
-            label="Notification Delivery"
-            value={
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {(["email", "sms", "push"] as const).map((key) => (
-                  <StatusPill
-                    key={key}
-                    style={{ marginRight: 8, marginBottom: 8 }}
-                    label={`${key.toUpperCase()}: ${commsPrefs[key] ? "On" : "Off"}`}
-                    tone={commsPrefs[key] ? "success" : "default"}
-                  />
-                ))}
-              </View>
-            }
-          />
-        </ProfileSection>
-      </View>
-    </>
+      </SectionCard>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 18,
+    marginTop: 8,
+  },
+  sectionCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    overflow: "hidden",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#FAFAFA",
+    letterSpacing: -0.3,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.2)",
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#A78BFA",
+  },
+  sectionContent: {
+    padding: 16,
+  },
+  // Info Row Styles
+  infoRow: {
+    flexDirection: "row",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+  },
+  infoIconWrapper: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.06)",
+  },
+  infoContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255, 255, 255, 0.4)",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 5,
+  },
+  infoValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#FAFAFA",
+  },
+  infoValueLink: {
+    color: "#A78BFA",
+  },
+  verifiedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.2)",
+  },
+  verifiedText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#34D399",
+  },
+  // Featured Cards
+  featuredCardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 18,
+  },
+  featuredCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  featuredCardGradient: {
+    padding: 14,
+    minHeight: 115,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    position: "relative",
+  },
+  featuredCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  featuredCardIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  featuredCardTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255, 255, 255, 0.55)",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  featuredCardContent: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
+  },
+  featuredCardPlaceholder: {
+    color: "rgba(255, 255, 255, 0.3)",
+    fontStyle: "italic",
+    fontSize: 12,
+  },
+  featuredCardQuote: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+  },
+  // Tags Section
+  tagsSection: {
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.06)",
+  },
+  tagsSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  tagsIconWrapper: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.2)",
+  },
+  tagsTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FAFAFA",
+    letterSpacing: -0.2,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  tagsPlaceholder: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.35)",
+    fontStyle: "italic",
+  },
+  tagPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.35)",
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#C4B5FD",
+    letterSpacing: 0.2,
+  },
+});

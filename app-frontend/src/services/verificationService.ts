@@ -12,23 +12,35 @@ class VerificationService {
   
   async submitVerification(companyId: string, payload: { gstCertificate: PickedDocument; aadhaarCard: PickedDocument; notes?: string }): Promise<VerificationRequest> {
     const form = new FormData();
-    form.append("gstCertificate", {
+
+    console.log("GST Document:", JSON.stringify(payload.gstCertificate));
+    console.log("Aadhaar Document:", JSON.stringify(payload.aadhaarCard));
+
+    // React Native requires this specific format for file uploads
+    const gstFile = {
       uri: payload.gstCertificate.uri,
-      name: payload.gstCertificate.fileName,
-      type: payload.gstCertificate.mimeType,
-    } as any);
-    form.append("aadhaarCard", {
+      type: payload.gstCertificate.mimeType || "application/octet-stream",
+      name: payload.gstCertificate.fileName || "gst-certificate",
+    };
+
+    const aadhaarFile = {
       uri: payload.aadhaarCard.uri,
-      name: payload.aadhaarCard.fileName,
-      type: payload.aadhaarCard.mimeType,
-    } as any);
+      type: payload.aadhaarCard.mimeType || "application/octet-stream",
+      name: payload.aadhaarCard.fileName || "aadhaar-card",
+    };
+
+    console.log("Appending GST file:", JSON.stringify(gstFile));
+    console.log("Appending Aadhaar file:", JSON.stringify(aadhaarFile));
+
+    form.append("gstCertificate", gstFile as unknown as Blob);
+    form.append("aadhaarCard", aadhaarFile as unknown as Blob);
+
     if (payload.notes) {
       form.append("notes", payload.notes);
     }
 
-    const response = await apiClient.post<VerificationRequest>(`/companies/${companyId}/verification`, form, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    console.log("Submitting verification for company:", companyId);
+    const response = await apiClient.post<VerificationRequest>(`/companies/${companyId}/verification`, form);
     return response;
   }
 

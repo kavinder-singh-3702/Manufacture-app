@@ -70,6 +70,7 @@ export class HttpClient {
 
     let response: Response;
     try {
+      console.log(`[HTTP] ${method} ${endpoint}`, isFormData ? "(FormData)" : "");
       response = await fetch(endpoint, {
         method,
         headers: requestHeaders,
@@ -77,10 +78,12 @@ export class HttpClient {
         signal,
         credentials: "include",
       });
+      console.log(`[HTTP] Response status: ${response.status}`);
     } catch (networkError: unknown) {
       // Network error - couldn't connect at all
       const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
       console.error("Network error:", errorMessage, "URL:", endpoint);
+      console.error("Full error:", networkError);
       throw new ApiError(`${errorMessage} - URL: ${endpoint}`, 0, { networkError: errorMessage });
     }
 
