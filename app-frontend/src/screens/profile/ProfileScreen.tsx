@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
@@ -14,7 +15,7 @@ import { ComplianceStatus } from "../../types/company";
 import { RootStackParamList } from "../../navigation/types";
 import { ProfileHero } from "./components/ProfileHero";
 import { ProfileSections } from "./components/ProfileSections";
-import { FormField, SwitchRow } from "./components/ProfileForm";
+import { FormField } from "./components/ProfileForm";
 import { ProfileEditorModal } from "./components/ProfileEditorModal";
 import { EditorType } from "./types";
 
@@ -26,7 +27,6 @@ export const ProfileScreen = () => {
   const [activeEditor, setActiveEditor] = useState<EditorType>(null);
   const [identityForm, setIdentityForm] = useState(createIdentityFormState(user));
   const [professionalForm, setProfessionalForm] = useState(createProfessionalFormState(user));
-  const [preferencesForm, setPreferencesForm] = useState(createPreferencesFormState(user));
   const [saving, setSaving] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -35,14 +35,12 @@ export const ProfileScreen = () => {
   const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
 
-  // Fetch verification status when screen focuses
   useFocusEffect(
     useCallback(() => {
       const fetchVerificationStatus = async () => {
         if (!user?.activeCompany) return;
         try {
           const response = await verificationService.getVerificationStatus(user.activeCompany);
-          // Check if there's a pending verification request (submitted status)
           if (response.request && response.request.status === "pending") {
             setVerificationStatus("submitted");
           } else {
@@ -60,7 +58,6 @@ export const ProfileScreen = () => {
   useEffect(() => {
     setIdentityForm(createIdentityFormState(user));
     setProfessionalForm(createProfessionalFormState(user));
-    setPreferencesForm(createPreferencesFormState(user));
   }, [user]);
 
   const fullName = useMemo(() => {
@@ -74,20 +71,13 @@ export const ProfileScreen = () => {
 
   const avatarInitials = useMemo(() => {
     const source = fullName !== "Unnamed operator" ? fullName : user?.email ?? "NA";
-    const parts = source
-      .split(/\s+/)
-      .map((part) => part.trim())
-      .filter(Boolean);
+    const parts = source.split(/\s+/).map((part) => part.trim()).filter(Boolean);
     if (!parts.length) return "NA";
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }, [fullName, user?.email]);
 
   const activeCompanyCount = Array.isArray(user?.companies) ? user?.companies.length : 0;
-  const tags = (user?.activityTags as string[]) ?? [];
-  const commsPrefs = (user?.preferences?.communications as Record<string, boolean>) ?? {};
 
   const openEditor = (type: EditorType) => {
     setActiveEditor(type);
@@ -122,12 +112,8 @@ export const ProfileScreen = () => {
       displayName: identityForm.displayName.trim() || undefined,
       phone: identityForm.phone.trim() || undefined,
     };
-
     const address = buildAddressPayload(identityForm);
-    if (address) {
-      payload.address = address;
-    }
-
+    if (address) payload.address = address;
     submitUpdate(payload);
   };
 
@@ -136,35 +122,11 @@ export const ProfileScreen = () => {
       .split(",")
       .map((tag) => tag.trim())
       .filter((tag) => tag.length);
-
     const payload: UpdateUserPayload = {
+      companyAbout: professionalForm.companyAbout.trim() || undefined,
       bio: professionalForm.bio.trim() || undefined,
-      socialLinks: cleanObject({
-        website: professionalForm.website.trim() || undefined,
-        linkedin: professionalForm.linkedin.trim() || undefined,
-        twitter: professionalForm.twitter.trim() || undefined,
-        github: professionalForm.github.trim() || undefined,
-      }),
       activityTags,
     };
-
-    submitUpdate(payload);
-  };
-
-  const handleSavePreferences = () => {
-    const payload: UpdateUserPayload = {
-      preferences: {
-        locale: preferencesForm.locale.trim() || undefined,
-        timezone: preferencesForm.timezone.trim() || undefined,
-        theme: preferencesForm.theme,
-        communications: {
-          email: preferencesForm.email,
-          sms: preferencesForm.sms,
-          push: preferencesForm.push,
-        },
-      },
-    };
-
     submitUpdate(payload);
   };
 
@@ -175,33 +137,25 @@ export const ProfileScreen = () => {
         type: ["image/*"],
         copyToCacheDirectory: true,
       });
-
-      if (result.canceled) {
-        return;
-      }
-
+      if (result.canceled) return;
       const file = result.assets?.[0];
       if (!file) {
         setAvatarError("Unable to read that file. Please try another image.");
         return;
       }
-
       if (file.size && file.size > 5 * 1024 * 1024) {
         setAvatarError("Please choose an image smaller than 5 MB.");
         return;
       }
-
       if (file.mimeType && !file.mimeType.startsWith("image/")) {
         setAvatarError("Please choose an image file (JPG or PNG).");
         return;
       }
-
       const fileUri = file.uri;
       if (!fileUri) {
         setAvatarError("We couldn't read that file path. Please pick another image.");
         return;
       }
-
       setAvatarUploading(true);
       const response = await userService.uploadUserFile({
         fileName: file.name ?? "avatar.jpg",
@@ -209,7 +163,6 @@ export const ProfileScreen = () => {
         uri: fileUri,
         purpose: "avatar",
       });
-
       const uploadedUrl = response.file?.url ?? undefined;
       if (user) {
         setUser({ ...user, avatarUrl: uploadedUrl ?? user.avatarUrl });
@@ -224,115 +177,148 @@ export const ProfileScreen = () => {
   };
 
   return (
-    <LinearGradient
-      colors={["#0F1115", "#101318", "#0F1115"]}
-      locations={[0, 0.5, 1]}
-      style={[styles.container, { paddingTop: insets.top }]}
-    >
-      {/* Indigo glow - top left */}
-      <LinearGradient
-        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
-        locations={[0, 0.4, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.7, y: 0.7 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Salmon glow - bottom right */}
-      <LinearGradient
-        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
-        locations={[0, 0.6, 1]}
-        start={{ x: 0.3, y: 0.3 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Premium Blended Gradient Background */}
+      <View style={StyleSheet.absoluteFill}>
+        {/* Base gradient - deep purple to dark */}
+        <LinearGradient
+          colors={["#0F0A1A", "#0A0A0F", "#08080C", "#0A0812"]}
+          locations={[0, 0.3, 0.7, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        {/* Top gradient wash - purple/indigo blend */}
+        <LinearGradient
+          colors={["rgba(139, 92, 246, 0.15)", "rgba(99, 102, 241, 0.08)", "transparent"]}
+          locations={[0, 0.4, 0.8]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.6 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* Bottom gradient wash - subtle pink accent */}
+        <LinearGradient
+          colors={["transparent", "rgba(168, 85, 247, 0.06)", "rgba(139, 92, 246, 0.1)"]}
+          locations={[0.3, 0.7, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* Subtle vignette effect */}
+        <LinearGradient
+          colors={["transparent", "transparent", "rgba(0, 0, 0, 0.3)"]}
+          locations={[0, 0.6, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
       </View>
 
-      {avatarError ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{avatarError}</Text>
-        </View>
-      ) : null}
-
-      {banner ? (
-        <View
-          style={[
-            styles.banner,
-            {
-              backgroundColor: banner.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(248, 113, 113, 0.15)",
-              borderColor: banner.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(248, 113, 113, 0.3)",
-            },
-          ]}
+      {/* Header with glass effect */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={["rgba(15, 15, 20, 0.95)", "rgba(15, 15, 20, 0.85)"]}
+          style={styles.headerGlass}
         >
-          <Text
-            style={{
-              color: banner.type === "success" ? "#4ADE80" : "#FF6B6B",
-              fontWeight: "600",
-            }}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={22} color="#FAFAFA" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+        </LinearGradient>
+      </View>
+
+      {avatarError && (
+        <View style={styles.alertBanner}>
+          <LinearGradient
+            colors={["rgba(248, 113, 113, 0.15)", "rgba(248, 113, 113, 0.08)"]}
+            style={styles.alertGlass}
           >
-            {banner.message}
-          </Text>
+            <Ionicons name="alert-circle" size={18} color="#F87171" />
+            <Text style={styles.alertText}>{avatarError}</Text>
+            <TouchableOpacity onPress={() => setAvatarError(null)}>
+              <Ionicons name="close" size={18} color="#F87171" />
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
-      ) : null}
+      )}
+
+      {banner && (
+        <View style={styles.alertBanner}>
+          <LinearGradient
+            colors={
+              banner.type === "success"
+                ? ["rgba(52, 211, 153, 0.15)", "rgba(52, 211, 153, 0.08)"]
+                : ["rgba(248, 113, 113, 0.15)", "rgba(248, 113, 113, 0.08)"]
+            }
+            style={styles.alertGlass}
+          >
+            <Ionicons
+              name={banner.type === "success" ? "checkmark-circle" : "alert-circle"}
+              size={18}
+              color={banner.type === "success" ? "#34D399" : "#F87171"}
+            />
+            <Text style={[styles.alertText, { color: banner.type === "success" ? "#34D399" : "#F87171" }]}>
+              {banner.message}
+            </Text>
+            <TouchableOpacity onPress={() => setBanner(null)}>
+              <Ionicons name="close" size={18} color={banner.type === "success" ? "#34D399" : "#F87171"} />
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      )}
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.lg + insets.bottom }}
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Hero */}
-        <View style={styles.heroContainer}>
-          <ProfileHero
-            fullName={fullName}
-            email={user?.email}
-            avatarUrl={avatarUrl}
-            avatarInitials={avatarInitials}
-            role={user?.role}
-            accountType={user?.accountType}
-            onUploadAvatar={handleUploadAvatar}
-            uploading={avatarUploading}
-            verificationStatus={verificationStatus === "approved" ? "approved" : null}
-            companyName={companyName}
-          />
-        </View>
-
-        <ProfileSections
-          user={user}
-          tags={tags}
-          commsPrefs={commsPrefs}
-          activeCompanyCount={activeCompanyCount}
-          onEdit={openEditor}
+        <ProfileHero
+          fullName={fullName}
+          email={user?.email}
+          avatarUrl={avatarUrl}
+          avatarInitials={avatarInitials}
+          role={user?.role}
+          accountType={user?.accountType}
+          onUploadAvatar={handleUploadAvatar}
+          uploading={avatarUploading}
+          verificationStatus={verificationStatus === "approved" ? "approved" : null}
+          companyName={companyName}
+          companiesCount={activeCompanyCount}
+          bio={user?.bio}
         />
+
+        <ProfileSections user={user} onEdit={openEditor} />
       </ScrollView>
 
+      {/* Modals */}
       <ProfileEditorModal
-        title="Edit identity"
+        title="Edit Personal Info"
         visible={activeEditor === "identity"}
         onClose={closeEditor}
         onSubmit={handleSaveIdentity}
         saving={saving}
         error={editorError}
       >
-        <FormField label="First name" value={identityForm.firstName} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, firstName: value }))} />
-        <FormField label="Last name" value={identityForm.lastName} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, lastName: value }))} />
-        <FormField label="Display name" value={identityForm.displayName} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, displayName: value }))} />
-        <FormField label="Phone" value={identityForm.phone} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, phone: value }))} keyboardType="phone-pad" />
-        <FormField label="Address line 1" value={identityForm.line1} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, line1: value }))} />
-        <FormField label="Address line 2" value={identityForm.line2} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, line2: value }))} />
-        <FormField label="City" value={identityForm.city} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, city: value }))} />
-        <FormField label="State" value={identityForm.state} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, state: value }))} />
-        <FormField label="Postal code" value={identityForm.postalCode} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, postalCode: value }))} keyboardType="numbers-and-punctuation" />
-        <FormField label="Country" value={identityForm.country} onChangeText={(value) => setIdentityForm((prev) => ({ ...prev, country: value }))} />
+        <FormField label="First name" value={identityForm.firstName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, firstName: v }))} />
+        <FormField label="Last name" value={identityForm.lastName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, lastName: v }))} />
+        <FormField label="Display name" value={identityForm.displayName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, displayName: v }))} />
+        <FormField label="Phone" value={identityForm.phone} onChangeText={(v) => setIdentityForm((p) => ({ ...p, phone: v }))} keyboardType="phone-pad" />
+        <FormField label="Address line 1" value={identityForm.line1} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line1: v }))} />
+        <FormField label="Address line 2" value={identityForm.line2} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line2: v }))} />
+        <FormField label="City" value={identityForm.city} onChangeText={(v) => setIdentityForm((p) => ({ ...p, city: v }))} />
+        <FormField label="State" value={identityForm.state} onChangeText={(v) => setIdentityForm((p) => ({ ...p, state: v }))} />
+        <FormField label="Postal code" value={identityForm.postalCode} onChangeText={(v) => setIdentityForm((p) => ({ ...p, postalCode: v }))} keyboardType="numbers-and-punctuation" />
+        <FormField label="Country" value={identityForm.country} onChangeText={(v) => setIdentityForm((p) => ({ ...p, country: v }))} />
       </ProfileEditorModal>
 
       <ProfileEditorModal
-        title="Edit professional details"
+        title="Edit Professional Info"
         visible={activeEditor === "professional"}
         onClose={closeEditor}
         onSubmit={handleSaveProfessional}
@@ -340,70 +326,29 @@ export const ProfileScreen = () => {
         error={editorError}
       >
         <FormField
-          label="Bio"
-          value={professionalForm.bio}
-          onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, bio: value }))}
+          label="Company About"
+          helperText="Describe your company, mission, and what makes you unique"
+          value={professionalForm.companyAbout}
+          onChangeText={(v) => setProfessionalForm((p) => ({ ...p, companyAbout: v }))}
           multiline
           numberOfLines={4}
         />
-        <FormField label="Website" value={professionalForm.website} onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, website: value }))} />
-        <FormField label="LinkedIn" value={professionalForm.linkedin} onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, linkedin: value }))} />
-        <FormField label="Twitter" value={professionalForm.twitter} onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, twitter: value }))} />
-        <FormField label="GitHub" value={professionalForm.github} onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, github: value }))} />
+        <FormField
+          label="Bio"
+          helperText="A short description about yourself"
+          value={professionalForm.bio}
+          onChangeText={(v) => setProfessionalForm((p) => ({ ...p, bio: v }))}
+          multiline
+          numberOfLines={3}
+        />
         <FormField
           label="Activity tags"
           helperText="Separate with commas"
           value={professionalForm.activityTags}
-          onChangeText={(value) => setProfessionalForm((prev) => ({ ...prev, activityTags: value }))}
+          onChangeText={(v) => setProfessionalForm((p) => ({ ...p, activityTags: v }))}
         />
       </ProfileEditorModal>
-
-      <ProfileEditorModal
-        title="Edit preferences"
-        visible={activeEditor === "preferences"}
-        onClose={closeEditor}
-        onSubmit={handleSavePreferences}
-        saving={saving}
-        error={editorError}
-      >
-        <FormField label="Locale" value={preferencesForm.locale} onChangeText={(value) => setPreferencesForm((prev) => ({ ...prev, locale: value }))} />
-        <FormField label="Timezone" value={preferencesForm.timezone} onChangeText={(value) => setPreferencesForm((prev) => ({ ...prev, timezone: value }))} />
-        <View style={styles.segmentLabelRow}>
-          <Text style={styles.formLabel}>Theme</Text>
-          <View style={styles.segmentRow}>
-            {(["system", "light", "dark"] as const).map((option) => {
-              const isActive = preferencesForm.theme === option;
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.segmentButton, isActive ? styles.segmentButtonActive : null]}
-                  onPress={() => setPreferencesForm((prev) => ({ ...prev, theme: option }))}
-                >
-                  <Text style={[styles.segmentButtonText, { color: isActive ? "#fff" : "rgba(255,255,255,0.6)" }]}>{option}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-        <View style={styles.toggleList}>
-          <SwitchRow
-            label="Email notifications"
-            value={preferencesForm.email}
-            onValueChange={(value) => setPreferencesForm((prev) => ({ ...prev, email: value }))}
-          />
-          <SwitchRow
-            label="SMS alerts"
-            value={preferencesForm.sms}
-            onValueChange={(value) => setPreferencesForm((prev) => ({ ...prev, sms: value }))}
-          />
-          <SwitchRow
-            label="Push notifications"
-            value={preferencesForm.push}
-            onValueChange={(value) => setPreferencesForm((prev) => ({ ...prev, push: value }))}
-          />
-        </View>
-      </ProfileEditorModal>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -423,21 +368,9 @@ const createIdentityFormState = (user?: AuthUser | null) => ({
 });
 
 const createProfessionalFormState = (user?: AuthUser | null) => ({
+  companyAbout: user?.companyAbout ?? "",
   bio: user?.bio ?? "",
-  website: user?.socialLinks?.website ?? "",
-  linkedin: user?.socialLinks?.linkedin ?? "",
-  twitter: user?.socialLinks?.twitter ?? "",
-  github: user?.socialLinks?.github ?? "",
   activityTags: Array.isArray(user?.activityTags) ? user?.activityTags.join(", ") : "",
-});
-
-const createPreferencesFormState = (user?: AuthUser | null) => ({
-  locale: user?.preferences?.locale ?? "",
-  timezone: user?.preferences?.timezone ?? "",
-  theme: (user?.preferences?.theme as "system" | "light" | "dark" | undefined) ?? "system",
-  email: Boolean(user?.preferences?.communications?.email ?? true),
-  sms: Boolean(user?.preferences?.communications?.sms ?? false),
-  push: Boolean(user?.preferences?.communications?.push ?? true),
 });
 
 const buildAddressPayload = (form: IdentityFormState) => {
@@ -449,15 +382,12 @@ const buildAddressPayload = (form: IdentityFormState) => {
     postalCode: form.postalCode.trim() || undefined,
     country: form.country.trim() || undefined,
   });
-
   return Object.keys(payload).length ? payload : undefined;
 };
 
 const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   return Object.entries(obj).reduce((acc, [key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return acc;
-    }
+    if (value === undefined || value === null || value === "") return acc;
     (acc as any)[key] = value;
     return acc;
   }, {} as Partial<T>);
@@ -466,92 +396,70 @@ const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F1115",
+    backgroundColor: "#09090B",
+  },
+  // Header
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGlass: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 15,
-    backgroundColor: "transparent",
+    paddingVertical: 14,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#FAFAFA",
     letterSpacing: -0.5,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
   },
-  backIcon: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginLeft: -2,
+  headerSpacer: {
+    width: 40,
   },
-  heroContainer: {
-    marginBottom: 24,
-  },
-  banner: {
+  // Alerts
+  alertBanner: {
     marginHorizontal: 20,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginTop: 12,
+    borderRadius: 16,
+    overflow: "hidden",
   },
-  errorBanner: {
-    marginHorizontal: 20,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 107, 107, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 107, 107, 0.3)",
-  },
-  errorText: {
-    color: "#FF6B6B",
-    fontWeight: "600",
-  },
-  formLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 6,
-    textTransform: "uppercase",
-    color: "rgba(255, 255, 255, 0.6)",
-  },
-  segmentLabelRow: {
-    marginBottom: 12,
-  },
-  segmentRow: {
+  alertGlass: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 999,
-    padding: 4,
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: 999,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 16,
   },
-  segmentButtonActive: {
-    backgroundColor: "#6C63FF",
+  alertText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#F87171",
   },
-  segmentButtonText: {
-    textTransform: "capitalize",
-    fontWeight: "600",
+  // Content
+  scrollView: {
+    flex: 1,
   },
-  toggleList: {
-    marginTop: 8,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
 });

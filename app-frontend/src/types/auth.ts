@@ -10,6 +10,7 @@ export type AuthUser = {
   lastName?: string;
   phone?: string;
   bio?: string;
+  companyAbout?: string;
   avatarUrl?: string;
   /**
    * App-level role that determines navigation stack
@@ -103,7 +104,7 @@ export type UserPreferences = {
   communications?: UserCommunicationsPreferences;
 };
 
-export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "avatarUrl">> & {
+export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "companyAbout" | "avatarUrl">> & {
   address?: UserAddress;
   socialLinks?: UserSocialLinks;
   preferences?: UserPreferences;

@@ -1,1 +1,1 @@
-export type EditorType = "identity" | "professional" | "preferences" | null;
+export type EditorType = "identity" | "professional" | null;

@@ -11,18 +11,35 @@ class VerificationService {
     //Submit verification request for a company
   
   async submitVerification(companyId: string, payload: { gstCertificate: PickedDocument; aadhaarCard: PickedDocument; notes?: string }): Promise<VerificationRequest> {
-    const [gstBlob, aadhaarBlob] = await Promise.all([
-      fetch(payload.gstCertificate.uri).then((res) => res.blob()),
-      fetch(payload.aadhaarCard.uri).then((res) => res.blob()),
-    ]);
-
     const form = new FormData();
-    form.append("gstCertificate", gstBlob, payload.gstCertificate.fileName);
-    form.append("aadhaarCard", aadhaarBlob, payload.aadhaarCard.fileName);
+
+    console.log("GST Document:", JSON.stringify(payload.gstCertificate));
+    console.log("Aadhaar Document:", JSON.stringify(payload.aadhaarCard));
+
+    // React Native requires this specific format for file uploads
+    const gstFile = {
+      uri: payload.gstCertificate.uri,
+      type: payload.gstCertificate.mimeType || "application/octet-stream",
+      name: payload.gstCertificate.fileName || "gst-certificate",
+    };
+
+    const aadhaarFile = {
+      uri: payload.aadhaarCard.uri,
+      type: payload.aadhaarCard.mimeType || "application/octet-stream",
+      name: payload.aadhaarCard.fileName || "aadhaar-card",
+    };
+
+    console.log("Appending GST file:", JSON.stringify(gstFile));
+    console.log("Appending Aadhaar file:", JSON.stringify(aadhaarFile));
+
+    form.append("gstCertificate", gstFile as unknown as Blob);
+    form.append("aadhaarCard", aadhaarFile as unknown as Blob);
+
     if (payload.notes) {
       form.append("notes", payload.notes);
     }
 
+    console.log("Submitting verification for company:", companyId);
     const response = await apiClient.post<VerificationRequest>(`/companies/${companyId}/verification`, form);
     return response;
   }

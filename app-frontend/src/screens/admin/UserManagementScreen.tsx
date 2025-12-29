@@ -1,40 +1,34 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  TextInput,
+  Text,
+  TouchableOpacity,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
+import {
+  AdminHeader,
+  AdminSearchBar,
+  AdminFilterTabs,
+  AdminListCard,
+  AdminActionSheet,
+} from "../../components/admin";
 
-// ============================================================
-// FILTER STATUS TYPE
-// ============================================================
 type FilterStatus = "all" | "active" | "inactive";
 
-// ============================================================
-// USER MANAGEMENT SCREEN
-// ============================================================
-// Allows admins to view and manage all users
-
 export const UserManagementScreen = () => {
-  // ------------------------------------------------------------
-  // HOOKS & THEME
-  // ------------------------------------------------------------
   const { colors, spacing } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  // ------------------------------------------------------------
-  // STATE MANAGEMENT
-  // ------------------------------------------------------------
+  // State
   const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,18 +37,18 @@ export const UserManagementScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [totalCount, setTotalCount] = useState(0);
 
-  // ------------------------------------------------------------
-  // FILTERED USERS (LOCAL FILTERING)
-  // ------------------------------------------------------------
+  // Action sheet state
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+
+  // Filtered users
   const filteredUsers = useMemo(() => {
     let result = allUsers;
 
-    // Filter by status
     if (activeFilter !== "all") {
       result = result.filter((u) => u.status === activeFilter);
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -69,9 +63,25 @@ export const UserManagementScreen = () => {
     return result;
   }, [allUsers, activeFilter, searchQuery]);
 
-  // ------------------------------------------------------------
-  // FETCH USERS FROM API
-  // ------------------------------------------------------------
+  // Filter tabs config
+  const filterTabs = useMemo(() => {
+    const counts = {
+      all: allUsers.length,
+      active: allUsers.filter((u) => u.status === "active").length,
+      inactive: allUsers.filter((u) => u.status === "inactive").length,
+    };
+    return [
+      { key: "all" as FilterStatus, label: "All", count: counts.all },
+      { key: "active" as FilterStatus, label: "Active", count: counts.active },
+      {
+        key: "inactive" as FilterStatus,
+        label: "Inactive",
+        count: counts.inactive,
+      },
+    ];
+  }, [allUsers]);
+
+  // Fetch users
   const fetchUsers = useCallback(async () => {
     try {
       setError(null);
@@ -87,52 +97,30 @@ export const UserManagementScreen = () => {
     }
   }, []);
 
-  // ------------------------------------------------------------
-  // INITIAL DATA LOAD
-  // ------------------------------------------------------------
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  // Refetch users whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchUsers();
+    }, [])
+  );
 
-  // ------------------------------------------------------------
-  // PULL TO REFRESH
-  // ------------------------------------------------------------
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchUsers();
   }, [fetchUsers]);
 
-  // ------------------------------------------------------------
-  // GET STATUS COLOR
-  // ------------------------------------------------------------
-  const getStatusColor = (status: string) => {
+  // Status helpers
+  const getStatusType = (status: string) => {
     switch (status) {
       case "active":
-        return colors.success;
+        return "success" as const;
       case "inactive":
-        return colors.error;
+        return "error" as const;
       default:
-        return colors.textMuted;
+        return "neutral" as const;
     }
   };
 
-  // ------------------------------------------------------------
-  // GET ROLE COLOR
-  // ------------------------------------------------------------
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return colors.primary;
-      case "user":
-        return colors.success;
-      default:
-        return colors.textSecondary;
-    }
-  };
-
-  // ------------------------------------------------------------
-  // FORMAT DATE
-  // ------------------------------------------------------------
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Never";
     const date = new Date(dateString);
@@ -143,20 +131,22 @@ export const UserManagementScreen = () => {
     });
   };
 
-  // ------------------------------------------------------------
-  // GET COUNTS FOR TABS
-  // ------------------------------------------------------------
-  const getCounts = useMemo(() => {
-    return {
-      all: allUsers.length,
-      active: allUsers.filter((u) => u.status === "active").length,
-      inactive: allUsers.filter((u) => u.status === "inactive").length,
-    };
-  }, [allUsers]);
+  // Action sheet handlers
+  const handleUserPress = (user: AdminUser) => {
+    setSelectedUser(user);
+    setActionSheetVisible(true);
+  };
 
-  // ------------------------------------------------------------
-  // RENDER LOADING STATE
-  // ------------------------------------------------------------
+  const handleViewPreferences = () => {
+    if (selectedUser) {
+      navigation.navigate("UserPreferences", {
+        userId: selectedUser.id,
+        displayName: selectedUser.displayName || selectedUser.email,
+      });
+    }
+  };
+
+  // Loading state
   if (loading && !refreshing) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -168,9 +158,7 @@ export const UserManagementScreen = () => {
     );
   }
 
-  // ------------------------------------------------------------
-  // RENDER ERROR STATE
-  // ------------------------------------------------------------
+  // Error state
   if (error && !loading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -188,13 +176,10 @@ export const UserManagementScreen = () => {
     );
   }
 
-  // ------------------------------------------------------------
-  // MAIN RENDER
-  // ------------------------------------------------------------
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={[styles.content, { padding: spacing.md }]}
+        contentContainerStyle={[styles.content, { padding: spacing.lg }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -202,209 +187,93 @@ export const UserManagementScreen = () => {
             tintColor={colors.primary}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* ========== HEADER ========== */}
-        <Text style={[styles.title, { color: colors.text }]}>User Management</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-          {totalCount} total users in the system
-        </Text>
+        {/* Header */}
+        <AdminHeader
+          title="Users"
+          subtitle="Manage all users"
+          count={totalCount}
+        />
 
-        {/* ========== SEARCH BAR ========== */}
-        <View
-          style={[
-            styles.searchContainer,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              marginBottom: spacing.md,
-              padding: spacing.sm,
-              borderRadius: 8,
-            },
-          ]}
-        >
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search users by name or email..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Text style={[styles.clearButton, { color: colors.textMuted }]}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Search */}
+        <AdminSearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by name or email..."
+        />
 
-        {/* ========== FILTER TABS ========== */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: spacing.md }}
-        >
-          <View style={[styles.tabs, { gap: spacing.sm }]}>
-            {(["all", "active", "inactive"] as FilterStatus[]).map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                onPress={() => setActiveFilter(tab)}
-                style={[
-                  styles.tab,
-                  {
-                    backgroundColor: activeFilter === tab ? colors.primary : colors.surface,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                    borderRadius: 8,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeFilter === tab ? "#fff" : colors.textSecondary },
-                  ]}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)} ({getCounts[tab]})
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        {/* Filter Tabs */}
+        <AdminFilterTabs
+          tabs={filterTabs}
+          activeTab={activeFilter}
+          onTabChange={setActiveFilter}
+        />
 
-        {/* ========== EMPTY STATE ========== */}
+        {/* Empty State */}
         {filteredUsers.length === 0 ? (
-          <View style={[styles.emptyState, { padding: spacing.xl }]}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               {searchQuery ? "No users match your search" : "No users found"}
             </Text>
           </View>
         ) : (
-          /* ========== USER LIST ========== */
-          <View style={[styles.userList, { gap: spacing.sm }]}>
+          /* User List */
+          <View style={styles.list}>
             {filteredUsers.map((user) => (
-              <TouchableOpacity
+              <AdminListCard
                 key={user.id}
-                style={[
-                  styles.userCard,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    padding: spacing.md,
-                    borderRadius: 12,
-                  },
-                ]}
-                activeOpacity={0.7}
-              >
-                {/* ---- User Info Row ---- */}
-                <View style={styles.userInfo}>
-                  {/* Avatar */}
-                  <View
-                    style={[
-                      styles.avatar,
-                      {
-                        backgroundColor: colors.primary,
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        marginRight: spacing.sm,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.avatarText}>
-                      {(user.displayName || user.email || "U")[0].toUpperCase()}
-                    </Text>
-                  </View>
-
-                  {/* User Details */}
-                  <View style={styles.userDetails}>
-                    <Text style={[styles.userName, { color: colors.text }]}>
-                      {user.displayName || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown User"}
-                    </Text>
-                    <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                      {user.email}
-                    </Text>
-                  </View>
-
-                  {/* Role Badge */}
-                  <View
-                    style={[
-                      styles.roleBadge,
-                      {
-                        backgroundColor: getRoleColor(user.role) + "20",
-                        paddingHorizontal: spacing.sm,
-                        paddingVertical: 4,
-                        borderRadius: 4,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.roleText, { color: getRoleColor(user.role) }]}>
-                      {user.role}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* ---- Meta Row ---- */}
-                <View style={[styles.metaRow, { marginTop: spacing.sm }]}>
-                  {/* Status Badge */}
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: getStatusColor(user.status) + "20",
-                        paddingHorizontal: spacing.sm,
-                        paddingVertical: 2,
-                        borderRadius: 4,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.statusText, { color: getStatusColor(user.status) }]}>
-                      {user.status}
-                    </Text>
-                  </View>
-
-                  {/* Join Date */}
-                  <Text style={[styles.dateText, { color: colors.textMuted }]}>
-                    Joined {formatDate(user.createdAt)}
-                  </Text>
-                </View>
-
-                {/* ---- Additional Info ---- */}
-                {user.lastLoginAt && (
-                  <View style={[styles.lastLoginRow, { marginTop: spacing.xs }]}>
-                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>
-                      Last login:
-                    </Text>
-                    <Text style={[styles.metaValue, { color: colors.textSecondary }]}>
-                      {formatDate(user.lastLoginAt)}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={[styles.actionsRow, { marginTop: spacing.sm }]}>
-                  <TouchableOpacity
-                    onPress={() =>
-                      navigation.navigate("UserPreferences", {
-                        userId: user.id,
-                        displayName: user.displayName || user.email,
-                      })
-                    }
-                    style={[styles.preferenceButton, { borderColor: colors.primary, borderRadius: 8 }]}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.preferenceText, { color: colors.primary }]}>View preferences</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
+                title={
+                  user.displayName ||
+                  `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+                  "Unknown User"
+                }
+                subtitle={user.email}
+                avatarText={(
+                  user.displayName ||
+                  user.email ||
+                  "U"
+                )[0].toUpperCase()}
+                status={{
+                  label: user.status,
+                  type: getStatusType(user.status),
+                }}
+                meta={`Joined ${formatDate(user.createdAt)}`}
+                onPress={() => handleUserPress(user)}
+              />
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* Action Sheet */}
+      <AdminActionSheet
+        visible={actionSheetVisible}
+        onClose={() => {
+          setActionSheetVisible(false);
+          setSelectedUser(null);
+        }}
+        title={selectedUser?.displayName || selectedUser?.email}
+        subtitle={selectedUser?.email}
+        actions={[
+          {
+            label: "View Preferences",
+            icon: "settings-outline",
+            onPress: handleViewPreferences,
+          },
+          {
+            label: "View Activity",
+            icon: "time-outline",
+            onPress: () => {
+              // Future: navigate to activity screen
+            },
+          },
+        ]}
+      />
     </View>
   );
 };
 
-// ============================================================
-// STYLES
-// ============================================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -419,7 +288,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
   },
   errorText: {
@@ -437,114 +306,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  subtitle: {
-    fontSize: 16,
-    marginTop: 4,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  clearButton: {
-    fontSize: 14,
-    paddingHorizontal: 8,
-  },
-  tabs: {
-    flexDirection: "row",
-  },
-  tab: {},
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 60,
   },
   emptyText: {
     fontSize: 16,
   },
-  userList: {},
-  userCard: {
-    borderWidth: 1,
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  userDetails: {
-    flex: 1,
-    gap: 2,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  userEmail: {
-    fontSize: 14,
-  },
-  roleBadge: {},
-  roleText: {
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  statusBadge: {},
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-  dateText: {
-    fontSize: 11,
-  },
-  lastLoginRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  metaLabel: {
-    fontSize: 11,
-    marginRight: 4,
-  },
-  metaValue: {
-    fontSize: 11,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  preferenceButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-  },
-  preferenceText: {
-    fontSize: 12,
-    fontWeight: "700",
+  list: {
+    gap: 16,
   },
 });

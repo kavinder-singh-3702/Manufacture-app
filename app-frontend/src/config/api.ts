@@ -6,8 +6,10 @@ const FALLBACK_BASE_URL = "http://localhost:4000/api";
 
 const normalizeUrl = (url: string) => url?.replace(/\/+$/, "") || "";
 
-// Force local backend unless explicitly changed in this file.
-export const API_BASE_URL = normalizeUrl(FALLBACK_BASE_URL);
+// Use environment variable if available, otherwise fallback to localhost
+export const API_BASE_URL = normalizeUrl(
+  process.env.EXPO_PUBLIC_API_URL || FALLBACK_BASE_URL
+);
 
 export const DEFAULT_API_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",

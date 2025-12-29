@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ScrollView,
   View,
@@ -8,11 +8,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
@@ -24,6 +28,8 @@ import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
 import { ComplianceStatus } from "../types/company";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -32,7 +38,7 @@ type PromoOffer = {
   id: string;
   title: string;
   description: string;
-  oldPrice: string;
+  oldPrice?: string;
   newPrice: string;
   discountLabel: string;
   tag?: string;
@@ -41,7 +47,7 @@ type PromoOffer = {
 };
 
 // ============================================================
-// STATIC DATA (User Dashboard)
+// STATIC DATA
 // ============================================================
 const fallbackCategories: ProductCategory[] = [
   { id: "finished-goods", title: "Finished Goods", count: 0, totalQuantity: 0 },
@@ -86,10 +92,35 @@ export const DashboardScreen = () => {
 };
 
 // ============================================================
-// ADMIN DASHBOARD CONTENT
+// ANIMATED COUNTER COMPONENT
+// ============================================================
+const AnimatedCounter = ({ value, duration = 1000, style }: { value: number; duration?: number; style?: any }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    animatedValue.setValue(0);
+    Animated.timing(animatedValue, {
+      toValue: value,
+      duration,
+      useNativeDriver: false,
+    }).start();
+
+    const listener = animatedValue.addListener(({ value: v }) => {
+      setDisplayValue(Math.floor(v));
+    });
+
+    return () => animatedValue.removeListener(listener);
+  }, [value, duration]);
+
+  return <Text style={style}>{displayValue}</Text>;
+};
+
+// ============================================================
+// ADMIN DASHBOARD - PREMIUM DESIGN
 // ============================================================
 const AdminDashboardContent = () => {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -99,9 +130,17 @@ const AdminDashboardContent = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  const fetchStats = useCallback(async (isRefresh = false) => {
     try {
       setError(null);
+      if (!isRefresh && !stats) {
+        setLoading(true);
+      }
       const data = await adminService.getStats();
       setStats(data);
     } catch (err: any) {
@@ -111,15 +150,28 @@ const AdminDashboardContent = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [stats]);
+
+  // Refetch stats whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [])
+  );
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    if (!loading && stats) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [loading, stats]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchStats();
+    fetchStats(true);
   }, [fetchStats]);
 
   const navigateToTab = (route: string) => {
@@ -129,105 +181,400 @@ const AdminDashboardContent = () => {
   if (loading && !refreshing) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading dashboard...</Text>
+        <View style={styles.loaderContainer}>
+          <LinearGradient
+            colors={[colors.primary, "#5248E6"]}
+            style={styles.loaderGradient}
+          >
+            <ActivityIndicator size="large" color="#fff" />
+          </LinearGradient>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading dashboard...</Text>
+        </View>
       </View>
     );
   }
 
   const firstName = user?.displayName?.split(" ")[0] || "Admin";
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 16) return "Good afternoon";
+    if (hour >= 16 && hour < 20) return "Good evening";
+    return "Good night";
+  };
+
+  const pendingCount = stats?.verifications.pending ?? 0;
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Background Gradient Orbs */}
+      <View style={styles.bgOrbContainer}>
+        <LinearGradient
+          colors={["rgba(108, 99, 255, 0.15)", "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb1]}
+        />
+        <LinearGradient
+          colors={["rgba(255, 107, 107, 0.1)", "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb2]}
+        />
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Greeting */}
-        <View style={{ gap: spacing.xs, marginBottom: spacing.lg }}>
-          <Text style={[styles.greeting, { color: colors.textMuted }]}>Welcome back,</Text>
-          <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
-        </View>
-
-        {/* Error State */}
-        {error && (
-          <View style={[styles.errorBanner, { backgroundColor: colors.error + "20", padding: spacing.md, borderRadius: 8, marginBottom: spacing.lg }]}>
-            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-            <TouchableOpacity onPress={fetchStats}>
-              <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+          }}
+        >
+          {/* Header */}
+          <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
+            <View>
+              <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()},</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.profileButton, { backgroundColor: colors.primary + "15" }]}
+              onPress={() => navigation.navigate("Profile" as any)}
+            >
+              <LinearGradient
+                colors={[colors.primary, "#5248E6"]}
+                style={styles.profileGradient}
+              >
+                <Text style={styles.profileInitial}>{firstName.charAt(0)}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* Admin Stats Grid */}
-        <View style={[styles.statsGrid, { gap: spacing.md, marginBottom: spacing.xl }]}>
-          <AdminStatCard
-            title="Total Users"
-            value={stats?.users.total.toString() ?? "--"}
-            subtitle={`${stats?.users.active ?? 0} active`}
-            accentColor={colors.primary}
-            onPress={() => navigateToTab(routes.USERS)}
-          />
-          <AdminStatCard
-            title={stats?.verifications.pending === 0 ? "Verifications" : "Pending Reviews"}
-            value={stats?.verifications.pending === 0 ? "✓" : (stats?.verifications.pending.toString() ?? "--")}
-            subtitle={stats?.verifications.pending === 0 ? "All approved" : "Awaiting review"}
-            accentColor={stats?.verifications.pending === 0 ? colors.success : colors.warning}
-            highlighted={stats?.verifications.pending !== undefined && stats.verifications.pending > 0}
-            onPress={() => navigateToTab(routes.VERIFICATIONS)}
-          />
-          <AdminStatCard
-            title="Active Companies"
-            value={stats?.companies.active.toString() ?? "--"}
-            subtitle={`${stats?.companies.total ?? 0} total`}
-            accentColor={colors.success}
-            onPress={() => navigateToTab(routes.COMPANIES)}
-          />
-          <AdminStatCard
-            title="Today's Activity"
-            value={stats?.today.newVerifications.toString() ?? "--"}
-            subtitle={`${stats?.today.newUsers ?? 0} new users`}
-            accentColor="#3B82F6"
-          />
-        </View>
+          {/* Error State */}
+          {error && (
+            <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", marginHorizontal: spacing.lg, padding: spacing.md, borderRadius: radius.lg, marginTop: spacing.lg }]}>
+              <Ionicons name="alert-circle" size={20} color={colors.error} />
+              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+              <TouchableOpacity onPress={fetchStats} style={[styles.retryButton, { backgroundColor: colors.error }]}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {/* Verification Summary */}
-        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>
-          Verification Summary
-        </Text>
-        <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border, padding: spacing.md, borderRadius: 12, marginBottom: spacing.xl }]}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: colors.warning }]}>{stats?.verifications.pending ?? 0}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Pending</Text>
+          {/* Main Stats Hero */}
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+            <LinearGradient
+              colors={["#6C63FF", "#5248E6", "#4338CA"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.heroCard, { borderRadius: radius.xl }]}
+            >
+              {/* Decorative Elements */}
+              <View style={styles.heroDecor1} />
+              <View style={styles.heroDecor2} />
+              <View style={styles.heroDecor3} />
+
+              <View style={styles.heroContent}>
+                <Text style={styles.heroTitle}>Admin Overview</Text>
+                <Text style={styles.heroSubtitle}>Your platform at a glance</Text>
+
+                <View style={styles.heroStatsRow}>
+                  <View style={styles.heroStatBox}>
+                    <View style={styles.heroStatIconBg}>
+                      <Ionicons name="people" size={20} color="#6C63FF" />
+                    </View>
+                    <AnimatedCounter value={stats?.users.total ?? 0} style={styles.heroStatValue} />
+                    <Text style={styles.heroStatLabel}>Users</Text>
+                  </View>
+
+                  <View style={styles.heroStatBox}>
+                    <View style={styles.heroStatIconBg}>
+                      <Ionicons name="business" size={20} color="#10B981" />
+                    </View>
+                    <AnimatedCounter value={stats?.companies.active ?? 0} style={styles.heroStatValue} />
+                    <Text style={styles.heroStatLabel}>Companies</Text>
+                  </View>
+
+                  <View style={styles.heroStatBox}>
+                    <View style={[styles.heroStatIconBg, pendingCount > 0 && styles.heroStatIconBgWarning]}>
+                      <Ionicons name="time" size={20} color={pendingCount > 0 ? "#F59E0B" : "#6C63FF"} />
+                    </View>
+                    <AnimatedCounter value={pendingCount} style={styles.heroStatValue} />
+                    <Text style={styles.heroStatLabel}>Pending</Text>
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Pending Alert */}
+          {pendingCount > 0 && (
+            <TouchableOpacity
+              onPress={() => navigateToTab(routes.VERIFICATIONS)}
+              activeOpacity={0.9}
+              style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}
+            >
+              <LinearGradient
+                colors={["#FEF3C7", "#FDE68A"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.alertCard, { borderRadius: radius.lg }]}
+              >
+                <View style={styles.alertPulse}>
+                  <View style={[styles.alertDot, { backgroundColor: "#F59E0B" }]} />
+                </View>
+                <View style={styles.alertContent}>
+                  <Text style={styles.alertTitle}>
+                    {pendingCount} verification{pendingCount > 1 ? "s" : ""} awaiting review
+                  </Text>
+                  <Text style={styles.alertSubtitle}>Tap to review and take action</Text>
+                </View>
+                <View style={styles.alertArrow}>
+                  <Ionicons name="arrow-forward" size={20} color="#92400E" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* Stats Grid */}
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Statistics</Text>
+              <View style={[styles.sectionBadge, { backgroundColor: colors.primary + "15" }]}>
+                <Text style={[styles.sectionBadgeText, { color: colors.primary }]}>Live</Text>
+              </View>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{stats?.verifications.approved ?? 0}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Approved</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: colors.error }]}>{stats?.verifications.rejected ?? 0}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Rejected</Text>
+
+            <View style={styles.statsGrid}>
+              <StatCard
+                icon="person-add"
+                label="New Today"
+                value={stats?.today.newUsers ?? 0}
+                trend={stats?.today.newUsers && stats.today.newUsers > 0 ? "up" : undefined}
+                gradient={["#3B82F6", "#1D4ED8"]}
+              />
+              <StatCard
+                icon="document-text"
+                label="New Requests"
+                value={stats?.today.newVerifications ?? 0}
+                gradient={["#8B5CF6", "#6D28D9"]}
+              />
+              <StatCard
+                icon="checkmark-circle"
+                label="Approved"
+                value={stats?.verifications.approved ?? 0}
+                gradient={["#10B981", "#059669"]}
+              />
+              <StatCard
+                icon="close-circle"
+                label="Rejected"
+                value={stats?.verifications.rejected ?? 0}
+                gradient={["#EF4444", "#DC2626"]}
+              />
             </View>
           </View>
-        </View>
 
-        {/* Quick Actions */}
-        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>
-          Quick Actions
-        </Text>
-        <View style={{ gap: spacing.sm }}>
-          <AdminActionItem label="Add Product" onPress={() => navigation.navigate("AddProduct")} />
-          <AdminActionItem label="Review Pending Verifications" badge={stats?.verifications.pending} onPress={() => navigateToTab(routes.VERIFICATIONS)} />
-          <AdminActionItem label="Manage Users" badge={stats?.users.total} onPress={() => navigateToTab(routes.USERS)} />
-          <AdminActionItem label="View All Companies" badge={stats?.companies.total} onPress={() => navigateToTab(routes.COMPANIES)} />
-        </View>
+          {/* Quick Actions */}
+          <View style={{ marginTop: spacing.xl }}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md, paddingHorizontal: spacing.lg }]}>
+              Quick Actions
+            </Text>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.actionsScrollContent}
+            >
+              <ActionCard
+                icon="clipboard"
+                label="Reviews"
+                color="#F59E0B"
+                badge={pendingCount}
+                onPress={() => navigateToTab(routes.VERIFICATIONS)}
+              />
+              <ActionCard
+                icon="people"
+                label="Users"
+                color="#3B82F6"
+                onPress={() => navigateToTab(routes.USERS)}
+              />
+              <ActionCard
+                icon="chatbubbles"
+                label="Messages"
+                color="#6C63FF"
+                onPress={() => navigateToTab(routes.CHAT)}
+              />
+            </ScrollView>
+          </View>
+
+          {/* Recent Activity */}
+          <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>
+              Management
+            </Text>
+
+            <View style={{ gap: spacing.sm }}>
+              <ManagementCard
+                icon="shield-checkmark"
+                title="Review Verifications"
+                subtitle="Approve or reject pending company verifications"
+                badge={pendingCount}
+                badgeColor="#F59E0B"
+                onPress={() => navigateToTab(routes.VERIFICATIONS)}
+              />
+              <ManagementCard
+                icon="people-circle"
+                title="User Management"
+                subtitle="View profiles, preferences, and activity"
+                value={`${stats?.users.active ?? 0} active`}
+                onPress={() => navigateToTab(routes.USERS)}
+              />
+              <ManagementCard
+                icon="storefront"
+                title="Company Directory"
+                subtitle="Manage registered companies and documents"
+                value={`${stats?.companies.total ?? 0} total`}
+                onPress={() => navigateToTab(routes.COMPANIES)}
+              />
+            </View>
+          </View>
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
+  );
+};
+
+// ============================================================
+// ADMIN COMPONENTS
+// ============================================================
+type StatCardProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: number;
+  trend?: "up" | "down";
+  gradient: [string, string];
+};
+
+const StatCard = ({ icon, label, value, trend, gradient }: StatCardProps) => {
+  const { colors, radius, spacing } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+  };
+
+  return (
+    <Animated.View style={[styles.statCard, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[styles.statCardInner, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border }]}
+      >
+        <LinearGradient colors={gradient} style={styles.statCardIcon}>
+          <Ionicons name={icon} size={18} color="#fff" />
+        </LinearGradient>
+        <View style={styles.statCardContent}>
+          <View style={styles.statCardValueRow}>
+            <Text style={[styles.statCardValue, { color: colors.text }]}>{value}</Text>
+            {trend && (
+              <View style={[styles.trendBadge, { backgroundColor: trend === "up" ? "#10B98120" : "#EF444420" }]}>
+                <Ionicons name={trend === "up" ? "trending-up" : "trending-down"} size={12} color={trend === "up" ? "#10B981" : "#EF4444"} />
+              </View>
+            )}
+          </View>
+          <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>{label}</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+type ActionCardProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  color: string;
+  badge?: number;
+  onPress: () => void;
+};
+
+const ActionCard = ({ icon, label, color, badge, onPress }: ActionCardProps) => {
+  const { colors, radius } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.92, useNativeDriver: true }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={[styles.actionCard, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border }]}
+      >
+        {badge !== undefined && badge > 0 && (
+          <View style={[styles.actionBadge, { backgroundColor: "#EF4444" }]}>
+            <Text style={styles.actionBadgeText}>{badge}</Text>
+          </View>
+        )}
+        <View style={[styles.actionIconBg, { backgroundColor: color + "15" }]}>
+          <Ionicons name={icon} size={24} color={color} />
+        </View>
+        <Text style={[styles.actionLabel, { color: colors.text }]}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+type ManagementCardProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  badge?: number;
+  badgeColor?: string;
+  value?: string;
+  onPress: () => void;
+};
+
+const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPress }: ManagementCardProps) => {
+  const { colors, radius, spacing } = useTheme();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.managementCard, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border }]}
+    >
+      <View style={[styles.managementIcon, { backgroundColor: colors.primary + "10" }]}>
+        <Ionicons name={icon} size={24} color={colors.primary} />
+      </View>
+      <View style={styles.managementContent}>
+        <Text style={[styles.managementTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.managementSubtitle, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
+      </View>
+      {badge !== undefined && badge > 0 && (
+        <View style={[styles.managementBadge, { backgroundColor: badgeColor || colors.primary }]}>
+          <Text style={styles.managementBadgeText}>{badge}</Text>
+        </View>
+      )}
+      {value && (
+        <Text style={[styles.managementValue, { color: colors.textSecondary }]}>{value}</Text>
+      )}
+      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+    </TouchableOpacity>
   );
 };
 
@@ -252,12 +599,10 @@ const UserDashboardContent = () => {
     );
   }, [requestSignup]);
 
-  // Verification status state
   const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(true);
 
-  // Categories
   const [categories, setCategories] = useState<CategoryItem[]>(
     fallbackCategories.map((cat) => ({
       id: cat.id,
@@ -273,7 +618,6 @@ const UserDashboardContent = () => {
   const [personalizedOffer, setPersonalizedOffer] = useState<PersonalizedOffer | null>(null);
   const [offersLoading, setOffersLoading] = useState(false);
 
-  // Fetch verification status
   const fetchVerificationStatus = useCallback(async () => {
     if (!user?.activeCompany) {
       setVerificationStatus(null);
@@ -282,9 +626,6 @@ const UserDashboardContent = () => {
     }
     try {
       const response = await verificationService.getVerificationStatus(user.activeCompany);
-
-      // Check if there's a pending verification request
-      // If request exists and is pending, show "submitted" status
       if (response.request && response.request.status === "pending") {
         setVerificationStatus("submitted");
       } else {
@@ -299,12 +640,12 @@ const UserDashboardContent = () => {
     }
   }, [user?.activeCompany]);
 
-  // Refresh verification status when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchVerificationStatus();
     }, [fetchVerificationStatus])
   );
+
   const fetchCategories = useCallback(async () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
@@ -345,7 +686,7 @@ const UserDashboardContent = () => {
       try {
         const { offers } = await preferenceService.getMyOffers();
         setPersonalizedOffer(offers?.[0] ?? null);
-      } catch (err) {
+      } catch (err: any) {
         console.warn("Failed to fetch personalized offers", err?.message || err);
         setPersonalizedOffer(null);
       } finally {
@@ -365,54 +706,41 @@ const UserDashboardContent = () => {
 
   const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
 
-  // Verification status config
   const getVerificationConfig = () => {
     switch (verificationStatus) {
       case "approved":
         return {
-          icon: "✓",
+          icon: "checkmark-circle",
           title: "Verified",
           message: companyName ? `${companyName} is verified` : "Your company is verified",
-          bgColor: "#ECFDF5",
-          borderColor: "#10B981",
-          iconBg: "#10B981",
-          textColor: "#065F46",
+          gradient: ["#10B981", "#059669"] as [string, string],
           showAction: false,
         };
       case "submitted":
         return {
-          icon: "⏳",
+          icon: "time",
           title: "Pending Approval",
           message: "Your verification is under review",
-          bgColor: "#FFFBEB",
-          borderColor: "#F59E0B",
-          iconBg: "#F59E0B",
-          textColor: "#92400E",
+          gradient: ["#F59E0B", "#D97706"] as [string, string],
           showAction: true,
           actionLabel: "View Status",
         };
       case "rejected":
         return {
-          icon: "✕",
+          icon: "close-circle",
           title: "Verification Rejected",
           message: "Please resubmit your documents",
-          bgColor: "#FEF2F2",
-          borderColor: "#EF4444",
-          iconBg: "#EF4444",
-          textColor: "#991B1B",
+          gradient: ["#EF4444", "#DC2626"] as [string, string],
           showAction: true,
           actionLabel: "Resubmit",
         };
       case "pending":
       default:
         return {
-          icon: "🔒",
+          icon: "shield",
           title: "Get Verified",
           message: "Unlock premium features and build trust",
-          bgColor: "#EEF2FF",
-          borderColor: "#6366F1",
-          iconBg: "#6366F1",
-          textColor: "#3730A3",
+          gradient: ["#6C63FF", "#5248E6"] as [string, string],
           showAction: true,
           actionLabel: "Start Verification",
         };
@@ -440,7 +768,6 @@ const UserDashboardContent = () => {
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
 
-          {/* <HeroCard /> */}
           <PromoBanner
             offer={
               personalizedOffer
@@ -473,53 +800,30 @@ const UserDashboardContent = () => {
             }
           />
 
-          {/* Verification Status Card - Only show when NOT verified */}
           {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
-            <View
-              style={[
-                styles.verificationCard,
-                {
-                  backgroundColor: verificationConfig.bgColor,
-                  borderColor: verificationConfig.borderColor,
-                  borderRadius: radius.lg,
-                  padding: spacing.md,
-                },
-              ]}
-            >
-              <View style={styles.verificationContent}>
-                <View
-                  style={[
-                    styles.verificationIconContainer,
-                    { backgroundColor: verificationConfig.iconBg },
-                  ]}
-                >
-                  <Text style={styles.verificationIcon}>{verificationConfig.icon}</Text>
+            <TouchableOpacity onPress={handleVerificationPress} activeOpacity={0.9}>
+              <LinearGradient
+                colors={verificationConfig.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.verificationCard, { borderRadius: radius.lg }]}
+              >
+                <View style={styles.verificationIcon}>
+                  <Ionicons name={verificationConfig.icon as any} size={28} color="#fff" />
                 </View>
-                <View style={styles.verificationInfo}>
-                  <Text style={[styles.verificationTitle, { color: verificationConfig.textColor }]}>
-                    {verificationConfig.title}
-                  </Text>
-                  <Text style={[styles.verificationMessage, { color: verificationConfig.textColor }]}>
-                    {verificationConfig.message}
-                  </Text>
+                <View style={styles.verificationContent}>
+                  <Text style={styles.verificationTitle}>{verificationConfig.title}</Text>
+                  <Text style={styles.verificationMessage}>{verificationConfig.message}</Text>
                 </View>
-              </View>
-              {verificationConfig.showAction && verificationConfig.actionLabel && (
-                <TouchableOpacity
-                  onPress={handleVerificationPress}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.verificationActionButton,
-                    { backgroundColor: verificationConfig.borderColor, borderRadius: radius.md },
-                  ]}
-                >
-                  <Text style={styles.verificationActionText}>{verificationConfig.actionLabel}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                {verificationConfig.showAction && (
+                  <View style={styles.verificationArrow}>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
           )}
 
-          {/* Add New Product Button */}
           <TouchableOpacity
             onPress={() => {
               if (isGuest) {
@@ -529,41 +833,24 @@ const UserDashboardContent = () => {
               navigation.navigate("AddProduct");
             }}
             activeOpacity={0.8}
-            style={{
-              backgroundColor: colors.surface,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.lg,
-              borderRadius: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
           >
-            <Text style={{ color: colors.primary, fontSize: 20, fontWeight: "700" }}>+</Text>
-            <Text style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
-              Add New Product
-            </Text>
+            <LinearGradient
+              colors={[colors.surface, colors.surface]}
+              style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+            >
+              <View style={[styles.addProductIcon, { backgroundColor: colors.primary + "15" }]}>
+                <Ionicons name="add" size={24} color={colors.primary} />
+              </View>
+              <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </LinearGradient>
           </TouchableOpacity>
 
           <View style={{ gap: spacing.sm }}>
-            <SectionHeader title="Browse by category" />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (
-              <View
-                style={{
-                  backgroundColor: colors.error + "15",
-                  borderColor: colors.error,
-                  borderWidth: 1,
-                  padding: spacing.sm,
-                  borderRadius: radius.md,
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: colors.error, fontWeight: "700" }}>{categoriesError}</Text>
+              <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", padding: spacing.sm, borderRadius: radius.md }]}>
+                <Text style={{ color: colors.error, flex: 1 }}>{categoriesError}</Text>
                 <TouchableOpacity onPress={fetchCategories}>
                   <Text style={{ color: colors.primary, fontWeight: "700" }}>Retry</Text>
                 </TouchableOpacity>
@@ -572,20 +859,18 @@ const UserDashboardContent = () => {
             {categoriesLoading ? (
               <View style={{ paddingVertical: spacing.lg, alignItems: "center", gap: 8 }}>
                 <ActivityIndicator color={colors.primary} />
-                <Text style={{ color: colors.textMuted, fontWeight: "600" }}>Loading categories...</Text>
+                <Text style={{ color: colors.textMuted }}>Loading categories...</Text>
               </View>
             ) : categories.length === 0 ? (
               <View style={{ paddingVertical: spacing.md, alignItems: "center", gap: 4 }}>
                 <Text style={{ color: colors.text, fontWeight: "700" }}>No categories yet</Text>
-                <Text style={{ color: colors.textMuted, fontWeight: "500" }}>Add products to see categories here</Text>
+                <Text style={{ color: colors.textMuted }}>Add products to see categories here</Text>
               </View>
             ) : (
               <CategoryGrid
                 items={categories}
                 onCategoryPress={(cat) => {
-                  preferenceService
-                    .logEvent({ type: "view_category", category: cat.id })
-                    .catch((err) => console.warn("Failed to log category tap", err?.message || err));
+                  preferenceService.logEvent({ type: "view_category", category: cat.id }).catch(() => {});
                   navigation.navigate("CategoryProducts", { categoryId: cat.id, title: cat.title });
                 }}
               />
@@ -598,152 +883,8 @@ const UserDashboardContent = () => {
 };
 
 // ============================================================
-// ADMIN COMPONENTS
-// ============================================================
-type AdminStatCardProps = {
-  title: string;
-  value: string;
-  subtitle?: string;
-  accentColor?: string;
-  highlighted?: boolean;
-  onPress?: () => void;
-};
-
-const AdminStatCard = ({ title, value, subtitle, accentColor, highlighted, onPress }: AdminStatCardProps) => {
-  const { colors, spacing } = useTheme();
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      style={[
-        styles.adminStatCard,
-        {
-          backgroundColor: highlighted ? accentColor + "15" : colors.surface,
-          borderColor: highlighted ? accentColor : colors.border,
-          borderWidth: highlighted ? 2 : 1,
-          padding: spacing.md,
-          borderRadius: 12,
-        },
-      ]}
-    >
-      <Text style={[styles.adminStatValue, { color: accentColor || colors.primary }]}>{value}</Text>
-      <Text style={[styles.adminStatTitle, { color: colors.textSecondary }]}>{title}</Text>
-      {subtitle && <Text style={[styles.adminStatSubtitle, { color: colors.textMuted }]}>{subtitle}</Text>}
-    </TouchableOpacity>
-  );
-};
-
-type AdminActionItemProps = {
-  label: string;
-  badge?: number;
-  onPress?: () => void;
-};
-
-const AdminActionItem = ({ label, badge, onPress }: AdminActionItemProps) => {
-  const { colors, spacing } = useTheme();
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      style={[styles.actionItem, { backgroundColor: colors.surface, borderColor: colors.border, padding: spacing.md, borderRadius: 8 }]}
-    >
-      <Text style={[styles.actionLabel, { color: colors.text }]}>{label}</Text>
-      <View style={styles.actionRight}>
-        {badge !== undefined && badge > 0 && (
-          <View style={[styles.actionBadge, { backgroundColor: colors.primary + "20", paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 12, marginRight: spacing.sm }]}>
-            <Text style={[styles.actionBadgeText, { color: colors.primary }]}>{badge}</Text>
-          </View>
-        )}
-        <Text style={[styles.actionArrow, { color: colors.textMuted }]}>→</Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-// ============================================================
 // USER DASHBOARD COMPONENTS
 // ============================================================
-// const HeroCard = () => {
-//   const { spacing, radius } = useTheme();
-//
-//   return (
-//     <LinearGradient
-//       colors={["#00B2FF", "#FF6B6B"]}
-//       start={{ x: 0, y: 0 }}
-//       end={{ x: 1, y: 1 }}
-//       style={[styles.heroCard, { borderRadius: radius.lg, padding: spacing.lg }]}
-//     >
-//       <View style={styles.heroHeader}>
-//         <View style={{ flex: 1 }}>
-//           {/* <Text style={[styles.heroTitle, { color: "#FFFFFF" }]}>Production pulse</Text> */}
-//           <Text style={[styles.heroSubtitle, { color: "rgba(255,255,255,0.85)" }]}>
-//             Keep dispatches on time and floor running smooth.
-//           </Text>
-//         </View>
-//         <View style={[styles.heroBadge, { borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.2)" }]}>
-//           <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>On track</Text>
-//         </View>
-//       </View>
-//
-//       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-//           <Text style={styles.statLabelWhite}>Next dispatch</Text>
-//           <Text style={styles.statValueWhite}>12:30 <Text style={styles.statValueSmall}>PM</Text></Text>
-//         </View>
-//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-//           <Text style={styles.statLabelWhite}>Pending QC</Text>
-//           <Text style={styles.statValueWhite}>4 lots</Text>
-//         </View>
-//         <View style={[styles.statPillGlass, { borderRadius: radius.md }]}>
-//           <Text style={styles.statLabelWhite}>Inbound trucks</Text>
-//           <Text style={styles.statValueWhite}>3</Text>
-//         </View>
-//       </View>
-//
-//       <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.md }}>
-//         <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
-//           <LinearGradient
-//             colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
-//             start={{ x: 0, y: 0 }}
-//             end={{ x: 1, y: 1 }}
-//             style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
-//           >
-//             <LinearGradient
-//               colors={["rgba(0,178,255,0.25)", "rgba(255,107,107,0.25)"]}
-//               start={{ x: 0, y: 0 }}
-//               end={{ x: 1, y: 1 }}
-//               style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
-//             >
-//               <Text style={styles.elegantButtonText}>Create order</Text>
-//             </LinearGradient>
-//           </LinearGradient>
-//         </TouchableOpacity>
-//         <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}>
-//           <LinearGradient
-//             colors={["rgba(255,255,255,0.4)", "rgba(255,255,255,0.1)"]}
-//             start={{ x: 0, y: 0 }}
-//             end={{ x: 1, y: 1 }}
-//             style={[styles.elegantButtonOuter, { borderRadius: radius.lg }]}
-//           >
-//             <LinearGradient
-//               colors={["rgba(255,107,107,0.25)", "rgba(0,178,255,0.25)"]}
-//               start={{ x: 0, y: 0 }}
-//               end={{ x: 1, y: 1 }}
-//               style={[styles.elegantButtonInner, { borderRadius: radius.lg - 1.5 }]}
-//             >
-//               <Text style={styles.elegantButtonText}>Plan capacity</Text>
-//             </LinearGradient>
-//           </LinearGradient>
-//         </TouchableOpacity>
-//       </View>
-//     </LinearGradient>
-//   );
-// };
-
 const PromoBanner = ({ offer, onPress, loading }: { offer: PromoOffer; onPress?: () => void; loading?: boolean }) => {
   const { spacing, radius } = useTheme();
 
@@ -782,12 +923,7 @@ const PromoBanner = ({ offer, onPress, loading }: { offer: PromoOffer; onPress?:
   );
 };
 
-type CategoryGridProps = {
-  items: CategoryItem[];
-  onCategoryPress?: (category: CategoryItem) => void;
-};
-
-const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
+const CategoryGrid = ({ items, onCategoryPress }: { items: CategoryItem[]; onCategoryPress?: (category: CategoryItem) => void }) => {
   const { colors, spacing } = useTheme();
 
   const rows = items.reduce<CategoryItem[][]>((acc, item, index) => {
@@ -801,12 +937,7 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
       {rows.map((row, rowIndex) => (
         <View key={`cat-row-${rowIndex}`} style={styles.categoryRow}>
           {row.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.categoryItem}
-              activeOpacity={0.7}
-              onPress={() => onCategoryPress?.(item)}
-            >
+            <TouchableOpacity key={item.id} style={styles.categoryItem} activeOpacity={0.7} onPress={() => onCategoryPress?.(item)}>
               <View style={styles.categoryCircleOuter}>
                 <View style={[styles.categoryCircleSolid, { backgroundColor: item.bgColor }]}>
                   <Text style={styles.categoryIcon}>{item.icon}</Text>
@@ -817,40 +948,12 @@ const CategoryGrid = ({ items, onCategoryPress }: CategoryGridProps) => {
                   </View>
                 )}
               </View>
-              <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>
-                {item.title}
-              </Text>
+              <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
             </TouchableOpacity>
           ))}
-          {row.length < 3 &&
-            Array(3 - row.length).fill(null).map((_, i) => <View key={`empty-${i}`} style={styles.categoryItem} />)}
+          {row.length < 3 && Array(3 - row.length).fill(null).map((_, i) => <View key={`empty-${i}`} style={styles.categoryItem} />)}
         </View>
       ))}
-    </View>
-  );
-};
-
-const SectionHeader = ({ title, actionLabel }: { title: string; actionLabel?: string }) => {
-  const { colors, radius } = useTheme();
-
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-      {actionLabel && (
-        <TouchableOpacity style={[styles.sectionAction, { borderRadius: radius.pill, borderColor: colors.primary }]}>
-          <Text style={[styles.sectionActionText, { color: colors.primary }]}>{actionLabel}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
-
-const Badge = ({ label, color }: { label: string; color: string }) => {
-  const { spacing, radius } = useTheme();
-
-  return (
-    <View style={[styles.badge, { backgroundColor: color + "20", borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderWidth: 1, borderColor: color }]}>
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
     </View>
   );
 };
@@ -859,65 +962,105 @@ const Badge = ({ label, color }: { label: string; color: string }) => {
 // STYLES
 // ============================================================
 const styles = StyleSheet.create({
-  // Common
+  container: { flex: 1 },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  // Background
+  bgOrbContainer: { position: "absolute", width: "100%", height: "100%", overflow: "hidden" },
+  bgOrb: { position: "absolute", borderRadius: 999 },
+  bgOrb1: { width: 300, height: 300, top: -100, right: -100 },
+  bgOrb2: { width: 250, height: 250, bottom: 100, left: -80 },
+
+  // Loader
+  loaderContainer: { alignItems: "center", gap: 16 },
+  loaderGradient: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
+  loadingText: { fontSize: 16, fontWeight: "500" },
+
+  // Header
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   greeting: { fontSize: 16, fontWeight: "600" },
   userName: { fontSize: 32, fontWeight: "800", letterSpacing: -0.5 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
-  loadingText: { marginTop: 12, fontSize: 16 },
-  errorBanner: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  errorText: { fontSize: 14, flex: 1 },
-  retryText: { fontSize: 14, fontWeight: "600" },
-  sectionTitle: { fontSize: 16, fontWeight: "800" },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionAction: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  sectionActionText: { fontSize: 12, fontWeight: "700" },
-  badge: { alignSelf: "flex-start" },
-  badgeText: { fontSize: 12, fontWeight: "700" },
+  profileButton: { width: 50, height: 50, borderRadius: 25, padding: 3 },
+  profileGradient: { flex: 1, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  profileInitial: { color: "#fff", fontSize: 20, fontWeight: "700" },
 
-  // Verification Card
-  verificationCard: { borderWidth: 1.5 },
-  verificationContent: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  verificationIconContainer: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  verificationIcon: { fontSize: 20, color: "#FFFFFF", fontWeight: "700" },
-  verificationInfo: { flex: 1, marginLeft: 12 },
-  verificationTitle: { fontSize: 16, fontWeight: "700" },
-  verificationMessage: { fontSize: 13, fontWeight: "500", marginTop: 2, opacity: 0.8 },
-  verificationArrow: { paddingLeft: 8 },
-  verificationActionButton: { paddingVertical: 10, alignItems: "center" },
-  verificationActionText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-
-  // Admin Stats
-  statsGrid: { flexDirection: "row", flexWrap: "wrap" },
-  adminStatCard: { width: "48%" },
-  adminStatValue: { fontSize: 32, fontWeight: "800" },
-  adminStatTitle: { fontSize: 14, marginTop: 4 },
-  adminStatSubtitle: { fontSize: 12, marginTop: 2 },
-  summaryCard: { borderWidth: 1 },
-  summaryRow: { flexDirection: "row", justifyContent: "space-around" },
-  summaryItem: { alignItems: "center" },
-  summaryValue: { fontSize: 28, fontWeight: "700" },
-  summaryLabel: { fontSize: 12, marginTop: 4 },
-  actionItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderWidth: 1 },
-  actionLabel: { fontSize: 16, fontWeight: "500" },
-  actionRight: { flexDirection: "row", alignItems: "center" },
-  actionBadge: {},
-  actionBadgeText: { fontSize: 12, fontWeight: "600" },
-  actionArrow: { fontSize: 18 },
+  // Error
+  errorBanner: { flexDirection: "row", alignItems: "center", gap: 10 },
+  errorText: { flex: 1, fontSize: 14 },
+  retryButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  retryText: { color: "#fff", fontSize: 12, fontWeight: "600" },
 
   // Hero Card
-  heroCard: { overflow: "hidden" },
-  heroHeader: { flexDirection: "row", alignItems: "center" },
-  heroTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
-  heroSubtitle: { fontSize: 14, fontWeight: "600" },
-  heroBadge: { paddingHorizontal: 12, paddingVertical: 6 },
-  heroBadgeText: { fontSize: 12, fontWeight: "700" },
-  statPillGlass: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", paddingHorizontal: 12, paddingVertical: 10 },
-  statLabelWhite: { fontSize: 11, fontWeight: "500", color: "rgba(255,255,255,0.8)" },
-  statValueWhite: { fontSize: 18, fontWeight: "700", color: "#FFFFFF", marginTop: 2 },
-  statValueSmall: { fontSize: 12, fontWeight: "500" },
-  elegantButtonOuter: { padding: 1.5 },
-  elegantButtonInner: { paddingVertical: 14, alignItems: "center" },
-  elegantButtonText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.15)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  heroCard: { padding: 24, overflow: "hidden" },
+  heroDecor1: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.1)", top: -80, right: -50 },
+  heroDecor2: { position: "absolute", width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.08)", bottom: -40, left: 20 },
+  heroDecor3: { position: "absolute", width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.05)", top: 60, left: -20 },
+  heroContent: { position: "relative", zIndex: 1 },
+  heroTitle: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
+  heroSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: 14, marginTop: 4 },
+  heroStatsRow: { flexDirection: "row", marginTop: 24, gap: 12 },
+  heroStatBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 16, padding: 16, alignItems: "center" },
+  heroStatIconBg: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  heroStatIconBgWarning: { backgroundColor: "#FEF3C7" },
+  heroStatValue: { color: "#fff", fontSize: 28, fontWeight: "800" },
+  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600", marginTop: 4 },
+
+  // Alert Card
+  alertCard: { flexDirection: "row", alignItems: "center", padding: 16, gap: 12 },
+  alertPulse: { width: 12, height: 12, borderRadius: 6, backgroundColor: "rgba(245, 158, 11, 0.3)", alignItems: "center", justifyContent: "center" },
+  alertDot: { width: 8, height: 8, borderRadius: 4 },
+  alertContent: { flex: 1 },
+  alertTitle: { color: "#92400E", fontSize: 15, fontWeight: "700" },
+  alertSubtitle: { color: "#A16207", fontSize: 13, marginTop: 2 },
+  alertArrow: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(146, 64, 14, 0.1)", alignItems: "center", justifyContent: "center" },
+
+  // Section
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: "700" },
+  sectionBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 4 },
+  sectionBadgeText: { fontSize: 12, fontWeight: "700" },
+
+  // Stats Grid
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  statCard: { width: (SCREEN_WIDTH - 52) / 2 },
+  statCardInner: { padding: 16, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  statCardIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  statCardContent: { flex: 1 },
+  statCardValueRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  statCardValue: { fontSize: 24, fontWeight: "800" },
+  statCardLabel: { fontSize: 12, marginTop: 2 },
+  trendBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+
+  // Actions Grid
+  actionsScrollContent: { paddingHorizontal: 20, gap: 12 },
+  actionCard: { width: 85, padding: 14, borderWidth: 1, alignItems: "center", gap: 8 },
+  actionIconBg: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  actionLabel: { fontSize: 13, fontWeight: "600" },
+  actionBadge: { position: "absolute", top: 8, right: 8, minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  actionBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+
+  // Management Card
+  managementCard: { flexDirection: "row", alignItems: "center", padding: 16, borderWidth: 1, gap: 14 },
+  managementIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  managementContent: { flex: 1 },
+  managementTitle: { fontSize: 16, fontWeight: "600" },
+  managementSubtitle: { fontSize: 13, marginTop: 2 },
+  managementBadge: { minWidth: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  managementBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  managementValue: { fontSize: 13, fontWeight: "500" },
+
+  // Verification Card (User)
+  verificationCard: { flexDirection: "row", alignItems: "center", padding: 20, gap: 16 },
+  verificationIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  verificationContent: { flex: 1 },
+  verificationTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  verificationMessage: { color: "rgba(255,255,255,0.85)", fontSize: 14, marginTop: 4 },
+  verificationArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+
+  // Add Product Button
+  addProductButton: { flexDirection: "row", alignItems: "center", padding: 16, borderWidth: 1, gap: 14 },
+  addProductIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  addProductText: { flex: 1, fontSize: 16, fontWeight: "600" },
 
   // Promo Banner
   promoCard: { position: "relative", overflow: "hidden" },
