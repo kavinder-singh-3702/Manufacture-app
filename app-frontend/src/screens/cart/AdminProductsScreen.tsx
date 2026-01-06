@@ -19,11 +19,28 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
-import { AppRole } from "../../constants/roles";
 import { productService, Product, ProductCategory } from "../../services/product.service";
 import { useCart } from "../../hooks/useCart";
 import { RootStackParamList } from "../../navigation/types";
 import { preferenceService } from "../../services/preference.service";
+
+// Premium color palette - subtle and elegant
+const COLORS = {
+  background: "#0a0a0f",
+  surface: "rgba(22, 22, 30, 0.9)",
+  surfaceLight: "rgba(32, 32, 42, 0.8)",
+  border: "rgba(255, 255, 255, 0.08)",
+  borderLight: "rgba(255, 255, 255, 0.12)",
+  text: "#ffffff",
+  textMuted: "rgba(255, 255, 255, 0.6)",
+  textSubtle: "rgba(255, 255, 255, 0.4)",
+  accent: "#7c8aff",
+  accentMuted: "rgba(124, 138, 255, 0.15)",
+  success: "#5ed4a5",
+  successMuted: "rgba(94, 212, 165, 0.15)",
+  warning: "#f0b429",
+  warningMuted: "rgba(240, 180, 41, 0.15)",
+};
 
 type ProductCardProps = {
   product: Product;
@@ -33,15 +50,12 @@ type ProductCardProps = {
 };
 
 const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: ProductCardProps) => {
-  const { colors, radius } = useTheme();
   const price = product.price?.amount || 0;
   const currency = product.price?.currency === "INR" ? "₹" : product.price?.currency || "₹";
   const primaryImage = product.images?.[0]?.url;
   const companyName = product.company?.displayName || "Admin";
   const compliance = product.company?.complianceStatus;
   const verified = compliance === "approved";
-  const badgeColor = verified ? "#0ea5e9" : "#f97316";
-  const badgeLabel = verified ? "Verified" : "Unverified";
   const rating =
     typeof (product.attributes as any)?.rating === "number"
       ? (product.attributes as any).rating
@@ -54,77 +68,92 @@ const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: Product
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => onOpenDetails(product._id)}
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderRadius: radius.lg,
-        },
-      ]}
+      style={styles.card}
     >
-      <View style={[styles.cardImageWrap, { borderColor: colors.border, borderRadius: radius.lg }]}>
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor: badgeColor + "20",
-              borderColor: badgeColor,
-            },
-          ]}
-        >
-          <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeLabel}</Text>
-        </View>
-        <View style={[styles.tagPill, { borderColor: colors.border }]}>
-          <Text style={[styles.tagText, { color: colors.textMuted }]} numberOfLines={1}>
-            {bestFor || "ADMIN PICK"}
+      {/* Card gradient overlay */}
+      <LinearGradient
+        colors={["rgba(124, 138, 255, 0.04)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Image container */}
+      <View style={styles.cardImageWrap}>
+        {/* Verified badge */}
+        <View style={[styles.badge, verified ? styles.badgeVerified : styles.badgeUnverified]}>
+          <Text style={[styles.badgeText, { color: verified ? COLORS.success : COLORS.warning }]}>
+            {verified ? "✓ Verified" : "Unverified"}
           </Text>
         </View>
+
+        {/* Category tag */}
+        <View style={styles.tagPill}>
+          <Text style={styles.tagText} numberOfLines={1}>
+            {bestFor || "PRODUCT"}
+          </Text>
+        </View>
+
         {primaryImage ? (
-          <Image source={{ uri: primaryImage }} style={[styles.cardImage, { borderRadius: radius.lg }]} />
+          <Image source={{ uri: primaryImage }} style={styles.cardImage} />
         ) : (
-          <View style={[styles.cardPlaceholder, { borderRadius: radius.lg, backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={{ fontSize: 18 }}>🛍️</Text>
+          <View style={styles.cardPlaceholder}>
+            <Text style={{ fontSize: 28 }}>📦</Text>
           </View>
         )}
       </View>
 
-      <View style={{ gap: 6 }}>
-        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+      {/* Product info */}
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+
+        <Text style={styles.cardSubtitle} numberOfLines={1}>
           {companyName}
         </Text>
+
+        {/* Rating row */}
         <View style={styles.ratingRow}>
           {Array.from({ length: 5 }).map((_, idx) => (
-            <Text key={idx} style={[styles.star, { color: rating >= idx + 1 ? "#facc15" : colors.textMuted }]}>
+            <Text key={idx} style={[styles.star, { opacity: rating >= idx + 1 ? 1 : 0.3 }]}>
               ★
             </Text>
           ))}
+          <Text style={styles.ratingText}>({rating.toFixed(1)})</Text>
         </View>
-        <Text style={[styles.unitText, { color: colors.textMuted }]} numberOfLines={1}>
-          ({product.unit || product.price?.unit || "units"})
-        </Text>
-        <Text style={[styles.priceText, { color: colors.text }]} numberOfLines={1}>
-          {currency}
-          {price.toFixed(2)}
-        </Text>
+
+        {/* Price */}
+        <View style={styles.priceRow}>
+          <Text style={styles.priceText}>
+            {currency}{price.toFixed(2)}
+          </Text>
+          <Text style={styles.unitText}>
+            /{product.unit || product.price?.unit || "unit"}
+          </Text>
+        </View>
+
+        {/* Add to cart button */}
         <TouchableOpacity
           activeOpacity={0.9}
-          style={[styles.addButton, { borderRadius: radius.pill, borderColor: colors.border }]}
+          style={styles.addButton}
           onPress={() => onAddToCart(product)}
         >
           <LinearGradient
-            colors={["#6366F1", "#7C3AED"]}
+            colors={inCartQty ? [COLORS.success, "#4bc08f"] : [COLORS.accent, "#6572e0"]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.addButtonGradient, { borderRadius: radius.pill }]}
+            end={{ x: 1, y: 0 }}
+            style={styles.addButtonGradient}
           >
-            <Text style={styles.addButtonLabel}>{inCartQty ? `In cart (${inCartQty})` : "Add to cart"}</Text>
+            <Text style={styles.addButtonLabel}>
+              {inCartQty ? `In cart (${inCartQty})` : "Add to cart"}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Bottom accent line */}
+      <View style={styles.cardAccentLine} />
     </TouchableOpacity>
   );
 };
@@ -197,7 +226,7 @@ export const AdminProductsScreen = () => {
         setRefreshing(false);
       }
     },
-    [activeCategory]
+    [activeCategory, sortMode, minPrice, maxPrice]
   );
 
   useEffect(() => {
@@ -206,7 +235,7 @@ export const AdminProductsScreen = () => {
 
   useEffect(() => {
     loadProducts(0, false);
-  }, [activeCategory, loadProducts, maxPrice, minPrice, sortMode]);
+  }, [activeCategory, loadProducts]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -243,7 +272,11 @@ export const AdminProductsScreen = () => {
   const renderCategoryChips = useCallback(() => {
     if (!categories.length) return null;
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsContainer}
+      >
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
           return (
@@ -251,21 +284,16 @@ export const AdminProductsScreen = () => {
               key={cat.id}
               onPress={() => setActiveCategory(cat.id)}
               activeOpacity={0.85}
-              style={[
-                styles.chip,
-                {
-                  borderRadius: radius.md,
-                  borderColor: isActive ? colors.primary : colors.border,
-                  backgroundColor: isActive ? colors.primary + "25" : colors.surface,
-                },
-              ]}
+              style={[styles.chip, isActive && styles.chipActive]}
             >
-              <Text style={{ color: isActive ? colors.primary : colors.text }} numberOfLines={1}>
+              <Text style={[styles.chipText, isActive && styles.chipTextActive]} numberOfLines={1}>
                 {cat.title}
               </Text>
               {typeof cat.count === "number" && (
-                <View style={[styles.chipCount, { backgroundColor: isActive ? colors.primary : colors.backgroundSecondary }]}>
-                  <Text style={{ color: isActive ? "#fff" : colors.textMuted, fontWeight: "700" }}>{cat.count}</Text>
+                <View style={[styles.chipCount, isActive && styles.chipCountActive]}>
+                  <Text style={[styles.chipCountText, isActive && styles.chipCountTextActive]}>
+                    {cat.count}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -273,31 +301,35 @@ export const AdminProductsScreen = () => {
         })}
       </ScrollView>
     );
-  }, [categories, activeCategory, colors.backgroundSecondary, colors.border, colors.primary, colors.surface, colors.text, colors.textMuted, radius.md, spacing.md, spacing.sm]);
+  }, [categories, activeCategory]);
 
   const renderListHeader = useCallback(() => {
     return (
       <>
-        <LinearGradient
-          colors={["rgba(99,102,241,0.14)", "rgba(14,165,233,0.06)", "rgba(15,23,42,0.6)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.panel, { borderRadius: radius.xl, borderColor: colors.border }]}
-        >
+        {/* Categories panel */}
+        <View style={styles.categoriesPanel}>
+          <LinearGradient
+            colors={["rgba(124, 138, 255, 0.06)", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {renderCategoryChips()}
-        </LinearGradient>
+        </View>
 
-        <View style={[styles.filterRow, { paddingHorizontal: spacing.sm, paddingBottom: spacing.sm, paddingTop: spacing.sm }]}>
+        {/* Filter row */}
+        <View style={styles.filterRow}>
           <TouchableOpacity
-            style={[styles.filterButton, { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.pill }]}
+            style={styles.filterButton}
             activeOpacity={0.8}
             onPress={() => setFilterModalVisible(true)}
           >
-            <Text style={[styles.filterButtonIcon, { color: colors.text }]}>☰</Text>
-            <Text style={[styles.filterButtonText, { color: colors.text }]}>Filters</Text>
+            <Text style={styles.filterIcon}>☰</Text>
+            <Text style={styles.filterText}>Filters</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.resetButton, { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.pill }]}
+            style={styles.resetButton}
             activeOpacity={0.8}
             onPress={() => {
               setActiveCategory("all");
@@ -307,106 +339,153 @@ export const AdminProductsScreen = () => {
               loadProducts(0, false);
             }}
           >
-            <Text style={{ color: colors.text, fontWeight: "700" }}>Reset</Text>
+            <Text style={styles.resetText}>Reset</Text>
           </TouchableOpacity>
+
+          <View style={{ flex: 1 }} />
+
+          <Text style={styles.totalText}>{totalLabel}</Text>
         </View>
 
         {error && (
-          <View style={[styles.errorBox, { backgroundColor: colors.error + "15", borderColor: colors.error, marginHorizontal: spacing.sm }]}>
-            <Text style={{ color: colors.error, fontWeight: "700" }}>{error}</Text>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity onPress={() => loadProducts(0, false)}>
-              <Text style={{ color: colors.text }}>Retry</Text>
+              <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
         )}
       </>
     );
-  }, [colors.border, colors.error, colors.surface, colors.text, error, loadProducts, radius.pill, radius.xl, renderCategoryChips, setActiveCategory, spacing.sm]);
+  }, [renderCategoryChips, error, loadProducts, totalLabel]);
 
   const renderItem = ({ item }: { item: Product }) => {
     const inCartQty = isInCart(item._id) ? getCartItem(item._id)?.quantity : undefined;
     return (
-      <View style={{ flex: 1, paddingHorizontal: spacing.xs }}>
-        <ProductCard product={item} onAddToCart={handleAddToCart} onOpenDetails={handleOpenDetails} inCartQty={inCartQty} />
+      <View style={styles.cardContainer}>
+        <ProductCard
+          product={item}
+          onAddToCart={handleAddToCart}
+          onOpenDetails={handleOpenDetails}
+          inCartQty={inCartQty}
+        />
       </View>
     );
   };
 
   if (loading && !refreshing && products.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <LinearGradient colors={["rgba(34,197,94,0.08)", "transparent"]} style={StyleSheet.absoluteFill} />
+      <SafeAreaView style={styles.container}>
+        {/* Background orbs */}
+        <View style={styles.bgOrbContainer}>
+          <LinearGradient
+            colors={[COLORS.accent, "transparent"]}
+            style={[styles.bgOrb, styles.bgOrb1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+          <LinearGradient
+            colors={[COLORS.success, "transparent"]}
+            style={[styles.bgOrb, styles.bgOrb2]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        </View>
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.textMuted, marginTop: spacing.sm, fontWeight: "600" }}>Loading admin products...</Text>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+          <Text style={styles.loaderText}>Loading products...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <LinearGradient colors={["rgba(99,102,241,0.08)", "rgba(14,165,233,0.06)", "transparent"]} style={StyleSheet.absoluteFill} />
-      <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}>
-        <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Main", { screen: "dashboard" as any }))}>
-          <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Admin catalog</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{totalLabel}</Text>
-        </View>
-        <View style={{ width: 90 }} />
+    <SafeAreaView style={styles.container}>
+      {/* Background orbs */}
+      <View style={styles.bgOrbContainer}>
+        <LinearGradient
+          colors={[COLORS.accent, "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <LinearGradient
+          colors={[COLORS.success, "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
       </View>
 
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Catalog</Text>
+          <Text style={styles.headerSubtitle}>Discover premium products</Text>
+        </View>
+      </View>
+
+      {/* Products list */}
       <FlatList
         data={products}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         numColumns={2}
         ListHeaderComponent={renderListHeader}
-        columnWrapperStyle={{ gap: spacing.md, paddingHorizontal: spacing.md }}
-        contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xxl + spacing.md, paddingTop: spacing.md }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
+        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.accent}
+          />
+        }
         onEndReachedThreshold={0.4}
         onEndReached={handleLoadMore}
         ListFooterComponent={
           loadingMore ? (
-            <View style={{ paddingVertical: spacing.md }}>
-              <ActivityIndicator color={colors.primary} />
+            <View style={styles.footerLoader}>
+              <ActivityIndicator color={COLORS.accent} />
             </View>
           ) : null
         }
         ListEmptyComponent={
           !loading ? (
-            <View style={[styles.emptyState, { padding: spacing.lg }]}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No admin products yet</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Products added by admins will appear here.
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <LinearGradient
+                  colors={[COLORS.accentMuted, "transparent"]}
+                  style={styles.emptyIconBg}
+                >
+                  <Text style={styles.emptyIcon}>📦</Text>
+                </LinearGradient>
+              </View>
+              <Text style={styles.emptyTitle}>No products found</Text>
+              <Text style={styles.emptySubtitle}>
+                Try adjusting your filters or check back later
               </Text>
             </View>
           ) : null
         }
       />
 
-      {/* Filters modal (mirrors CategoryProductsScreen) */}
+      {/* Filters Modal */}
       <Modal
         visible={filterModalVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFilterModalVisible(false)}>
-          <Pressable
-            style={[
-              styles.modalCard,
-              { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border },
-            ]}
-            onPress={() => {}}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Filters</Text>
-            <Text style={[styles.modalSection, { color: colors.textMuted }]}>Sort by</Text>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+
+            <Text style={styles.modalTitle}>Filters</Text>
+
+            <Text style={styles.modalSection}>Sort by</Text>
             {[
-              { key: "none", label: "All" },
+              { key: "none", label: "Default" },
               { key: "priceAsc", label: "Price: Low to High" },
               { key: "priceDesc", label: "Price: High to Low" },
               { key: "ratingDesc", label: "Rating: High to Low" },
@@ -415,81 +494,64 @@ export const AdminProductsScreen = () => {
               return (
                 <TouchableOpacity
                   key={option.key}
-                  style={[
-                    styles.optionRow,
-                    {
-                      borderColor: selected ? colors.primary : colors.border,
-                      backgroundColor: selected ? colors.primary + "10" : colors.background,
-                    },
-                  ]}
+                  style={[styles.optionRow, selected && styles.optionRowSelected]}
                   onPress={() => setSortMode(option.key as typeof sortMode)}
                 >
-                  <Text style={[styles.optionText, { color: colors.text }]}>{option.label}</Text>
-                  {selected && <Text style={{ color: colors.primary }}>✓</Text>}
+                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                    {option.label}
+                  </Text>
+                  {selected && <Text style={styles.optionCheck}>✓</Text>}
                 </TouchableOpacity>
               );
             })}
 
-            <Text style={[styles.modalSection, { color: colors.textMuted, marginTop: spacing.md }]}>Price range</Text>
+            <Text style={[styles.modalSection, { marginTop: 20 }]}>Price range</Text>
             <View style={styles.priceRowInputs}>
               <TextInput
                 placeholder="Min"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={COLORS.textSubtle}
                 keyboardType="numeric"
                 value={minPrice}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  setMinPrice(cleaned);
-                }}
-                style={[
-                  styles.priceInput,
-                  { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
-                ]}
+                onChangeText={(text) => setMinPrice(text.replace(/[^0-9.]/g, ""))}
+                style={styles.priceInput}
               />
-              <Text style={{ color: colors.textMuted }}>to</Text>
+              <Text style={styles.priceTo}>to</Text>
               <TextInput
                 placeholder="Max"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={COLORS.textSubtle}
                 keyboardType="numeric"
                 value={maxPrice}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  setMaxPrice(cleaned);
-                }}
-                style={[
-                  styles.priceInput,
-                  { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
-                ]}
+                onChangeText={(text) => setMaxPrice(text.replace(/[^0-9.]/g, ""))}
+                style={styles.priceInput}
               />
             </View>
 
-            <View style={[styles.modalActions, { flexWrap: "wrap" }]}>
+            <View style={styles.modalActions}>
               <TouchableOpacity
                 onPress={() => {
                   setSortMode("none");
                   setMinPrice("");
                   setMaxPrice("");
-                  setFilterModalVisible(false);
-                  loadProducts(0, false);
                 }}
-                style={[
-                  styles.modalButtonSecondary,
-                  { borderColor: colors.border, borderRadius: radius.md, minWidth: "48%" },
-                ]}
+                style={styles.modalButtonSecondary}
               >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>Clear</Text>
+                <Text style={styles.modalButtonSecondaryText}>Clear</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setFilterModalVisible(false);
                   loadProducts(0, false);
                 }}
-                style={[
-                  styles.modalButtonPrimary,
-                  { borderRadius: radius.md, backgroundColor: colors.primary, minWidth: "48%" },
-                ]}
+                style={styles.modalButtonPrimary}
               >
-                <Text style={[styles.modalButtonText, { color: "#fff" }]}>Apply</Text>
+                <LinearGradient
+                  colors={[COLORS.accent, "#6572e0"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalButtonPrimaryGradient}
+                >
+                  <Text style={styles.modalButtonPrimaryText}>Apply</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -500,67 +562,279 @@ export const AdminProductsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loader: { flex: 1, alignItems: "center", justifyContent: "center" },
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  backButton: { fontSize: 16, fontWeight: "700" },
-  headerTitle: { fontSize: 20, fontWeight: "800" },
-  headerSubtitle: { fontSize: 13, fontWeight: "600" },
-  cartPill: {
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  // Background orbs
+  bgOrbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  bgOrb: {
+    position: "absolute",
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  bgOrb1: {
+    width: 280,
+    height: 280,
+    top: -80,
+    right: -100,
+  },
+  bgOrb2: {
+    width: 200,
+    height: 200,
+    bottom: 200,
+    left: -80,
+  },
+
+  // Header
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  cartButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  cartButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 10,
+    gap: 6,
+  },
+  cartIcon: {
+    fontSize: 16,
+  },
+  cartCount: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  // Loader
+  loader: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loaderText: {
+    color: COLORS.textMuted,
+    marginTop: 12,
+    fontWeight: "600",
+  },
+
+  // Categories
+  categoriesPanel: {
+    borderRadius: 16,
     borderWidth: 1,
+    borderColor: COLORS.border,
+    marginHorizontal: 16,
+    marginTop: 12,
+    overflow: "hidden",
+  },
+  chipsContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 8,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    gap: 8,
-    marginHorizontal: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
-    minWidth: 120,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    marginRight: 8,
+    gap: 8,
+  },
+  chipActive: {
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentMuted,
+  },
+  chipText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  chipTextActive: {
+    color: COLORS.accent,
   },
   chipCount: {
+    backgroundColor: COLORS.surfaceLight,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
-  filterRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 4 },
-  filterButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 8, borderWidth: 1, borderRadius: 18 },
-  resetButton: { paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderRadius: 18 },
-  filterButtonIcon: { fontSize: 16, fontWeight: "800" },
-  filterButtonText: { fontSize: 14, fontWeight: "700" },
-  panel: { borderWidth: 1, paddingVertical: 4 },
-  card: {
+  chipCountActive: {
+    backgroundColor: COLORS.accent,
+  },
+  chipCountText: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  chipCountTextActive: {
+    color: "#fff",
+  },
+
+  // Filter row
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 16,
-    gap: 8,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    gap: 6,
+  },
+  filterIcon: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  resetButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  resetText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textMuted,
+  },
+  totalText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textSubtle,
+  },
+
+  // Error box
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 123, 123, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 123, 123, 0.2)",
+  },
+  errorText: {
+    color: "#ff7b7b",
+    fontWeight: "600",
+  },
+  retryText: {
+    color: COLORS.accent,
+    fontWeight: "700",
+  },
+
+  // List
+  listContent: {
+    paddingBottom: 100,
+  },
+  columnWrapper: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  cardContainer: {
     flex: 1,
-    minWidth: 170,
-    maxWidth: 210,
-    alignSelf: "stretch",
-    borderRadius: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    backgroundColor: "rgba(17,24,39,0.85)",
+    padding: 4,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+  },
+
+  // Product Card
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: "hidden",
   },
   cardImageWrap: {
-    borderWidth: 1,
     height: 140,
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden",
-    padding: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.02)",
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  badgeVerified: {
+    backgroundColor: COLORS.successMuted,
+  },
+  badgeUnverified: {
+    backgroundColor: COLORS.warningMuted,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  tagPill: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    zIndex: 1,
+  },
+  tagText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: COLORS.textSubtle,
+    letterSpacing: 0.5,
   },
   cardImage: {
     width: "100%",
@@ -569,74 +843,223 @@ const styles = StyleSheet.create({
   },
   cardPlaceholder: {
     flex: 1,
-    width: "100%",
-    height: "100%",
-    alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
   },
-  badge: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
+  cardInfo: {
+    padding: 12,
+    gap: 6,
   },
-  badgeText: { fontSize: 11, fontWeight: "700" },
-  tagPill: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.text,
+    lineHeight: 18,
   },
-  tagText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.4 },
-  cardTitle: { fontSize: 16, fontWeight: "800" },
-  cardSubtitle: { fontSize: 13, fontWeight: "600" },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  star: { fontSize: 14 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  priceText: { fontSize: 17, fontWeight: "800" },
-  unitText: { fontSize: 12, fontWeight: "600" },
+  cardSubtitle: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: COLORS.textMuted,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 2,
+  },
+  star: {
+    fontSize: 12,
+    color: "#ffd700",
+  },
+  ratingText: {
+    fontSize: 11,
+    color: COLORS.textSubtle,
+    marginLeft: 4,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 4,
+  },
+  priceText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  unitText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: COLORS.textSubtle,
+    marginLeft: 2,
+  },
   addButton: {
-    borderWidth: 1,
+    marginTop: 8,
+    borderRadius: 10,
     overflow: "hidden",
-    marginTop: 10,
   },
   addButtonGradient: {
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  addButtonLabel: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  cardAccentLine: {
+    height: 2,
+    backgroundColor: COLORS.accent,
+    opacity: 0.3,
+  },
+
+  // Empty state
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyIconContainer: {
+    marginBottom: 20,
+  },
+  emptyIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    width: "100%",
   },
-  addButtonLabel: { color: "#fff", fontWeight: "800" },
-  emptyState: { alignItems: "center", gap: 6 },
-  emptyTitle: { fontSize: 17, fontWeight: "800" },
-  emptySubtitle: { fontSize: 14, fontWeight: "600", textAlign: "center" },
-  errorBox: {
+  emptyIcon: {
+    fontSize: 36,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.textMuted,
+    textAlign: "center",
+    marginTop: 8,
+  },
+
+  // Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 40,
     borderWidth: 1,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
+    borderBottomWidth: 0,
+    borderColor: COLORS.border,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.borderLight,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginBottom: 16,
+  },
+  modalSection: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.textSubtle,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  optionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceLight,
+    marginBottom: 8,
   },
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
-  modalCard: { margin: 16, padding: 16, borderWidth: 1 },
-  modalTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
-  modalSection: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 8 },
-  optionRow: { paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderRadius: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  optionText: { fontSize: 14, fontWeight: "700" },
-  priceRowInputs: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "space-between" },
-  priceInput: { width: "43%", borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10, fontSize: 14 },
-  modalActions: { flexDirection: "row", gap: 10, marginTop: 16 },
-  modalButtonSecondary: { flex: 1, borderWidth: 1, paddingVertical: 12, alignItems: "center" },
-  modalButtonPrimary: { flex: 1, paddingVertical: 12, alignItems: "center" },
-  modalButtonText: { fontSize: 14, fontWeight: "800" },
+  optionRowSelected: {
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentMuted,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  optionTextSelected: {
+    color: COLORS.accent,
+  },
+  optionCheck: {
+    color: COLORS.accent,
+    fontWeight: "700",
+  },
+  priceRowInputs: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  priceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: COLORS.text,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  priceTo: {
+    color: COLORS.textMuted,
+    fontWeight: "600",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+  },
+  modalButtonSecondaryText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  modalButtonPrimaryGradient: {
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  modalButtonPrimaryText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
 });

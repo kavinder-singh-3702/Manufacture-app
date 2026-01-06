@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { useCart } from "../hooks/useCart";
+import { useUnreadMessages } from "../providers/UnreadMessagesProvider";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { CompanySwitcherCard } from "../components/company";
@@ -472,6 +473,7 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
 // ============================================================
 const AdminFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   const { colors, spacing, radius } = useTheme();
+  const { totalUnread } = useUnreadMessages();
 
   const renderIcon = (tab: RouteConfig, isActive: boolean) => {
     const asset = footerIcons[tab.route];
@@ -486,6 +488,8 @@ const AdminFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
 
   const renderTab = (tab: RouteConfig) => {
     const isActive = activeTab === tab.route;
+    const isChatTab = tab.route === routes.CHAT;
+    const unreadCount = isChatTab ? totalUnread : 0;
 
     return (
       <TouchableOpacity
@@ -496,28 +500,42 @@ const AdminFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
       >
         {isActive ? (
           <View style={styles.activeTabContainer}>
-            <LinearGradient
-              colors={tab.gradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.activeTabGlow, { borderRadius: radius.lg, shadowColor: tab.gradientColors[0] }]}
-            >
-              {renderIcon(tab, true)}
-            </LinearGradient>
+            <View style={styles.adminTabIconWrap}>
+              <LinearGradient
+                colors={tab.gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.activeTabGlow, { borderRadius: radius.lg, shadowColor: tab.gradientColors[0] }]}
+              >
+                {renderIcon(tab, true)}
+              </LinearGradient>
+              {unreadCount > 0 && (
+                <View style={styles.adminUnreadBadge}>
+                  <Text style={styles.adminUnreadBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.tabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
           </View>
         ) : (
           <View style={styles.inactiveTabContainer}>
-            <LinearGradient
-              colors={[`${tab.gradientColors[0]}40`, `${tab.gradientColors[1]}20`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.inactiveGradientBorder, { borderRadius: radius.lg }]}
-            >
-              <View style={[styles.inactiveIconInner, { borderRadius: radius.lg - 1.5, backgroundColor: colors.background }]}>
-                {renderIcon(tab, false)}
-              </View>
-            </LinearGradient>
+            <View style={styles.adminTabIconWrap}>
+              <LinearGradient
+                colors={[`${tab.gradientColors[0]}40`, `${tab.gradientColors[1]}20`]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.inactiveGradientBorder, { borderRadius: radius.lg }]}
+              >
+                <View style={[styles.inactiveIconInner, { borderRadius: radius.lg - 1.5, backgroundColor: colors.background }]}>
+                  {renderIcon(tab, false)}
+                </View>
+              </LinearGradient>
+              {unreadCount > 0 && (
+                <View style={styles.adminUnreadBadge}>
+                  <Text style={styles.adminUnreadBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.tabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
           </View>
         )}
@@ -598,6 +616,33 @@ const styles = StyleSheet.create({
   tabIconInactive: { fontSize: 20, opacity: 0.7 },
   tabLabel: { fontSize: 10, fontWeight: "600" },
   tabLabelActive: { fontSize: 10, fontWeight: "700" },
+  adminTabIconWrap: {
+    position: "relative",
+  },
+  adminUnreadBadge: {
+    position: "absolute",
+    top: -6,
+    right: -8,
+    backgroundColor: "#FF4757",
+    borderRadius: 12,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: "#0F1115",
+    shadowColor: "#FF4757",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  adminUnreadBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
+  },
 
   // User footer styles (5 tabs)
   userFooter: {

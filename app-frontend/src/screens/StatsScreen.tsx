@@ -167,21 +167,39 @@ export const StatsScreen = () => {
     [colors.primary, stats?.categoryDistribution]
   );
 
-  const categoryBarData = useMemo(
-    () =>
-      stats?.categoryDistribution.map((cat) => ({
-        value: cat.totalQuantity,
-        label: cat.label.split(" ")[0],
-        frontColor: CATEGORY_COLORS[cat.id] || colors.primary,
-        onPress: () => setSelectedBarValue({ label: cat.label, value: cat.totalQuantity }),
-      })) || [],
-    [colors.primary, stats?.categoryDistribution]
-  );
+  const categoryBarData = useMemo(() => {
+    if (!stats?.categoryDistribution) return [];
 
-  const maxQuantity = useMemo(
-    () => Math.max(...categoryBarData.map((d) => d.value), 10),
-    [categoryBarData]
-  );
+    const data = stats.categoryDistribution
+      .filter((cat) => cat.count > 0) // Only show categories with products
+      .map((cat) => {
+        // Use count (number of items) instead of totalQuantity if totalQuantity is 0
+        const quantity = typeof cat.totalQuantity === "number" && cat.totalQuantity > 0
+          ? cat.totalQuantity
+          : (typeof cat.count === "number" ? cat.count : 0);
+
+        return {
+          value: quantity,
+          label: cat.label?.split(" ")[0]?.substring(0, 6) || "Other",
+          frontColor: CATEGORY_COLORS[cat.id] || colors.primary,
+          topLabelComponent: () => (
+            <Text style={{ color: colors.text, fontSize: 9, fontWeight: "700" }}>
+              {quantity}
+            </Text>
+          ),
+          onPress: () => setSelectedBarValue({ label: cat.label || "Category", value: quantity }),
+        };
+      });
+
+    return data;
+  }, [colors.primary, colors.text, stats?.categoryDistribution]);
+
+  const maxQuantity = useMemo(() => {
+    if (categoryBarData.length === 0) return 100;
+    const values = categoryBarData.map((d) => d.value || 0);
+    const max = Math.max(...values);
+    return max > 0 ? max : 100;
+  }, [categoryBarData]);
 
   const totalItems = stats?.totalItems || 0;
   const totalQuantity = stats?.totalQuantity || 0;
@@ -471,26 +489,37 @@ export const StatsScreen = () => {
               <View style={styles.chartContainer}>
                 <BarChart
                   data={categoryBarData}
-                  width={CHART_WIDTH - 40}
-                  height={190}
-                  barWidth={calculatedBarWidth}
-                  spacing={calculatedSpacing}
+                  width={CHART_WIDTH - 60}
+                  height={160}
+                  barWidth={Math.max(20, calculatedBarWidth)}
+                  spacing={Math.max(8, calculatedSpacing)}
                   initialSpacing={10}
                   endSpacing={10}
                   roundedTop
-                  roundedBottom
-                  hideRules
-                  xAxisThickness={0}
+                  hideRules={false}
+                  rulesColor={colors.border + "30"}
+                  rulesType="dashed"
+                  dashWidth={3}
+                  dashGap={3}
+                  xAxisThickness={1}
+                  xAxisColor={colors.border}
                   yAxisThickness={0}
-                  yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                  xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 9 }}
+                  hideYAxisText
+                  xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 8, marginTop: 4 }}
                   noOfSections={4}
-                  maxValue={maxQuantity * 1.2}
+                  maxValue={Math.ceil(maxQuantity * 1.3)}
                   isAnimated
-                  animationDuration={600}
-                  barBorderRadius={10}
-                  showValuesAsTopLabel
-                  topLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: "700" }}
+                  animationDuration={400}
+                  barBorderRadius={4}
+                  renderTooltip={(item: any) => (
+                    <View style={{ backgroundColor: colors.surface, padding: 6, borderRadius: 6, marginBottom: 4 }}>
+                      <Text style={{ color: colors.text, fontSize: 10, fontWeight: "700" }}>{item.value}</Text>
+                    </View>
+                  )}
+                  disableScroll
+                  frontColor={colors.primary}
+                  showGradient
+                  gradientColor={colors.primary + "60"}
                 />
               </View>
               <Text style={[styles.chartHint, { color: colors.textMuted }]}>Tap bars to see exact quantity</Text>
@@ -1018,8 +1047,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   chartContainer: {
-    overflow: "hidden",
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 180,
+    paddingVertical: 10,
   },
   chartHint: {
     fontSize: 11,

@@ -1,14 +1,27 @@
-import { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
 import { AnimatedCard, StaggeredCardList, PulseAnimation } from "../../components/ui";
+import { chatService } from "../../services/chat.service";
 import type { RootStackParamList } from "../../navigation/types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const isTablet = SCREEN_WIDTH >= 768;
 
 const SERVICE_CARDS = [
   {
@@ -16,33 +29,40 @@ const SERVICE_CARDS = [
     title: "Machine Repair",
     subtitle: "Precision, heavy, packaging & custom lines",
     icon: "🛠️",
-    gradient: ["#6C63FF", "#4AC9FF"] as [string, string],
+    gradient: ["#5a6fd6", "#6b5b95"] as [string, string],
+    accentGradient: ["#c9a0dc", "#b8829e"] as [string, string],
     bullets: ["CNC & line diagnostics", "OEM-grade parts", "Planned downtime windows"],
+    stats: { rating: "4.9", jobs: "2.4k+" },
   },
   {
     id: "worker",
     title: "Expert Workforce",
     subtitle: "Screened operators, technicians, supervisors",
     icon: "👷‍♂️",
-    gradient: ["#FF8C3C", "#FFB07A"] as [string, string],
+    gradient: ["#c9a0dc", "#b8829e"] as [string, string],
+    accentGradient: ["#7ab8d9", "#5a9ebe"] as [string, string],
     bullets: ["Industry-matched skills", "Shift-ready rosters", "Safety-first onboarding"],
+    stats: { rating: "4.8", jobs: "5.1k+" },
   },
   {
     id: "transport",
     title: "Transport & Fleet",
     subtitle: "Road, rail, air & sea with secured handling",
     icon: "🚚",
-    gradient: ["#4AC9FF", "#6C63FF"] as [string, string],
+    gradient: ["#7ab8d9", "#5a9ebe"] as [string, string],
+    accentGradient: ["#6dbfa3", "#5aab8f"] as [string, string],
     bullets: ["Route planning", "Escorted loads", "Insurance-ready docs"],
+    stats: { rating: "4.9", jobs: "3.8k+" },
   },
 ] as const;
 
 export const ServicesOverviewScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<Nav>();
+  const [isContactingSupport, setIsContactingSupport] = useState(false);
 
   const heroGradient = useMemo(
-    () => ["rgba(12,14,18,0.92)", "rgba(12,14,18,0.78)", "transparent"],
+    () => ["#0F0C29", "#302b63", "#24243e"] as const,
     []
   );
 
@@ -50,407 +70,754 @@ export const ServicesOverviewScreen = () => {
     navigation.navigate("ServiceDetail", { serviceType: serviceType as any });
   };
 
+  const handleContactSupport = async () => {
+    if (isContactingSupport) return;
+
+    setIsContactingSupport(true);
+    try {
+      const conversationId = await chatService.startConversation();
+      navigation.navigate("Chat", {
+        conversationId,
+        recipientName: "Support Team",
+      });
+    } catch (error) {
+      console.error("Failed to start support chat:", error);
+    } finally {
+      setIsContactingSupport(false);
+    }
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={StyleSheet.absoluteFill}>
+    <SafeAreaView style={[styles.container, { backgroundColor: "#0a0a0f" }]}>
+      {/* Top Header with Support Button */}
+      <View style={styles.topHeader}>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Services</Text>
+        </View>
+        <TouchableOpacity
+          onPress={handleContactSupport}
+          activeOpacity={0.85}
+          disabled={isContactingSupport}
+          style={styles.supportButtonContainer}
+        >
+          <LinearGradient
+            colors={["#6dbfa3", "#5aab8f"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.supportButton}
+          >
+            {isContactingSupport ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.supportButtonIcon}>💬</Text>
+                <Text style={styles.supportButtonText}>Support</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+      {/* Animated background orbs - subtle */}
+      <View style={styles.bgOrbContainer}>
         <LinearGradient
-          colors={heroGradient}
+          colors={["#5a6fd6", "#6b5b95"]}
+          style={[styles.bgOrb, styles.bgOrb1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ flex: 1 }}
         />
         <LinearGradient
-          colors={["rgba(12,14,18,0.85)", "transparent"]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ flex: 1, position: "absolute", inset: 0 }}
+          colors={["#c9a0dc", "#b8829e"]}
+          style={[styles.bgOrb, styles.bgOrb2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <LinearGradient
+          colors={["#7ab8d9", "#5a9ebe"]}
+          style={[styles.bgOrb, styles.bgOrb3]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 44, gap: 16, alignItems: "center" }}>
-        <AnimatedCard variant="gradient" style={[styles.heroCard, { maxWidth: 960 }]}>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Premium Hero Section */}
+        <AnimatedCard variant="gradient" style={styles.heroCard}>
           <LinearGradient
-            colors={["#2B2646", "#211E35", "#161421"]}
+            colors={heroGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.heroGlowLarge} />
-          <View style={styles.heroGlowSmall} />
-          <View style={styles.heroRing} />
 
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroBadgeRow}>
+          {/* Decorative elements */}
+          <View style={styles.heroDecoContainer}>
+            <LinearGradient
+              colors={["rgba(90,111,214,0.25)", "rgba(107,91,149,0.12)"]}
+              style={styles.heroGlowOrb1}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <LinearGradient
+              colors={["rgba(201,160,220,0.2)", "rgba(184,130,158,0.1)"]}
+              style={styles.heroGlowOrb2}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <View style={styles.heroRing1} />
+            <View style={styles.heroRing2} />
+            <View style={styles.heroSparkle1} />
+            <View style={styles.heroSparkle2} />
+            <View style={styles.heroSparkle3} />
+          </View>
+
+          <View style={styles.heroContent}>
+            {/* Status badge */}
+            <View style={styles.heroBadgeContainer}>
               <PulseAnimation>
-                <View
-                  style={[
-                    styles.heroBadge,
-                    { backgroundColor: colors.primary + "1f", borderColor: colors.primary, borderRadius: radius.lg },
-                  ]}
+                <LinearGradient
+                  colors={["#6dbfa3", "#5aab8f"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.liveBadge}
                 >
-                  <Text style={styles.heroBadgeText}>⚡</Text>
-                </View>
+                  <View style={styles.liveDotOuter}>
+                    <View style={styles.liveDotInner} />
+                  </View>
+                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                </LinearGradient>
               </PulseAnimation>
-              <View style={styles.heroTagWrap}>
-                <Text style={[styles.heroTagText, { color: colors.text }]}>Concierge desk online</Text>
-                <Text style={[styles.heroTagHint, { color: colors.textMuted }]}>Admins orchestrate every request</Text>
+              <View style={styles.statusTextContainer}>
+                <Text style={styles.statusTitle}>Concierge Desk Online</Text>
+                <Text style={styles.statusSubtitle}>24/7 Premium Support Active</Text>
               </View>
             </View>
-          </View>
-          <View style={[styles.livePill, { borderColor: colors.border, backgroundColor: "#0F1115" }]}>
-            <View style={[styles.liveDot, { backgroundColor: colors.accent }]} />
-            <Text style={[styles.liveText, { color: colors.text }]}>Live routing</Text>
-          </View>
 
-          <View style={{ gap: 10 }}>
-            <Text style={[styles.heroTitle, { color: colors.text }]}>Services with a premium ops layer.</Text>
-            <Text style={[styles.heroSubtitle, { color: colors.textOnPrimary || colors.textMuted }]}>
-              Give us the brief. We’ll match the right bench, confirm schedules, and keep approvals and updates in-app.
-            </Text>
+            {/* Main hero text */}
+            <View style={styles.heroTextContainer}>
+              <Text style={styles.heroEyebrow}>PREMIUM SERVICES</Text>
+              <Text style={styles.heroTitle}>
+                Industrial Solutions{"\n"}
+                <Text style={styles.heroTitleAccent}>Delivered with Excellence</Text>
+              </Text>
+              <Text style={styles.heroDescription}>
+                From machine repairs to workforce deployment — experience concierge-level
+                service with real-time tracking and dedicated support.
+              </Text>
+            </View>
+
+            {/* Stats row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>10k+</Text>
+                <Text style={styles.statLabel}>Jobs Done</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>4.9</Text>
+                <Text style={styles.statLabel}>Rating</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>24/7</Text>
+                <Text style={styles.statLabel}>Support</Text>
+              </View>
+            </View>
+
+            {/* CTA Button */}
             <TouchableOpacity
               onPress={() => handleStart(SERVICE_CARDS[0].id)}
-              activeOpacity={0.88}
-              style={{ alignSelf: "flex-start" }}
+              activeOpacity={0.9}
+              style={styles.ctaContainer}
             >
               <LinearGradient
-                colors={[colors.primary, colors.primaryDark || colors.primary]}
+                colors={["#5a6fd6", "#6b5b95", "#c9a0dc"]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.ctaButton}
               >
-                <Text style={[styles.ctaText, { color: colors.textOnPrimary || "#fff" }]}>Start a request</Text>
+                <Text style={styles.ctaText}>Start Your Request</Text>
+                <Text style={styles.ctaArrow}>→</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </AnimatedCard>
 
-        <View style={{ marginTop: spacing.sm, marginBottom: spacing.xs, width: "100%", maxWidth: 960 }}>
-          <View style={styles.stepHeader}>
-            <Text style={[styles.stepPill, { color: colors.text, borderColor: colors.border }]}>Our services</Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Pick a track to review details</Text>
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeaderLeft}>
+            <LinearGradient
+              colors={["#5a6fd6", "#6b5b95"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.sectionPill}
+            >
+              <Text style={styles.sectionPillText}>SERVICES</Text>
+            </LinearGradient>
+            <Text style={styles.sectionTitle}>Choose Your Service</Text>
           </View>
-          <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-            Tap “Check it” to explore scope, FAQs, and send a short note to the admin desk.
-          </Text>
+          <Text style={styles.sectionHint}>Tap to explore details</Text>
         </View>
 
+        {/* Service Cards */}
         <StaggeredCardList>
-          {SERVICE_CARDS.map((option, idx) => (
-            <AnimatedCard
-              key={option.id}
-              delay={idx * 80}
-              style={[styles.serviceCard, { width: "100%", maxWidth: 960, backgroundColor: colors.surface }]}
+          {SERVICE_CARDS.map((service, idx) => (
+            <TouchableOpacity
+              key={service.id}
+              onPress={() => handleStart(service.id)}
+              activeOpacity={0.95}
+              style={styles.serviceCardTouchable}
             >
-              <LinearGradient
-                colors={[option.gradient[0] + "26", option.gradient[1] + "14"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.serviceCardBg}
-              />
-              <View style={[styles.serviceGlow, { backgroundColor: option.gradient[0] + "14" }]} />
-              <View style={styles.serviceContent}>
-                <View style={styles.serviceHeaderRow}>
-                  <View style={[styles.serviceIcon, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <AnimatedCard delay={idx * 100} style={styles.serviceCard}>
+                {/* Card background gradient */}
+                <LinearGradient
+                  colors={[`${service.gradient[0]}15`, `${service.gradient[1]}08`]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+
+                {/* Decorative glow */}
+                <LinearGradient
+                  colors={[`${service.gradient[0]}30`, "transparent"]}
+                  style={styles.cardGlow}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+
+                {/* Card content */}
+                <View style={styles.cardContent}>
+                  {/* Header row */}
+                  <View style={styles.cardHeader}>
                     <LinearGradient
-                      colors={[option.gradient[0], option.gradient[1]]}
+                      colors={service.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Text style={styles.serviceIconText}>{option.icon}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.serviceTitle, { color: colors.text }]}>{option.title}</Text>
-                    <Text style={[styles.serviceSubtitle, { color: colors.textMuted }]}>{option.subtitle}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.statusChip,
-                      { borderColor: colors.border, backgroundColor: colors.primary + "12" },
-                    ]}
-                  >
-                    <Text style={[styles.statusChipText, { color: colors.textOnPrimary || colors.text }]}>Concierge assigned</Text>
-                  </View>
-                </View>
-
-                <View style={styles.bulletPills}>
-                  {option.bullets.map((bullet) => (
-                    <View
-                      key={bullet}
-                      style={[
-                        styles.pill,
-                        {
-                          borderColor: colors.border,
-                          backgroundColor: colors.surface,
-                        },
-                      ]}
+                      style={styles.iconContainer}
                     >
-                      <View style={[styles.pillDot, { backgroundColor: colors.primary }]} />
-                      <Text style={[styles.pillText, { color: colors.text }]}>{bullet}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={styles.serviceFooterRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.serviceFootnote, { color: colors.textMuted }]}>
-                      Admins hold approvals, schedule crews, and keep documentation inside the request thread.
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleStart(option.id)} activeOpacity={0.88}>
-                    <LinearGradient
-                      colors={[colors.primary, colors.primaryDark || colors.primary]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={[styles.serviceBadge, { borderColor: "transparent" }]}
-                    >
-                      <Text style={[styles.serviceBadgeText, { color: colors.textOnPrimary || "#fff" }]}>Check it</Text>
+                      <Text style={styles.serviceIcon}>{service.icon}</Text>
                     </LinearGradient>
-                  </TouchableOpacity>
+
+                    <View style={styles.cardHeaderText}>
+                      <Text style={styles.serviceTitle}>{service.title}</Text>
+                      <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
+                    </View>
+
+                    <View style={styles.ratingBadge}>
+                      <Text style={styles.ratingStar}>★</Text>
+                      <Text style={styles.ratingValue}>{service.stats.rating}</Text>
+                    </View>
+                  </View>
+
+                  {/* Feature pills */}
+                  <View style={styles.featurePillsContainer}>
+                    {service.bullets.map((bullet, i) => (
+                      <View key={bullet} style={styles.featurePill}>
+                        <LinearGradient
+                          colors={service.gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.featureDot}
+                        />
+                        <Text style={styles.featureText}>{bullet}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.cardFooter}>
+                    <View style={styles.jobsContainer}>
+                      <Text style={styles.jobsValue}>{service.stats.jobs}</Text>
+                      <Text style={styles.jobsLabel}>jobs completed</Text>
+                    </View>
+
+                    <LinearGradient
+                      colors={service.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.exploreButton}
+                    >
+                      <Text style={styles.exploreButtonText}>Explore</Text>
+                      <Text style={styles.exploreArrow}>→</Text>
+                    </LinearGradient>
+                  </View>
                 </View>
-              </View>
-            </AnimatedCard>
+
+                {/* Bottom accent line */}
+                <LinearGradient
+                  colors={service.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cardAccentLine}
+                />
+              </AnimatedCard>
+            </TouchableOpacity>
           ))}
         </StaggeredCardList>
+
+        {/* Bottom spacing */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  heroCard: {
-    padding: 18,
-    width: "100%",
+  container: {
+    flex: 1,
+  },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 10,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  supportButtonContainer: {
+    borderRadius: 20,
     overflow: "hidden",
   },
-  heroGlowLarge: {
+  supportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+    minWidth: 110,
+    justifyContent: "center",
+  },
+  supportButtonIcon: {
+    fontSize: 16,
+  },
+  supportButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  bgOrbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  bgOrb: {
     position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(108,99,255,0.18)",
-    top: -80,
+    borderRadius: 999,
+    opacity: 0.15,
+  },
+  bgOrb1: {
+    width: 300,
+    height: 300,
+    top: -100,
+    right: -100,
+  },
+  bgOrb2: {
+    width: 250,
+    height: 250,
+    top: 400,
+    left: -120,
+  },
+  bgOrb3: {
+    width: 200,
+    height: 200,
+    bottom: 100,
+    right: -80,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+
+  // Hero Card
+  heroCard: {
+    borderRadius: 24,
+    overflow: "hidden",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  heroDecoContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  heroGlowOrb1: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    top: -60,
     right: -40,
   },
-  heroGlowSmall: {
+  heroGlowOrb2: {
     position: "absolute",
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "rgba(82,72,230,0.12)",
-    bottom: -50,
-    left: -30,
+    bottom: -40,
+    left: -40,
   },
-  heroRing: {
+  heroRing1: {
     position: "absolute",
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    top: 50,
-    left: 50,
+    borderColor: "rgba(255,255,255,0.08)",
+    top: 40,
+    right: 60,
   },
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  heroBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flexShrink: 1,
-  },
-  heroBadge: {
-    padding: 12,
+  heroRing2: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+    bottom: 60,
+    left: 40,
   },
-  heroBadgeText: {
-    fontSize: 20,
+  heroSparkle1: {
+    position: "absolute",
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    top: 80,
+    right: 100,
   },
-  heroTagWrap: {
-    gap: 4,
+  heroSparkle2: {
+    position: "absolute",
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    top: 140,
+    left: 80,
   },
-  heroTagText: {
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.4,
+  heroSparkle3: {
+    position: "absolute",
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    bottom: 100,
+    right: 60,
   },
-  heroTagHint: {
-    fontSize: 12,
-    fontWeight: "600",
+  heroContent: {
+    padding: 24,
+    gap: 20,
   },
-  livePill: {
+  heroBadgeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
+  },
+  liveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-    marginBottom: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
   },
-  liveDot: {
+  liveDotOuter: {
     width: 10,
     height: 10,
-    borderRadius: 10,
-  },
-  liveText: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 6,
-    letterSpacing: -0.2,
-  },
-  heroSubtitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 20,
-  },
-  ctaButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  ctaText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  stepHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 6,
-  },
-  stepPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  sectionHint: {
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  serviceCard: {
-    overflow: "hidden",
-    position: "relative",
-  },
-  serviceCardBg: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.16,
-  },
-  serviceGlow: {
-    position: "absolute",
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    top: -40,
-    right: -30,
-    opacity: 0.6,
-  },
-  serviceIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.3)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    overflow: "hidden",
   },
-  serviceIconText: {
+  liveDotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#fff",
+  },
+  liveBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  statusTextContainer: {
+    flex: 1,
+  },
+  statusTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  statusSubtitle: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  heroTextContainer: {
+    gap: 12,
+  },
+  heroEyebrow: {
+    color: "#c9a0dc",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+  heroTitle: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "800",
+    lineHeight: 36,
+  },
+  heroTitleAccent: {
+    color: "#7ab8d9",
+  },
+  heroDescription: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 15,
+    fontWeight: "500",
+    lineHeight: 22,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    padding: 16,
+    gap: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    color: "#fff",
     fontSize: 22,
-  },
-  serviceTitle: {
-    fontSize: 16,
     fontWeight: "800",
   },
-  serviceSubtitle: {
-    fontSize: 13,
+  statLabel: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
     fontWeight: "600",
     marginTop: 4,
   },
-  serviceBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: 1,
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
-  serviceBadgeText: {
-    fontSize: 13,
+  ctaContainer: {
+    alignSelf: "flex-start",
+  },
+  ctaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  ctaText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  ctaArrow: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderLeft: {
+    gap: 8,
+  },
+  sectionPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  sectionPillText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 22,
     fontWeight: "800",
   },
-  serviceContent: {
-    gap: 12,
+  sectionHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    fontWeight: "600",
   },
-  serviceHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
+
+  // Service Cards
+  serviceCardTouchable: {
+    width: "100%",
+    maxWidth: 960,
   },
-  statusChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 14,
+  serviceCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "rgba(26,26,46,0.8)",
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginBottom: 16,
   },
-  statusChipText: {
-    fontSize: 11,
+  cardGlow: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    top: -80,
+    right: -60,
+  },
+  cardContent: {
+    padding: 20,
+    gap: 16,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  serviceIcon: {
+    fontSize: 28,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
+  serviceTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  serviceSubtitle: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 4,
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,215,0,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  ratingStar: {
+    color: "#ffd700",
+    fontSize: 14,
+  },
+  ratingValue: {
+    color: "#ffd700",
+    fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.4,
   },
-  bulletPills: {
+  featurePillsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  pill: {
+  featurePill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.06)",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 12,
+    gap: 8,
   },
-  pillDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 8,
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  pillText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  serviceFooterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  serviceFootnote: {
+  featureText: {
+    color: "rgba(255,255,255,0.85)",
     fontSize: 12,
     fontWeight: "600",
-    lineHeight: 18,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  jobsContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  jobsValue: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  jobsLabel: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  exploreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 6,
+  },
+  exploreButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  exploreArrow: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  cardAccentLine: {
+    height: 3,
   },
 });

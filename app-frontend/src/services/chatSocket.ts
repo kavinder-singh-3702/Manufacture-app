@@ -26,11 +26,8 @@ let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 let connecting: Promise<Socket<ServerToClientEvents, ClientToServerEvents>> | null = null;
 
 const resolveSocketUrl = () => {
-  const explicit = process.env.EXPO_PUBLIC_SOCKET_URL;
-  if (explicit) {
-    return explicit.replace(/\/$/, "");
-  }
-  return API_BASE_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
+  // Hardcoded AWS URL for socket connection
+  return "https://3.108.52.140";
 };
 
 export const getChatSocket = async () => {

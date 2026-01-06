@@ -18,8 +18,26 @@ import { CartItem } from "../../providers/CartProvider";
 
 const { width } = Dimensions.get("window");
 
+// Premium color palette - subtle and elegant
+const COLORS = {
+  background: "#0a0a0f",
+  surface: "rgba(22, 22, 30, 0.9)",
+  surfaceLight: "rgba(32, 32, 42, 0.8)",
+  border: "rgba(255, 255, 255, 0.08)",
+  borderLight: "rgba(255, 255, 255, 0.12)",
+  text: "#ffffff",
+  textMuted: "rgba(255, 255, 255, 0.6)",
+  textSubtle: "rgba(255, 255, 255, 0.4)",
+  accent: "#7c8aff", // Soft indigo
+  accentMuted: "rgba(124, 138, 255, 0.15)",
+  success: "#5ed4a5", // Soft teal
+  successMuted: "rgba(94, 212, 165, 0.15)",
+  danger: "#ff7b7b",
+  dangerMuted: "rgba(255, 123, 123, 0.12)",
+};
+
 // ============================================================
-// CART ITEM CARD - Premium Design
+// CART ITEM CARD - Premium Subtle Design
 // ============================================================
 type CartItemCardProps = {
   cartItem: CartItem;
@@ -29,7 +47,6 @@ type CartItemCardProps = {
 };
 
 const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemCardProps) => {
-  const { colors } = useTheme();
   const { item, quantity } = cartItem;
 
   const handleIncrement = () => {
@@ -58,135 +75,151 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
   const currency = item.price?.currency || "INR";
   const totalPrice = unitPrice * quantity;
 
-  // Alternating gradient colors for visual variety
-  const gradientColors: [string, string] = index % 2 === 0
-    ? ["rgba(16, 185, 129, 0.08)", "rgba(16, 185, 129, 0.02)"]
-    : ["rgba(99, 102, 241, 0.08)", "rgba(99, 102, 241, 0.02)"];
-
-  const accentColor = index % 2 === 0 ? "#10B981" : "#6366F1";
+  const getCategoryIcon = (category: string) => {
+    switch (category?.toLowerCase()) {
+      case "electronics": return "⚡";
+      case "clothing": return "👕";
+      case "food": return "🍎";
+      case "machinery": return "⚙️";
+      case "tools": return "🔧";
+      default: return "📦";
+    }
+  };
 
   return (
     <View style={styles.cardWrapper}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
-        {/* Accent line */}
-        <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
+      <View style={styles.card}>
+        {/* Subtle gradient overlay */}
+        <LinearGradient
+          colors={["rgba(124, 138, 255, 0.04)", "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
 
         <View style={styles.cardContent}>
-          {/* Product Icon Circle */}
-          <View style={[styles.productIconContainer, { backgroundColor: accentColor + "20" }]}>
-            <Text style={styles.productIcon}>
-              {item.category === "electronics" ? "⚡" :
-               item.category === "clothing" ? "👕" :
-               item.category === "food" ? "🍎" : "📦"}
-            </Text>
+          {/* Product Icon */}
+          <View style={styles.productIconContainer}>
+            <LinearGradient
+              colors={["rgba(124, 138, 255, 0.12)", "rgba(124, 138, 255, 0.04)"]}
+              style={styles.productIconGradient}
+            >
+              <Text style={styles.productIcon}>{getCategoryIcon(item.category)}</Text>
+            </LinearGradient>
           </View>
 
           {/* Product Details */}
           <View style={styles.productDetails}>
             <View style={styles.productHeader}>
-              <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1}>
+              <Text style={styles.productName} numberOfLines={1}>
                 {item.name}
               </Text>
-              <TouchableOpacity onPress={handleRemove} style={styles.removeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={styles.removeIcon}>✕</Text>
+              <TouchableOpacity
+                onPress={handleRemove}
+                style={styles.removeBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.removeIcon}>×</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.productMeta}>
-              <View style={[styles.categoryBadge, { backgroundColor: accentColor + "15" }]}>
-                <Text style={[styles.categoryText, { color: accentColor }]}>
-                  {item.category}
-                </Text>
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>{item.category || "Product"}</Text>
               </View>
               {item.sku && (
-                <Text style={[styles.skuText, { color: colors.textMuted }]}>
-                  SKU: {item.sku}
-                </Text>
+                <Text style={styles.skuText}>SKU: {item.sku}</Text>
               )}
             </View>
 
             {/* Price & Quantity Row */}
             <View style={styles.priceQuantityRow}>
               {/* Quantity Controls */}
-              <View style={[styles.quantityWrapper, { borderColor: colors.border }]}>
+              <View style={styles.quantityWrapper}>
                 <TouchableOpacity
                   onPress={handleDecrement}
-                  style={[styles.qtyBtn, { backgroundColor: colors.background }]}
+                  style={styles.qtyBtn}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.qtyBtnText, { color: colors.text }]}>−</Text>
+                  <Text style={styles.qtyBtnText}>−</Text>
                 </TouchableOpacity>
                 <View style={styles.qtyDisplay}>
-                  <Text style={[styles.qtyValue, { color: colors.text }]}>{quantity}</Text>
+                  <Text style={styles.qtyValue}>{quantity}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={handleIncrement}
-                  style={[styles.qtyBtn, { backgroundColor: accentColor }]}
+                  style={[styles.qtyBtn, styles.qtyBtnActive]}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.qtyBtnText, { color: "#fff" }]}>+</Text>
+                  <Text style={[styles.qtyBtnText, styles.qtyBtnTextActive]}>+</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Price Display */}
               <View style={styles.priceDisplay}>
-                <Text style={[styles.unitPriceText, { color: colors.textMuted }]}>
+                <Text style={styles.unitPriceText}>
                   {currency} {unitPrice.toFixed(2)} × {quantity}
                 </Text>
-                <Text style={[styles.totalPriceText, { color: accentColor }]}>
+                <Text style={styles.totalPriceText}>
                   {currency} {totalPrice.toFixed(2)}
                 </Text>
               </View>
             </View>
           </View>
         </View>
-      </LinearGradient>
+
+        {/* Bottom accent line */}
+        <View style={styles.cardAccentLine} />
+      </View>
     </View>
   );
 };
 
 // ============================================================
-// EMPTY CART STATE - Beautiful Design
+// EMPTY CART STATE - Elegant Design
 // ============================================================
 const EmptyCart = () => {
-  const { colors } = useTheme();
   const navigation = useNavigation();
 
   return (
     <View style={styles.emptyContainer}>
-      <LinearGradient
-        colors={["rgba(99, 102, 241, 0.15)", "rgba(99, 102, 241, 0.05)", "transparent"]}
-        style={styles.emptyGradient}
-      />
+      {/* Subtle background glow */}
+      <View style={styles.emptyGlowContainer}>
+        <LinearGradient
+          colors={["rgba(124, 138, 255, 0.08)", "transparent"]}
+          style={styles.emptyGlow}
+        />
+      </View>
+
       <View style={styles.emptyIconWrapper}>
         <LinearGradient
-          colors={["rgba(99, 102, 241, 0.2)", "rgba(99, 102, 241, 0.05)"]}
+          colors={["rgba(124, 138, 255, 0.12)", "rgba(124, 138, 255, 0.04)"]}
           style={styles.emptyIconBg}
         >
           <Text style={styles.emptyIcon}>🛒</Text>
         </LinearGradient>
+        {/* Decorative ring */}
+        <View style={styles.emptyIconRing} />
       </View>
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>Your Cart is Empty</Text>
-      <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-        Start adding products to build your order
+
+      <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
+      <Text style={styles.emptySubtitle}>
+        Discover our premium products and start building your order
       </Text>
+
       <TouchableOpacity
         style={styles.browseButton}
         onPress={() => navigation.goBack()}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         <LinearGradient
-          colors={["#6366F1", "#8B5CF6"]}
+          colors={[COLORS.accent, "#6572e0"]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 1, y: 0 }}
           style={styles.browseGradient}
         >
           <Text style={styles.browseText}>Browse Products</Text>
+          <Text style={styles.browseArrow}>→</Text>
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -197,18 +230,16 @@ const EmptyCart = () => {
 // CART SCREEN
 // ============================================================
 export const CartScreen = () => {
-  const { colors, spacing, radius } = useTheme();
+  const { colors } = useTheme();
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, refreshCartItems } = useCart();
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
 
-  // Use refs to access current values without adding to dependencies
   const itemsRef = useRef(items);
   const refreshCartItemsRef = useRef(refreshCartItems);
   itemsRef.current = items;
   refreshCartItemsRef.current = refreshCartItems;
 
-  // Refresh cart items when screen gains focus to get updated product data
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -254,59 +285,54 @@ export const CartScreen = () => {
   const keyExtractor = useCallback((item: CartItem) => item.item._id, []);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top", "left", "right"]}>
-      {/* Background Gradients */}
-      <LinearGradient
-        colors={["rgba(99, 102, 241, 0.08)", "transparent", "rgba(16, 185, 129, 0.05)"]}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      {/* Background gradient orbs */}
+      <View style={styles.bgOrbContainer}>
+        <LinearGradient
+          colors={[COLORS.accent, "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <LinearGradient
+          colors={[COLORS.success, "transparent"]}
+          style={[styles.bgOrb, styles.bgOrb2]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      </View>
 
       {/* Header */}
       <View style={styles.header}>
-        <LinearGradient
-          colors={["rgba(15, 17, 21, 0.98)", "rgba(15, 17, 21, 0.95)"]}
-          style={styles.headerGradient}
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          activeOpacity={0.7}
         >
-          <View style={styles.headerContent}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={["rgba(99, 102, 241, 0.2)", "rgba(99, 102, 241, 0.1)"]}
-                style={styles.backButtonGradient}
-              >
-                <Text style={styles.backIcon}>←</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
 
-            <View style={styles.headerCenter}>
-              <View style={styles.headerTitleRow}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>My Cart</Text>
-                {refreshing && (
-                  <View style={styles.refreshIndicator}>
-                    <ActivityIndicator size="small" color="#6366F1" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.itemCountBadge}>
-                <Text style={styles.itemCountText}>
-                  {totalItems} {totalItems === 1 ? "item" : "items"}
-                </Text>
-              </View>
-            </View>
-
-            {items.length > 0 ? (
-              <TouchableOpacity onPress={handleClearCart} style={styles.clearButton} activeOpacity={0.7}>
-                <Text style={styles.clearButtonText}>Clear</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={{ width: 50 }} />
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>My Cart</Text>
+            {refreshing && (
+              <ActivityIndicator size="small" color={COLORS.accent} style={{ marginLeft: 8 }} />
             )}
           </View>
-        </LinearGradient>
+          <View style={styles.itemCountBadge}>
+            <Text style={styles.itemCountText}>
+              {totalItems} {totalItems === 1 ? "item" : "items"}
+            </Text>
+          </View>
+        </View>
+
+        {items.length > 0 ? (
+          <TouchableOpacity onPress={handleClearCart} style={styles.clearButton} activeOpacity={0.7}>
+            <Text style={styles.clearButtonText}>Clear</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 50 }} />
+        )}
       </View>
 
       {/* Cart Items List */}
@@ -328,42 +354,54 @@ export const CartScreen = () => {
       {items.length > 0 && (
         <View style={styles.summaryWrapper}>
           <LinearGradient
-            colors={["rgba(15, 17, 21, 0.98)", "rgba(15, 17, 21, 1)"]}
+            colors={["rgba(10, 10, 15, 0.95)", "rgba(10, 10, 15, 1)"]}
             style={styles.summaryGradient}
           >
-            {/* Order Summary */}
+            {/* Summary Header */}
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryTitle}>Order Summary</Text>
+              <View style={styles.summaryBadge}>
+                <Text style={styles.summaryBadgeText}>{totalItems} items</Text>
+              </View>
+            </View>
+
+            {/* Order Details */}
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Subtotal</Text>
-                <Text style={[styles.summaryAmount, { color: colors.text }]}>
-                  INR {totalValue.toFixed(2)}
-                </Text>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryAmount}>INR {totalValue.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Items</Text>
-                <Text style={[styles.summaryAmount, { color: colors.text }]}>{totalItems}</Text>
+                <Text style={styles.summaryLabel}>Shipping</Text>
+                <Text style={styles.summaryFree}>FREE</Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={styles.divider} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
+                <Text style={styles.totalLabel}>Total</Text>
                 <Text style={styles.totalAmount}>INR {totalValue.toFixed(2)}</Text>
               </View>
             </View>
 
             {/* Checkout Button */}
-            <TouchableOpacity style={styles.checkoutButton} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.checkoutButton} activeOpacity={0.9}>
               <LinearGradient
-                colors={["#10B981", "#059669"]}
+                colors={[COLORS.success, "#4bc08f"]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.checkoutGradient}
               >
                 <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-                <View style={styles.checkoutArrow}>
-                  <Text style={styles.arrowIcon}>→</Text>
+                <View style={styles.checkoutArrowContainer}>
+                  <Text style={styles.checkoutArrow}>→</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Secure checkout note */}
+            <View style={styles.secureNote}>
+              <Text style={styles.secureIcon}>🔒</Text>
+              <Text style={styles.secureText}>Secure checkout with encrypted payment</Text>
+            </View>
           </LinearGradient>
         </View>
       )}
@@ -377,43 +415,56 @@ export const CartScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  // Background orbs
+  bgOrbContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  bgOrb: {
+    position: "absolute",
+    borderRadius: 999,
+    opacity: 0.08,
+  },
+  bgOrb1: {
+    width: 280,
+    height: 280,
+    top: -80,
+    right: -100,
+  },
+  bgOrb2: {
+    width: 200,
+    height: 200,
+    bottom: 150,
+    left: -80,
   },
 
   // Header
   header: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 10,
-  },
-  headerGradient: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   backButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  backButtonGradient: {
     width: 44,
     height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.surfaceLight,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   backIcon: {
     fontSize: 20,
-    color: "#6366F1",
-    fontWeight: "700",
+    color: COLORS.text,
+    fontWeight: "600",
   },
   headerCenter: {
     flex: 1,
@@ -422,20 +473,16 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "800",
+    color: COLORS.text,
     letterSpacing: -0.5,
-  },
-  refreshIndicator: {
-    width: 20,
-    height: 20,
   },
   itemCountBadge: {
     marginTop: 4,
-    backgroundColor: "rgba(99, 102, 241, 0.15)",
+    backgroundColor: COLORS.accentMuted,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -443,65 +490,56 @@ const styles = StyleSheet.create({
   itemCountText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6366F1",
+    color: COLORS.accent,
   },
   clearButton: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    backgroundColor: COLORS.dangerMuted,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   clearButtonText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#EF4444",
+    color: COLORS.danger,
   },
 
   // List
   listContent: {
     padding: 16,
-    paddingBottom: 220,
+    paddingBottom: 280,
   },
 
   // Cart Item Card
   cardWrapper: {
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  cardGradient: {
+  card: {
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)",
-  },
-  accentLine: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    borderColor: COLORS.border,
+    overflow: "hidden",
   },
   cardContent: {
     flexDirection: "row",
     padding: 16,
-    paddingLeft: 20,
     gap: 14,
   },
   productIconContainer: {
-    width: 52,
-    height: 52,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  productIconGradient: {
+    width: 56,
+    height: 56,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   productIcon: {
-    fontSize: 24,
+    fontSize: 26,
   },
   productDetails: {
     flex: 1,
@@ -514,41 +552,46 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: "700",
+    color: COLORS.text,
     flex: 1,
     marginRight: 8,
   },
   removeBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.dangerMuted,
     alignItems: "center",
     justifyContent: "center",
   },
   removeIcon: {
-    fontSize: 12,
-    color: "#EF4444",
-    fontWeight: "700",
+    fontSize: 16,
+    color: COLORS.danger,
+    fontWeight: "600",
+    marginTop: -1,
   },
   productMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 6,
+    marginTop: 8,
   },
   categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    backgroundColor: COLORS.accentMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   categoryText: {
     fontSize: 11,
     fontWeight: "600",
+    color: COLORS.accent,
     textTransform: "capitalize",
   },
   skuText: {
     fontSize: 11,
     fontWeight: "500",
+    color: COLORS.textSubtle,
   },
   priceQuantityRow: {
     flexDirection: "row",
@@ -559,26 +602,36 @@ const styles = StyleSheet.create({
   quantityWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 10,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: COLORS.border,
     overflow: "hidden",
   },
   qtyBtn: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
+  },
+  qtyBtnActive: {
+    backgroundColor: COLORS.accent,
   },
   qtyBtnText: {
     fontSize: 18,
     fontWeight: "600",
+    color: COLORS.textMuted,
+  },
+  qtyBtnTextActive: {
+    color: "#fff",
   },
   qtyDisplay: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
   },
   qtyValue: {
     fontSize: 15,
     fontWeight: "700",
+    color: COLORS.text,
   },
   priceDisplay: {
     alignItems: "flex-end",
@@ -586,11 +639,18 @@ const styles = StyleSheet.create({
   unitPriceText: {
     fontSize: 11,
     fontWeight: "500",
+    color: COLORS.textSubtle,
   },
   totalPriceText: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "800",
+    color: COLORS.text,
     marginTop: 2,
+  },
+  cardAccentLine: {
+    height: 2,
+    backgroundColor: COLORS.accent,
+    opacity: 0.3,
   },
 
   // Empty State
@@ -600,54 +660,76 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 32,
   },
-  emptyGradient: {
+  emptyGlowContainer: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
+    top: "20%",
+    width: 300,
     height: 300,
   },
+  emptyGlow: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 150,
+  },
   emptyIconWrapper: {
-    marginBottom: 24,
+    marginBottom: 28,
+    position: "relative",
   },
   emptyIconBg: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     alignItems: "center",
     justifyContent: "center",
   },
   emptyIcon: {
-    fontSize: 56,
+    fontSize: 48,
+  },
+  emptyIconRing: {
+    position: "absolute",
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 63,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderStyle: "dashed",
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: "800",
-    marginBottom: 8,
+    color: COLORS.text,
+    marginBottom: 10,
   },
   emptySubtitle: {
     fontSize: 15,
     fontWeight: "500",
+    color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: 32,
+    lineHeight: 22,
   },
   browseButton: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#6366F1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
   },
   browseGradient: {
-    paddingHorizontal: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 28,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
+    gap: 10,
   },
   browseText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "700",
+  },
+  browseArrow: {
+    color: "#fff",
+    fontSize: 18,
     fontWeight: "700",
   },
 
@@ -657,60 +739,81 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 12,
   },
   summaryGradient: {
     padding: 20,
     paddingBottom: 32,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: COLORS.border,
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  summaryBadge: {
+    backgroundColor: COLORS.accentMuted,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  summaryBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.accent,
   },
   summaryDetails: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   summaryLabel: {
     fontSize: 14,
     fontWeight: "500",
+    color: COLORS.textMuted,
   },
   summaryAmount: {
     fontSize: 14,
     fontWeight: "600",
+    color: COLORS.text,
+  },
+  summaryFree: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.success,
   },
   divider: {
     height: 1,
-    marginVertical: 8,
+    backgroundColor: COLORS.border,
+    marginVertical: 12,
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: "700",
+    color: COLORS.text,
   },
   totalAmount: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
-    color: "#10B981",
+    color: COLORS.success,
   },
   checkoutButton: {
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    marginBottom: 12,
   },
   checkoutGradient: {
     flexDirection: "row",
@@ -725,7 +828,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
-  checkoutArrow: {
+  checkoutArrowContainer: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -733,9 +836,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  arrowIcon: {
+  checkoutArrow: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  secureNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  secureIcon: {
+    fontSize: 12,
+  },
+  secureText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: COLORS.textSubtle,
   },
 });
