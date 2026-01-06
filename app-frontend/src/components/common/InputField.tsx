@@ -7,9 +7,19 @@ type InputFieldProps = TextInputProps & {
   label: string;
   helperText?: string;
   errorText?: string;
+  required?: boolean;
 };
 
-export const InputField = ({ label, helperText, errorText, style, onFocus, onBlur, ...rest }: InputFieldProps) => {
+export const InputField = ({
+  label,
+  helperText,
+  errorText,
+  required = false,
+  style,
+  onFocus,
+  onBlur,
+  ...rest
+}: InputFieldProps) => {
   const { colors, spacing, radius } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const hasError = Boolean(errorText);
@@ -53,6 +63,7 @@ export const InputField = ({ label, helperText, errorText, style, onFocus, onBlu
         ]}
       >
         {label}
+        {required ? <Text style={{ color: "#FF6B6B" }}> *</Text> : null}
       </Text>
       <View
         style={[

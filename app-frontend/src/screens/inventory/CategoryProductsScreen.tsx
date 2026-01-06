@@ -35,7 +35,6 @@ export const CategoryProductsScreen = () => {
   const { user } = useAuth();
   const { isInCart, getCartItem, items: cartItems, addToCart } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
-  const isAdmin = user?.role === AppRole.ADMIN;
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +79,6 @@ export const CategoryProductsScreen = () => {
           minPrice: effectiveMin,
           maxPrice: effectiveMax,
           scope: "marketplace",
-          createdByRole: isAdmin ? undefined : "admin",
         });
         setItems((prev) => (append ? [...prev, ...response.products] : response.products));
         setPagination(response.pagination);
@@ -95,7 +93,7 @@ export const CategoryProductsScreen = () => {
         }
       }
     },
-    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId, isAdmin]
+    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId]
   );
 
   // Refresh list whenever screen comes into focus
@@ -197,6 +195,15 @@ export const CategoryProductsScreen = () => {
       const verified = compliance === "approved";
       const selectedQty = 1;
       const isAdded = inCart && cartQty > 0;
+      const ratingValue =
+        typeof (item.attributes as any)?.rating === "number"
+          ? (item.attributes as any).rating
+          : typeof (item.attributes as any)?.stars === "number"
+          ? (item.attributes as any).stars
+          : undefined;
+      const ratingLabel =
+        typeof ratingValue === "number" ? (Number.isInteger(ratingValue) ? `${ratingValue}` : ratingValue.toFixed(1)) : "—";
+      const unitLabel = sizeLabel || item.price?.unit;
 
       return (
         <TouchableOpacity
@@ -256,31 +263,18 @@ export const CategoryProductsScreen = () => {
             {item.name}
           </Text>
           <View style={styles.companyRow}>
-            <Text style={[styles.companyName, { color: colors.textMuted }]} numberOfLines={2} ellipsizeMode="tail">
+            <Text style={[styles.companyName, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
               {companyName}
+              {ratingLabel !== "—" ? ` • ${ratingLabel}` : ""}
             </Text>
           </View>
-          <View style={styles.ratingRow}>
-            {Array.from({ length: 5 }).map((_, idx) => {
-              const filled = (typeof (item.attributes as any)?.rating === "number"
-                ? (item.attributes as any).rating
-                : typeof (item.attributes as any)?.stars === "number"
-                ? (item.attributes as any).stars
-                : 0) >= idx + 1;
-              return (
-                <Text key={idx} style={[styles.star, { color: filled ? "#facc15" : colors.textMuted }]}>
-                  ★
-                </Text>
-              );
-            })}
-          </View>
-          <Text style={[styles.productSize, { color: colors.textMuted }]} numberOfLines={1}>
-            {sizeLabel ? `(${sizeLabel})` : item.category}
-          </Text>
 
           <View style={styles.priceRow}>
             <View>
-              <Text style={[styles.priceText, { color: colors.text }]}>{displayPrice}</Text>
+              <Text style={[styles.priceText, { color: colors.text }]}>
+                {displayPrice}
+                {unitLabel ? <Text style={[styles.priceUnit, { color: colors.textMuted }]}> · {unitLabel}</Text> : null}
+              </Text>
               {typeof compareAt === "number" && compareAt > price ? (
                 <Text style={[styles.comparePrice, { color: colors.textMuted }]}>
                   {currencySymbol}
@@ -589,53 +583,54 @@ const styles = StyleSheet.create({
     flex: 1,
     flexBasis: "48%",
     maxWidth: "48%",
-    padding: 12,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 8,
     position: "relative",
     borderWidth: 1,
   },
   productImageWrap: {
     width: "100%",
-    height: 130,
+    height: 90,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 6,
     position: "relative",
     borderWidth: 1,
   },
   productImage: { width: "100%", height: "100%" },
   productImagePlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
-  productTitle: { fontSize: 14, fontWeight: "700" },
+  productTitle: { fontSize: 13, fontWeight: "700" },
   companyRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  companyName: { flex: 1, fontSize: 11, fontWeight: "700" },
+  companyName: { flex: 1, fontSize: 10.5, fontWeight: "700" },
   badge: { paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1, borderRadius: 999 },
   badgeFloating: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 3, borderWidth: 1, borderRadius: 999 },
   badgeText: { fontSize: 9, fontWeight: "800" },
-  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  star: { fontSize: 12, marginRight: 2 },
-  productSize: { fontSize: 12, fontWeight: "500", marginTop: 2 },
-  priceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  priceText: { fontSize: 16, fontWeight: "800" },
-  comparePrice: { fontSize: 13, fontWeight: "600", textDecorationLine: "line-through" },
-  footerCard: { marginTop: 12 },
+  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 4, paddingVertical: 4, paddingHorizontal: 8, borderWidth: 1, borderRadius: 10, alignSelf: "flex-start" },
+  ratingValue: { fontSize: 12, fontWeight: "800" },
+  ratingSuffix: { fontSize: 11, fontWeight: "600" },
+  priceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  priceText: { fontSize: 14, fontWeight: "800" },
+  priceUnit: { fontSize: 11, fontWeight: "700" },
+  comparePrice: { fontSize: 12, fontWeight: "600", textDecorationLine: "line-through" },
+  footerCard: { marginTop: 6 },
   addButton: {
     marginTop: 0,
     borderWidth: 1,
     overflow: "hidden",
     alignSelf: "stretch",
     shadowColor: "#4f46e5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
   },
   addButtonFill: {
     width: "100%",
-    paddingVertical: 12,
+    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  addButtonText: { fontSize: 13, fontWeight: "800", letterSpacing: 0.3 },
+  addButtonText: { fontSize: 12, fontWeight: "800", letterSpacing: 0.2 },
   emptyState: { alignItems: "center", paddingTop: 80, gap: 8 },
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: "800" },

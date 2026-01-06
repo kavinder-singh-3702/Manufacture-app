@@ -5,6 +5,7 @@ export type ProductCategory = {
   title: string;
   count: number;
   totalQuantity?: number;
+  subCategories?: string[];
 };
 
 export type ProductPrice = {

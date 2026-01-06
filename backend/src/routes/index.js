@@ -10,6 +10,7 @@ const productRouter = require('../modules/product/routes/product.routes');
 const chatRouter = require('../modules/chat/routes/chat.routes');
 const preferenceRouter = require('../modules/preferences/routes/preference.routes');
 const favoritesRouter = require('../modules/userFavorites/favorites.routes');
+const servicesRouter = require('../modules/services/routes/service.routes');
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/products', productRouter);
 router.use('/chat', chatRouter);
 router.use('/preferences', preferenceRouter);
 router.use('/favorites', favoritesRouter);
+router.use('/services', servicesRouter);
 
 module.exports = router;

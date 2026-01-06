@@ -1,5 +1,6 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 import { RouteName, routes } from "./routes";
+import { ServiceType } from "../services/serviceRequest.service";
 
 /**
  * Root stack - single navigation structure for all users
@@ -23,6 +24,8 @@ export type RootStackParamList = {
   UserPreferences: { userId: string; displayName?: string };
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
+  ServiceRequest: { serviceType?: ServiceType };
+  ServiceDetail: { serviceType: ServiceType };
 };
 
 /**

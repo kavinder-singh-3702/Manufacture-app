@@ -49,17 +49,64 @@ type PromoOffer = {
 // ============================================================
 // STATIC DATA
 // ============================================================
-const fallbackCategories: ProductCategory[] = [
-  { id: "finished-goods", title: "Finished Goods", count: 0, totalQuantity: 0 },
-  { id: "components", title: "Components & Parts", count: 0, totalQuantity: 0 },
-  { id: "raw-materials", title: "Raw Materials", count: 0, totalQuantity: 0 },
-  { id: "machinery", title: "Machinery & Equipment", count: 0, totalQuantity: 0 },
-  { id: "packaging", title: "Packaging", count: 0, totalQuantity: 0 },
-  { id: "services", title: "Services", count: 0, totalQuantity: 0 },
-  { id: "other", title: "Other", count: 0, totalQuantity: 0 },
+const CATEGORY_CATALOG: Array<{ id: string; title: string }> = [
+  { id: "food-beverage-manufacturing", title: "Food & Beverage Manufacturing" },
+  { id: "textile-apparel-manufacturing", title: "Textile & Apparel Manufacturing" },
+  { id: "paper-packaging-industry", title: "Paper & Packaging Industry" },
+  { id: "chemical-manufacturing", title: "Chemical Manufacturing" },
+  { id: "pharmaceutical-medical", title: "Pharmaceutical & Medical Manufacturing" },
+  { id: "plastic-polymer-industry", title: "Plastic & Polymer Industry" },
+  { id: "rubber-industry", title: "Rubber Industry" },
+  { id: "metal-steel-industry", title: "Metal & Steel Industry" },
+  { id: "automobile-auto-components", title: "Automobile & Auto Components" },
+  { id: "electrical-electronics-manufacturing", title: "Electrical & Electronics Manufacturing" },
+  { id: "machinery-heavy-engineering", title: "Machinery & Heavy Engineering" },
+  { id: "wood-furniture-industry", title: "Wood & Furniture Industry" },
+  { id: "construction-material-industry", title: "Construction Material Industry" },
+  { id: "leather-industry", title: "Leather Industry" },
+  { id: "petroleum-energy-manufacturing", title: "Petroleum & Energy-Based Manufacturing" },
+  { id: "defence-aerospace-manufacturing", title: "Defence & Aerospace Manufacturing" },
+  { id: "consumer-goods-fmcg", title: "Consumer Goods (FMCG) Manufacturing" },
+  { id: "printing-publishing", title: "Printing & Publishing" },
+  { id: "toys-sports-goods", title: "Toys & Sports Goods Manufacturing" },
+  { id: "handicrafts-cottage-industries", title: "Handicrafts & Cottage Industries" },
+  // Legacy buckets retained for compatibility
+  { id: "finished-goods", title: "Finished Goods" },
+  { id: "components", title: "Components & Parts" },
+  { id: "raw-materials", title: "Raw Materials" },
+  { id: "machinery", title: "Machinery & Equipment" },
+  { id: "packaging", title: "Packaging" },
+  { id: "services", title: "Services" },
+  { id: "other", title: "Other" },
 ];
 
+const fallbackCategories: ProductCategory[] = CATEGORY_CATALOG.map((item) => ({
+  ...item,
+  count: 0,
+  totalQuantity: 0,
+}));
+
 const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
+  "food-beverage-manufacturing": { icon: "🍚", bgColor: "#FEF3C7" },
+  "textile-apparel-manufacturing": { icon: "👕", bgColor: "#F3E8FF" },
+  "paper-packaging-industry": { icon: "📦", bgColor: "#E0F2FE" },
+  "chemical-manufacturing": { icon: "⚗️", bgColor: "#FFE4E6" },
+  "pharmaceutical-medical": { icon: "💊", bgColor: "#E0E7FF" },
+  "plastic-polymer-industry": { icon: "🧴", bgColor: "#DCFCE7" },
+  "rubber-industry": { icon: "🛞", bgColor: "#FFF7ED" },
+  "metal-steel-industry": { icon: "🏗️", bgColor: "#E5E7EB" },
+  "automobile-auto-components": { icon: "🚗", bgColor: "#FEE2E2" },
+  "electrical-electronics-manufacturing": { icon: "🔌", bgColor: "#DBEAFE" },
+  "machinery-heavy-engineering": { icon: "⚙️", bgColor: "#EDE9FE" },
+  "wood-furniture-industry": { icon: "🪑", bgColor: "#FEF9C3" },
+  "construction-material-industry": { icon: "🧱", bgColor: "#FFEDD5" },
+  "leather-industry": { icon: "👞", bgColor: "#FDE68A" },
+  "petroleum-energy-manufacturing": { icon: "⛽", bgColor: "#FFF1F2" },
+  "defence-aerospace-manufacturing": { icon: "✈️", bgColor: "#E0F2FE" },
+  "consumer-goods-fmcg": { icon: "🧼", bgColor: "#ECFDF3" },
+  "printing-publishing": { icon: "📰", bgColor: "#E5E7EB" },
+  "toys-sports-goods": { icon: "🎾", bgColor: "#F3E8FF" },
+  "handicrafts-cottage-industries": { icon: "🧶", bgColor: "#FFF7ED" },
   "finished-goods": { icon: "📦", bgColor: "#E0EAFF" },
   components: { icon: "🧩", bgColor: "#E9D5FF" },
   "raw-materials": { icon: "🧱", bgColor: "#DCFCE7" },
@@ -67,18 +114,6 @@ const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
   packaging: { icon: "🎁", bgColor: "#FFF7ED" },
   services: { icon: "🛠️", bgColor: "#E0F2FE" },
   other: { icon: "🗂️", bgColor: "#F3F4F6" },
-};
-
-const promoOffer: PromoOffer = {
-  id: "admin-promo-1",
-  title: "CNC Spares Kit",
-  description: "Admin pushed price drop for vetted buyers. Ship-ready in 24h.",
-  oldPrice: "₹3,200",
-  newPrice: "₹2,590",
-  discountLabel: "Save 19%",
-  tag: "Admin deal",
-  accent: "#FACC15",
-  gradient: ["#0EA5E9", "#6366F1"],
 };
 
 // ============================================================
@@ -618,6 +653,31 @@ const UserDashboardContent = () => {
   const [personalizedOffer, setPersonalizedOffer] = useState<PersonalizedOffer | null>(null);
   const [offersLoading, setOffersLoading] = useState(false);
 
+  const mapCategories = useCallback(
+    (incoming?: ProductCategory[]) => {
+      const baseMap = new Map<string, CategoryItem>();
+      CATEGORY_CATALOG.forEach((cat) => {
+        const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
+        baseMap.set(cat.id, { id: cat.id, title: cat.title, count: 0, totalQuantity: 0, icon: meta.icon, bgColor: meta.bgColor });
+      });
+
+      (incoming || []).forEach((cat) => {
+        const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
+        baseMap.set(cat.id, {
+          id: cat.id,
+          title: cat.title,
+          count: cat.count,
+          totalQuantity: cat.totalQuantity,
+          icon: meta.icon,
+          bgColor: meta.bgColor,
+        });
+      });
+
+      return Array.from(baseMap.values());
+    },
+    []
+  );
+
   const fetchVerificationStatus = useCallback(async () => {
     if (!user?.activeCompany) {
       setVerificationStatus(null);
@@ -652,27 +712,15 @@ const UserDashboardContent = () => {
     try {
       const response = await productService.getCategoryStats({
         scope: "marketplace",
-        createdByRole: "admin",
       });
-      const mapped = response.categories.map((cat) => {
-        const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
-        return {
-          id: cat.id,
-          title: cat.title,
-          count: cat.count,
-          totalQuantity: cat.totalQuantity,
-          icon: meta.icon,
-          bgColor: meta.bgColor,
-        } as CategoryItem;
-      });
-      setCategories(mapped);
+      setCategories(mapCategories(response.categories));
     } catch (err: any) {
       console.error("Failed to fetch categories:", err);
       setCategoriesError(err.message || "Failed to load categories");
     } finally {
       setCategoriesLoading(false);
     }
-  }, []);
+  }, [mapCategories]);
 
   useFocusEffect(
     useCallback(() => {
@@ -768,37 +816,41 @@ const UserDashboardContent = () => {
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
 
-          <PromoBanner
-            offer={
-              personalizedOffer
-                ? {
-                    id: personalizedOffer.id,
-                    title: personalizedOffer.title,
-                    description: personalizedOffer.message || "Special pick for you based on recent activity.",
-                    oldPrice: personalizedOffer.oldPrice ? `₹${personalizedOffer.oldPrice.toLocaleString()}` : undefined,
-                    newPrice: `₹${personalizedOffer.newPrice.toLocaleString()}`,
-                    discountLabel:
-                      personalizedOffer.discountPercent !== undefined
-                        ? `Save ${personalizedOffer.discountPercent}%`
-                        : personalizedOffer.offerType === "combo"
-                        ? "Combo offer"
-                        : "Special price",
-                    tag: personalizedOffer.product?.category || personalizedOffer.product?.name || "Personalized",
-                    accent: "#FACC15",
-                    gradient: ["#22C55E", "#16A34A"],
-                  }
-                : promoOffer
-            }
-            loading={offersLoading}
-            onPress={() =>
-              personalizedOffer?.product?.id
-                ? navigation.navigate("CategoryProducts", {
-                    categoryId: personalizedOffer.product.category || "",
-                    title: personalizedOffer.product.category || "Category",
+          {personalizedOffer ? (
+            <PromoBanner
+              offer={{
+                id: personalizedOffer.id,
+                title: personalizedOffer.title,
+                description: personalizedOffer.message || "Special pick for you based on recent activity.",
+                oldPrice: personalizedOffer.oldPrice ? `₹${personalizedOffer.oldPrice.toLocaleString()}` : undefined,
+                newPrice: `₹${personalizedOffer.newPrice.toLocaleString()}`,
+                discountLabel:
+                  personalizedOffer.discountPercent !== undefined
+                    ? `Save ${personalizedOffer.discountPercent}%`
+                    : personalizedOffer.offerType === "combo"
+                    ? "Combo offer"
+                    : "Special price",
+                tag: personalizedOffer.product?.category || personalizedOffer.product?.name || "Personalized",
+                accent: "#FACC15",
+                gradient: ["#22C55E", "#16A34A"],
+              }}
+              loading={offersLoading}
+              onPress={() =>
+                personalizedOffer?.product?.id
+                  ? navigation.navigate("CategoryProducts", {
+                      categoryId: personalizedOffer.product.category || "",
+                      title: personalizedOffer.product.category || "Category",
                   })
                 : navigation.navigate("ProductSearch")
             }
           />
+          ) : (
+            <NoAdHero
+              loading={offersLoading}
+              onPress={() => navigation.navigate("ProductSearch")}
+              onBrowseServices={() => navigation.navigate("Main", { screen: routes.SERVICES })}
+            />
+          )}
 
           {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
             <TouchableOpacity onPress={handleVerificationPress} activeOpacity={0.9}>
@@ -920,6 +972,57 @@ const PromoBanner = ({ offer, onPress, loading }: { offer: PromoOffer; onPress?:
         </View>
       </LinearGradient>
     </TouchableOpacity>
+  );
+};
+
+const NoAdHero = ({
+  loading,
+  onPress,
+  onBrowseServices,
+}: {
+  loading?: boolean;
+  onPress?: () => void;
+  onBrowseServices?: () => void;
+}) => {
+  const { colors, radius, spacing } = useTheme();
+
+  return (
+    <LinearGradient
+      colors={["#1E1B2B", "#161421"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.noAdCard, { borderRadius: radius.lg, padding: spacing.lg }]}
+    >
+      <View style={[styles.noAdGlow, { backgroundColor: colors.primary + "26" }]} />
+      <View style={[styles.noAdGlowSmall, { backgroundColor: colors.accent + "1f" }]} />
+      <View style={{ gap: 6 }}>
+        <View style={[styles.noAdPill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <Text style={[styles.noAdPillText, { color: colors.text }]}>No admin campaigns right now</Text>
+        </View>
+        <Text style={[styles.noAdTitle, { color: colors.text }]}>What do you want to source next?</Text>
+        <Text style={[styles.noAdSubtitle, { color: colors.textMuted }]}>
+          Search products or jump into services—we’ll route your request instantly.
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.sm }}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onPress}
+          style={[styles.noAdButton, { backgroundColor: colors.primary }]}
+        >
+          <Text style={[styles.noAdButtonText, { color: colors.textOnPrimary || "#fff" }]}>
+            {loading ? "Checking..." : "Search products"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onBrowseServices}
+          style={[styles.noAdButtonGhost, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.noAdButtonGhostText, { color: colors.text }]}>Browse services</Text>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -1079,6 +1182,19 @@ const styles = StyleSheet.create({
   promoCta: { marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.18)", paddingVertical: 10, paddingHorizontal: 12 },
   promoCtaText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   promoCtaArrow: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+
+  // No Ad Hero
+  noAdCard: { position: "relative", overflow: "hidden" },
+  noAdGlow: { position: "absolute", width: 180, height: 180, borderRadius: 90, top: -40, right: -40, opacity: 0.6 },
+  noAdGlowSmall: { position: "absolute", width: 120, height: 120, borderRadius: 60, bottom: -30, left: -20, opacity: 0.4 },
+  noAdPill: { alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
+  noAdPillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
+  noAdTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.2 },
+  noAdSubtitle: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  noAdButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  noAdButtonText: { fontSize: 13, fontWeight: "800" },
+  noAdButtonGhost: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  noAdButtonGhostText: { fontSize: 13, fontWeight: "800" },
 
   // Category Grid
   categoryRow: { flexDirection: "row", justifyContent: "space-between" },

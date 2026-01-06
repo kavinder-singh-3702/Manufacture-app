@@ -26,12 +26,33 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 64;
 
 const CATEGORY_COLORS: Record<string, string> = {
+  "food-beverage-manufacturing": "#F59E0B",
+  "textile-apparel-manufacturing": "#A855F7",
+  "paper-packaging-industry": "#06B6D4",
+  "chemical-manufacturing": "#F97316",
+  "pharmaceutical-medical": "#6366F1",
+  "plastic-polymer-industry": "#22C55E",
+  "rubber-industry": "#FBBF24",
+  "metal-steel-industry": "#6B7280",
+  "automobile-auto-components": "#EF4444",
+  "electrical-electronics-manufacturing": "#3B82F6",
+  "machinery-heavy-engineering": "#4F46E5",
+  "wood-furniture-industry": "#D97706",
+  "construction-material-industry": "#EA580C",
+  "leather-industry": "#B45309",
+  "petroleum-energy-manufacturing": "#FB7185",
+  "defence-aerospace-manufacturing": "#0EA5E9",
+  "consumer-goods-fmcg": "#10B981",
+  "printing-publishing": "#64748B",
+  "toys-sports-goods": "#14B8A6",
+  "handicrafts-cottage-industries": "#EC4899",
   "finished-goods": "#6C63FF",
   components: "#FF8C3C",
   "raw-materials": "#4AC9FF",
   machinery: "#4ADE80",
   packaging: "#EC4899",
   services: "#FBBF24",
+  other: "#6B7280",
 };
 
 // ============================================================

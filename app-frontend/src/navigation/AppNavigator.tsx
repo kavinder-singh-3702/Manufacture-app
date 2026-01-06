@@ -25,6 +25,8 @@ import {
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
+import { UserServicesScreen } from "../screens/chat";
+import { ServiceDetailScreen } from "../screens/services";
 
 enableScreens(true);
 
@@ -157,6 +159,16 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="Chat"
               component={ChatScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="ServiceRequest"
+              component={UserServicesScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="ServiceDetail"
+              component={ServiceDetailScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

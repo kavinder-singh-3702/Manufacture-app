@@ -20,7 +20,8 @@ import { DashboardScreen } from "../screens/DashboardScreen";
 import { StatsScreen } from "../screens/StatsScreen";
 import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
 import { AdminProductsScreen } from "../screens/cart";
-import { UserServicesScreen, AdminChatScreen } from "../screens/chat";
+import { AdminChatScreen } from "../screens/chat";
+import { ServicesOverviewScreen } from "../screens/services";
 
 // Components
 import { FloatingCartBar } from "../components/cart";
@@ -88,7 +89,7 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   // User screens
   [routes.DASHBOARD]: DashboardScreen,
   [routes.CART]: AdminProductsScreen,
-  [routes.SERVICES]: UserServicesScreen, // User's services screen (chat with admin)
+  [routes.SERVICES]: ServicesOverviewScreen, // Services overview → detail flow
   [routes.STATS]: StatsScreen,
   [routes.PROFILE_TAB]: ProfileTabScreen,
   // Admin screens
@@ -383,10 +384,10 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   const renderIcon = (tab: RouteConfig, isActive: boolean) => {
     const asset = footerIcons[tab.route];
     if (asset?.type === "svg") {
-      return <SvgXml xml={asset.xml} width={26} height={26} />;
+      return <SvgXml xml={asset.xml} width={24} height={24} />;
     }
     if (asset?.type === "png") {
-      return <Image source={asset.src} style={[styles.footerIcon, { opacity: isActive ? 1 : 0.85 }]} resizeMode="contain" />;
+      return <Image source={asset.src} style={[styles.footerIcon, { opacity: isActive ? 1 : 0.8 }]} resizeMode="contain" />;
     }
     return <Text style={isActive ? styles.userTabIcon : styles.userTabIconInactive}>{tab.icon}</Text>;
   };
@@ -401,49 +402,40 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
         key={tab.route}
         onPress={() => onTabPress(tab.route)}
         style={styles.userTabButton}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        {isActive ? (
-          <View style={styles.userActiveTabContainer}>
-            <LinearGradient
-              colors={tab.gradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.userActiveTabGlow, { shadowColor: tab.gradientColors[0] }]}
-            >
-              <View style={{ position: "relative" }}>
-                {renderIcon(tab, true)}
-                {cartCount > 0 && (
-                  <View style={styles.cartBadge}>
-                    <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
-                  </View>
-                )}
+        <LinearGradient
+          colors={isActive ? tab.gradientColors : ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.02)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.userTabPill,
+            {
+              borderColor: isActive ? tab.gradientColors[0] + "55" : "rgba(255,255,255,0.06)",
+              shadowColor: isActive ? tab.gradientColors[0] : "#000",
+              backgroundColor: isActive ? undefined : colors.surface,
+            },
+          ]}
+        >
+          <View style={styles.userTabIconWrap}>
+            {renderIcon(tab, isActive)}
+            {cartCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
               </View>
-            </LinearGradient>
-            <Text style={[styles.userTabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
+            )}
           </View>
-        ) : (
-          <View style={styles.userInactiveTabContainer}>
-            <LinearGradient
-              colors={[`${tab.gradientColors[0]}30`, `${tab.gradientColors[1]}15`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.userInactiveGradientBorder}
-            >
-              <View style={[styles.userInactiveIconInner, { backgroundColor: colors.background }]}>
-                <View style={{ position: "relative" }}>
-                  {renderIcon(tab, false)}
-                  {cartCount > 0 && (
-                    <View style={styles.cartBadge}>
-                      <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </LinearGradient>
-            <Text style={[styles.userTabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
-          </View>
-        )}
+          <Text
+            style={[
+              styles.userTabLabelCommon,
+              isActive ? { color: colors.text } : { color: colors.textMuted },
+            ]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {tab.label}
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -451,26 +443,23 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   return (
     <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
       <LinearGradient
-        colors={["rgba(30, 33, 39, 0.98)", "rgba(22, 24, 29, 0.98)", "rgba(18, 20, 26, 0.98)"]}
-        locations={[0, 0.5, 1]}
+        colors={["rgba(18,20,26,0.98)", "rgba(18,20,26,0.92)"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={[
           styles.userFooter,
           {
-            paddingHorizontal: spacing.xs,
-            paddingTop: spacing.md,
+            paddingHorizontal: spacing.sm,
+            paddingTop: spacing.sm,
             paddingBottom: spacing.xs,
           },
         ]}
       >
-        {/* Subtle gradient overlay */}
         <LinearGradient
-          colors={["rgba(0, 178, 255, 0.05)", "transparent", "rgba(255, 107, 107, 0.05)"]}
-          locations={[0, 0.5, 1]}
+          colors={["rgba(108,99,255,0.08)", "transparent", "rgba(74,201,255,0.06)"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
+          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 26, borderTopRightRadius: 26 }]}
         />
         {tabs.map(renderTab)}
       </LinearGradient>
@@ -613,64 +602,47 @@ const styles = StyleSheet.create({
   // User footer styles (5 tabs)
   userFooter: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-around",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  userTabButton: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
-  userActiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 3 },
-  userInactiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 3 },
-  userActiveTabGlow: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  userInactiveGradientBorder: { width: 40, height: 40, borderRadius: 12, padding: 1.5, alignItems: "center", justifyContent: "center" },
-  userInactiveIconInner: { width: 37, height: 37, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  userTabIcon: { fontSize: 20 },
-  userTabIconInactive: { fontSize: 18, opacity: 0.7 },
-  userTabLabel: { fontSize: 9, fontWeight: "600" },
-  userTabLabelActive: { fontSize: 9, fontWeight: "700" },
-  footerIcon: { width: 22, height: 22 },
-
-  // Center button (Services)
-  centerTabButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: -20,
-    marginHorizontal: 4,
-  },
-  centerTabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#ee0979",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 10,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.2)",
+    gap: 8,
   },
-  centerTabIcon: { fontSize: 26 },
+  userTabButton: { flex: 1, alignItems: "center", justifyContent: "center" },
+  userTabPill: {
+    width: "100%",
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  userTabIconWrap: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userTabIcon: { fontSize: 20 },
+  userTabIconInactive: { fontSize: 18, opacity: 0.7 },
+  userTabLabelCommon: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2, textAlign: "center" },
+  footerIcon: { width: 22, height: 22 },
 
   // Cart badge
   cartBadge: {

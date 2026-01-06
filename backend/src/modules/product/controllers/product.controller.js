@@ -17,14 +17,13 @@ const normalizeCreatorRole = (role) => {
   const value = typeof role === 'string' ? role.toLowerCase() : undefined;
   return value === 'admin' || value === 'user' ? value : undefined;
 };
-const shouldForceAdminOnly = (scope, userRole) => scope === 'marketplace' && userRole !== 'admin';
 
 const getCategoryStatsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
-    const createdByRole = shouldForceAdminOnly(scope, req.user?.role) ? 'admin' : normalizedRole;
+    const createdByRole = normalizedRole;
 
     const result = await getCategoryStats(companyId, { createdByRole });
     return res.json(result);
@@ -37,11 +36,10 @@ const getProductsByCategoryController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
-    const excludeUserId = scope === 'marketplace' ? req.user?.id : undefined;
     const { categoryId } = req.params;
     const { limit, offset, status, minPrice, maxPrice, sort } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
-    const createdByRole = shouldForceAdminOnly(scope, req.user?.role) ? 'admin' : normalizedRole;
+    const createdByRole = normalizedRole;
 
     const result = await getProductsByCategory(companyId, categoryId, {
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -51,7 +49,6 @@ const getProductsByCategoryController = async (req, res, next) => {
       maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
       sort,
       userId: req.user?.id,
-      excludeUserId,
       createdByRole
     });
 
@@ -65,10 +62,9 @@ const listProductsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
-    const excludeUserId = scope === 'marketplace' ? req.user?.id : undefined;
     const { limit, offset, category, status, search, visibility } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
-    const createdByRole = shouldForceAdminOnly(scope, req.user?.role) ? 'admin' : normalizedRole;
+    const createdByRole = normalizedRole;
 
     const result = await getAllProducts(companyId, {
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -78,7 +74,6 @@ const listProductsController = async (req, res, next) => {
       search,
       visibility,
       userId: req.user?.id,
-      excludeUserId,
       createdByRole
     });
 

@@ -62,6 +62,7 @@ const getCategoryStats = async (companyId, { createdByRole } = {}) => {
   const categories = PRODUCT_CATEGORIES.map((category) => ({
     id: category.id,
     title: category.label,
+    subCategories: category.subCategories || [],
     count: countsMap[category.id]?.count || 0,
     totalQuantity: countsMap[category.id]?.totalQuantity || 0
   }));
@@ -72,14 +73,11 @@ const getCategoryStats = async (companyId, { createdByRole } = {}) => {
 const getProductsByCategory = async (
   companyId,
   categoryId,
-  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, excludeUserId, createdByRole } = {}
+  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, createdByRole } = {}
 ) => {
   const query = { category: categoryId, deletedAt: { $exists: false } };
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
-  }
-  if (excludeUserId) {
-    query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
   }
   if (createdByRole) {
     const adminFilter = await buildAdminCreatorFilter(createdByRole);
@@ -146,15 +144,12 @@ const getProductsByCategory = async (
 
 const getAllProducts = async (
   companyId,
-  { limit = 20, offset = 0, category, status, search, visibility, userId, excludeUserId, createdByRole } = {}
+  { limit = 20, offset = 0, category, status, search, visibility, userId, createdByRole } = {}
 ) => {
   const query = { deletedAt: { $exists: false } };
 
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
-  }
-  if (excludeUserId) {
-    query.createdBy = { $ne: new mongoose.Types.ObjectId(excludeUserId) };
   }
   if (createdByRole) {
     const adminFilter = await buildAdminCreatorFilter(createdByRole);
