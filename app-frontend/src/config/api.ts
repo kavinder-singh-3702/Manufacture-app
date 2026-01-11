@@ -3,8 +3,8 @@
  * Adjust base URLs and shared HTTP settings here to keep API usage consistent.
  */
 
-// AWS Production Backend URL - hardcoded to avoid environment variable issues
-export const API_BASE_URL = "https://3.108.52.140/api";
+// Use environment variable for API URL
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://3.108.52.140/api";
 
 export const DEFAULT_API_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",
