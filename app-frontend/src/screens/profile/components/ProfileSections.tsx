@@ -184,7 +184,7 @@ export const ProfileSections = ({ user, onEdit }: Props) => {
         <InfoRow icon="location" label="Address" value={formatAddress()} />
       </SectionCard>
 
-      {/* Professional Section - Redesigned */}
+      {/* Professional Section */}
       <SectionCard title="Professional" icon="briefcase-outline" onEdit={() => onEdit("professional")}>
         {/* Featured Cards Row */}
         <View style={styles.featuredCardsRow}>

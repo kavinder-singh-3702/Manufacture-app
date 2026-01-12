@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminCompany } from "../../services/admin.service";
 import { RequestDocumentsModal } from "../../components/admin/RequestDocumentsModal";
@@ -20,11 +21,13 @@ import {
   AdminListCard,
   AdminActionSheet,
 } from "../../components/admin";
+import { RootStackParamList } from "../../navigation/types";
 
 type FilterStatus = "all" | "active" | "pending-verification" | "inactive";
 
 export const CompaniesScreen = () => {
   const { colors, spacing } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // State
   const [allCompanies, setAllCompanies] = useState<AdminCompany[]>([]);
@@ -217,7 +220,16 @@ export const CompaniesScreen = () => {
   const getActions = () => {
     const actions = [
       {
-        label: "View Details",
+        label: "View Full Profile",
+        icon: "business-outline" as const,
+        onPress: () => {
+          if (!selectedCompany) return;
+          setActionSheetVisible(false);
+          navigation.navigate("CompanyProfile", { companyId: selectedCompany.id });
+        },
+      },
+      {
+        label: "Quick Info",
         icon: "information-circle-outline" as const,
         onPress: () => {
           if (!selectedCompany) return;

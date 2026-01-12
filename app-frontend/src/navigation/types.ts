@@ -19,7 +19,7 @@ export type RootStackParamList = {
   EditProduct: { productId: string };
   FilteredProducts: { filter: "low_stock" | "out_of_stock"; title: string };
   CategoryProducts: { categoryId: string; title: string; subCategory?: string };
-  ProductDetails: { productId: string };
+  ProductDetails: { productId: string; product?: any };
   ProductSearch: { initialQuery?: string } | undefined;
   UserPreferences: { userId: string; displayName?: string };
   // Chat screens

@@ -165,19 +165,23 @@ export const MainTabs = () => {
 
   const handleNavigateToRoute = useCallback(
     (route: RouteName) => {
-      // Profile tab opens modal screen instead of tab
+      // Profile tab opens Company Profile screen instead of tab
       if (route === routes.PROFILE_TAB) {
         if (!isAuthenticated) {
           requestLogin();
           return;
         }
-        stackNavigation.navigate("Profile");
+        if (activeCompany?.id) {
+          stackNavigation.navigate("CompanyProfile", { companyId: String(activeCompany.id) });
+        } else {
+          setCompanyModalOpen(true);
+        }
         return;
       }
       stackNavigation.navigate("Main", { screen: route });
       setSidebarVisible(false);
     },
-    [isAuthenticated, requestLogin, stackNavigation]
+    [activeCompany?.id, isAuthenticated, requestLogin, stackNavigation]
   );
 
   const handleShowProfile = useCallback(() => {
@@ -204,18 +208,14 @@ export const MainTabs = () => {
     setCompanyModalOpen(true);
   }, [isAdmin]);
 
-  const handleOpenCompanyProfile = useCallback(() => {
+  const handleOpenPersonalProfile = useCallback(() => {
     if (!isAuthenticated) {
       requestLogin();
       return;
     }
     if (isAdmin) return;
-    if (activeCompany?.id) {
-      stackNavigation.navigate("CompanyProfile", { companyId: String(activeCompany.id) });
-      return;
-    }
-    setCompanyModalOpen(true);
-  }, [activeCompany?.id, isAdmin, isAuthenticated, requestLogin, stackNavigation]);
+    stackNavigation.navigate("Profile");
+  }, [isAdmin, isAuthenticated, requestLogin, stackNavigation]);
 
   // Build navigation items from tabs (exclude placeholders from sidebar)
   const navigationItems = useMemo(
@@ -302,7 +302,7 @@ export const MainTabs = () => {
           notificationCount={isAdmin ? 5 : 3}
           activeCompany={!isAdmin ? activeCompany : null}
           onAvatarLongPress={!isAdmin ? handleOpenCompanySwitcher : undefined}
-          onAvatarPress={!isAdmin ? handleOpenCompanyProfile : undefined}
+          onAvatarPress={!isAdmin ? handleOpenPersonalProfile : undefined}
         />
 
         <View style={styles.contentArea}>

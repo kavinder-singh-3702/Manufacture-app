@@ -31,6 +31,7 @@ export type Product = {
   category: string;
   subCategory?: string;
   createdByRole?: "admin" | "user";
+  createdBy?: string;
   price: ProductPrice;
   minStockQuantity: number;
   availableQuantity: number;
@@ -149,8 +150,8 @@ class ProductService {
     return apiClient.get<PaginatedResponse>("/products", { params });
   }
 
-  async getById(productId: string): Promise<Product> {
-    const response = await apiClient.get<{ product: Product }>(`/products/${productId}`);
+  async getById(productId: string, params?: { scope?: ProductListScope }): Promise<Product> {
+    const response = await apiClient.get<{ product: Product }>(`/products/${productId}`, { params });
     return response.product;
   }
 

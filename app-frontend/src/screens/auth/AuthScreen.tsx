@@ -111,12 +111,6 @@ type IntroPanelProps = {
 const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   return (
     <View style={styles.slideCard}>
-      <View style={styles.cardTopRow}>
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.illustrationArea}>
         {/* Indigo gradient blob */}
         <LinearGradient
@@ -136,16 +130,22 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
         <Text style={styles.introSubheading}>Grow Together</Text>
       </View>
 
-      <LinearGradient
-        colors={["#6C63FF", "#5248E6"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.primaryButton, { marginTop: 40 }]}
-      >
-        <TouchableOpacity onPress={onJoin} style={styles.primaryButtonInner}>
-          <Text style={styles.primaryButtonText}>JOIN NOW</Text>
+      <View style={styles.buttonContainer}>
+        <LinearGradient
+          colors={["#6C63FF", "#5248E6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.primaryButton}
+        >
+          <TouchableOpacity onPress={onJoin} style={styles.primaryButtonInner}>
+            <Text style={styles.primaryButtonText}>JOIN NOW</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+
+        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+          <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
     </View>
   );
 };
@@ -170,17 +170,20 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     position: "relative",
     overflow: "hidden",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
+  buttonContainer: {
+    marginTop: 40,
+    alignItems: "center",
+    width: "100%",
   },
   skipButton: {
-    padding: 8,
+    padding: 10,
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
+    marginTop: 20,
   },
   skipText: {
     fontSize: 14,

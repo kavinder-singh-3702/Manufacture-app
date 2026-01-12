@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
@@ -124,25 +123,23 @@ export const AddProductScreen = () => {
   }, [formData]);
 
   const assetToLocalImage = useCallback(
-    async (asset: ImagePicker.ImagePickerAsset): Promise<LocalImage | null> => {
-      try {
-        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const fileName = asset.fileName || asset.uri.split("/").pop() || `image-${Date.now()}.jpg`;
-        const mimeType = asset.mimeType || "image/jpeg";
-
-        return {
-          uri: asset.uri,
-          base64,
-          fileName,
-          mimeType,
-        };
-      } catch (err: any) {
-        console.warn("Image read failed", err?.message || err);
+    (asset: ImagePicker.ImagePickerAsset): LocalImage | null => {
+      // Use base64 directly from the asset (provided by ImagePicker with base64 option)
+      if (!asset.base64) {
+        console.warn("Image has no base64 data - ensure base64 option is enabled in ImagePicker");
         toastError("Add image failed", "Could not read image data");
         return null;
       }
+
+      const fileName = asset.fileName || asset.uri.split("/").pop() || `image-${Date.now()}.jpg`;
+      const mimeType = asset.mimeType || "image/jpeg";
+
+      return {
+        uri: asset.uri,
+        base64: asset.base64,
+        fileName,
+        mimeType,
+      };
     },
     [toastError]
   );
@@ -159,13 +156,15 @@ export const AddProductScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.7,
         allowsMultipleSelection: options?.allowMultiple || false,
+        base64: true, // Request base64 data directly from ImagePicker
+        exif: false, // Skip EXIF data to reduce payload size
       });
 
       if (result.canceled || !result.assets?.length) return [];
 
       const mapped: LocalImage[] = [];
       for (const asset of result.assets) {
-        const img = await assetToLocalImage(asset);
+        const img = assetToLocalImage(asset);
         if (img) mapped.push(img);
       }
 

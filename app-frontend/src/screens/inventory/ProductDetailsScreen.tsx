@@ -10,6 +10,8 @@ import {
   View,
   Linking,
   Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -20,12 +22,14 @@ import { Product, productService } from "../../services/product.service";
 import { useCart } from "../../hooks/useCart";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 
 export const ProductDetailsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "ProductDetails">>();
-  const { productId } = route.params;
+  const { productId, product: passedProduct } = route.params;
 
   const { addToCart, isInCart, getCartItem, updateQuantity, removeFromCart } = useCart();
   const { user } = useAuth();
@@ -34,19 +38,45 @@ export const ProductDetailsScreen = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [selectedImageName, setSelectedImageName] = useState<string>("image.jpg");
+  const [imageConfirmModalVisible, setImageConfirmModalVisible] = useState(false);
 
   const loadProduct = useCallback(async () => {
+    // If product was passed from navigation, use it directly
+    if (passedProduct) {
+      console.log("Using passed product data");
+      setProduct(passedProduct);
+      setLoading(false);
+      return;
+    }
+
+    if (!productId) {
+      setError("No product ID provided");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const response = await productService.getById(productId);
-      setProduct(response);
+      console.log("Loading product with ID:", productId);
+      // Try marketplace scope first (for products from category listing)
+      const response = await productService.getById(productId, { scope: "marketplace" });
+      console.log("Product response:", response);
+      if (!response) {
+        setError("Product not found");
+      } else {
+        setProduct(response);
+      }
     } catch (err: any) {
+      console.error("Error loading product:", err);
       setError(err?.message || "Failed to load product");
     } finally {
       setLoading(false);
     }
-  }, [productId]);
+  }, [productId, passedProduct]);
 
   useEffect(() => {
     loadProduct();
@@ -91,6 +121,20 @@ export const ProductDetailsScreen = () => {
   const inCart = product ? isInCart(product._id) : false;
   const cartQty = product && inCart ? getCartItem(product._id)?.quantity || 0 : 0;
 
+  // Check if current user is the product owner (by creator or company)
+  const isOwnProduct = useMemo(() => {
+    if (!product || !user) return false;
+    // Check if user created the product
+    if (product.createdBy && user.id && String(product.createdBy) === String(user.id)) {
+      return true;
+    }
+    // Check if product belongs to user's active company
+    if (product.company?._id && user.activeCompany && String(product.company._id) === String(user.activeCompany)) {
+      return true;
+    }
+    return false;
+  }, [product, user]);
+
   const stockLabel = useMemo(() => {
     if (!product) return "";
     if (product.availableQuantity <= 0) return "Out of stock";
@@ -102,6 +146,95 @@ export const ProductDetailsScreen = () => {
     if (!product) return;
     addToCart(product, 1);
   }, [addToCart, product]);
+
+  const pickImageFromGallery = useCallback(async () => {
+    setImagePickerModalVisible(false);
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert("Permission Required", "Please allow access to your photo library to upload images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImageUri(result.assets[0].uri);
+      setSelectedImageName(result.assets[0].fileName || "image.jpg");
+      setImageConfirmModalVisible(true);
+    }
+  }, []);
+
+  const pickImageFromCamera = useCallback(async () => {
+    setImagePickerModalVisible(false);
+
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert("Permission Required", "Please allow camera access to take photos.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImageUri(result.assets[0].uri);
+      setSelectedImageName(result.assets[0].fileName || "photo.jpg");
+      setImageConfirmModalVisible(true);
+    }
+  }, []);
+
+  const uploadImage = useCallback(async (uri: string, fileName: string) => {
+    if (!product) return;
+
+    setUploadingImage(true);
+    try {
+      // Read the file and convert to base64
+      const base64Content = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64",
+      });
+
+      // Determine mime type from file extension
+      const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
+      const mimeType = extension === "png" ? "image/png" : extension === "gif" ? "image/gif" : "image/jpeg";
+
+      const response = await productService.uploadImage(product._id, {
+        fileName,
+        mimeType,
+        content: base64Content,
+      });
+
+      // Update the product with the new image
+      setProduct(response.product);
+      Alert.alert("Success", "Image uploaded successfully!");
+    } catch (err: any) {
+      console.error("Error uploading image:", err);
+      Alert.alert("Upload Failed", err?.message || "Failed to upload image. Please try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [product]);
+
+  const handleConfirmUpload = useCallback(async () => {
+    if (selectedImageUri) {
+      setImageConfirmModalVisible(false);
+      await uploadImage(selectedImageUri, selectedImageName);
+      setSelectedImageUri(null);
+    }
+  }, [selectedImageUri, selectedImageName, uploadImage]);
+
+  const handleCancelUpload = useCallback(() => {
+    setImageConfirmModalVisible(false);
+    setSelectedImageUri(null);
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -190,6 +323,21 @@ export const ProductDetailsScreen = () => {
                   ))}
                 </View>
               )}
+
+              {/* Add Image Button for Own Products */}
+              {isOwnProduct && (
+                <TouchableOpacity
+                  style={[styles.addImageButton, { backgroundColor: colors.primary }]}
+                  onPress={() => setImagePickerModalVisible(true)}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.addImageButtonText}>+</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text style={[styles.productTitle, { color: colors.text }]} numberOfLines={3}>
@@ -256,7 +404,8 @@ export const ProductDetailsScreen = () => {
             ) : null}
           </View>
 
-          {!isGuest && (
+          {/* Show Message/Call buttons only if NOT the user's own product */}
+          {!isGuest && !isOwnProduct && (
             <View style={styles.actionRow}>
               <TouchableOpacity
                 activeOpacity={0.9}
@@ -302,6 +451,13 @@ export const ProductDetailsScreen = () => {
             </View>
           )}
 
+          {/* Show "Your Product" indicator for owner */}
+          {!isGuest && isOwnProduct && (
+            <View style={[styles.ownProductBanner, { borderRadius: radius.md, backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.ownProductText, { color: colors.textMuted }]}>This is your product</Text>
+            </View>
+          )}
+
           {!isGuest && (
             <View style={{ marginTop: spacing.sm }}>
               <View style={styles.quantityCard}>
@@ -340,6 +496,113 @@ export const ProductDetailsScreen = () => {
           )}
         </ScrollView>
       ) : null}
+
+      {/* Image Picker Modal */}
+      <Modal
+        visible={imagePickerModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setImagePickerModalVisible(false)}
+      >
+        <Pressable
+          style={styles.imagePickerModalBackdrop}
+          onPress={() => setImagePickerModalVisible(false)}
+        >
+          <Pressable style={[styles.imagePickerModalCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.imagePickerModalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.imagePickerModalTitle, { color: colors.text }]}>Add Product Image</Text>
+              <TouchableOpacity
+                onPress={() => setImagePickerModalVisible(false)}
+                style={[styles.imagePickerCloseBtn, { backgroundColor: colors.border }]}
+              >
+                <Text style={[styles.imagePickerCloseText, { color: colors.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.imagePickerOptions}>
+              <TouchableOpacity
+                style={[styles.imagePickerOption, { backgroundColor: colors.primary }]}
+                onPress={pickImageFromCamera}
+              >
+                <Text style={styles.imagePickerOptionIcon}>📷</Text>
+                <Text style={styles.imagePickerOptionText}>Take Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.imagePickerOption, { backgroundColor: "#5ed4a5" }]}
+                onPress={pickImageFromGallery}
+              >
+                <Text style={styles.imagePickerOptionIcon}>🖼️</Text>
+                <Text style={styles.imagePickerOptionText}>Choose from Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.imagePickerCancelBtn, { borderColor: colors.border }]}
+              onPress={() => setImagePickerModalVisible(false)}
+            >
+              <Text style={[styles.imagePickerCancelText, { color: colors.textMuted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Image Confirmation Modal */}
+      <Modal
+        visible={imageConfirmModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelUpload}
+      >
+        <View style={styles.imageConfirmBackdrop}>
+          <View style={[styles.imageConfirmCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.imageConfirmHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.imageConfirmTitle, { color: colors.text }]}>Confirm Image</Text>
+              <TouchableOpacity
+                onPress={handleCancelUpload}
+                style={[styles.imagePickerCloseBtn, { backgroundColor: colors.border }]}
+              >
+                <Text style={[styles.imagePickerCloseText, { color: colors.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedImageUri && (
+              <View style={styles.imagePreviewContainer}>
+                <Image
+                  source={{ uri: selectedImageUri }}
+                  style={styles.imagePreview}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+
+            <Text style={[styles.imageConfirmText, { color: colors.textMuted }]}>
+              Do you want to upload this image?
+            </Text>
+
+            <View style={styles.imageConfirmActions}>
+              <TouchableOpacity
+                style={[styles.imageConfirmCancelBtn, { borderColor: colors.border }]}
+                onPress={handleCancelUpload}
+              >
+                <Text style={[styles.imageConfirmCancelText, { color: colors.textMuted }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.imageConfirmUploadBtn, { backgroundColor: colors.primary }]}
+                onPress={handleConfirmUpload}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.imageConfirmUploadText}>Upload Image</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -428,4 +691,175 @@ const styles = StyleSheet.create({
   qtyValue: { fontSize: 16, fontWeight: "800" },
   dotsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  ownProductBanner: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  ownProductText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  // Add Image Button
+  addImageButton: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addImageButtonText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  // Image Picker Modal
+  imagePickerModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "flex-end",
+  },
+  imagePickerModalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+  },
+  imagePickerModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  imagePickerModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  imagePickerCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePickerCloseText: {
+    fontSize: 18,
+  },
+  imagePickerOptions: {
+    gap: 12,
+  },
+  imagePickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  imagePickerOptionIcon: {
+    fontSize: 24,
+  },
+  imagePickerOptionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  imagePickerCancelBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  imagePickerCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  // Image Confirmation Modal
+  imageConfirmBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  imageConfirmCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  imageConfirmHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  imageConfirmTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  imagePreviewContainer: {
+    width: "100%",
+    height: 250,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#1e1e28",
+    marginBottom: 16,
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  imageConfirmText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  imageConfirmActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  imageConfirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageConfirmCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  imageConfirmUploadBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageConfirmUploadText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
 });
