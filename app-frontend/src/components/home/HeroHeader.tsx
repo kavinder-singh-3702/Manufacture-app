@@ -4,12 +4,6 @@ import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
 import { colors, palette } from "../../theme/colors";
 
-// Hero gradient colors (sky blue to coral)
-const HERO_GRADIENT = {
-  start: "#00B2FF",
-  end: "#FF6B6B",
-} as const;
-
 type HeroHeaderProps = {
   brandName: string;
   logoSource: ImageSourcePropType;
@@ -31,11 +25,11 @@ export const HeroHeader = ({
   onMenuPress,
   onAlertPress,
 }: HeroHeaderProps) => {
-  const { spacing, radius } = useTheme();
+  const { spacing, radius, colors: themeColors } = useTheme();
 
   return (
     <LinearGradient
-      colors={[HERO_GRADIENT.start, HERO_GRADIENT.end]}
+      colors={[themeColors.primary, themeColors.accentWarm, themeColors.backgroundSecondary]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.container, { padding: spacing.md, borderRadius: radius.lg }]}

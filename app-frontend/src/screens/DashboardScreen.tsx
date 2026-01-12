@@ -984,42 +984,58 @@ const NoAdHero = ({
   onPress?: () => void;
   onBrowseServices?: () => void;
 }) => {
-  const { colors, radius, spacing } = useTheme();
+  const { radius, spacing, colors } = useTheme();
 
   return (
     <LinearGradient
-      colors={["#1E1B2B", "#161421"]}
+      colors={[colors.primary, colors.accentWarm, colors.backgroundSecondary]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.noAdCard, { borderRadius: radius.lg, padding: spacing.lg }]}
     >
-      <View style={[styles.noAdGlow, { backgroundColor: colors.primary + "26" }]} />
-      <View style={[styles.noAdGlowSmall, { backgroundColor: colors.accent + "1f" }]} />
-      <View style={{ gap: 6 }}>
-        <View style={[styles.noAdPill, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <Text style={[styles.noAdPillText, { color: colors.text }]}>No admin campaigns right now</Text>
+      {/* Decorative Glow Orbs - matching services stats section */}
+      <LinearGradient
+        colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.03)"]}
+        style={styles.noAdGlowOrb1}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <LinearGradient
+        colors={["rgba(0,0,0,0.06)", "rgba(0,0,0,0.02)"]}
+        style={styles.noAdGlowOrb2}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <View style={styles.noAdRing1} />
+      <View style={styles.noAdRing2} />
+      <View style={styles.noAdSparkle1} />
+      <View style={styles.noAdSparkle2} />
+
+      <View style={{ gap: 8, position: "relative", zIndex: 1 }}>
+        <View style={styles.noAdPillPremium}>
+          <Text style={styles.noAdPillTextPremium}>No admin campaigns right now</Text>
         </View>
-        <Text style={[styles.noAdTitle, { color: colors.text }]}>What do you want to source next?</Text>
-        <Text style={[styles.noAdSubtitle, { color: colors.textMuted }]}>
-          Search products or jump into services—we’ll route your request instantly.
+        <Text style={styles.noAdTitlePremium}>What do you want to source next?</Text>
+        <Text style={styles.noAdSubtitlePremium}>
+          Search products or jump into services—we'll route your request instantly.
         </Text>
       </View>
-      <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.sm }}>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md, position: "relative", zIndex: 1 }}>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onPress}
-          style={[styles.noAdButton, { backgroundColor: colors.primary }]}
+          style={styles.noAdButtonGradient}
         >
-          <Text style={[styles.noAdButtonText, { color: colors.textOnPrimary || "#fff" }]}>
+          <Text style={styles.noAdButtonTextPremium}>
             {loading ? "Checking..." : "Search products"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onBrowseServices}
-          style={[styles.noAdButtonGhost, { borderColor: colors.border }]}
+          style={styles.noAdButtonGhostPremium}
         >
-          <Text style={[styles.noAdButtonGhostText, { color: colors.text }]}>Browse services</Text>
+          <Text style={styles.noAdButtonGhostTextPremium}>Browse services</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -1183,18 +1199,22 @@ const styles = StyleSheet.create({
   promoCtaText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   promoCtaArrow: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
 
-  // No Ad Hero
-  noAdCard: { position: "relative", overflow: "hidden" },
-  noAdGlow: { position: "absolute", width: 180, height: 180, borderRadius: 90, top: -40, right: -40, opacity: 0.6 },
-  noAdGlowSmall: { position: "absolute", width: 120, height: 120, borderRadius: 60, bottom: -30, left: -20, opacity: 0.4 },
-  noAdPill: { alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
-  noAdPillText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3 },
-  noAdTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.2 },
-  noAdSubtitle: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
-  noAdButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  noAdButtonText: { fontSize: 13, fontWeight: "800" },
-  noAdButtonGhost: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  noAdButtonGhostText: { fontSize: 13, fontWeight: "800" },
+  // No Ad Hero - Premium Style (matching Services stats section)
+  noAdCard: { position: "relative", overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
+  noAdGlowOrb1: { position: "absolute", width: 200, height: 200, borderRadius: 100, top: -60, right: -40 },
+  noAdGlowOrb2: { position: "absolute", width: 160, height: 160, borderRadius: 80, bottom: -40, left: -40 },
+  noAdRing1: { position: "absolute", width: 120, height: 120, borderRadius: 60, borderWidth: 1, borderColor: "rgba(0,0,0,0.08)", top: 40, right: 60 },
+  noAdRing2: { position: "absolute", width: 80, height: 80, borderRadius: 40, borderWidth: 1, borderColor: "rgba(0,0,0,0.05)", bottom: 60, left: 40 },
+  noAdSparkle1: { position: "absolute", width: 4, height: 4, borderRadius: 2, backgroundColor: "rgba(0,0,0,0.3)", top: 80, right: 100 },
+  noAdSparkle2: { position: "absolute", width: 3, height: 3, borderRadius: 1.5, backgroundColor: "rgba(0,0,0,0.2)", top: 140, left: 80 },
+  noAdPillPremium: { alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.15)", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
+  noAdPillTextPremium: { fontSize: 12, fontWeight: "700", letterSpacing: 0.3, color: "#1F2937" },
+  noAdTitlePremium: { fontSize: 22, fontWeight: "800", letterSpacing: -0.3, color: "#111827" },
+  noAdSubtitlePremium: { fontSize: 14, fontWeight: "500", lineHeight: 20, color: "rgba(0,0,0,0.7)" },
+  noAdButtonGradient: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#1F2937" },
+  noAdButtonTextPremium: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  noAdButtonGhostPremium: { flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.2)", backgroundColor: "rgba(0,0,0,0.08)" },
+  noAdButtonGhostTextPremium: { fontSize: 14, fontWeight: "700", color: "#1F2937" },
 
   // Category Grid
   categoryRow: { flexDirection: "row", justifyContent: "space-between" },
