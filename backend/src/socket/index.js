@@ -38,7 +38,17 @@ const emitToUser = (userId, event, payload) => {
   io.to(`user:${userId}`).emit(event, payload);
 };
 
+const emitToUsers = (userIds, event, payloadByUser = {}) => {
+  if (!io || !Array.isArray(userIds)) return;
+  userIds.forEach((userId) => {
+    if (!userId) return;
+    const payload = payloadByUser[userId] ?? payloadByUser.default ?? payloadByUser;
+    io.to(`user:${userId}`).emit(event, payload);
+  });
+};
+
 module.exports = {
   initSocket,
-  emitToUser
+  emitToUser,
+  emitToUsers
 };

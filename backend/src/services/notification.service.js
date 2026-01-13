@@ -7,11 +7,14 @@ const {
   NOTIFICATION_DELIVERY_STATUSES,
   NOTIFICATION_AUDIENCE
 } = require('../constants/notification');
+const { emitToUser, emitToUsers } = require('../socket');
 
 /**
  * Notification Service
  * Handles creating and managing in-app notifications
  */
+
+const CHANNEL_OPTIONS = Object.values(NOTIFICATION_CHANNELS);
 
 /**
  * Check if a string is a valid MongoDB ObjectId
@@ -23,6 +26,116 @@ const isValidObjectId = (id) => {
   } catch {
     return false;
   }
+};
+
+const normalizeChannels = (channels = [NOTIFICATION_CHANNELS.IN_APP]) => {
+  const normalized = Array.isArray(channels) ? channels : [channels];
+  const filtered = normalized.filter((channel) => CHANNEL_OPTIONS.includes(channel));
+  return [...new Set(filtered.length ? filtered : [NOTIFICATION_CHANNELS.IN_APP])];
+};
+
+const buildDeliveries = (channels) => {
+  const now = new Date();
+  return channels.map((channel) => {
+    const immediate = channel === NOTIFICATION_CHANNELS.IN_APP;
+    return {
+      channel,
+      status: immediate ? NOTIFICATION_DELIVERY_STATUSES.DELIVERED : NOTIFICATION_DELIVERY_STATUSES.QUEUED,
+      requestedAt: now,
+      sentAt: immediate ? now : undefined,
+      deliveredAt: immediate ? now : undefined
+    };
+  });
+};
+
+const buildNotificationData = ({
+  audience = NOTIFICATION_AUDIENCE.USER,
+  userId,
+  title,
+  body,
+  eventKey,
+  topic = 'system',
+  priority = NOTIFICATION_PRIORITIES.NORMAL,
+  actorId,
+  companyId,
+  data = {},
+  channels,
+  templateKey,
+  deduplicationKey,
+  scheduledAt,
+  expiresAt,
+  recipients,
+  metadata,
+  createdBy
+}) => {
+  const resolvedChannels = normalizeChannels(channels);
+  const deliveries = buildDeliveries(resolvedChannels);
+  const allDelivered = deliveries.every(
+    (delivery) => delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
+  );
+  const notificationData = {
+    audience,
+    user: userId,
+    eventKey,
+    topic,
+    title,
+    body,
+    data,
+    channels: resolvedChannels,
+    priority,
+    status: allDelivered
+      ? NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED
+      : NOTIFICATION_LIFECYCLE_STATUSES.QUEUED,
+    deliveries,
+    sentAt: allDelivered ? new Date() : undefined,
+    deliveredAt: allDelivered ? new Date() : undefined,
+    templateKey,
+    deduplicationKey,
+    scheduledAt,
+    expiresAt,
+    recipients,
+    metadata,
+    createdBy
+  };
+
+  if (isValidObjectId(companyId)) {
+    notificationData.company = companyId;
+  }
+
+  if (isValidObjectId(actorId)) {
+    notificationData.actor = actorId;
+  }
+
+  return notificationData;
+};
+
+const formatNotification = (notification) => ({
+  id: notification._id.toString(),
+  title: notification.title,
+  body: notification.body,
+  eventKey: notification.eventKey,
+  topic: notification.topic,
+  priority: notification.priority,
+  data: notification.data,
+  status: notification.readAt ? 'read' : 'unread',
+  readAt: notification.readAt,
+  createdAt: notification.createdAt
+});
+
+const emitNotification = (userId, notification) => {
+  if (!userId || !notification) return;
+  emitToUser(userId, 'notification:new', formatNotification(notification));
+};
+
+const emitNotificationsBulk = (userIds, notifications) => {
+  if (!Array.isArray(userIds) || !Array.isArray(notifications)) return;
+  const payloadByUser = notifications.reduce((acc, notification) => {
+    const userId = notification.user?.toString();
+    if (!userId) return acc;
+    acc[userId] = formatNotification(notification);
+    return acc;
+  }, {});
+  emitToUsers(userIds, 'notification:new', payloadByUser);
 };
 
 /**
@@ -50,44 +163,40 @@ const createNotification = async ({
   actorId,
   companyId,
   data = {},
-  channels = [NOTIFICATION_CHANNELS.IN_APP]
+  channels = [NOTIFICATION_CHANNELS.IN_APP],
+  templateKey,
+  deduplicationKey,
+  scheduledAt,
+  expiresAt,
+  recipients,
+  metadata,
+  createdBy
 }) => {
   try {
-    // Build notification data, only including valid ObjectIds
-    const notificationData = {
+    const notificationData = buildNotificationData({
       audience: NOTIFICATION_AUDIENCE.USER,
-      user: userId,
-      eventKey,
-      topic,
+      userId,
       title,
       body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
       data,
       channels,
-      priority,
-      status: NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED,
-      deliveries: channels.map(channel => ({
-        channel,
-        status: NOTIFICATION_DELIVERY_STATUSES.DELIVERED,
-        sentAt: new Date(),
-        deliveredAt: new Date()
-      })),
-      sentAt: new Date(),
-      deliveredAt: new Date()
-    };
+      templateKey,
+      deduplicationKey,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy
+    });
 
-    // Only add company if valid ObjectId
-    if (isValidObjectId(companyId)) {
-      notificationData.company = companyId;
-    }
+    const notification = await Notification.create(notificationData);
 
-    // Only add actor if valid ObjectId
-    if (isValidObjectId(actorId)) {
-      notificationData.actor = actorId;
-    }
-
-    const notification = new Notification(notificationData);
-
-    await notification.save();
+    emitNotification(userId, notification);
     console.log(`[NotificationService] Created notification for user ${userId}: ${title}`);
 
     return {
@@ -97,6 +206,196 @@ const createNotification = async ({
     };
   } catch (error) {
     console.error('[NotificationService] Failed to create notification:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+const createNotificationsForUsers = async ({
+  userIds,
+  title,
+  body,
+  eventKey,
+  topic = 'system',
+  priority = NOTIFICATION_PRIORITIES.NORMAL,
+  actorId,
+  companyId,
+  data = {},
+  channels = [NOTIFICATION_CHANNELS.IN_APP],
+  templateKey,
+  deduplicationKey,
+  scheduledAt,
+  expiresAt,
+  recipients,
+  metadata,
+  createdBy
+}) => {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  if (!uniqueUserIds.length) {
+    return { success: false, error: 'No recipients provided' };
+  }
+
+  const notificationsData = uniqueUserIds.map((id) =>
+    buildNotificationData({
+      audience: NOTIFICATION_AUDIENCE.USER,
+      userId: id,
+      title,
+      body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
+      data,
+      channels,
+      templateKey,
+      deduplicationKey: deduplicationKey ? `${deduplicationKey}:${id}` : undefined,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy
+    })
+  );
+
+  try {
+    const notifications = await Notification.insertMany(notificationsData, { ordered: false });
+    emitNotificationsBulk(uniqueUserIds, notifications);
+
+    return {
+      success: true,
+      notificationIds: notifications.map((notification) => notification._id.toString()),
+      count: notifications.length
+    };
+  } catch (error) {
+    console.error('[NotificationService] Failed to create bulk notifications:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+const dispatchNotification = async ({
+  audience = NOTIFICATION_AUDIENCE.USER,
+  userId,
+  userIds = [],
+  companyId,
+  title,
+  body,
+  eventKey,
+  topic,
+  priority,
+  actorId,
+  data,
+  channels,
+  templateKey,
+  deduplicationKey,
+  scheduledAt,
+  expiresAt,
+  recipients,
+  metadata,
+  createdBy
+}) => {
+  const targets = [...new Set([userId, ...userIds].filter(Boolean))];
+  if (audience === NOTIFICATION_AUDIENCE.USER) {
+    if (targets.length === 1) {
+      return createNotification({
+        userId: targets[0],
+        title,
+        body,
+        eventKey,
+        topic,
+        priority,
+        actorId,
+        companyId,
+        data,
+        channels,
+        templateKey,
+        deduplicationKey,
+        scheduledAt,
+        expiresAt,
+        recipients,
+        metadata,
+        createdBy
+      });
+    }
+    return createNotificationsForUsers({
+      userIds: targets,
+      title,
+      body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
+      data,
+      channels,
+      templateKey,
+      deduplicationKey,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy
+    });
+  }
+
+  if (targets.length) {
+    return createNotificationsForUsers({
+      userIds: targets,
+      title,
+      body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
+      data,
+      channels,
+      templateKey,
+      deduplicationKey,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy
+    });
+  }
+
+  try {
+    const notificationData = buildNotificationData({
+      audience,
+      userId: undefined,
+      title,
+      body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
+      data,
+      channels,
+      templateKey,
+      deduplicationKey,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy
+    });
+
+    const notification = await Notification.create(notificationData);
+
+    return {
+      success: true,
+      notificationId: notification._id.toString(),
+      notification
+    };
+  } catch (error) {
+    console.error('[NotificationService] Failed to dispatch notification:', error.message);
     return {
       success: false,
       error: error.message
@@ -126,7 +425,7 @@ const createDocumentRequestNotification = async ({
     ? `Please submit verification documents for "${companyName}". Admin message: ${customMessage}`
     : `Please submit verification documents for "${companyName}" to complete the verification process.`;
 
-  return createNotification({
+  return dispatchNotification({
     userId,
     title,
     body,
@@ -142,7 +441,8 @@ const createDocumentRequestNotification = async ({
       action: 'submit_documents',
       actionUrl: `/company/${companyId}/verification`
     },
-    channels: [NOTIFICATION_CHANNELS.IN_APP]
+    channels: [NOTIFICATION_CHANNELS.IN_APP],
+    createdBy: actorId
   });
 };
 
@@ -173,18 +473,7 @@ const getUserNotifications = async (userId, { status, limit = 20, offset = 0 } =
     Notification.countDocuments(filter)
   ]);
 
-  const formatted = notifications.map(n => ({
-    id: n._id.toString(),
-    title: n.title,
-    body: n.body,
-    eventKey: n.eventKey,
-    topic: n.topic,
-    priority: n.priority,
-    data: n.data,
-    status: n.readAt ? 'read' : 'unread',
-    readAt: n.readAt,
-    createdAt: n.createdAt
-  }));
+  const formatted = notifications.map((notification) => formatNotification(notification));
 
   return {
     notifications: formatted,
@@ -245,6 +534,8 @@ const getUnreadCount = async (userId) => {
 
 module.exports = {
   createNotification,
+  createNotificationsForUsers,
+  dispatchNotification,
   createDocumentRequestNotification,
   getUserNotifications,
   markAsRead,

@@ -11,6 +11,7 @@ const chatRouter = require('../modules/chat/routes/chat.routes');
 const preferenceRouter = require('../modules/preferences/routes/preference.routes');
 const favoritesRouter = require('../modules/userFavorites/favorites.routes');
 const servicesRouter = require('../modules/services/routes/service.routes');
+const notificationRouter = require('../modules/notifications/routes/notification.routes');
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/chat', chatRouter);
 router.use('/preferences', preferenceRouter);
 router.use('/favorites', favoritesRouter);
 router.use('/services', servicesRouter);
+router.use('/notifications', notificationRouter);
 
 module.exports = router;
