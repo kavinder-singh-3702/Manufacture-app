@@ -314,14 +314,12 @@ export const CategoryProductsScreen = () => {
         </View>
       )}
 
-      {/* Product Grid */}
+      {/* Product List - Single column like Amazon */}
       <FlatList
         data={filteredItems}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         extraData={cartItems}
-        numColumns={2}
-        columnWrapperStyle={styles.productRow}
         contentContainerStyle={styles.productList}
         refreshControl={
           <RefreshControl
@@ -641,11 +639,11 @@ const styles = StyleSheet.create({
 
   // Product Grid
   productRow: {
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
+    justifyContent: "flex-start", // Amazon-style edge-to-edge
+    paddingHorizontal: 0,
   },
   productList: {
-    paddingTop: 12,
+    paddingTop: 0,
     paddingBottom: 100,
   },
 

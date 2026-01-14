@@ -19,7 +19,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { AppRole } from "../constants/roles";
-import { productService, ProductStats } from "../services/product.service";
+import { productService, ProductStats, Product } from "../services/product.service";
 import { RootStackParamList } from "../navigation/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -68,6 +68,8 @@ export const StatsScreen = () => {
   const [stats, setStats] = useState<ProductStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBarValue, setSelectedBarValue] = useState<{ label: string; value: number } | null>(null);
+  const [userProducts, setUserProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   const heroGlow = useRef(new Animated.Value(0)).current;
   const heroReveal = useRef(new Animated.Value(0)).current;
@@ -96,17 +98,37 @@ export const StatsScreen = () => {
     }
   }, [isGuest]);
 
+  // Fetch user's own products for the table
+  const fetchUserProducts = useCallback(async () => {
+    if (isGuest) {
+      setUserProducts([]);
+      setProductsLoading(false);
+      return;
+    }
+    try {
+      setProductsLoading(true);
+      const response = await productService.getAll({ scope: "company", limit: 100 });
+      setUserProducts(response.products || []);
+    } catch (err: any) {
+      console.error("Failed to fetch user products:", err);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [isGuest]);
+
   // Refresh stats whenever screen comes into focus (e.g., after deleting a product)
   useFocusEffect(
     useCallback(() => {
       fetchStats();
-    }, [fetchStats])
+      fetchUserProducts();
+    }, [fetchStats, fetchUserProducts])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchStats();
-  }, [fetchStats]);
+    fetchUserProducts();
+  }, [fetchStats, fetchUserProducts]);
 
   // Subtle hero glow and reveal animation
   useEffect(() => {
@@ -417,6 +439,15 @@ export const StatsScreen = () => {
           </LinearGradient>
         </Animated.View>
 
+        {/* My Products Table - Right below hero */}
+        <SectionHeader
+          title="My Products"
+          subtitle="Tap to view all your listed products"
+          onPress={() => navigation.navigate("MyProducts")}
+          showArrow
+        />
+        <ProductTable products={userProducts} loading={productsLoading} />
+
         {/* Error State */}
         {error && (
           <View
@@ -637,15 +668,34 @@ type StatCardData = {
   onPress?: () => void;
 };
 
-const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => {
+const SectionHeader = ({ title, subtitle, onPress, showArrow }: { title: string; subtitle?: string; onPress?: () => void; showArrow?: boolean }) => {
   const { colors, spacing } = useTheme();
 
-  return (
+  const content = (
     <View style={[styles.sectionHeader, { marginBottom: spacing.sm }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-      {subtitle ? <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
+      <View style={styles.sectionHeaderRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
+        </View>
+        {showArrow && (
+          <View style={[styles.sectionArrowContainer, { backgroundColor: colors.primary }]}>
+            <Text style={[styles.sectionArrow, { color: "#fff" }]}>›</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
 
 const HeroMetric = ({ label, value, hint }: { label: string; value: string; hint: string }) => {
@@ -862,6 +912,130 @@ const categoryLabelFromTitle = (title: string) => {
   return "Live";
 };
 
+// Product Table Component - Shows preview with "Show More" option
+const PREVIEW_LIMIT = 3; // Number of products to show in preview
+
+const ProductTable = ({ products, loading }: { products: Product[]; loading: boolean }) => {
+  const { colors, spacing, radius } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  if (loading) {
+    return (
+      <View style={[styles.tableContainer, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={[styles.tableLoadingText, { color: colors.textMuted }]}>Loading your products...</Text>
+      </View>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <View style={[styles.tableContainer, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
+        <Text style={styles.tableEmptyIcon}>📦</Text>
+        <Text style={[styles.tableEmptyTitle, { color: colors.text }]}>No products listed</Text>
+        <Text style={[styles.tableEmptySubtitle, { color: colors.textMuted }]}>Add products to see them here</Text>
+      </View>
+    );
+  }
+
+  const handleProductPress = (productId: string) => {
+    navigation.navigate("ProductDetails", { productId });
+  };
+
+  const handleShowMore = () => {
+    navigation.navigate("MyProducts");
+  };
+
+  // Only show limited products in preview
+  const previewProducts = products.slice(0, PREVIEW_LIMIT);
+  const hasMore = products.length > PREVIEW_LIMIT;
+  const remainingCount = products.length - PREVIEW_LIMIT;
+
+  return (
+    <View style={[styles.tableWrapper, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg }]}>
+      {/* Table Header */}
+      <View style={[styles.tableHeader, { backgroundColor: colors.backgroundSecondary, borderBottomColor: colors.border }]}>
+        <Text style={[styles.tableHeaderCell, styles.tableColProduct, { color: colors.textSecondary }]}>Product</Text>
+        <Text style={[styles.tableHeaderCell, styles.tableColPrice, { color: colors.textSecondary, textAlign: "right" }]}>Price</Text>
+        <Text style={[styles.tableHeaderCell, styles.tableColStock, { color: colors.textSecondary, textAlign: "center" }]}>Stock</Text>
+        <Text style={[styles.tableHeaderCell, styles.tableColStatus, { color: colors.textSecondary, textAlign: "right" }]}>Status</Text>
+      </View>
+
+      {/* Table Rows - Only show preview */}
+      {previewProducts.map((product, index) => {
+        const price = product.price?.amount || 0;
+        const currencySymbol = product.price?.currency === "INR" ? "₹" : "₹";
+        const stockQty = product.availableQuantity || 0;
+        const stockStatus = product.stockStatus || (stockQty === 0 ? "out_of_stock" : stockQty <= 5 ? "low_stock" : "in_stock");
+
+        const statusColor =
+          stockStatus === "in_stock" ? colors.success :
+          stockStatus === "low_stock" ? colors.warning : colors.error;
+
+        const statusLabel =
+          stockStatus === "in_stock" ? "In Stock" :
+          stockStatus === "low_stock" ? "Low" : "Out";
+
+        return (
+          <TouchableOpacity
+            key={product._id}
+            style={[
+              styles.tableRow,
+              { borderBottomColor: colors.border },
+              !hasMore && index === previewProducts.length - 1 && styles.tableRowLast,
+            ]}
+            onPress={() => handleProductPress(product._id)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.tableCell, styles.tableColProduct]}>
+              <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
+                {product.name}
+              </Text>
+              <Text style={[styles.productCategory, { color: colors.textMuted }]} numberOfLines={1}>
+                {product.category?.replace(/-/g, " ") || "Uncategorized"}
+              </Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableColPrice]}>
+              <Text style={[styles.priceText, { color: colors.text, textAlign: "right" }]}>
+                {currencySymbol}{price.toLocaleString()}
+              </Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableColStock]}>
+              <Text style={[styles.stockText, { color: colors.text, textAlign: "center" }]}>{stockQty}</Text>
+            </View>
+            <View style={[styles.tableCell, styles.tableColStatus]}>
+              <View style={[styles.statusBadge, { backgroundColor: statusColor + "20", borderColor: statusColor + "40" }]}>
+                <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      {/* Show More Button */}
+      {hasMore ? (
+        <TouchableOpacity
+          style={[styles.showMoreButton, { borderTopColor: colors.border }]}
+          onPress={handleShowMore}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.showMoreText, { color: colors.primary }]}>
+            Show More ({remainingCount} more product{remainingCount !== 1 ? "s" : ""})
+          </Text>
+          <Text style={[styles.showMoreArrow, { color: colors.primary }]}>→</Text>
+        </TouchableOpacity>
+      ) : (
+        /* Table Footer - Only show when no "Show More" */
+        <View style={[styles.tableFooter, { backgroundColor: colors.backgroundSecondary }]}>
+          <Text style={[styles.tableFooterText, { color: colors.textMuted }]}>
+            Showing {products.length} product{products.length !== 1 ? "s" : ""}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 // ============================================================
 // STYLES
 // ============================================================
@@ -959,6 +1133,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sectionHeader: {},
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "800",
@@ -968,6 +1146,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     marginTop: 4,
+  },
+  sectionArrowContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7c8aff",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  sectionArrow: {
+    fontSize: 28,
+    fontWeight: "800",
+    marginLeft: 2,
   },
   statsGrid: {
     flexDirection: "row",
@@ -1219,5 +1414,129 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginTop: 2,
+  },
+
+  // Product Table Styles
+  tableContainer: {
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  tableLoadingText: {
+    fontSize: 13,
+    marginTop: 12,
+  },
+  tableEmptyIcon: {
+    fontSize: 48,
+  },
+  tableEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 8,
+  },
+  tableEmptySubtitle: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  tableWrapper: {
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  tableHeaderCell: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  tableRowLast: {
+    borderBottomWidth: 0,
+  },
+  tableCell: {
+    justifyContent: "center",
+  },
+  tableColProduct: {
+    flex: 2,
+    paddingRight: 8,
+  },
+  tableColPrice: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  tableColStock: {
+    flex: 0.7,
+    alignItems: "center",
+  },
+  tableColStatus: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  productCategory: {
+    fontSize: 10,
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  priceText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  stockText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  tableFooter: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  tableFooterText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  showMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  showMoreText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  showMoreArrow: {
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

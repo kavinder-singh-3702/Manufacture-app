@@ -775,12 +775,12 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   columnWrapper: {
-    paddingHorizontal: 12,
-    gap: 12,
+    paddingHorizontal: 0,
+    gap: 0,
   },
   cardContainer: {
     flex: 1,
-    padding: 4,
+    padding: 0,
   },
   footerLoader: {
     paddingVertical: 20,

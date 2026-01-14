@@ -93,13 +93,27 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
       }]}>
         <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
         <TouchableOpacity
-          activeOpacity={onAvatarLongPress || onAvatarPress ? 0.8 : 1}
-          onPress={onAvatarPress}
-          onLongPress={onAvatarLongPress}
-          delayLongPress={220}
-          style={{ marginRight: spacing.xs }}
+          activeOpacity={0.7}
+          onPress={() => {
+            console.log("[HomeToolbar] Avatar pressed");
+            onAvatarPress?.();
+          }}
+          onLongPress={() => {
+            console.log("[HomeToolbar] Avatar LONG pressed - opening company switcher");
+            onAvatarLongPress?.();
+          }}
+          delayLongPress={300}
+          style={[
+            styles.avatarButton,
+            { marginRight: spacing.xs, borderColor: onAvatarLongPress ? colors.primary + "50" : "transparent" }
+          ]}
         >
           {avatarNode}
+          {onAvatarLongPress && (
+            <View style={[styles.longPressHint, { backgroundColor: colors.primary }]}>
+              <Text style={styles.longPressHintText}>⇅</Text>
+            </View>
+          )}
         </TouchableOpacity>
         <View style={styles.searchContainer}>
           <SearchBar
@@ -155,6 +169,28 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     borderRadius: 1,
+  },
+  avatarButton: {
+    position: "relative",
+    borderRadius: 24,
+    borderWidth: 2,
+  },
+  longPressHint: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#0F1115",
+  },
+  longPressHintText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
   },
   notificationButton: {
     width: 40,

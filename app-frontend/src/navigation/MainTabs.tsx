@@ -9,6 +9,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { useCart } from "../hooks/useCart";
 import { useUnreadMessages } from "../providers/UnreadMessagesProvider";
+import { useNotifications } from "../providers/NotificationsProvider";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { CompanySwitcherCard } from "../components/company";
@@ -113,6 +114,7 @@ export const MainTabs = () => {
 
   const { colors, spacing } = useTheme();
   const { user, logout, requestLogin } = useAuth();
+  const { unreadCount: notificationUnreadCount } = useNotifications();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
@@ -204,9 +206,15 @@ export const MainTabs = () => {
   }, [logout]);
 
   const handleOpenCompanySwitcher = useCallback(() => {
-    if (isAdmin) return;
+    console.log("[MainTabs] handleOpenCompanySwitcher called, isAdmin:", isAdmin, "isAuthenticated:", isAuthenticated);
+    if (!isAuthenticated) {
+      console.log("[MainTabs] Not authenticated - requesting login");
+      requestLogin();
+      return;
+    }
+    console.log("[MainTabs] Opening company switcher modal");
     setCompanyModalOpen(true);
-  }, [isAdmin]);
+  }, [isAdmin, isAuthenticated, requestLogin]);
 
   const handleOpenPersonalProfile = useCallback(() => {
     if (!isAuthenticated) {
@@ -299,10 +307,10 @@ export const MainTabs = () => {
           onSearchChange={setSearchQuery}
           onSearchPress={handleSearchPress}
           onNotificationsPress={() => stackNavigation.navigate("Notifications")}
-          notificationCount={isAdmin ? 5 : 3}
-          activeCompany={!isAdmin ? activeCompany : null}
-          onAvatarLongPress={!isAdmin ? handleOpenCompanySwitcher : undefined}
-          onAvatarPress={!isAdmin ? handleOpenPersonalProfile : undefined}
+          notificationCount={notificationUnreadCount}
+          activeCompany={activeCompany}
+          onAvatarLongPress={handleOpenCompanySwitcher}
+          onAvatarPress={handleOpenPersonalProfile}
         />
 
         <View style={styles.contentArea}>
@@ -330,7 +338,7 @@ export const MainTabs = () => {
         {isAdmin ? (
           <AdminFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
         ) : (
-          <UserFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
+          <UserFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} onProfileLongPress={handleOpenCompanySwitcher} />
         )}
       </LinearGradient>
 
@@ -342,29 +350,27 @@ export const MainTabs = () => {
         menuItems={menuItems}
       />
 
-      {/* Company switcher modal - only for non-admin users */}
-      {!isAdmin && (
-        <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
-          <TouchableWithoutFeedback onPress={closeCompanyModal}>
-            <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.25)" }]}>
-              <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: 18, padding: spacing.md, borderColor: colors.border }]}>
-                  <View style={styles.modalHeader}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
-                    <TouchableOpacity onPress={closeCompanyModal}>
-                      <Text style={{ color: colors.textSecondary, fontWeight: "700" }}>Close</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <CompanySwitcherCard
-                    onSwitched={() => { closeCompanyModal(); handleNavigateToRoute(routes.DASHBOARD); }}
-                    onAddCompany={handleAddCompany}
-                  />
+      {/* Company switcher modal - for all authenticated users */}
+      <Modal visible={companyModalOpen} animationType="slide" onRequestClose={closeCompanyModal} transparent>
+        <TouchableWithoutFeedback onPress={closeCompanyModal}>
+          <View style={[styles.modalBackdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: 18, padding: spacing.md, borderColor: colors.border }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Switch company</Text>
+                  <TouchableOpacity onPress={closeCompanyModal}>
+                    <Text style={{ color: colors.textSecondary, fontWeight: "700" }}>Close</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-      )}
+                <CompanySwitcherCard
+                  onSwitched={() => { closeCompanyModal(); handleNavigateToRoute(routes.DASHBOARD); }}
+                  onAddCompany={handleAddCompany}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </>
   );
 };
@@ -376,9 +382,10 @@ type FooterBarProps = {
   tabs: RouteConfig[];
   activeTab: RouteName;
   onTabPress: (route: RouteName) => void;
+  onProfileLongPress?: () => void;
 };
 
-const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
+const UserFooterBar = ({ tabs, activeTab, onTabPress, onProfileLongPress }: FooterBarProps) => {
   const { colors, spacing } = useTheme();
   const { totalItems } = useCart();
 
@@ -396,12 +403,15 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
   const renderTab = (tab: RouteConfig) => {
     const isActive = activeTab === tab.route;
     const isCartTab = tab.route === routes.CART;
+    const isProfileTab = tab.route === routes.PROFILE_TAB;
     const cartCount = isCartTab ? totalItems : 0;
 
     return (
       <TouchableOpacity
         key={tab.route}
         onPress={() => onTabPress(tab.route)}
+        onLongPress={isProfileTab && onProfileLongPress ? onProfileLongPress : undefined}
+        delayLongPress={300}
         style={styles.userTabButton}
         activeOpacity={0.8}
       >
@@ -423,6 +433,11 @@ const UserFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
             {cartCount > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{cartCount > 99 ? "99+" : cartCount}</Text>
+              </View>
+            )}
+            {isProfileTab && onProfileLongPress && (
+              <View style={[styles.longPressHintBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.longPressHintBadgeText}>⇅</Text>
               </View>
             )}
           </View>
@@ -707,6 +722,25 @@ const styles = StyleSheet.create({
   cartBadgeText: {
     color: "#fff",
     fontSize: 10,
+    fontWeight: "800",
+  },
+
+  // Long press hint badge for company switcher
+  longPressHintBadge: {
+    position: "absolute",
+    bottom: -4,
+    right: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#0F1115",
+  },
+  longPressHintBadgeText: {
+    color: "#fff",
+    fontSize: 9,
     fontWeight: "800",
   },
 

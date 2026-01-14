@@ -21,6 +21,7 @@ import {
   CategoryProductsScreen,
   ProductDetailsScreen,
   ProductSearchScreen,
+  MyProductsScreen,
 } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
@@ -174,6 +175,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="UserPreferences"
               component={UserPreferenceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="MyProducts"
+              component={MyProductsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
           </>

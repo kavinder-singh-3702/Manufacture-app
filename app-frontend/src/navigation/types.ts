@@ -26,6 +26,7 @@ export type RootStackParamList = {
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };
   ServiceDetail: { serviceType: ServiceType };
+  MyProducts: undefined;
 };
 
 /**
