@@ -4,6 +4,7 @@ const User = require('../../../models/user.model');
 const UserFavorite = require('../../../models/userFavorite.model');
 const { uploadProductImage } = require('../../../services/storage.service');
 const { PRODUCT_CATEGORIES } = require('../../../constants/product');
+const { createStockAdjustmentForItem } = require('../../accounting/services/stockAdjustment.service');
 
 const buildStockStatusExpr = (status) => {
   if (status === 'out_of_stock') {
@@ -264,14 +265,22 @@ const adjustQuantity = async (productId, adjustment, userId, companyId) => {
     query.company = companyId;
   }
 
-  const product = await Product.findOne(query);
+  const product = await Product.findOne(query).lean();
   if (!product) return null;
 
-  product.availableQuantity = Math.max(0, product.availableQuantity + adjustment);
-  product.lastUpdatedBy = userId;
-  await product.save();
+  const adjustmentValue = Number(adjustment || 0);
+  if (adjustmentValue !== 0) {
+    await createStockAdjustmentForItem({
+      companyId: product.company,
+      userId,
+      productId,
+      adjustment: adjustmentValue,
+      narration: `Product quantity adjusted by ${adjustmentValue}`
+    });
+  }
 
-  return product.toObject();
+  const refreshed = await Product.findOne(query).lean();
+  return refreshed || null;
 };
 
 const deleteProduct = async (productId, companyId) => {

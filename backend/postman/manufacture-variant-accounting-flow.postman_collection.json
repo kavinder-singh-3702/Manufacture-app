@@ -1,0 +1,542 @@
+{
+  "info": {
+    "name": "Manufacture - Variant + Accounting Accounts Flow",
+    "description": "Step-by-step Postman collection for Product Variant APIs and Accounting Account APIs.\n\nPrerequisites:\n1. Backend running and reachable at {{baseUrl}}\n2. Valid JWT token in {{accessToken}}\n3. User has an active company selected\n\nRun order:\n- Execute folder 00 once to validate auth and seed a product\n- Execute folder 01 requests in sequence for full variant lifecycle\n- Execute folder 02 requests in sequence for full accounting account lifecycle\n\nThis collection stores IDs automatically in collection variables:\n- productId\n- variantId\n- accountId",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "variantId",
+      "value": ""
+    },
+    {
+      "key": "accountId",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": "food-beverage-manufacturing"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Prerequisites",
+      "description": "Pre-run checks and seed data for downstream variant flow.",
+      "item": [
+        {
+          "name": "Step 1 - Validate Token | GET /api/users/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Validates that your JWT token is correct and user session is active.",
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 2 - Seed Product | POST /api/products",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Creates a product and stores returned id into collection variable `productId`. Required before variant APIs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Steel Sheet - Seed Product\",\n  \"description\": \"Seed product for variant flow\",\n  \"category\": \"{{categoryId}}\",\n  \"price\": {\n    \"amount\": 1200,\n    \"currency\": \"INR\",\n    \"unit\": \"sheet\"\n  },\n  \"availableQuantity\": 25,\n  \"minStockQuantity\": 5,\n  \"unit\": \"sheet\",\n  \"visibility\": \"private\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Product created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data && data.product && data.product._id) {",
+                  "  pm.collectionVariables.set('productId', data.product._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Variant API Flow",
+      "description": "Run in sequence for complete variant lifecycle on seeded product.",
+      "item": [
+        {
+          "name": "Step 1 - List Variants | GET /api/products/:productId/variants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Lists existing variants for selected product.\n\nQuery params:\n- limit\n- offset\n- status",
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants?limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 2 - Create Variant | POST /api/products/:productId/variants",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Creates variant with options (size + color) and stores id in `variantId`.\n\nOptions payload is flexible map; uniqueness is enforced for same product option-combination.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Steel Sheet - Blue - 5mm\",\n  \"sku\": \"STL-BL-5MM-001\",\n  \"barcode\": \"8901234567890\",\n  \"options\": {\n    \"color\": \"blue\",\n    \"size\": \"5mm\",\n    \"unitPack\": \"1 sheet\"\n  },\n  \"price\": {\n    \"amount\": 1399,\n    \"currency\": \"INR\",\n    \"unit\": \"sheet\"\n  },\n  \"availableQuantity\": 12,\n  \"minStockQuantity\": 2,\n  \"unit\": \"sheet\",\n  \"status\": \"active\",\n  \"attributes\": {\n    \"finish\": \"matte\"\n  },\n  \"metadata\": {\n    \"source\": \"postman-flow\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Variant created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data && data.variant && data.variant._id) {",
+                  "  pm.collectionVariables.set('variantId', data.variant._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 3 - Get Variant | GET /api/products/:productId/variants/:variantId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Fetches full variant details for verification.",
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 4 - Update Variant | PUT /api/products/:productId/variants/:variantId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Updates variant pricing/options and metadata.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Steel Sheet - Navy Blue - 5mm\",\n  \"price\": {\n    \"amount\": 1449,\n    \"currency\": \"INR\",\n    \"unit\": \"sheet\"\n  },\n  \"options\": {\n    \"color\": \"navy-blue\",\n    \"size\": \"5mm\",\n    \"unitPack\": \"1 sheet\"\n  },\n  \"metadata\": {\n    \"updatedByFlow\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 5 - Adjust Variant Quantity | PATCH /api/products/:productId/variants/:variantId/quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Adjusts stock quantity. Positive adds stock; negative reduces stock.\nIn current backend, this triggers stock adjustment voucher integration.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adjustment\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}/quantity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}",
+                "quantity"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 6 - Variant Logs | GET /api/products/:productId/variants/logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Reads variant audit logs for created/updated/quantity-adjusted/deleted events.",
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/logs?variantId={{variantId}}&limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "variantId",
+                  "value": "{{variantId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 7 - Delete Variant | DELETE /api/products/:productId/variants/:variantId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft deletes the variant. Verify in logs after execution.",
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/variants/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "variants",
+                "{{variantId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Accounting Account API Flow",
+      "description": "Run in sequence for full account (ledger) lifecycle.",
+      "item": [
+        {
+          "name": "Step 1 - List Accounts | GET /api/accounting/accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Lists chart of accounts for active company. System accounts are auto-bootstrapped by backend.",
+            "url": {
+              "raw": "{{baseUrl}}/api/accounting/accounts?limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounting",
+                "accounts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 2 - Create Account | POST /api/accounting/accounts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Creates a custom ledger account and stores returned id in `accountId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Packing Material Expense\",\n  \"type\": \"expense\",\n  \"group\": \"indirect_expense\",\n  \"openingBalance\": {\n    \"amount\": 0,\n    \"drCr\": \"debit\"\n  },\n  \"metadata\": {\n    \"costCenter\": \"factory-1\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounting/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounting",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Account created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data && data.account && data.account._id) {",
+                  "  pm.collectionVariables.set('accountId', data.account._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 3 - Get Account | GET /api/accounting/accounts/:accountId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Fetches account details by id.",
+            "url": {
+              "raw": "{{baseUrl}}/api/accounting/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounting",
+                "accounts",
+                "{{accountId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 4 - Update Account | PUT /api/accounting/accounts/:accountId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Updates account metadata and opening balance.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Packing Material Expense (Updated)\",\n  \"group\": \"indirect_expense\",\n  \"openingBalance\": {\n    \"amount\": 5000,\n    \"drCr\": \"debit\",\n    \"asOf\": \"2026-04-01\"\n  },\n  \"metadata\": {\n    \"note\": \"updated through postman flow\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounting/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounting",
+                "accounts",
+                "{{accountId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step 5 - Delete Account | DELETE /api/accounting/accounts/:accountId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft deletes account. Backend blocks deletion for system accounts or accounts having postings.",
+            "url": {
+              "raw": "{{baseUrl}}/api/accounting/accounts/{{accountId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounting",
+                "accounts",
+                "{{accountId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

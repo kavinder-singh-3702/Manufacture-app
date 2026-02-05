@@ -23,6 +23,7 @@ const {
   uploadProductImageValidation,
   adjustQuantityValidation
 } = require('../validators/product.validators');
+const productVariantRouter = require('./productVariant.routes');
 
 const router = Router();
 
@@ -48,6 +49,9 @@ router.patch(
   adjustQuantityController
 );
 router.delete('/:productId', authenticate, validate(productIdParamValidation), deleteProductController);
+
+// Variants + logs
+router.use('/:productId/variants', productVariantRouter);
 
 // Admin-only targeted discounts
 router.post(

@@ -12,6 +12,7 @@ const preferenceRouter = require('../modules/preferences/routes/preference.route
 const favoritesRouter = require('../modules/userFavorites/favorites.routes');
 const servicesRouter = require('../modules/services/routes/service.routes');
 const notificationRouter = require('../modules/notifications/routes/notification.routes');
+const accountingRouter = require('../modules/accounting/routes/accounting.routes');
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/preferences', preferenceRouter);
 router.use('/favorites', favoritesRouter);
 router.use('/services', servicesRouter);
 router.use('/notifications', notificationRouter);
+router.use('/accounting', accountingRouter);
 
 module.exports = router;
