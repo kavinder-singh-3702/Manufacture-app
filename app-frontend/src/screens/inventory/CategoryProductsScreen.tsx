@@ -20,7 +20,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
 import { productService, Product } from "../../services/product.service";
-import { useCart } from "../../hooks/useCart";
 import { preferenceService } from "../../services/preference.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
@@ -61,7 +60,6 @@ export const CategoryProductsScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title, subCategory: initialSubCategory } = route.params;
   const { user } = useAuth();
-  const { isInCart, getCartItem, items: cartItems, addToCart } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
 
   const [items, setItems] = useState<Product[]>([]);
@@ -206,21 +204,15 @@ export const CategoryProductsScreen = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => {
-      const inCart = isInCart(item._id);
-      const cartQty = inCart ? getCartItem(item._id)?.quantity || 0 : 0;
-
       return (
         <AmazonStyleProductCard
           product={item}
           onPress={openDetails}
-          onAddToCart={addToCart}
-          isInCart={inCart}
-          cartQuantity={cartQty}
           isGuest={isGuest}
         />
       );
     },
-    [addToCart, getCartItem, isGuest, isInCart, openDetails]
+    [isGuest, openDetails]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);
@@ -319,7 +311,6 @@ export const CategoryProductsScreen = () => {
         data={filteredItems}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        extraData={cartItems}
         contentContainerStyle={styles.productList}
         refreshControl={
           <RefreshControl

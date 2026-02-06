@@ -19,7 +19,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
-import { useCart } from "../../hooks/useCart";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
 import * as ImagePicker from "expo-image-picker";
@@ -31,7 +30,6 @@ export const ProductDetailsScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, "ProductDetails">>();
   const { productId, product: passedProduct } = route.params;
 
-  const { addToCart, isInCart, getCartItem, updateQuantity, removeFromCart } = useCart();
   const { user } = useAuth();
   const isGuest = user?.role === AppRole.GUEST;
 
@@ -118,9 +116,6 @@ export const ProductDetailsScreen = () => {
       ? `${currencySymbol}${compareAt.toFixed(2)}`
       : undefined;
 
-  const inCart = product ? isInCart(product._id) : false;
-  const cartQty = product && inCart ? getCartItem(product._id)?.quantity || 0 : 0;
-
   // Check if current user is the product owner (by creator or company)
   const isOwnProduct = useMemo(() => {
     if (!product || !user) return false;
@@ -134,18 +129,6 @@ export const ProductDetailsScreen = () => {
     }
     return false;
   }, [product, user]);
-
-  const stockLabel = useMemo(() => {
-    if (!product) return "";
-    if (product.availableQuantity <= 0) return "Out of stock";
-    if (product.availableQuantity <= product.minStockQuantity) return "Low stock";
-    return `${product.availableQuantity} available`;
-  }, [product]);
-
-  const handleAdd = useCallback(() => {
-    if (!product) return;
-    addToCart(product, 1);
-  }, [addToCart, product]);
 
   const pickImageFromGallery = useCallback(async () => {
     setImagePickerModalVisible(false);
@@ -457,43 +440,6 @@ export const ProductDetailsScreen = () => {
               <Text style={[styles.ownProductText, { color: colors.textMuted }]}>This is your product</Text>
             </View>
           )}
-
-          {!isGuest && (
-            <View style={{ marginTop: spacing.sm }}>
-              <View style={styles.quantityCard}>
-                <View style={styles.quantityHeader}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Quantity</Text>
-                  <Text style={[styles.qtyHint, { color: colors.textMuted }]}>{cartQty ? `${cartQty} in cart` : "Not added"}</Text>
-                </View>
-                <View style={styles.quantityRow}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (!product) return;
-                      if (cartQty <= 1) {
-                        removeFromCart(product._id);
-                      } else {
-                        updateQuantity(product._id, cartQty - 1);
-                      }
-                    }}
-                    style={[styles.qtyButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    disabled={!product}
-                  >
-                    <Text style={[styles.qtyButtonText, { color: colors.text }]}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.qtyValue, { color: colors.text }]}>{cartQty || 0}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (product) addToCart(product, 1);
-                    }}
-                    style={[styles.qtyButton, { backgroundColor: "#4f46e5" }]}
-                    disabled={!product}
-                  >
-                    <Text style={[styles.qtyButtonText, { color: "#fff" }]}>＋</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
         </ScrollView>
       ) : null}
 
@@ -676,19 +622,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   callButtonText: { fontSize: 14, fontWeight: "800", color: "#fff" },
-  quantityCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    borderColor: "#1f2937",
-    backgroundColor: "rgba(255,255,255,0.02)",
-  },
-  quantityHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  qtyHint: { fontSize: 12, fontWeight: "700" },
-  quantityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  qtyButton: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
-  qtyButtonText: { fontSize: 20, fontWeight: "800" },
-  qtyValue: { fontSize: 16, fontWeight: "800" },
   dotsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   ownProductBanner: {

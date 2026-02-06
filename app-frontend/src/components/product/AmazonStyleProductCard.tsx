@@ -38,20 +38,14 @@ const COLORS = {
   // Amazon-style additions
   bestSeller: "#c45500", // Amazon orange
   bestSellerBg: "#fef3e2",
-  prime: "#00a8e1", // Prime blue
-  primeBg: "#232f3e",
   urgency: "#cc0c39", // Red urgency text
-  emi: "#007185", // Teal for savings text
   linkBlue: "#007185",
 };
 
 interface AmazonStyleProductCardProps {
   product: Product;
   onPress: (productId: string) => void;
-  onAddToCart: (product: Product, quantity: number) => void;
   onWishlistToggle?: (productId: string) => void;
-  isInCart?: boolean;
-  cartQuantity?: number;
   isWishlisted?: boolean;
   isGuest?: boolean;
 }
@@ -60,10 +54,7 @@ export const AmazonStyleProductCard = memo(
   ({
     product,
     onPress,
-    onAddToCart,
     onWishlistToggle,
-    isInCart = false,
-    cartQuantity = 0,
     isWishlisted = false,
     isGuest = false,
   }: AmazonStyleProductCardProps) => {
@@ -107,10 +98,8 @@ export const AmazonStyleProductCard = memo(
     // Using product index hash for demo variety (some products show different badges)
     const productHash = product._id ? product._id.charCodeAt(0) % 10 : 0;
     const isBestSeller = attributes?.bestSeller === true || attributes?.isBestSeller === true || productHash < 3; // ~30% show best seller
-    const isPrime = attributes?.prime === true || attributes?.isPrime === true || hasFreeDelivery || price >= 100;
     const stockQuantity = product.inventory?.quantity ?? product.availableQuantity ?? attributes?.stock ?? null;
     const isLowStock = (typeof stockQuantity === "number" && stockQuantity > 0 && stockQuantity <= 5) || productHash === 4;
-    const hasEMI = price >= 500; // Show EMI option for items above ₹500
     const variantCount = typeof attributes?.variants === "number" ? attributes.variants :
                          typeof attributes?.colors === "number" ? attributes.colors :
                          productHash > 6 ? (productHash - 4) : null; // Some products show variants
@@ -243,21 +232,8 @@ export const AmazonStyleProductCard = memo(
             )}
           </View>
 
-          {/* EMI Info - Amazon style */}
-          {hasEMI && (
-            <Text style={styles.emiText}>Save extra with No Cost EMI</Text>
-          )}
-
-          {/* Prime-style Delivery Info */}
+          {/* Delivery Info */}
           <View style={styles.deliverySection}>
-            {isPrime ? (
-              <View style={styles.primeRow}>
-                <View style={styles.primeBadge}>
-                  <Text style={styles.primeCheckmark}>✓</Text>
-                  <Text style={styles.primeText}>prime</Text>
-                </View>
-              </View>
-            ) : null}
             {hasFreeDelivery ? (
               <Text style={styles.freeDelivery}>FREE Delivery <Text style={styles.deliveryDateBold}>Tue, 20 Jan</Text></Text>
             ) : (
@@ -271,19 +247,6 @@ export const AmazonStyleProductCard = memo(
           {/* Variant Options - Amazon style */}
           {variantCount && variantCount > 0 && (
             <Text style={styles.variantLink}>+{variantCount} other colors/patterns</Text>
-          )}
-
-          {/* Add to Cart Button */}
-          {!isGuest && (
-            <TouchableOpacity
-              style={[styles.addToCartButton, isInCart && styles.addToCartButtonAdded]}
-              onPress={() => onAddToCart(product, 1)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.addToCartText, isInCart && styles.addToCartTextAdded]}>
-                {isInCart ? `In Cart (${cartQuantity})` : "Add to Cart"}
-              </Text>
-            </TouchableOpacity>
           )}
         </View>
       </TouchableOpacity>
@@ -528,44 +491,12 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
   },
 
-  // EMI Info
-  emiText: {
-    fontSize: 10,
-    color: COLORS.emi,
-    marginTop: 6,
-  },
-
   // Delivery
   deliverySection: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-  },
-  primeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  primeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.primeBg,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  primeCheckmark: {
-    color: COLORS.prime,
-    fontSize: 10,
-    fontWeight: "700",
-    marginRight: 3,
-  },
-  primeText: {
-    color: COLORS.prime,
-    fontSize: 11,
-    fontWeight: "700",
-    fontStyle: "italic",
   },
   freeDelivery: {
     fontSize: 11,
@@ -596,29 +527,6 @@ const styles = StyleSheet.create({
     color: COLORS.linkBlue,
     marginTop: 6,
     textDecorationLine: "underline",
-  },
-
-  // Add to Cart
-  addToCartButton: {
-    backgroundColor: COLORS.addToCart,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  addToCartButtonAdded: {
-    backgroundColor: COLORS.deal + "20",
-    borderWidth: 1,
-    borderColor: COLORS.deal + "40",
-  },
-  addToCartText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  addToCartTextAdded: {
-    color: COLORS.deal,
   },
 });
 

@@ -1,6 +1,6 @@
 import { apiClient } from "./apiClient";
 
-export type PreferenceEventType = "search" | "view_category" | "view_product" | "add_to_cart" | "remove_from_cart";
+export type PreferenceEventType = "search" | "view_category" | "view_product";
 
 export type LogPreferenceEventInput = {
   type: PreferenceEventType;

@@ -9,7 +9,6 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Profile: undefined;
-  Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   CompanyCreate: undefined;
   CompanyVerification: { companyId: string };
@@ -27,6 +26,16 @@ export type RootStackParamList = {
   ServiceRequest: { serviceType?: ServiceType };
   ServiceDetail: { serviceType: ServiceType };
   MyProducts: undefined;
+  // Accounting Reports
+  ProfitLoss: undefined;
+  GSTSummary: undefined;
+  PartyOutstanding: undefined;
+  // Tally
+  TallyStats: undefined;
+  SalesInvoice: undefined;
+  PurchaseBill: undefined;
+  ReceiptPayment: { type: 'receipt' | 'payment' };
+  TransactionList: undefined;
 };
 
 /**

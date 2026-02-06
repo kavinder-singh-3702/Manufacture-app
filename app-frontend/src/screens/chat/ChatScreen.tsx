@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView } from "react-native";
-import { GiftedChat, IMessage, Bubble, InputToolbar, Send, Composer } from "react-native-gifted-chat";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
+import { GiftedChat, IMessage, Bubble, Send, Composer, InputToolbar } from "react-native-gifted-chat";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -129,14 +129,22 @@ export const ChatScreen = () => {
       if (newMessages.length === 0) return;
       const messageText = newMessages[0].text;
 
+      // Optimistically add message to UI
       setMessages((prev) => GiftedChat.append(prev, newMessages));
+
+      // Dismiss keyboard after sending (like WhatsApp)
+      Keyboard.dismiss();
+
       try {
         setSending(true);
         await chatService.sendMessage(conversationId, messageText);
+        // Refresh messages from server
         await loadMessages();
       } catch (err) {
         console.error("Error sending message:", err);
         Alert.alert("Error", "Failed to send message. Please try again.");
+        // Remove optimistic message on error
+        setMessages((prev) => prev.filter((msg) => msg._id !== newMessages[0]._id));
       } finally {
         setSending(false);
       }
@@ -211,47 +219,125 @@ export const ChatScreen = () => {
           messages={messages}
           onSend={onSend}
           user={currentUser}
-          renderBubble={(props) => (
-            <Bubble
-              {...props}
-              wrapperStyle={{
-                right: { backgroundColor: colors.primary },
-                left: { backgroundColor: colors.surface },
-              }}
-              textStyle={{
-                right: { color: "#fff" },
-                left: { color: colors.text },
-              }}
-            />
-          )}
-          renderInputToolbar={(props) => (
-            <InputToolbar
-              {...props}
-              containerStyle={{
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
-                backgroundColor: colors.surface,
-              }}
-            />
-          )}
-          renderComposer={(props) => (
-            <Composer
-              {...props}
-              textInputStyle={{
-                color: colors.text,
-              }}
-              placeholderTextColor={colors.textMuted}
-            />
-          )}
-          renderSend={(props) => (
-            <Send {...props} disabled={sending} containerStyle={{ justifyContent: "center", alignItems: "center" }}>
-              <Text style={[styles.sendText, { color: sending ? colors.textMuted : colors.primary }]}>Send</Text>
-            </Send>
-          )}
-          isLoadingEarlier={sending}
+          renderBubble={(props) => {
+            const { key, ...bubbleProps } = props as any;
+            return (
+              <Bubble
+                key={key}
+                {...bubbleProps}
+                wrapperStyle={{
+                  right: { backgroundColor: colors.primary },
+                  left: { backgroundColor: colors.surface },
+                }}
+                textStyle={{
+                  right: { color: "#fff" },
+                  left: { color: colors.text },
+                }}
+              />
+            );
+          }}
+          renderInputToolbar={(props) => {
+            const { key, ...toolbarProps } = props as any;
+            return (
+              <InputToolbar
+                key={key}
+                {...toolbarProps}
+                containerStyle={{
+                  backgroundColor: colors.surface,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                }}
+              />
+            );
+          }}
+          renderComposer={(props) => {
+            const { key, ...composerProps } = props as any;
+            return (
+              <View style={{
+                flex: 1,
+                backgroundColor: '#1E1E1E',
+                borderRadius: 20,
+                marginRight: 8,
+                paddingHorizontal: 4,
+              }}>
+                <Composer
+                  key={key}
+                  {...composerProps}
+                  textInputStyle={{
+                    color: '#FFFFFF',
+                    backgroundColor: 'transparent',
+                    paddingTop: 10,
+                    paddingBottom: 10,
+                    paddingLeft: 10,
+                    paddingRight: 10,
+                    fontSize: 15,
+                    marginTop: 0,
+                    marginBottom: 0,
+                  }}
+                  placeholderTextColor="#888888"
+                  textInputProps={{
+                    style: {
+                      color: '#FFFFFF',
+                      fontSize: 15,
+                    }
+                  }}
+                />
+              </View>
+            );
+          }}
+          renderSend={(props) => {
+            const { key, ...sendProps } = props as any;
+            return (
+              <Send
+                key={key}
+                {...sendProps}
+                disabled={sending}
+                containerStyle={{
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingLeft: 8,
+                  paddingRight: 4,
+                }}
+              >
+                <View style={{
+                  backgroundColor: sending ? '#666666' : colors.primary,
+                  borderRadius: 20,
+                  paddingHorizontal: 18,
+                  paddingVertical: 10,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                    {sending ? '...' : 'Send'}
+                  </Text>
+                </View>
+              </Send>
+            );
+          }}
           placeholder="Type a message..."
           alwaysShowSend
           scrollToBottom
+          scrollToBottomComponent={() => (
+            <View style={{
+              backgroundColor: colors.primary,
+              borderRadius: 15,
+              width: 30,
+              height: 30,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 8,
+            }}>
+              <Text style={{ color: '#FFF', fontSize: 18 }}>↓</Text>
+            </View>
+          )}
+          infiniteScroll
+          keyboardShouldPersistTaps="handled"
+          listViewProps={{
+            keyboardDismissMode: 'on-drag',
+            keyboardShouldPersistTaps: 'handled',
+          }}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

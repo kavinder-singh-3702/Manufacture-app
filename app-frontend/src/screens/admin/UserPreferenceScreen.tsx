@@ -218,10 +218,10 @@ export const UserPreferenceScreen = () => {
                 <Text style={styles.metricLabel}>{metricLabel("Searches", actionCounts.search)}</Text>
               </View>
               <View style={styles.metricPill}>
-                <Text style={styles.metricLabel}>{metricLabel("Adds to cart", actionCounts.add_to_cart)}</Text>
+                <Text style={styles.metricLabel}>{metricLabel("Category views", actionCounts.view_category)}</Text>
               </View>
               <View style={styles.metricPill}>
-                <Text style={styles.metricLabel}>{metricLabel("Category views", actionCounts.view_category)}</Text>
+                <Text style={styles.metricLabel}>{metricLabel("Product views", actionCounts.view_product)}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -378,8 +378,8 @@ export const UserPreferenceScreen = () => {
             "Top products",
             summary?.topProducts.map((p) => ({
               label: p.name || p.id || "Unknown product",
-              count: p.addsToCart || p.views || p.total || 0,
-              extra: p.addsToCart ? `Adds ${p.addsToCart}` : `Views ${p.views ?? 0}`,
+              count: p.views || p.total || 0,
+              extra: `Views ${p.views ?? 0}`,
             })) || [],
             "No product interactions"
           )}

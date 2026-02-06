@@ -24,10 +24,17 @@ import {
   MyProductsScreen,
 } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
-import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { UserServicesScreen } from "../screens/chat";
 import { ServiceDetailScreen } from "../screens/services";
+import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
+import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
+import { PartyOutstandingScreen } from "../screens/accounting/PartyOutstandingScreen";
+import { TallyStatsScreen } from "../screens/tally/TallyStatsScreen";
+import { SalesInvoiceScreen } from "../screens/tally/SalesInvoiceScreen";
+import { PurchaseBillScreen } from "../screens/tally/PurchaseBillScreen";
+import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
+import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 
 enableScreens(true);
 
@@ -96,11 +103,6 @@ export const AppNavigator = () => {
               name="Profile"
               component={ProfileScreen}
               options={{ presentation: "modal", animation: "fade_from_bottom" }}
-            />
-            <RootStack.Screen
-              name="Cart"
-              component={CartScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
               name="CompanyProfile"
@@ -181,6 +183,46 @@ export const AppNavigator = () => {
               name="MyProducts"
               component={MyProductsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="ProfitLoss"
+              component={ProfitLossScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Profit & Loss" }}
+            />
+            <RootStack.Screen
+              name="GSTSummary"
+              component={GSTSummaryScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "GST Summary" }}
+            />
+            <RootStack.Screen
+              name="PartyOutstanding"
+              component={PartyOutstandingScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Party Outstanding" }}
+            />
+            <RootStack.Screen
+              name="TallyStats"
+              component={TallyStatsScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Tally Stats" }}
+            />
+            <RootStack.Screen
+              name="SalesInvoice"
+              component={SalesInvoiceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Sales Invoice" }}
+            />
+            <RootStack.Screen
+              name="PurchaseBill"
+              component={PurchaseBillScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Purchase Bill" }}
+            />
+            <RootStack.Screen
+              name="ReceiptPayment"
+              component={ReceiptPaymentScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Receipt/Payment" }}
+            />
+            <RootStack.Screen
+              name="TransactionList"
+              component={TransactionListScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Transactions" }}
             />
           </>
         )}
