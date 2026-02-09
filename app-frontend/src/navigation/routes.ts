@@ -6,7 +6,8 @@ export const routes = {
   // Common routes (shown to all users)
   DASHBOARD: "dashboard",
 
-  // User-specific routes (4 tabs)
+  // User-specific routes (5 tabs)
+  CART: "cart",
   SERVICES: "services",
   STATS: "stats",
   PROFILE_TAB: "profile-tab",
@@ -39,7 +40,7 @@ export type RouteConfig = {
  * The navigation component filters these based on user role
  */
 export const TAB_CONFIG: RouteConfig[] = [
-  // User tabs (4 tabs)
+  // User tabs (5 tabs)
   {
     route: routes.DASHBOARD,
     label: "Home",
@@ -48,8 +49,15 @@ export const TAB_CONFIG: RouteConfig[] = [
     roles: ["user", "guest"],
   },
   {
+    route: routes.CART,
+    label: "Cart",
+    icon: "🛒",
+    gradientColors: ["#22C55E", "#16A34A"],
+    roles: ["user", "guest"],
+  },
+  {
     route: routes.SERVICES,
-    label: "Services",
+    label: "Help",
     icon: "🛎️",
     gradientColors: ["#ee0979", "#ff6a00"],
     roles: ["user", "guest"],

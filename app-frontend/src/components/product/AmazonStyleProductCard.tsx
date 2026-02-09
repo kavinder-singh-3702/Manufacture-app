@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Product } from "../../services/product.service";
+import { scale, moderateScale } from "../../utils/responsive";
 
 // Dark premium color palette (matching app theme)
 const COLORS = {
@@ -60,7 +61,7 @@ export const AmazonStyleProductCard = memo(
   }: AmazonStyleProductCardProps) => {
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const CARD_WIDTH = SCREEN_WIDTH; // Full width single column
-    const IMAGE_HEIGHT = 180; // Fixed height for list view
+    const IMAGE_HEIGHT = scale(280); // Responsive height for better image visibility
 
     const price = product.price?.amount || 0;
     const currencySymbol = product.price?.currency === "INR" ? "₹" : product.price?.currency || "₹";
@@ -270,18 +271,18 @@ const styles = StyleSheet.create({
   // Wishlist
   wishlistButton: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: scale(8),
+    right: scale(8),
     zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
   wishlistIcon: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     color: COLORS.wishlist,
   },
   wishlistIconActive: {
@@ -294,36 +295,36 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     backgroundColor: COLORS.bestSellerBg,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderBottomRightRadius: 8,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderBottomRightRadius: scale(8),
     zIndex: 11,
   },
   bestSellerText: {
     color: COLORS.bestSeller,
-    fontSize: 11,
+    fontSize: moderateScale(11),
     fontWeight: "700",
   },
 
   // Discount Badge
   discountBadge: {
     position: "absolute",
-    top: 8,
-    left: 8,
+    top: scale(8),
+    left: scale(8),
     backgroundColor: COLORS.dealBg,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
     zIndex: 10,
     borderWidth: 1,
     borderColor: COLORS.deal + "40",
   },
   discountBadgeWithBestSeller: {
-    top: 32, // Move down when best seller badge is present
+    top: scale(32), // Move down when best seller badge is present
   },
   discountText: {
     color: COLORS.deal,
-    fontSize: 11,
+    fontSize: moderateScale(11),
     fontWeight: "700",
   },
 
@@ -334,57 +335,57 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.cardBgLight,
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: scale(12),
   },
   productImage: {
-    width: 150,
-    height: 150,
+    width: "100%",
+    height: "100%",
   },
   placeholderImage: {
-    width: 150,
-    height: 150,
+    width: "100%",
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.cardBgLight,
   },
   placeholderText: {
     color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: moderateScale(12),
   },
 
   // Info
   infoContainer: {
-    padding: 12,
-    gap: 4,
+    padding: scale(12),
+    gap: scale(4),
   },
 
   // Sponsored
   sponsoredText: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: COLORS.sponsored,
-    marginBottom: 2,
+    marginBottom: scale(2),
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
 
   // Title
   title: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: "600",
     color: COLORS.text,
-    lineHeight: 18,
-    marginBottom: 4,
+    lineHeight: moderateScale(18),
+    marginBottom: scale(4),
   },
 
   // Seller
   sellerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
+    gap: scale(6),
+    marginBottom: scale(6),
   },
   sellerText: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.textSecondary,
     flex: 1,
   },
@@ -392,15 +393,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.verified + "20",
     borderWidth: 1,
     borderColor: COLORS.verified + "60",
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: scale(16),
+    height: scale(16),
+    borderRadius: scale(8),
     alignItems: "center",
     justifyContent: "center",
   },
   verifiedText: {
     color: COLORS.verified,
-    fontSize: 9,
+    fontSize: moderateScale(9),
     fontWeight: "700",
   },
 
@@ -408,15 +409,15 @@ const styles = StyleSheet.create({
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
+    gap: scale(6),
+    marginBottom: scale(6),
   },
   starsContainer: {
     flexDirection: "row",
-    gap: 1,
+    gap: scale(1),
   },
   star: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
   },
   starFilled: {
     color: COLORS.rating,
@@ -425,29 +426,29 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   ratingText: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.rating,
     fontWeight: "600",
   },
   reviewCount: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: COLORS.textMuted,
   },
 
   // Price
   priceSection: {
-    marginTop: 4,
+    marginTop: scale(4),
   },
   dealRow: {
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
   dealLabel: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: COLORS.deal,
     backgroundColor: COLORS.dealBg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
     alignSelf: "flex-start",
     fontWeight: "700",
     overflow: "hidden",
@@ -459,12 +460,12 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   currencySymbol: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: "600",
     color: COLORS.price,
   },
   priceAmount: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: "800",
     color: COLORS.price,
   },
@@ -472,34 +473,34 @@ const styles = StyleSheet.create({
     color: COLORS.priceDeal,
   },
   priceDecimal: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: "500",
     color: COLORS.price,
   },
   originalPriceRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2,
+    marginTop: scale(2),
   },
   mrpLabel: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.textMuted,
   },
   originalPrice: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.textMuted,
     textDecorationLine: "line-through",
   },
 
   // Delivery
   deliverySection: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: scale(8),
+    paddingTop: scale(8),
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
   freeDelivery: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.text,
     fontWeight: "400",
   },
@@ -508,24 +509,24 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   deliveryText: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.textSecondary,
   },
   deliveryDate: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: COLORS.textMuted,
-    marginTop: 2,
+    marginTop: scale(2),
   },
   urgencyText: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.urgency,
-    marginTop: 4,
+    marginTop: scale(4),
     fontWeight: "500",
   },
   variantLink: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: COLORS.linkBlue,
-    marginTop: 6,
+    marginTop: scale(6),
     textDecorationLine: "underline",
   },
 });
