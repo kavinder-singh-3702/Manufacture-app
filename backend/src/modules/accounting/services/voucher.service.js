@@ -449,7 +449,7 @@ const createVoucher = async (companyId, userId, payload, { status } = {}) => {
         session
       });
 
-      const doc = new AccountingVoucher({
+      const voucherDocData = {
         company: companyId,
         voucherType,
         status: requestedStatus,
@@ -466,9 +466,14 @@ const createVoucher = async (companyId, userId, payload, { status } = {}) => {
           rawPayload: payload
         }),
         createdBy: userId,
-        lastUpdatedBy: userId,
-        idempotencyKey
-      });
+        lastUpdatedBy: userId
+      };
+      // idempotencyKey is optional; omit the field entirely when absent so the sparse unique index behaves as intended.
+      if (idempotencyKey) {
+        voucherDocData.idempotencyKey = idempotencyKey;
+      }
+
+      const doc = new AccountingVoucher(voucherDocData);
 
       if (requestedStatus === 'posted') {
         const sequence = await reserveVoucherNumber({
@@ -565,6 +570,7 @@ const listVouchers = async (
 
   const [vouchers, total] = await Promise.all([
     AccountingVoucher.find(query)
+      .populate('party', 'name')
       .sort({ date: -1, createdAt: -1 })
       .skip(parsedOffset)
       .limit(cappedLimit)
@@ -805,4 +811,3 @@ module.exports = {
   voidVoucher,
   listVoucherLogs
 };
-

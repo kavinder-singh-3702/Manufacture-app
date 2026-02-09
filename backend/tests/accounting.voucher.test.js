@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const User = require('../src/models/user.model');
 const Company = require('../src/models/company.model');
 const Product = require('../src/models/product.model');
@@ -73,7 +73,9 @@ describe('Accounting voucher lifecycle', () => {
   let mongoServer;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await MongoMemoryReplSet.create({
+      replSet: { count: 1, storageEngine: 'wiredTiger' }
+    });
     await mongoose.connect(mongoServer.getUri());
   });
 
@@ -233,6 +235,54 @@ describe('Accounting voucher lifecycle', () => {
     expect(Number(bill.balanceAmount)).toBe(Number((salesVoucher.totals.net - 100).toFixed(2)));
   });
 
+  test('receipt/payment vouchers succeed without cashBankAccount when paymentMode is provided', async () => {
+    const user = await makeUser('1007');
+    const company = await makeCompany(user);
+    await ensureAccountingSetup(company._id);
+
+    const customer = await createParty(company._id, { name: 'Customer Seven', type: 'customer' });
+    const supplier = await createParty(company._id, { name: 'Supplier Seven', type: 'supplier' });
+
+    const cashAccount = await Account.findOne({ company: company._id, key: SYSTEM_ACCOUNT_KEYS.CASH }).lean();
+    const bankAccount = await Account.findOne({ company: company._id, key: SYSTEM_ACCOUNT_KEYS.BANK }).lean();
+    expect(cashAccount).toBeTruthy();
+    expect(bankAccount).toBeTruthy();
+
+    const receiptVoucher = await createVoucher(
+      company._id,
+      user._id,
+      {
+        voucherType: 'receipt',
+        partyId: customer._id,
+        amount: 500,
+        paymentMode: 'bank'
+      },
+      { status: 'posted' }
+    );
+
+    const receiptPostings = await LedgerPosting.find({ voucher: receiptVoucher._id, isVoided: { $ne: true } }).lean();
+    const bankPosting = receiptPostings.find((row) => row.account?.toString() === bankAccount._id.toString());
+    expect(bankPosting).toBeTruthy();
+    expect(Number(bankPosting.debit)).toBe(500);
+
+    const paymentVoucher = await createVoucher(
+      company._id,
+      user._id,
+      {
+        voucherType: 'payment',
+        partyId: supplier._id,
+        amount: 300,
+        paymentMode: 'cash'
+      },
+      { status: 'posted' }
+    );
+
+    const paymentPostings = await LedgerPosting.find({ voucher: paymentVoucher._id, isVoided: { $ne: true } }).lean();
+    const cashPosting = paymentPostings.find((row) => row.account?.toString() === cashAccount._id.toString());
+    expect(cashPosting).toBeTruthy();
+    expect(Number(cashPosting.credit)).toBe(300);
+  });
+
   test('voiding posted sales voucher restores stock and voids artifacts', async () => {
     const user = await makeUser('1004');
     const company = await makeCompany(user);
@@ -351,4 +401,3 @@ describe('Accounting voucher lifecycle', () => {
     ).rejects.toThrow(/Insufficient stock/i);
   });
 });
-

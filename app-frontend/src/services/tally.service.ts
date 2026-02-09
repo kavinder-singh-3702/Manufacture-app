@@ -23,6 +23,32 @@ export type VoucherType =
   | 'stock_adjustment';
 
 export type VoucherStatus = 'draft' | 'posted' | 'voided';
+export type PartyType = 'customer' | 'supplier';
+
+export type Pagination = {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+};
+
+export interface Party {
+  _id: string;
+  name: string;
+  type: PartyType;
+  gstin?: string;
+  pan?: string;
+  contact?: {
+    email?: string;
+    phone?: string;
+    contactPerson?: string;
+  };
+}
+
+export interface PartyListResponse {
+  parties: Party[];
+  pagination: Pagination;
+}
 
 export interface VoucherItemLine {
   product: string;
@@ -51,16 +77,13 @@ export interface VoucherTotals {
 }
 
 export interface Voucher {
-  id: string;
+  _id: string;
   company: string;
   voucherType: VoucherType;
   status: VoucherStatus;
   date: string;
   voucherNumber?: string;
-  party?: {
-    id: string;
-    name: string;
-  };
+  party?: { _id: string; name: string } | string;
   referenceNumber?: string;
   narration?: string;
   lines?: {
@@ -77,9 +100,7 @@ export interface Voucher {
 
 export interface VoucherListResponse {
   vouchers: Voucher[];
-  total: number;
-  limit: number;
-  offset: number;
+  pagination: Pagination;
 }
 
 export interface TallyStats {
@@ -97,6 +118,8 @@ export interface CreateVoucherPayload {
   voucherType: VoucherType;
   date?: string;
   partyId?: string;
+  paymentMode?: 'cash' | 'bank';
+  cashBankAccount?: string;
   referenceNumber?: string;
   narration?: string;
   amount?: number;
@@ -131,8 +154,9 @@ class TallyService {
       phone?: string;
       contactPerson?: string;
     };
-  }): Promise<any> {
-    return await apiClient.post(this.partiesUrl, data);
+  }): Promise<Party> {
+    const response = await apiClient.post<{ party: Party }>(this.partiesUrl, data);
+    return response.party;
   }
 
   /**
@@ -142,26 +166,39 @@ class TallyService {
     type?: 'customer' | 'supplier';
     search?: string;
     limit?: number;
-  }): Promise<any> {
-    return await apiClient.get(this.partiesUrl, { params });
+    offset?: number;
+  }): Promise<PartyListResponse> {
+    return await apiClient.get<PartyListResponse>(this.partiesUrl, { params });
   }
 
   /**
    * Get Tally statistics overview
    */
   async getStats(params?: { from?: string; to?: string }): Promise<TallyStats> {
-    const dashboard = await apiClient.get<DashboardData>('/accounting/reports/dashboard', { params });
+    const [dashboard, recent] = await Promise.all([
+      apiClient.get<DashboardData>('/accounting/reports/dashboard', { params }),
+      this.listVouchers({
+        status: 'posted',
+        limit: 5,
+        offset: 0,
+        from: params?.from,
+        to: params?.to,
+      }).catch((err) => {
+        console.warn('Failed to fetch recent vouchers for stats:', err);
+        return null;
+      }),
+    ]);
 
     // Transform dashboard data to TallyStats format
     return {
       totalSales: dashboard.sales || 0,
       totalPurchases: dashboard.purchases || 0,
-      totalReceipts: 0, // Can be calculated from receipts
-      totalPayments: 0, // Can be calculated from payments
+      totalReceipts: dashboard.receipts || 0,
+      totalPayments: dashboard.payments || 0,
       netProfit: dashboard.grossProfit || 0,
       receivables: dashboard.receivables || 0,
       payables: dashboard.payables || 0,
-      recentVouchers: [],
+      recentVouchers: recent?.vouchers || [],
     };
   }
 
@@ -184,35 +221,40 @@ class TallyService {
    * Get a single voucher by ID
    */
   async getVoucher(voucherId: string): Promise<Voucher> {
-    return await apiClient.get<Voucher>(`${this.baseUrl}/${voucherId}`);
+    const response = await apiClient.get<{ voucher: Voucher }>(`${this.baseUrl}/${voucherId}`);
+    return response.voucher;
   }
 
   /**
    * Create a new voucher (draft)
    */
   async createVoucher(payload: CreateVoucherPayload): Promise<Voucher> {
-    return await apiClient.post<Voucher>(this.baseUrl, payload);
+    const response = await apiClient.post<{ voucher: Voucher }>(this.baseUrl, payload);
+    return response.voucher;
   }
 
   /**
    * Update an existing voucher (draft only)
    */
   async updateVoucher(voucherId: string, payload: Partial<CreateVoucherPayload>): Promise<Voucher> {
-    return await apiClient.put<Voucher>(`${this.baseUrl}/${voucherId}`, payload);
+    const response = await apiClient.put<{ voucher: Voucher }>(`${this.baseUrl}/${voucherId}`, payload);
+    return response.voucher;
   }
 
   /**
    * Post a draft voucher (make it final)
    */
   async postVoucher(voucherId: string): Promise<Voucher> {
-    return await apiClient.post<Voucher>(`${this.baseUrl}/${voucherId}/post`);
+    const response = await apiClient.post<{ voucher: Voucher }>(`${this.baseUrl}/${voucherId}/post`);
+    return response.voucher;
   }
 
   /**
    * Void a posted voucher
    */
   async voidVoucher(voucherId: string, reason?: string): Promise<Voucher> {
-    return await apiClient.post<Voucher>(`${this.baseUrl}/${voucherId}/void`, { reason });
+    const response = await apiClient.post<{ voucher: Voucher }>(`${this.baseUrl}/${voucherId}/void`, { reason });
+    return response.voucher;
   }
 
   /**
@@ -224,8 +266,6 @@ class TallyService {
     items: VoucherItemLine[];
     narration?: string;
   }): Promise<Voucher> {
-    const totals = this.calculateTotals(data.items);
-
     return this.createVoucher({
       voucherType: 'sales_invoice',
       date: data.date || new Date().toISOString(),
@@ -271,6 +311,7 @@ class TallyService {
   async createReceipt(data: {
     partyId: string;
     amount: number;
+    paymentMode?: 'cash' | 'bank';
     date?: string;
     narration?: string;
   }): Promise<Voucher> {
@@ -279,6 +320,7 @@ class TallyService {
       date: data.date || new Date().toISOString(),
       partyId: data.partyId,
       amount: data.amount,
+      paymentMode: data.paymentMode,
       narration: data.narration,
     });
   }
@@ -289,6 +331,7 @@ class TallyService {
   async createPayment(data: {
     partyId: string;
     amount: number;
+    paymentMode?: 'cash' | 'bank';
     date?: string;
     narration?: string;
   }): Promise<Voucher> {
@@ -297,6 +340,7 @@ class TallyService {
       date: data.date || new Date().toISOString(),
       partyId: data.partyId,
       amount: data.amount,
+      paymentMode: data.paymentMode,
       narration: data.narration,
     });
   }

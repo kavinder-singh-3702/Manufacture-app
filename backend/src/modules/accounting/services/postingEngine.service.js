@@ -263,8 +263,12 @@ const buildArtifacts = ({
   } else if (voucherType === 'receipt') {
     if (!party?._id) throw createError(422, 'Party is required for receipt');
     const amount = roundMoney(payload?.amount);
-    const cashBankAccount = payload?.cashBankAccount;
-    if (!cashBankAccount) throw createError(422, 'cashBankAccount is required for receipt');
+    const paymentMode = payload?.paymentMode === 'bank' ? 'bank' : 'cash';
+    const cashBankAccount =
+      payload?.cashBankAccount ||
+      (paymentMode === 'bank'
+        ? systemAccounts[SYSTEM_ACCOUNT_KEYS.BANK]._id
+        : systemAccounts[SYSTEM_ACCOUNT_KEYS.CASH]._id);
     if (amount <= 0) throw createError(422, 'amount must be greater than 0');
 
     totals.taxable = amount;
@@ -285,8 +289,12 @@ const buildArtifacts = ({
   } else if (voucherType === 'payment') {
     if (!party?._id) throw createError(422, 'Party is required for payment');
     const amount = roundMoney(payload?.amount);
-    const cashBankAccount = payload?.cashBankAccount;
-    if (!cashBankAccount) throw createError(422, 'cashBankAccount is required for payment');
+    const paymentMode = payload?.paymentMode === 'bank' ? 'bank' : 'cash';
+    const cashBankAccount =
+      payload?.cashBankAccount ||
+      (paymentMode === 'bank'
+        ? systemAccounts[SYSTEM_ACCOUNT_KEYS.BANK]._id
+        : systemAccounts[SYSTEM_ACCOUNT_KEYS.CASH]._id);
     if (amount <= 0) throw createError(422, 'amount must be greater than 0');
 
     totals.taxable = amount;
@@ -501,4 +509,3 @@ module.exports = {
   buildArtifacts,
   sumTaxBucket
 };
-

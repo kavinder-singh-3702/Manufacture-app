@@ -119,7 +119,8 @@ accountingVoucherSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      status: { $ne: 'voided' },
+      // Partial indexes don't support $ne across Mongo versions; keep the uniqueness constraint to posted vouchers.
+      status: 'posted',
       sequenceNumber: { $exists: true }
     }
   }
@@ -127,7 +128,14 @@ accountingVoucherSchema.index(
 accountingVoucherSchema.index({ company: 1, date: -1 });
 accountingVoucherSchema.index({ company: 1, party: 1, date: -1 });
 accountingVoucherSchema.index({ company: 1, status: 1, date: -1 });
-accountingVoucherSchema.index({ company: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
+accountingVoucherSchema.index(
+  { company: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      idempotencyKey: { $type: 'string' }
+    }
+  }
+);
 
 module.exports = mongoose.model('AccountingVoucher', accountingVoucherSchema);
-

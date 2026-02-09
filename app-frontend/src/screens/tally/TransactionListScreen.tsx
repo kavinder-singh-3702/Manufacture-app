@@ -100,6 +100,7 @@ export const TransactionListScreen = () => {
   const renderVoucher = ({ item }: { item: Voucher }) => {
     const voucherColor = getVoucherColor(item.voucherType);
     const statusColor = getStatusBadgeColor(item.status);
+    const partyName = typeof item.party === 'object' && item.party ? (item.party as any).name : undefined;
 
     return (
       <TouchableOpacity
@@ -115,7 +116,7 @@ export const TransactionListScreen = () => {
         activeOpacity={0.7}
         onPress={() => {
           // Navigate to voucher details
-          alert(`Voucher ID: ${item.id}\nType: ${item.voucherType}\nStatus: ${item.status}`);
+          alert(`Voucher ID: ${item._id}\nType: ${item.voucherType}\nStatus: ${item.status}`);
         }}
       >
         <View style={styles.voucherHeader}>
@@ -139,14 +140,14 @@ export const TransactionListScreen = () => {
           </View>
         </View>
 
-        {item.party && (
+        {partyName ? (
           <View style={styles.voucherRow}>
             <Text style={[styles.voucherLabel, { color: colors.textSecondary }]}>Party:</Text>
             <Text style={[styles.voucherValue, { color: colors.text }]} numberOfLines={1}>
-              {item.party.name}
+              {partyName}
             </Text>
           </View>
-        )}
+        ) : null}
 
         <View style={styles.voucherRow}>
           <Text style={[styles.voucherLabel, { color: colors.textSecondary }]}>Date:</Text>
@@ -277,7 +278,7 @@ export const TransactionListScreen = () => {
         <FlatList
           data={vouchers}
           renderItem={renderVoucher}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id}
           contentContainerStyle={[styles.listContent, { padding: spacing.md }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           ListEmptyComponent={

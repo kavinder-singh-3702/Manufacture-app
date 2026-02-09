@@ -28,7 +28,13 @@ const accountingBillSchema = new Schema(
 );
 
 accountingBillSchema.index({ company: 1, party: 1, status: 1, dueDate: 1 });
-accountingBillSchema.index({ company: 1, voucher: 1 }, { unique: true });
+accountingBillSchema.index(
+  { company: 1, voucher: 1 },
+  {
+    unique: true,
+    // Allow a new bill record when the previous one is voided (e.g. same-day edits that bump voucher revision).
+    partialFilterExpression: { isVoided: false }
+  }
+);
 
 module.exports = mongoose.model('AccountingBill', accountingBillSchema);
-

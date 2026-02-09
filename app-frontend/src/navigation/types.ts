@@ -8,6 +8,7 @@ import { ServiceType } from "../services/serviceRequest.service";
 export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
+  Help: undefined;
   Profile: undefined;
   Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;

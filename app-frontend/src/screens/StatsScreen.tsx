@@ -20,7 +20,6 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { AppRole } from "../constants/roles";
 import { productService, ProductStats, Product } from "../services/product.service";
-import { accountingService, DashboardData } from "../services/accounting.service";
 import { RootStackParamList } from "../navigation/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -67,7 +66,6 @@ export const StatsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ProductStats | null>(null);
-  const [accountingData, setAccountingData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBarValue, setSelectedBarValue] = useState<{ label: string; value: number } | null>(null);
   const [userProducts, setUserProducts] = useState<Product[]>([]);
@@ -82,7 +80,6 @@ export const StatsScreen = () => {
   const fetchStats = useCallback(async () => {
     if (isGuest) {
       setStats(null);
-      setAccountingData(null);
       setError(null);
       setLoading(false);
       setRefreshing(false);
@@ -90,16 +87,8 @@ export const StatsScreen = () => {
     }
     try {
       setError(null);
-      // Fetch both product stats and accounting dashboard data in parallel
-      const [productData, accountingDashboard] = await Promise.all([
-        productService.getStats(),
-        accountingService.getDashboard().catch((err) => {
-          console.warn("Failed to fetch accounting data:", err);
-          return null; // Don't fail the entire request if accounting data fails
-        }),
-      ]);
+      const productData = await productService.getStats();
       setStats(productData);
-      setAccountingData(accountingDashboard);
     } catch (err: any) {
       console.error("Failed to fetch stats:", err);
       setError(err.message || "Failed to load statistics");
@@ -413,15 +402,13 @@ export const StatsScreen = () => {
             <View style={[styles.heroTopRow, { marginBottom: spacing.md }]}>
               <View style={{ flex: 1, gap: spacing.xs }}>
                 <Text style={[styles.pageEyebrow, { color: colors.textMuted }]}>
-                  {accountingData ? "Financial Intelligence" : "Product Intelligence"}
+                  Inventory Intelligence
                 </Text>
                 <Text style={[styles.pageTitle, { color: colors.text }]}>
-                  {accountingData ? "Business Dashboard" : "Product Stats"}
+                  Inventory
                 </Text>
                 <Text style={[styles.pageSubtitle, { color: colors.textLight }]}>
-                  {accountingData
-                    ? "Real-time accounting & inventory metrics"
-                    : "Premium dashboard for inventory momentum"}
+                  Live inventory metrics and catalog health
                 </Text>
               </View>
               <View
@@ -439,238 +426,30 @@ export const StatsScreen = () => {
 
             <View style={[styles.heroMetricsRow, { marginBottom: spacing.sm }]}>
               <HeroMetric
-                label={accountingData ? "Sales Revenue" : "Catalog value"}
-                value={accountingData ? `₹${(accountingData.sales / 1000).toFixed(1)}K` : `₹${(totalValue / 1000).toFixed(1)}K`}
-                hint={accountingData ? "Total sales" : "Cost basis"}
+                label="Catalog value"
+                value={`₹${(totalValue / 1000).toFixed(1)}K`}
+                hint="Cost basis"
               />
               <HeroMetric
-                label={accountingData ? "Gross Profit" : "Stock health"}
-                value={accountingData ? `₹${(accountingData.grossProfit / 1000).toFixed(1)}K` : `${stockHealth}%`}
-                hint={accountingData ? `${accountingData.sales > 0 ? ((accountingData.grossProfit / accountingData.sales) * 100).toFixed(1) : 0}% margin` : "Ready to ship"}
+                label="Stock health"
+                value={`${stockHealth}%`}
+                hint="In-stock coverage"
               />
             </View>
             <View style={styles.heroMetricsRow}>
               <HeroMetric
-                label={accountingData ? "Cash Balance" : "Total items"}
-                value={accountingData ? `₹${(accountingData.cashBalance / 1000).toFixed(1)}K` : totalItems.toString()}
-                hint={accountingData ? "Available funds" : `${totalQuantity.toLocaleString()} units on hand`}
+                label="Total items"
+                value={totalItems.toString()}
+                hint={`${totalQuantity.toLocaleString()} units on hand`}
               />
               <HeroMetric
-                label={accountingData ? "Stock Value" : "Avg units / item"}
-                value={accountingData ? `₹${(accountingData.stockValue / 1000).toFixed(1)}K` : averageUnits.toString()}
-                hint={accountingData ? `${accountingData.stockQuantity.toLocaleString()} units` : "Depth per SKU"}
+                label="Avg units / item"
+                value={averageUnits.toString()}
+                hint="Depth per SKU"
               />
             </View>
           </LinearGradient>
         </Animated.View>
-
-        {/* Tally Entry - Always Visible */}
-        {!isGuest && (
-          <>
-            <SectionHeader title="Accounting Tools" subtitle="Manage your tally data and entries" />
-            <TouchableOpacity
-              style={[
-                styles.reportCard,
-                {
-                  backgroundColor: colors.accentWarm + "15",
-                  borderColor: colors.accentWarm + "40",
-                  borderRadius: radius.lg,
-                  marginBottom: spacing.lg,
-                  padding: spacing.lg,
-                  alignItems: 'center',
-                },
-              ]}
-              onPress={() => navigation.navigate("TallyStats")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.reportIcon, { fontSize: 48 }]}>📊</Text>
-              <Text style={[styles.reportTitle, { color: colors.text, fontSize: 18, marginTop: spacing.sm }]}>Tally Entry & Stats</Text>
-              <Text style={[styles.reportSubtitle, { color: colors.textMuted, textAlign: 'center' }]}>
-                Add invoices, bills, receipts & view analytics
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {/* Financial Metrics Section - Tally Accounting Data */}
-        {accountingData && (
-          <>
-            <SectionHeader title="Financial Overview" subtitle="Real-time accounting data from Tally" />
-            <View style={[styles.statsGrid, { marginBottom: spacing.lg }]}>
-              <FinancialMetricCard
-                label="Sales"
-                value={`₹${(accountingData.sales / 1000).toFixed(1)}K`}
-                icon="💰"
-                color={colors.success}
-                subtitle="Revenue"
-              />
-              <FinancialMetricCard
-                label="Purchases"
-                value={`₹${(accountingData.purchases / 1000).toFixed(1)}K`}
-                icon="🛒"
-                color={colors.primary}
-                subtitle="Expenses"
-              />
-              <FinancialMetricCard
-                label="Gross Profit"
-                value={`₹${(accountingData.grossProfit / 1000).toFixed(1)}K`}
-                icon="📈"
-                color={accountingData.grossProfit >= 0 ? colors.success : colors.error}
-                subtitle={`${accountingData.sales > 0 ? ((accountingData.grossProfit / accountingData.sales) * 100).toFixed(1) : 0}% margin`}
-              />
-              <FinancialMetricCard
-                label="Cash Balance"
-                value={`₹${(accountingData.cashBalance / 1000).toFixed(1)}K`}
-                icon="💵"
-                color={colors.accentWarm}
-                subtitle="Available"
-              />
-              <FinancialMetricCard
-                label="Receivables"
-                value={`₹${(accountingData.receivables / 1000).toFixed(1)}K`}
-                icon="📥"
-                color={colors.warning}
-                subtitle="To collect"
-              />
-              <FinancialMetricCard
-                label="Payables"
-                value={`₹${(accountingData.payables / 1000).toFixed(1)}K`}
-                icon="📤"
-                color={colors.error}
-                subtitle="To pay"
-              />
-            </View>
-
-            {/* Receivables vs Payables Comparison */}
-            <ChartCard title="Working Capital" subtitle="Receivables vs Payables comparison">
-              <View style={{ gap: spacing.md }}>
-                <View style={styles.cashFlowRow}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.cashFlowHeader}>
-                      <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-                      <Text style={[styles.cashFlowLabel, { color: colors.textSecondary }]}>Receivables</Text>
-                    </View>
-                    <Text style={[styles.cashFlowValue, { color: colors.text }]}>
-                      ₹{accountingData.receivables.toLocaleString()}
-                    </Text>
-                    <View style={[styles.cashFlowBar, { backgroundColor: colors.border, marginTop: spacing.xs }]}>
-                      <View
-                        style={[
-                          styles.cashFlowBarFill,
-                          {
-                            width: `${Math.min(100, (accountingData.receivables / Math.max(accountingData.receivables, accountingData.payables, 1)) * 100)}%`,
-                            backgroundColor: colors.success,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.cashFlowRow}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.cashFlowHeader}>
-                      <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
-                      <Text style={[styles.cashFlowLabel, { color: colors.textSecondary }]}>Payables</Text>
-                    </View>
-                    <Text style={[styles.cashFlowValue, { color: colors.text }]}>
-                      ₹{accountingData.payables.toLocaleString()}
-                    </Text>
-                    <View style={[styles.cashFlowBar, { backgroundColor: colors.border, marginTop: spacing.xs }]}>
-                      <View
-                        style={[
-                          styles.cashFlowBarFill,
-                          {
-                            width: `${Math.min(100, (accountingData.payables / Math.max(accountingData.receivables, accountingData.payables, 1)) * 100)}%`,
-                            backgroundColor: colors.error,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.netPositionCard,
-                    {
-                      backgroundColor: (accountingData.receivables - accountingData.payables) >= 0 ? colors.success + "10" : colors.error + "10",
-                      borderColor: (accountingData.receivables - accountingData.payables) >= 0 ? colors.success + "30" : colors.error + "30",
-                    },
-                  ]}
-                >
-                  <Text style={[styles.netPositionLabel, { color: colors.textMuted }]}>Net Position</Text>
-                  <Text
-                    style={[
-                      styles.netPositionValue,
-                      {
-                        color: (accountingData.receivables - accountingData.payables) >= 0 ? colors.success : colors.error,
-                      },
-                    ]}
-                  >
-                    {(accountingData.receivables - accountingData.payables) >= 0 ? "+" : ""}₹
-                    {(accountingData.receivables - accountingData.payables).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-            </ChartCard>
-
-            {/* Quick Reports Access */}
-            <SectionHeader title="Detailed Reports" subtitle="View comprehensive accounting reports" />
-            <View style={[styles.reportsGrid, { marginBottom: spacing.lg, gap: spacing.md }]}>
-              <TouchableOpacity
-                style={[
-                  styles.reportCard,
-                  {
-                    backgroundColor: colors.success + "15",
-                    borderColor: colors.success + "40",
-                    borderRadius: radius.lg,
-                  },
-                ]}
-                onPress={() => navigation.navigate("ProfitLoss")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.reportIcon}>📊</Text>
-                <Text style={[styles.reportTitle, { color: colors.text }]}>Profit & Loss</Text>
-                <Text style={[styles.reportSubtitle, { color: colors.textMuted }]}>
-                  Income vs Expenses
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.reportCard,
-                  {
-                    backgroundColor: colors.primary + "15",
-                    borderColor: colors.primary + "40",
-                    borderRadius: radius.lg,
-                  },
-                ]}
-                onPress={() => navigation.navigate("GSTSummary")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.reportIcon}>🧾</Text>
-                <Text style={[styles.reportTitle, { color: colors.text }]}>GST Summary</Text>
-                <Text style={[styles.reportSubtitle, { color: colors.textMuted }]}>Tax Analysis</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.reportCard,
-                  {
-                    backgroundColor: colors.warning + "15",
-                    borderColor: colors.warning + "40",
-                    borderRadius: radius.lg,
-                  },
-                ]}
-                onPress={() => navigation.navigate("PartyOutstanding")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.reportIcon}>👥</Text>
-                <Text style={[styles.reportTitle, { color: colors.text }]}>Outstanding</Text>
-                <Text style={[styles.reportSubtitle, { color: colors.textMuted }]}>Aging Analysis</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
 
         {/* My Products Table - Right below hero */}
         <SectionHeader
@@ -701,78 +480,6 @@ export const StatsScreen = () => {
               <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {/* Low Stock Products Alert */}
-        {accountingData && accountingData.lowStockProducts && accountingData.lowStockProducts.length > 0 && (
-          <>
-            <SectionHeader title="Low Stock Alert" subtitle="Products that need attention" />
-            <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.warning + "40", borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1 }]}>
-              {accountingData.lowStockProducts.slice(0, 5).map((product, index) => (
-                <View
-                  key={product._id}
-                  style={[
-                    styles.lowStockItem,
-                    {
-                      borderBottomColor: colors.border,
-                      borderBottomWidth: index < Math.min(4, accountingData.lowStockProducts.length - 1) ? 1 : 0,
-                      paddingVertical: spacing.sm,
-                    },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.lowStockName, { color: colors.text }]} numberOfLines={1}>
-                      {product.name}
-                    </Text>
-                    <Text style={[styles.lowStockQty, { color: colors.textMuted }]}>
-                      Current: {product.availableQuantity} / Min: {product.minStockQuantity}
-                    </Text>
-                  </View>
-                  <View style={[styles.lowStockBadge, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "40" }]}>
-                    <Text style={[styles.lowStockBadgeText, { color: colors.warning }]}>⚠️ Low</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* Top Selling Items */}
-        {accountingData && accountingData.topItems && accountingData.topItems.length > 0 && (
-          <>
-            <SectionHeader title="Top Selling Items" subtitle="Best performers by quantity sold" />
-            <View style={[styles.chartCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1 }]}>
-              {accountingData.topItems.slice(0, 5).map((item, index) => {
-                const productId = typeof item._id.product === "string" ? item._id.product : item._id.product.toString();
-                return (
-                  <View
-                    key={`${productId}-${index}`}
-                    style={[
-                      styles.topItemRow,
-                      {
-                        borderBottomColor: colors.border,
-                        borderBottomWidth: index < Math.min(4, accountingData.topItems.length - 1) ? 1 : 0,
-                        paddingVertical: spacing.sm,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.topItemRank, { backgroundColor: colors.primary + "20" }]}>
-                      <Text style={[styles.topItemRankText, { color: colors.primary }]}>#{index + 1}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.topItemName, { color: colors.text }]}>Product #{productId.substring(0, 8)}</Text>
-                      <Text style={[styles.topItemQty, { color: colors.textMuted }]}>
-                        Qty sold: {item.qtyOut.toFixed(2)} units
-                      </Text>
-                    </View>
-                    <Text style={[styles.topItemValue, { color: colors.success }]}>
-                      ₹{(item.costValue / 1000).toFixed(1)}K
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </>
         )}
 
         <Animated.View
@@ -1208,55 +915,6 @@ const InsightPill = ({
   }
 
   return <View style={styles.actionPillWrapper}>{content}</View>;
-};
-
-// Financial Metric Card Component
-const FinancialMetricCard = ({
-  label,
-  value,
-  icon,
-  color,
-  subtitle,
-}: {
-  label: string;
-  value: string;
-  icon: string;
-  color: string;
-  subtitle: string;
-}) => {
-  const { colors, radius, spacing } = useTheme();
-
-  return (
-    <View style={{ width: "48%" }}>
-      <View
-        style={[
-          styles.quickStatCard,
-          {
-            backgroundColor: colors.surfaceElevated,
-            borderColor: color + "35",
-            borderRadius: radius.md,
-            padding: spacing.md,
-            shadowColor: color,
-          },
-        ]}
-      >
-        <View style={styles.quickStatHeader}>
-          <View style={[styles.quickStatIcon, { backgroundColor: color + "25" }]}>
-            <Text>{icon}</Text>
-          </View>
-          <Text style={[styles.quickStatLabel, { color: colors.textSecondary }]} numberOfLines={2}>
-            {label}
-          </Text>
-          <View style={[styles.quickStatTag, { backgroundColor: color + "18", borderColor: color + "35" }]}>
-            <Text style={[styles.quickStatTagText, { color: color }]}>Live</Text>
-          </View>
-        </View>
-
-        <Text style={[styles.quickStatValue, { color: colors.text }]}>{value}</Text>
-        <Text style={[styles.quickStatHint, { color: colors.textMuted }]}>{subtitle}</Text>
-      </View>
-    </View>
-  );
 };
 
 // Helper to show short badge text

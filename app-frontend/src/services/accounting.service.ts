@@ -7,6 +7,8 @@ import { apiClient } from "./apiClient";
 export type DashboardData = {
   sales: number;
   purchases: number;
+  receipts?: number;
+  payments?: number;
   cogs: number;
   grossProfit: number;
   receivables: number;
@@ -14,6 +16,15 @@ export type DashboardData = {
   cashBalance: number;
   stockValue: number;
   stockQuantity: number;
+  recentVouchers?: Array<{
+    _id: string;
+    voucherType: string;
+    status: string;
+    date: string;
+    voucherNumber?: string;
+    party?: { _id: string; name: string } | string;
+    totals?: { net: number };
+  }>;
   lowStockProducts: LowStockProduct[];
   topItems: TopItem[];
 };
@@ -32,6 +43,7 @@ export type TopItem = {
   };
   qtyOut: number;
   costValue: number;
+  productName?: string;
 };
 
 export type DateRangeParams = {

@@ -1,12 +1,15 @@
 import { FC } from "react";
 import { View, TouchableOpacity, Text, StyleSheet, Image, ImageSourcePropType } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { RouteName } from "../../navigation/routes";
+
+type IoniconName = keyof typeof Ionicons.glyphMap;
 
 type TabItem = {
   route: RouteName;
   label: string;
-  icon: keyof typeof import("@expo/vector-icons").Ionicons.glyphMap | ImageSourcePropType;
+  icon: IoniconName | ImageSourcePropType;
 };
 
 type BottomTabBarProps = {
@@ -43,14 +46,11 @@ export const BottomTabBar: FC<BottomTabBarProps> = ({
             activeOpacity={0.7}
           >
             {typeof tab.icon === "string" ? (
-              // Fallback to vector icon if string provided
-              require("@expo/vector-icons").Ionicons ? (
-                <(typeof import("@expo/vector-icons").Ionicons)["default"]
-                  name={tab.icon as keyof typeof import("@expo/vector-icons").Ionicons.glyphMap}
-                  size={24}
-                  color={isActive ? colors.textSecondary : colors.textMuted}
-                />
-              ) : null
+              <Ionicons
+                name={tab.icon}
+                size={24}
+                color={isActive ? colors.textSecondary : colors.textMuted}
+              />
             ) : (
               <Image
                 source={tab.icon}

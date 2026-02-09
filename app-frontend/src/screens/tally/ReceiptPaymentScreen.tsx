@@ -62,7 +62,7 @@ export const ReceiptPaymentScreen = () => {
           name: partyName,
           type: isReceipt ? 'customer' : 'supplier',
         });
-        actualPartyId = party._id || party.id;
+        actualPartyId = party._id;
       }
 
       // Step 2: Create receipt/payment voucher
@@ -70,6 +70,7 @@ export const ReceiptPaymentScreen = () => {
         partyId: actualPartyId,
         amount: amountNum,
         date,
+        paymentMode,
         narration: narration || `${isReceipt ? 'Receipt from' : 'Payment to'} ${partyName}`,
       };
 

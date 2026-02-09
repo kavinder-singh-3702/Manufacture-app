@@ -9,6 +9,7 @@ export const routes = {
   // User-specific routes (5 tabs)
   CART: "cart",
   SERVICES: "services",
+  ACCOUNTING: "accounting",
   STATS: "stats",
   PROFILE_TAB: "profile-tab",
 
@@ -56,15 +57,15 @@ export const TAB_CONFIG: RouteConfig[] = [
     roles: ["user", "guest"],
   },
   {
-    route: routes.SERVICES,
-    label: "Help",
-    icon: "🛎️",
-    gradientColors: ["#ee0979", "#ff6a00"],
+    route: routes.ACCOUNTING,
+    label: "Accounting",
+    icon: "📒",
+    gradientColors: ["#6C63FF", "#4AC9FF"],
     roles: ["user", "guest"],
   },
   {
     route: routes.STATS,
-    label: "Stats",
+    label: "Inventory",
     icon: "📊",
     gradientColors: ["#F97316", "#FBBF24"],
     roles: ["user", "guest"],

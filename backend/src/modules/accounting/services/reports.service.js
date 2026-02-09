@@ -28,7 +28,7 @@ const dashboard = async (companyId, { from, to } = {}) => {
   };
   if (dateFilter) voucherMatch.date = dateFilter;
 
-  const [voucherStats, receivable, payable, stockValueAgg, lowStockProducts, topItems, cashBankAccounts, cashBankLedger] =
+  const [voucherStats, receivable, payable, stockValueAgg, lowStockProducts, topItems, recentVouchers, cashBankAccounts, cashBankLedger] =
     await Promise.all([
       AccountingVoucher.aggregate([
         { $match: voucherMatch },
@@ -80,6 +80,12 @@ const dashboard = async (companyId, { from, to } = {}) => {
         { $sort: { qtyOut: -1 } },
         { $limit: 10 }
       ]),
+      AccountingVoucher.find(voucherMatch)
+        .select('_id voucherType status date voucherNumber party totals.net')
+        .populate('party', 'name')
+        .sort({ date: -1, createdAt: -1 })
+        .limit(5)
+        .lean(),
       Account.find({
         company: companyId,
         key: { $in: [SYSTEM_ACCOUNT_KEYS.CASH, SYSTEM_ACCOUNT_KEYS.BANK] },
@@ -112,6 +118,8 @@ const dashboard = async (companyId, { from, to } = {}) => {
 
   const sales = roundMoney(voucherMap.sales_invoice?.net || 0);
   const purchases = roundMoney(voucherMap.purchase_bill?.net || 0);
+  const receipts = roundMoney(voucherMap.receipt?.net || 0);
+  const payments = roundMoney(voucherMap.payment?.net || 0);
   const cogs = roundMoney(voucherMap.sales_invoice?.cogs || 0);
   const grossProfit = roundMoney(sales - cogs);
 
@@ -124,9 +132,34 @@ const dashboard = async (companyId, { from, to } = {}) => {
 
   const stockValue = stockValueAgg[0] || { totalValue: 0, totalQty: 0 };
 
+  const productIds = [
+    ...new Set(
+      (topItems || [])
+        .map((item) => item?._id?.product)
+        .filter(Boolean)
+        .map((id) => id.toString())
+    )
+  ];
+  const productsById = productIds.length
+    ? await Product.find({ _id: { $in: productIds } }).select('_id name').lean()
+    : [];
+  const productNameLookup = productsById.reduce((acc, product) => {
+    acc[product._id.toString()] = product.name;
+    return acc;
+  }, {});
+  const enrichedTopItems = (topItems || []).map((item) => {
+    const productId = item?._id?.product ? item._id.product.toString() : '';
+    return {
+      ...item,
+      productName: productNameLookup[productId]
+    };
+  });
+
   return {
     sales,
     purchases,
+    receipts,
+    payments,
     cogs,
     grossProfit,
     receivables: roundMoney(receivable[0]?.balance || 0),
@@ -134,8 +167,9 @@ const dashboard = async (companyId, { from, to } = {}) => {
     cashBalance,
     stockValue: roundMoney(stockValue.totalValue || 0),
     stockQuantity: Number(stockValue.totalQty || 0),
+    recentVouchers,
     lowStockProducts,
-    topItems
+    topItems: enrichedTopItems
   };
 };
 
@@ -567,4 +601,3 @@ module.exports = {
   stockLedger,
   ledgerReport
 };
-

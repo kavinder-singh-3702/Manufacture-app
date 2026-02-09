@@ -13,21 +13,22 @@ const reserveVoucherNumber = async ({
 
   const sequence = await AccountingSequence.findOneAndUpdate(
     { company: companyId, fiscalYearKey, voucherType },
-    {
-      $setOnInsert: {
-        company: companyId,
-        fiscalYearKey,
-        voucherType,
-        prefix: VOUCHER_PREFIX_BY_TYPE[voucherType] || 'VC-',
-        padding: 5,
-        nextNumber: 1
-      },
-      $inc: { nextNumber: 1 }
-    },
+    [
+      {
+        $set: {
+          company: companyId,
+          fiscalYearKey,
+          voucherType,
+          prefix: { $ifNull: ['$prefix', VOUCHER_PREFIX_BY_TYPE[voucherType] || 'VC-'] },
+          padding: { $ifNull: ['$padding', 5] },
+          // Keep nextNumber as "next to allocate", so the reserved number is nextNumber - 1.
+          nextNumber: { $add: [{ $ifNull: ['$nextNumber', 1] }, 1] }
+        }
+      }
+    ],
     {
       upsert: true,
       new: true,
-      setDefaultsOnInsert: true,
       session
     }
   );
@@ -45,4 +46,3 @@ const reserveVoucherNumber = async ({
 module.exports = {
   reserveVoucherNumber
 };
-

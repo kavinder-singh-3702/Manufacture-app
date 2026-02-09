@@ -27,7 +27,7 @@ import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { UserServicesScreen } from "../screens/chat";
-import { ServiceDetailScreen } from "../screens/services";
+import { ServiceDetailScreen, ServicesOverviewScreen } from "../screens/services";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
 import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
 import { PartyOutstandingScreen } from "../screens/accounting/PartyOutstandingScreen";
@@ -100,6 +100,11 @@ export const AppNavigator = () => {
           // Authenticated: Show unified MainTabs (role-based content handled inside)
           <>
             <RootStack.Screen name="Main" component={MainTabs} />
+            <RootStack.Screen
+              name="Help"
+              component={ServicesOverviewScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Help" }}
+            />
             <RootStack.Screen
               name="Profile"
               component={ProfileScreen}

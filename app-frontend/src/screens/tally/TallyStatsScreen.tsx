@@ -372,7 +372,7 @@ export const TallyStatsScreen = () => {
             <View style={[styles.transactionsList, { marginTop: spacing.md }]}>
               {stats.recentVouchers.map((voucher, index) => (
                 <View
-                  key={voucher.id}
+                  key={voucher._id}
                   style={[
                     styles.transactionCard,
                     {
@@ -391,11 +391,11 @@ export const TallyStatsScreen = () => {
                       ₹{voucher.totals.net.toLocaleString()}
                     </Text>
                   </View>
-                  {voucher.party && (
+                  {typeof voucher.party === 'object' && voucher.party ? (
                     <Text style={[styles.transactionParty, { color: colors.textMuted }]}>
-                      {voucher.party.name}
+                      {(voucher.party as any).name}
                     </Text>
-                  )}
+                  ) : null}
                   <Text style={[styles.transactionDate, { color: colors.textMuted }]}>
                     {new Date(voucher.date).toLocaleDateString()}
                   </Text>

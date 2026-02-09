@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,27 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { tallyService, VoucherItemLine } from '../../services/tally.service';
+import { productService, type Product } from '../../services/product.service';
 
 export const PurchaseBillScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation();
+
+  type LineItem = VoucherItemLine & { productName?: string };
 
   const [loading, setLoading] = useState(false);
   const [supplierName, setSupplierName] = useState('');
   const [supplierId, setSupplierId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [narration, setNarration] = useState('');
-  const [items, setItems] = useState<VoucherItemLine[]>([
+  const [items, setItems] = useState<LineItem[]>([
     {
       product: '',
       description: '',
@@ -33,6 +38,12 @@ export const PurchaseBillScreen = () => {
       tax: { gstRate: 18, gstType: 'cgst_sgst' },
     },
   ]);
+
+  const [productPickerVisible, setProductPickerVisible] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [productResults, setProductResults] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
 
   const addItem = () => {
     setItems([
@@ -54,7 +65,7 @@ export const PurchaseBillScreen = () => {
     }
   };
 
-  const updateItem = (index: number, field: keyof VoucherItemLine, value: any) => {
+  const updateItem = (index: number, field: keyof LineItem, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
 
@@ -64,6 +75,56 @@ export const PurchaseBillScreen = () => {
     }
 
     setItems(newItems);
+  };
+
+  const loadProducts = useCallback(async (searchText: string) => {
+    try {
+      setProductsLoading(true);
+      const resp = await productService.getAll({
+        scope: 'company',
+        search: searchText.trim() ? searchText.trim() : undefined,
+        limit: 50,
+      });
+      setProductResults(resp.products || []);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      setProductResults([]);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!productPickerVisible) return;
+    const t = setTimeout(() => {
+      loadProducts(productSearch);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [loadProducts, productPickerVisible, productSearch]);
+
+  const openProductPicker = (lineIndex: number) => {
+    setActiveLineIndex(lineIndex);
+    setProductSearch('');
+    setProductPickerVisible(true);
+    loadProducts('');
+  };
+
+  const selectProductForLine = (product: Product) => {
+    if (activeLineIndex === null) return;
+    const next = [...items];
+    const current = next[activeLineIndex];
+    const rate = product.price?.amount || 0;
+    next[activeLineIndex] = {
+      ...current,
+      product: product._id,
+      productName: product.name,
+      description: current.description?.trim() ? current.description : product.name,
+      rate,
+      amount: (current.quantity || 0) * rate,
+    };
+    setItems(next);
+    setProductPickerVisible(false);
+    setActiveLineIndex(null);
   };
 
   const calculateTotals = () => {
@@ -92,8 +153,8 @@ export const PurchaseBillScreen = () => {
       return;
     }
 
-    if (items.some((item) => !item.description || item.quantity <= 0 || item.rate <= 0)) {
-      Alert.alert('Error', 'Please fill all item details correctly');
+    if (items.some((item) => !item.product || item.product.length !== 24 || item.quantity <= 0 || item.rate <= 0)) {
+      Alert.alert('Error', 'Please select a product and fill quantity/rate for all items');
       return;
     }
 
@@ -108,7 +169,7 @@ export const PurchaseBillScreen = () => {
           name: supplierName,
           type: 'supplier',
         });
-        partyId = party._id || party.id;
+        partyId = party._id;
       }
 
       // Step 2: Create purchase bill voucher
@@ -116,9 +177,12 @@ export const PurchaseBillScreen = () => {
         partyId,
         date,
         items: items.map((item) => ({
+          product: item.product,
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
+          discountAmount: item.discountAmount,
+          amount: item.amount,
           tax: item.tax,
         })),
         narration: narration || `Purchase from ${supplierName}`,
@@ -258,7 +322,29 @@ export const PurchaseBillScreen = () => {
                 )}
               </View>
 
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Description *</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Product *</Text>
+              <TouchableOpacity
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  },
+                ]}
+                activeOpacity={0.8}
+                onPress={() => openProductPicker(index)}
+              >
+                <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                  {item.productName || 'Select product'}
+                </Text>
+                <Text style={{ color: colors.textMuted, fontWeight: '700', marginLeft: 10 }}>›</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Description</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -271,7 +357,7 @@ export const PurchaseBillScreen = () => {
                 ]}
                 value={item.description}
                 onChangeText={(text) => updateItem(index, 'description', text)}
-                placeholder="Item description"
+                placeholder="Item description (optional)"
                 placeholderTextColor={colors.textMuted}
               />
 
@@ -409,6 +495,86 @@ export const PurchaseBillScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Product Picker */}
+      <Modal
+        visible={productPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProductPickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                borderRadius: radius.lg,
+              },
+            ]}
+          >
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select product</Text>
+              <TouchableOpacity onPress={() => setProductPickerVisible(false)} activeOpacity={0.8}>
+                <Text style={[styles.modalClose, { color: colors.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={[
+                styles.modalSearch,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.text,
+                  borderRadius: radius.md,
+                },
+              ]}
+              value={productSearch}
+              onChangeText={setProductSearch}
+              placeholder="Search products..."
+              placeholderTextColor={colors.textMuted}
+              autoFocus
+            />
+
+            {productsLoading ? (
+              <View style={styles.modalCentered}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={[styles.modalMutedText, { color: colors.textMuted, marginTop: spacing.sm }]}>Loading...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={productResults}
+                keyExtractor={(p) => p._id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item: p }) => (
+                  <TouchableOpacity
+                    onPress={() => selectProductForLine(p)}
+                    activeOpacity={0.8}
+                    style={[styles.productRow, { borderBottomColor: colors.border }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1}>
+                        {p.name}
+                      </Text>
+                      <Text style={[styles.productMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                        {p.category?.replace(/-/g, " ")}  ·  {p.price?.amount ? `₹${p.price.amount.toLocaleString("en-IN")}` : "No price"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.productChevron, { color: colors.textMuted }]}>›</Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.modalCentered}>
+                    <Text style={[styles.modalMutedText, { color: colors.textMuted }]}>No products found</Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -556,5 +722,69 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    padding: 20,
+    justifyContent: 'center',
+  },
+  modalCard: {
+    borderWidth: 1,
+    maxHeight: '80%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  modalClose: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalSearch: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    margin: 14,
+  },
+  modalCentered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  modalMutedText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  productMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  productChevron: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginLeft: 10,
   },
 });
