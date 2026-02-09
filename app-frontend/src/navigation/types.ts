@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Help: undefined;
   Profile: undefined;
+  Appearance: undefined;
   Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   CompanyCreate: undefined;
@@ -27,7 +28,7 @@ export type RootStackParamList = {
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };
   ServiceDetail: { serviceType: ServiceType };
-  MyProducts: undefined;
+  MyProducts: { initialQuery?: string; initialStatus?: "all" | "in_stock" | "low_stock" | "out_of_stock" } | undefined;
   // Accounting Reports
   ProfitLoss: undefined;
   GSTSummary: undefined;

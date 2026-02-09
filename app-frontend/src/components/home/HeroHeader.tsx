@@ -2,7 +2,6 @@ import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ImageSource
 import { LinearGradient } from "expo-linear-gradient";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
-import { colors, palette } from "../../theme/colors";
 
 type HeroHeaderProps = {
   brandName: string;
@@ -35,10 +34,10 @@ export const HeroHeader = ({
       style={[styles.container, { padding: spacing.md, borderRadius: radius.lg }]}
     >
       <View style={styles.heroTopRow}>
-        <TouchableOpacity style={styles.hamburgerButton} onPress={onMenuPress} accessibilityLabel="Open navigation">
-          <View style={styles.hamburgerLine} />
-          <View style={[styles.hamburgerLine, { marginVertical: 4 }]} />
-          <View style={styles.hamburgerLine} />
+        <TouchableOpacity style={[styles.hamburgerButton, { borderColor: "rgba(255,255,255,0.4)" }]} onPress={onMenuPress} accessibilityLabel="Open navigation">
+          <View style={[styles.hamburgerLine, { backgroundColor: "#fff" }]} />
+          <View style={[styles.hamburgerLine, { marginVertical: 4, backgroundColor: "#fff" }]} />
+          <View style={[styles.hamburgerLine, { backgroundColor: "#fff" }]} />
         </TouchableOpacity>
         <View style={styles.logoRow}>
           <Image source={logoSource} style={styles.logoImage} />
@@ -46,25 +45,21 @@ export const HeroHeader = ({
             {brandName}
           </Typography>
         </View>
-        <TouchableOpacity style={styles.alertButton} onPress={onAlertPress} accessibilityLabel="Notifications">
+        <TouchableOpacity style={[styles.alertButton, { borderColor: "rgba(255,255,255,0.4)" }]} onPress={onAlertPress} accessibilityLabel="Notifications">
           <View style={styles.alertDot} />
-          <Text style={styles.alertText}>!</Text>
+          <Text style={[styles.alertText, { color: "#fff" }]}>!</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchBar, { borderRadius: radius.pill }]}>
-        <View style={styles.searchIcon} />
-        <TextInput
-          placeholder={searchPlaceholder}
-          placeholderTextColor="rgba(255,255,255,0.75)"
-          style={styles.searchInput}
-        />
-        <TouchableOpacity style={[styles.searchAction, { backgroundColor: palette.charcoal }]}>
-          <Text style={[styles.searchActionText, { color: palette.white }]}>Go</Text>
+      <View style={[styles.searchBar, { borderRadius: radius.pill }]}> 
+        <View style={[styles.searchIcon, { borderColor: "#fff" }]} />
+        <TextInput placeholder={searchPlaceholder} placeholderTextColor="rgba(255,255,255,0.75)" style={[styles.searchInput, { color: "#fff" }]} />
+        <TouchableOpacity style={[styles.searchAction, { backgroundColor: themeColors.surface }]}> 
+          <Text style={[styles.searchActionText, { color: "#fff" }]}>Go</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.heroContent, { marginTop: spacing.md }]}>
+      <View style={[styles.heroContent, { marginTop: spacing.md }]}> 
         <View style={{ flex: 1, marginRight: spacing.md }}>
           <Typography variant="heading" color="#fff">
             {headline}
@@ -101,13 +96,11 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
   },
   hamburgerLine: {
     width: 24,
     height: 2,
     borderRadius: 2,
-    backgroundColor: palette.white,
   },
   logoRow: {
     flexDirection: "row",
@@ -125,7 +118,6 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -139,7 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF7373",
   },
   alertText: {
-    color: palette.white,
     fontWeight: "700",
     fontSize: 14,
   },
@@ -156,12 +147,10 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 2,
-    borderColor: palette.white,
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    color: palette.white,
     fontSize: 15,
     paddingVertical: 8,
   },
@@ -196,14 +185,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
     opacity: 0.25,
   },
   heroCircleSmall: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: palette.white,
+    backgroundColor: "#fff",
     opacity: 0.4,
     position: "absolute",
     bottom: 18,
@@ -224,7 +213,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.35)",
   },
   pillarText: {
-    color: palette.white,
+    color: "#fff",
     fontSize: 13,
     fontWeight: "600",
   },

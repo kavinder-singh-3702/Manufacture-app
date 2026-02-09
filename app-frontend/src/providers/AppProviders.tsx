@@ -14,8 +14,8 @@ type AppProvidersProps = {
 export const AppProviders = ({ children }: AppProvidersProps) => {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ThemeProvider>
           <CartProvider>
             <UnreadMessagesProvider>
               <NotificationsProvider>
@@ -23,8 +23,8 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
               </NotificationsProvider>
             </UnreadMessagesProvider>
           </CartProvider>
-        </AuthProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 };

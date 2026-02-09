@@ -1,6 +1,7 @@
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../hooks/useTheme";
 
 type VerificationStatus = "pending" | "submitted" | "approved" | "rejected" | null;
 
@@ -33,135 +34,118 @@ export const ProfileHero = ({
   companiesCount = 0,
   bio,
 }: Props) => {
+  const { colors } = useTheme();
   const isVerified = verificationStatus === "approved";
 
   return (
     <View style={styles.container}>
-      {/* Premium Avatar Section with Glow */}
       <View style={styles.avatarSection}>
-        {/* Outer glow effect */}
-        <View style={[styles.avatarGlow, isVerified && styles.avatarGlowVerified]} />
+        <View
+          style={[
+            styles.avatarGlow,
+            {
+              backgroundColor: (isVerified ? colors.success : colors.primary) + "33",
+              shadowColor: isVerified ? colors.success : colors.primary,
+            },
+          ]}
+        />
 
-        <TouchableOpacity
-          onPress={onUploadAvatar}
-          activeOpacity={0.85}
-          disabled={uploading}
-          style={styles.avatarWrapper}
-        >
-          {/* Animated gradient ring */}
+        <TouchableOpacity onPress={onUploadAvatar} activeOpacity={0.85} disabled={uploading} style={styles.avatarWrapper}>
           <LinearGradient
-            colors={isVerified
-              ? ["#10B981", "#34D399", "#059669", "#10B981"]
-              : ["#8B5CF6", "#6366F1", "#EC4899", "#8B5CF6"]}
+            colors={
+              isVerified
+                ? [colors.success, colors.successLight, colors.success, colors.successLight]
+                : [colors.primary, colors.primaryDark, colors.accent, colors.primary]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.avatarGradient}
+            style={[styles.avatarGradient, { shadowColor: colors.primary }]}
           >
-            <View style={styles.avatarInner}>
+            <View style={[styles.avatarInner, { backgroundColor: colors.background }]}> 
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
               ) : (
-                <LinearGradient
-                  colors={["#1E1E24", "#141418"]}
-                  style={styles.avatarPlaceholder}
-                >
-                  <Text style={styles.avatarInitials}>{avatarInitials}</Text>
+                <LinearGradient colors={[colors.surfaceElevated, colors.surface]} style={styles.avatarPlaceholder}>
+                  <Text style={[styles.avatarInitials, { color: colors.text }]}>{avatarInitials}</Text>
                 </LinearGradient>
               )}
             </View>
           </LinearGradient>
 
-          {/* Camera Icon with gradient */}
-          <LinearGradient
-            colors={["#6366F1", "#8B5CF6"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cameraButton}
-          >
-            {uploading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="camera" size={14} color="#fff" />
-            )}
+          <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cameraButton, { borderColor: colors.background }]}> 
+            {uploading ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="camera" size={14} color="#fff" />}
           </LinearGradient>
 
-          {/* Verified Badge with glow */}
-          {isVerified && (
-            <LinearGradient
-              colors={["#10B981", "#059669"]}
-              style={styles.verifiedBadge}
-            >
+          {isVerified ? (
+            <LinearGradient colors={[colors.success, colors.successLight]} style={[styles.verifiedBadge, { borderColor: colors.background }]}> 
               <Ionicons name="checkmark" size={12} color="#fff" />
             </LinearGradient>
-          )}
+          ) : null}
         </TouchableOpacity>
       </View>
 
-      {/* Name & Email with premium typography */}
       <View style={styles.nameSection}>
         <View style={styles.nameRow}>
-          <Text style={styles.fullName}>{fullName}</Text>
-          {isVerified && (
+          <Text style={[styles.fullName, { color: colors.text }]}>{fullName}</Text>
+          {isVerified ? (
             <View style={styles.verifiedInline}>
-              <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={22} color={colors.success} />
             </View>
-          )}
+          ) : null}
         </View>
-        <Text style={styles.email}>{email}</Text>
+        <Text style={[styles.email, { color: colors.textMuted }]}>{email}</Text>
       </View>
 
-      {/* Bio with elegant styling */}
       {bio ? (
         <View style={styles.bioContainer}>
-          <Text style={styles.bio} numberOfLines={3}>{bio}</Text>
+          <Text style={[styles.bio, { color: colors.textSecondary }]} numberOfLines={3}>
+            {bio}
+          </Text>
         </View>
       ) : null}
 
-      {/* Stats Row with glassmorphism */}
       <LinearGradient
-        colors={["rgba(255, 255, 255, 0.06)", "rgba(255, 255, 255, 0.02)"]}
+        colors={[colors.surface + "dd", colors.surfaceElevated + "dd"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.statsRow}
+        style={[styles.statsRow, { borderColor: colors.border }]}
       >
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{companiesCount}</Text>
-          <Text style={styles.statLabel}>Companies</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{companiesCount}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Companies</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{role || "User"}</Text>
-          <Text style={styles.statLabel}>Role</Text>
+          <Text style={[styles.statValue, { color: colors.text, textTransform: "capitalize" }]}>{role || "User"}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Role</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{accountType || "Standard"}</Text>
-          <Text style={styles.statLabel}>Account</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{accountType || "Standard"}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Account</Text>
         </View>
       </LinearGradient>
 
-      {/* Verified Company Banner with premium styling */}
-      {isVerified && companyName && (
+      {isVerified && companyName ? (
         <View style={styles.verifiedBanner}>
           <LinearGradient
-            colors={["rgba(16, 185, 129, 0.18)", "rgba(16, 185, 129, 0.06)"]}
+            colors={[colors.success + "2e", colors.success + "12"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.verifiedBannerGradient}
+            style={[styles.verifiedBannerGradient, { borderColor: colors.success + "55" }]}
           >
-            <LinearGradient
-              colors={["rgba(16, 185, 129, 0.25)", "rgba(16, 185, 129, 0.12)"]}
-              style={styles.verifiedBannerIcon}
-            >
-              <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+            <LinearGradient colors={[colors.success + "44", colors.success + "24"]} style={styles.verifiedBannerIcon}>
+              <Ionicons name="shield-checkmark" size={18} color={colors.success} />
             </LinearGradient>
             <View style={styles.verifiedBannerText}>
-              <Text style={styles.verifiedLabel}>VERIFIED BUSINESS</Text>
-              <Text style={styles.verifiedCompanyName} numberOfLines={1}>{companyName}</Text>
+              <Text style={[styles.verifiedLabel, { color: colors.success }]}>VERIFIED BUSINESS</Text>
+              <Text style={[styles.verifiedCompanyName, { color: colors.text }]} numberOfLines={1}>
+                {companyName}
+              </Text>
             </View>
           </LinearGradient>
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
@@ -182,15 +166,9 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(139, 92, 246, 0.25)",
-    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 30,
-  },
-  avatarGlowVerified: {
-    backgroundColor: "rgba(16, 185, 129, 0.25)",
-    shadowColor: "#10B981",
   },
   avatarWrapper: {
     position: "relative",
@@ -200,9 +178,8 @@ const styles = StyleSheet.create({
     height: 118,
     borderRadius: 59,
     padding: 4,
-    shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.35,
     shadowRadius: 24,
     elevation: 16,
   },
@@ -210,7 +187,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 55,
     overflow: "hidden",
-    backgroundColor: "#0F1115",
   },
   avatarImage: {
     width: "100%",
@@ -224,7 +200,6 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 34,
     fontWeight: "700",
-    color: "#FAFAFA",
     letterSpacing: 2,
   },
   cameraButton: {
@@ -237,7 +212,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#0F1115",
     shadowColor: "#6366F1",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
@@ -254,7 +228,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#0F1115",
     shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
@@ -272,7 +245,6 @@ const styles = StyleSheet.create({
   fullName: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#FFFFFF",
     letterSpacing: -0.8,
   },
   verifiedInline: {
@@ -280,7 +252,6 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 15,
-    color: "rgba(255, 255, 255, 0.45)",
     marginTop: 6,
     fontWeight: "500",
     letterSpacing: 0.2,
@@ -291,7 +262,6 @@ const styles = StyleSheet.create({
   },
   bio: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.65)",
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "400",
@@ -306,7 +276,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: "100%",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   statItem: {
     flex: 1,
@@ -315,12 +284,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#FFFFFF",
-    textTransform: "capitalize",
   },
   statLabel: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.45)",
     marginTop: 5,
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -329,7 +295,6 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 36,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   verifiedBanner: {
     width: "100%",
@@ -343,7 +308,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.25)",
     borderRadius: 16,
   },
   verifiedBannerIcon: {
@@ -360,13 +324,11 @@ const styles = StyleSheet.create({
   verifiedLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#34D399",
     letterSpacing: 1.2,
   },
   verifiedCompanyName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
     marginTop: 3,
   },
 });

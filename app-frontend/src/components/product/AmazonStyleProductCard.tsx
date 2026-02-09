@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,39 +8,47 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Product } from "../../services/product.service";
+import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { scale, moderateScale } from "../../utils/responsive";
 
-// Dark premium color palette (matching app theme)
-const COLORS = {
-  background: "#0a0a0f",
-  cardBg: "#16161e",
-  cardBgLight: "#1e1e28",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  text: "#ffffff",
-  textSecondary: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-  price: "#ffffff",
-  priceDeal: "#5ed4a5",
-  accent: "#7c8aff",
-  accentMuted: "#5a6fd6",
-  rating: "#f0b429",
-  ratingBg: "rgba(240, 180, 41, 0.15)",
-  deal: "#5ed4a5",
-  dealBg: "rgba(94, 212, 165, 0.15)",
-  addToCart: "#7c8aff",
-  addToCartPressed: "#5a6fd6",
-  addToCartBorder: "#7c8aff",
-  wishlist: "rgba(255, 255, 255, 0.5)",
-  wishlistActive: "#ef6b6b",
-  verified: "#5ed4a5",
-  unverified: "#f0b429",
-  sponsored: "rgba(255, 255, 255, 0.4)",
-  // Amazon-style additions
-  bestSeller: "#c45500", // Amazon orange
-  bestSellerBg: "#fef3e2",
-  urgency: "#cc0c39", // Red urgency text
-  linkBlue: "#007185",
+const useProductCardPalette = () => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+
+  return useMemo(
+    () => ({
+      background: colors.background,
+      cardBg: resolvedMode === "dark" ? "#16161e" : colors.surface,
+      cardBgLight: resolvedMode === "dark" ? "#1e1e28" : colors.surfaceElevated,
+      border: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.08)" : colors.border,
+      borderLight: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.12)" : colors.borderLight,
+      text: colors.text,
+      textSecondary: colors.textSecondary,
+      textMuted: colors.textMuted,
+      price: colors.text,
+      priceDeal: colors.success,
+      accent: colors.primary,
+      accentMuted: colors.primaryDark,
+      rating: colors.warning,
+      ratingBg: colors.badgeWarning,
+      deal: colors.success,
+      dealBg: colors.badgeSuccess,
+      addToCart: colors.primary,
+      addToCartPressed: colors.primaryDark,
+      addToCartBorder: colors.primary,
+      wishlist: colors.textMuted,
+      wishlistActive: colors.error,
+      verified: colors.success,
+      unverified: colors.warning,
+      sponsored: colors.textTertiary,
+      bestSeller: resolvedMode === "dark" ? "#FFB366" : "#C45500",
+      bestSellerBg: resolvedMode === "dark" ? "rgba(196,85,0,0.24)" : "#fef3e2",
+      urgency: colors.error,
+      linkBlue: colors.primary,
+    }),
+    [colors, resolvedMode]
+  );
 };
 
 interface AmazonStyleProductCardProps {
@@ -59,6 +67,8 @@ export const AmazonStyleProductCard = memo(
     isWishlisted = false,
     isGuest = false,
   }: AmazonStyleProductCardProps) => {
+    const COLORS = useProductCardPalette();
+    const styles = useMemo(() => createStyles(COLORS), [COLORS]);
     const { width: SCREEN_WIDTH } = useWindowDimensions();
     const CARD_WIDTH = SCREEN_WIDTH; // Full width single column
     const IMAGE_HEIGHT = scale(280); // Responsive height for better image visibility
@@ -255,7 +265,8 @@ export const AmazonStyleProductCard = memo(
   }
 );
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ReturnType<typeof useProductCardPalette>) =>
+  StyleSheet.create({
   card: {
     // width is set dynamically via inline style
     backgroundColor: COLORS.cardBg,
@@ -529,6 +540,6 @@ const styles = StyleSheet.create({
     marginTop: scale(6),
     textDecorationLine: "underline",
   },
-});
+  });
 
 export default AmazonStyleProductCard;

@@ -26,15 +26,11 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.wrapper}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.6)" }]} />
+          <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]} />
         </TouchableWithoutFeedback>
         <SafeAreaView style={styles.panelSafeArea}>
           <LinearGradient
-            colors={[
-              "#16181D",
-              "#12141A",
-              "#0F1115",
-            ]}
+            colors={[colors.sidebarGradientStart, colors.sidebarGradientMid, colors.sidebarGradientEnd]}
             locations={[0, 0.5, 1]}
             style={[
               styles.panel,
@@ -45,30 +41,26 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               },
             ]}
           >
-            {/* Accent glow overlay */}
             <LinearGradient
-              colors={[
-                "rgba(108, 99, 255, 0.1)",
-                "transparent",
-                "rgba(255, 140, 60, 0.05)",
-              ]}
+              colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
               locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={[StyleSheet.absoluteFill, { borderTopRightRadius: radius.lg, borderBottomRightRadius: radius.lg }]}
             />
-            {/* Header Section with Premium Gradient */}
             <LinearGradient
-              colors={["#6C63FF", "#5248E6"]}
+              colors={[colors.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[styles.header, {
-                padding: spacing.lg,
-                borderRadius: radius.md,
-                marginBottom: spacing.lg,
-              }]}
+              style={[
+                styles.header,
+                {
+                  padding: spacing.lg,
+                  borderRadius: radius.md,
+                  marginBottom: spacing.lg,
+                },
+              ]}
             >
-              {/* Subtle inner glow */}
               <LinearGradient
                 colors={["rgba(255,255,255,0.1)", "transparent"]}
                 start={{ x: 0, y: 0 }}
@@ -85,30 +77,28 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               ) : null}
             </LinearGradient>
 
-            {/* Menu Items */}
             {menuItems.map((item, index) => {
               const isDanger = item.tone === "danger";
               const isActive = item.isActive || false;
               const isLastItem = index === menuItems.length - 1;
 
-              // Determine styling based on item type
               const getItemStyles = () => {
                 if (isDanger) {
                   return {
-                    bg: "rgba(255, 107, 107, 0.1)",
-                    border: "#FF6B6B",
-                    shadowColor: "#FF6B6B",
+                    bg: colors.error + "1a",
+                    border: colors.error,
+                    shadowColor: colors.error,
                   };
                 }
                 if (isActive) {
                   return {
-                    bg: "rgba(108, 99, 255, 0.15)",
-                    border: "#6C63FF",
-                    shadowColor: "#6C63FF",
+                    bg: colors.primary + "24",
+                    border: colors.primary,
+                    shadowColor: colors.primary,
                   };
                 }
                 return {
-                  bg: "rgba(30, 33, 39, 0.8)",
+                  bg: colors.surfaceElevated,
                   border: "transparent",
                   shadowColor: "#000",
                 };
@@ -139,19 +129,11 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   ]}
                   activeOpacity={0.7}
                 >
-                  <Typography
-                    variant="body"
-                    color={isDanger ? "#FF6B6B" : colors.text}
-                    style={styles.menuLabel}
-                  >
+                  <Typography variant="body" color={isDanger ? colors.error : colors.text} style={styles.menuLabel}>
                     {item.label}
                   </Typography>
                   {item.description ? (
-                    <Typography
-                      variant="caption"
-                      color={isDanger ? "#FF9B9B" : colors.textMuted}
-                      style={{ marginTop: spacing.xs, fontSize: 12 }}
-                    >
+                    <Typography variant="caption" color={isDanger ? colors.errorLight : colors.textMuted} style={{ marginTop: spacing.xs, fontSize: 12 }}>
                       {item.description}
                     </Typography>
                   ) : null}

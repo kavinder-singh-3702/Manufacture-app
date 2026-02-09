@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -8,6 +8,8 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
@@ -24,6 +26,10 @@ export const ResetPasswordScreen = ({
   onSuccess,
   defaultToken,
 }: ResetPasswordScreenProps) => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { setUser } = useAuth();
   const [token, setToken] = useState(defaultToken ?? "");
   const [password, setPassword] = useState("");
@@ -97,7 +103,7 @@ export const ResetPasswordScreen = ({
           <TextInput
             style={styles.input}
             placeholder="e.g. 9fa2...b71"
-            placeholderTextColor="#7C7C7C"
+            placeholderTextColor={colors.textTertiary}
             value={token}
             onChangeText={setToken}
             autoCapitalize="none"
@@ -108,7 +114,7 @@ export const ResetPasswordScreen = ({
           <TextInput
             style={styles.input}
             placeholder="Minimum 8 characters"
-            placeholderTextColor="#7C7C7C"
+            placeholderTextColor={colors.textTertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -119,7 +125,7 @@ export const ResetPasswordScreen = ({
           <TextInput
             style={styles.input}
             placeholder="Re-enter password"
-            placeholderTextColor="#7C7C7C"
+            placeholderTextColor={colors.textTertiary}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -131,7 +137,7 @@ export const ResetPasswordScreen = ({
 
           <TouchableOpacity style={styles.primaryButton} onPress={handleReset} disabled={loading}>
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.textOnPrimary} />
             ) : (
               <Text style={styles.primaryButtonText}>Update Password</Text>
             )}
@@ -146,17 +152,18 @@ export const ResetPasswordScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+  StyleSheet.create({
   slide: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.background,
   },
   card: {
     flex: 1,
     paddingHorizontal: 28,
     paddingTop: 32,
     paddingBottom: 40,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     position: "relative",
     overflow: "hidden",
   },
@@ -167,14 +174,14 @@ const styles = StyleSheet.create({
   blobAmber: {
     width: 360,
     height: 360,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: isDark ? colors.badgeWarning : "#FEF3C7",
     top: -100,
     left: -140,
   },
   blobCyan: {
     width: 300,
     height: 300,
-    backgroundColor: "#ECFEFF",
+    backgroundColor: isDark ? colors.badgeInfo : "#ECFEFF",
     bottom: -120,
     right: -120,
   },
@@ -182,7 +189,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 22,
@@ -190,7 +197,7 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#0F172A",
+    color: colors.text,
   },
   headerBlock: {
     marginBottom: 18,
@@ -198,11 +205,11 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#0F172A",
+    color: colors.text,
   },
   subheading: {
     fontSize: 14,
-    color: "#475569",
+    color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 20,
   },
@@ -212,28 +219,29 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0F172A",
+    color: colors.text,
     marginTop: 10,
     marginBottom: 6,
   },
   input: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     paddingVertical: 14,
     paddingHorizontal: 14,
     fontSize: 16,
-    backgroundColor: "#FFFFFF",
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
   primaryButton: {
     marginTop: 20,
-    backgroundColor: "#0F172A",
+    backgroundColor: colors.primary,
     borderRadius: 32,
     paddingVertical: 14,
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: colors.textOnPrimary,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -242,16 +250,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   helperText: {
-    color: "#475569",
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
   errorText: {
-    color: "#DC2626",
+    color: colors.error,
     marginTop: 10,
   },
   successText: {
-    color: "#047857",
+    color: colors.success,
     marginTop: 10,
   },
-});
+  });

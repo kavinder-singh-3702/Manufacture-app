@@ -1,5 +1,7 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   View,
   Text,
   TouchableOpacity,
@@ -15,6 +17,8 @@ import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from
 import { authService } from "../../services/auth.service";
 import { useAuth } from "../../hooks/useAuth";
 import { tokenStorage } from "../../services/tokenStorage";
+import { useTheme } from "../../hooks/useTheme";
+import { BrandLockup } from "../../components/brand/BrandLockup";
 
 type SignupScreenProps = {
   onBack: () => void;
@@ -79,6 +83,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [loading, setLoading] = useState(false);
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
   const [categorySearch, setCategorySearch] = useState("");
+  const { colors } = useTheme();
+  const headerIntro = useRef(new Animated.Value(0)).current;
+  const formIntro = useRef(new Animated.Value(0)).current;
+  const ctaScale = useRef(new Animated.Value(1)).current;
 
   const filteredCategories = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();
@@ -89,6 +97,41 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const { setUser } = useAuth();
   const requiresCompany = account.accountType !== "normal";
   const stepIndex = steps.indexOf(step);
+
+  useEffect(() => {
+    headerIntro.setValue(0);
+    formIntro.setValue(0);
+    Animated.stagger(80, [
+      Animated.timing(headerIntro, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(formIntro, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [formIntro, headerIntro, step]);
+
+  const handleCtaPressIn = () => {
+    Animated.spring(ctaScale, {
+      toValue: 0.97,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCtaPressOut = () => {
+    Animated.spring(ctaScale, {
+      toValue: 1,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const resetFlow = () => {
     setStep("profile");
@@ -389,59 +432,114 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       keyboardVerticalOffset={32}
     >
       <View style={styles.card}>
-        {/* Indigo glow blob */}
         <LinearGradient
-          colors={["rgba(108, 99, 255, 0.25)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+          colors={[colors.primary + "2e", colors.primary + "0d", "transparent"]}
           style={[styles.blob, styles.pinkBlobLarge]}
         />
-        {/* Salmon glow blob */}
         <LinearGradient
-          colors={["rgba(255, 140, 60, 0.2)", "rgba(255, 140, 60, 0.05)", "transparent"]}
+          colors={[colors.accent + "2e", colors.accent + "0d", "transparent"]}
           style={[styles.blob, styles.pinkBlobSmall]}
         />
 
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backIcon}>‹</Text>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: colors.overlayLight, borderColor: colors.border }]}
+          onPress={handleBack}
+        >
+          <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
         </TouchableOpacity>
 
-        <LinearGradient
-          colors={["rgba(108, 99, 255, 0.2)", "rgba(108, 99, 255, 0.05)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.stepBadgeWrapper}
+        <Animated.View
+          style={{
+            opacity: headerIntro,
+            transform: [
+              {
+                translateY: headerIntro.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <Text style={styles.stepBadge}>
-            Step {stepIndex + 1} of {steps.length}
-          </Text>
-        </LinearGradient>
-        <Text style={styles.heading}>{stepTitles[step]}</Text>
-        <Text style={styles.subheading}>{stepDescriptions[step]}</Text>
+          <BrandLockup
+            showSubtitle
+            style={styles.brandStrip}
+            textColor={colors.textOnDarkSurface}
+            subtitleColor={colors.subtextOnDarkSurface}
+          />
 
-        {status ? <Text style={styles.statusText}>{status}</Text> : null}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <LinearGradient
+            colors={[colors.primary + "33", colors.primary + "14"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.stepBadgeWrapper}
+          >
+            <Text style={[styles.stepBadge, { color: colors.primary }]}>
+              Step {stepIndex + 1} of {steps.length}
+            </Text>
+          </LinearGradient>
+          <Text style={[styles.heading, { color: colors.textOnDarkSurface }]}>{stepTitles[step]}</Text>
+          <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>{stepDescriptions[step]}</Text>
 
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-          <View style={styles.form}>
-            {step === "profile" && renderProfileStep()}
-            {step === "otp" && renderOtpStep()}
-            {step === "account" && renderAccountStep()}
+          {status ? <Text style={[styles.statusText, { color: colors.success }]}>{status}</Text> : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </Animated.View>
 
-            <TouchableOpacity style={styles.primaryButtonWrapper} onPress={handleContinue} disabled={loading}>
-              <LinearGradient
-                colors={["#6C63FF", "#5248E6"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryButton}
+        <Animated.View
+          style={[
+            styles.scrollAnimated,
+            {
+              opacity: formIntro,
+              transform: [
+                {
+                  translateY: formIntro.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [16, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+            <View style={styles.form}>
+              {step === "profile" && renderProfileStep()}
+              {step === "otp" && renderOtpStep()}
+              {step === "account" && renderAccountStep()}
+
+              <Animated.View
+                style={[
+                  styles.primaryButtonWrapper,
+                  {
+                    shadowColor: colors.primary,
+                    transform: [{ scale: ctaScale }],
+                    opacity: loading ? 0.88 : 1,
+                  },
+                ]}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
-              </LinearGradient>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleContinue}
+                  disabled={loading}
+                  onPressIn={handleCtaPressIn}
+                  onPressOut={handleCtaPressOut}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.primaryButton}
+                  >
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
 
-            <TouchableOpacity onPress={onLogin} style={{ marginTop: 24 }}>
-              <Text style={styles.loginLink}>Already have an account? <Text style={styles.loginLinkHighlight}>Login</Text></Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+              <TouchableOpacity onPress={onLogin} style={{ marginTop: 24 }}>
+                <Text style={[styles.loginLink, { color: colors.subtextOnDarkSurface }]}>Already have an account? <Text style={[styles.loginLinkHighlight, { color: colors.primary }]}>Login</Text></Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -524,6 +622,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
+  brandStrip: {
+    marginBottom: 12,
+  },
+  scrollAnimated: {
+    flex: 1,
+  },
   stepBadgeWrapper: {
     alignSelf: "flex-start",
     borderRadius: 20,
@@ -534,7 +638,7 @@ const styles = StyleSheet.create({
   stepBadge: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6C63FF",
+    color: "#8CA5EF",
   },
   heading: {
     fontSize: 28,
@@ -579,13 +683,13 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontWeight: "600",
-    color: "#6C63FF",
+    color: "#8CA5EF",
   },
   primaryButtonWrapper: {
     marginTop: 12,
     borderRadius: 32,
     overflow: "hidden",
-    shadowColor: "#6C63FF",
+    shadowColor: "#8CA5EF",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -607,7 +711,7 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.6)",
   },
   loginLinkHighlight: {
-    color: "#6C63FF",
+    color: "#8CA5EF",
     fontWeight: "600",
   },
   errorText: {
@@ -630,7 +734,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   secondaryLink: {
-    color: "#6C63FF",
+    color: "#8CA5EF",
     textAlign: "right",
     fontWeight: "600",
   },
@@ -668,15 +772,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   accountChipActive: {
-    borderColor: "#6C63FF",
-    backgroundColor: "rgba(108, 99, 255, 0.15)",
+    borderColor: "#8CA5EF",
+    backgroundColor: "rgba(140, 165, 239, 0.18)",
   },
   accountChipText: {
     color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "600",
   },
   accountChipTextActive: {
-    color: "#6C63FF",
+    color: "#8CA5EF",
   },
   categoryGrid: {
     flexDirection: "row",
@@ -693,14 +797,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryChipActive: {
-    borderColor: "#FF8C3C",
-    backgroundColor: "rgba(255, 140, 60, 0.2)",
+    borderColor: "#E3483E",
+    backgroundColor: "rgba(227, 72, 62, 0.2)",
   },
   categoryText: {
     color: "rgba(255, 255, 255, 0.6)",
     fontWeight: "600",
   },
   categoryTextActive: {
-    color: "#FF8C3C",
+    color: "#E3483E",
   },
 });

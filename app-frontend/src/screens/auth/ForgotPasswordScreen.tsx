@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
@@ -19,6 +21,10 @@ type ForgotPasswordScreenProps = {
 };
 
 export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswordScreenProps) => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -113,7 +119,7 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
         <TextInput
           style={styles.input}
           placeholder={identifierPlaceholder}
-          placeholderTextColor="#8A8A8A"
+          placeholderTextColor={colors.textTertiary}
           value={identifierValue}
           onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
           keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
@@ -141,7 +147,7 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
 
         <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.primaryButtonText}>Send Reset Link</Text>
           )}
@@ -158,17 +164,18 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+  StyleSheet.create({
   slide: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: colors.background,
   },
   card: {
     flex: 1,
     paddingHorizontal: 28,
     paddingTop: 32,
     paddingBottom: 40,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     position: "relative",
     overflow: "hidden",
   },
@@ -179,14 +186,14 @@ const styles = StyleSheet.create({
   blobIndigo: {
     width: 420,
     height: 420,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: isDark ? colors.badgePrimary : "#EEF2FF",
     top: -120,
     right: -140,
   },
   blobMint: {
     width: 280,
     height: 280,
-    backgroundColor: "#E0F7EF",
+    backgroundColor: isDark ? colors.badgeSuccess : "#E0F7EF",
     bottom: -80,
     left: -100,
   },
@@ -194,7 +201,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 22,
@@ -202,7 +209,7 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#0F172A",
+    color: colors.text,
   },
   headerBlock: {
     marginBottom: 18,
@@ -210,17 +217,17 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#0F172A",
+    color: colors.text,
   },
   subheading: {
     fontSize: 14,
-    color: "#4B5563",
+    color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 20,
   },
   toggleWrap: {
     flexDirection: "row",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 28,
     padding: 4,
     marginBottom: 18,
@@ -232,34 +239,35 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   toggleButtonActive: {
-    backgroundColor: "#0F172A",
+    backgroundColor: colors.text,
   },
   toggleText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6B7280",
+    color: colors.textMuted,
   },
   toggleTextActive: {
-    color: "#FFFFFF",
+    color: colors.textInverse,
   },
   input: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     paddingVertical: 14,
     paddingHorizontal: 14,
     fontSize: 16,
-    backgroundColor: "#FFFFFF",
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
   primaryButton: {
     marginTop: 18,
-    backgroundColor: "#111827",
+    backgroundColor: colors.primary,
     borderRadius: 32,
     paddingVertical: 14,
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#FFFFFF",
+    color: colors.textOnPrimary,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -268,12 +276,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   helperText: {
-    color: "#4B5563",
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
   errorText: {
-    color: "#DC2626",
+    color: colors.error,
     marginTop: 8,
     marginBottom: 4,
   },
@@ -281,32 +289,32 @@ const styles = StyleSheet.create({
     marginTop: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(79, 70, 229, 0.18)",
-    backgroundColor: "rgba(79, 70, 229, 0.08)",
+    borderColor: colors.primary + "33",
+    backgroundColor: colors.badgePrimary,
     padding: 14,
   },
   calloutTitle: {
     fontWeight: "800",
-    color: "#1E293B",
+    color: colors.text,
     marginBottom: 4,
   },
   calloutText: {
-    color: "#334155",
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   tokenBadge: {
     marginTop: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "#0F172A",
+    backgroundColor: colors.surfaceElevated,
   },
   tokenLabel: {
-    color: "#94A3B8",
+    color: colors.textTertiary,
     fontSize: 12,
     letterSpacing: 0.4,
   },
   tokenValue: {
-    color: "#E0F2FE",
+    color: colors.text,
     fontSize: 14,
     marginTop: 4,
   },
@@ -314,12 +322,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: "#F97316",
+    backgroundColor: colors.accent,
     borderRadius: 10,
     alignItems: "center",
   },
   resetButtonText: {
-    color: "#FFF7ED",
+    color: colors.textOnAccent,
     fontWeight: "700",
   },
-});
+  });

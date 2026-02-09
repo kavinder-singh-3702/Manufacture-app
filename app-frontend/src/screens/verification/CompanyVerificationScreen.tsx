@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -19,6 +19,7 @@ export const CompanyVerificationScreen = () => {
   const route = useRoute<RouteParams>();
   const { companyId } = route.params;
   const { colors, spacing, radius } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
@@ -52,13 +53,13 @@ export const CompanyVerificationScreen = () => {
   if (loading) {
     return (
       <LinearGradient
-        colors={["#0F1115", "#101318", "#0F1115"]}
+        colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
         locations={[0, 0.5, 1]}
         style={[styles.container, { paddingTop: insets.top }]}
       >
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6C63FF" />
-          <Text style={[styles.loadingText, { color: colors.muted }]}>Loading verification status...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading verification status...</Text>
         </View>
       </LinearGradient>
     );
@@ -67,15 +68,15 @@ export const CompanyVerificationScreen = () => {
   if (!company) {
     return (
       <LinearGradient
-        colors={["#0F1115", "#101318", "#0F1115"]}
+        colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
         locations={[0, 0.5, 1]}
         style={[styles.container, { paddingTop: insets.top }]}
       >
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: "#FF6B6B" }]}>Company not found</Text>
+          <Text style={styles.errorText}>Company not found</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <LinearGradient
-              colors={["#6C63FF", "#5248E6"]}
+              colors={[colors.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.backButton}
@@ -90,13 +91,13 @@ export const CompanyVerificationScreen = () => {
 
   return (
     <LinearGradient
-      colors={["#0F1115", "#101318", "#0F1115"]}
+      colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
       locations={[0, 0.5, 1]}
       style={[styles.container, { paddingTop: insets.top }]}
     >
       {/* Indigo glow - top left */}
       <LinearGradient
-        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
+        colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlaySecondary, "transparent"]}
         locations={[0, 0.4, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 0.7 }}
@@ -104,7 +105,7 @@ export const CompanyVerificationScreen = () => {
       />
       {/* Salmon glow - bottom right */}
       <LinearGradient
-        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
+        colors={["transparent", colors.surfaceOverlayAccent, colors.surfaceOverlayPrimary]}
         locations={[0, 0.6, 1]}
         start={{ x: 0.3, y: 0.3 }}
         end={{ x: 1, y: 1 }}
@@ -237,205 +238,206 @@ export const CompanyVerificationScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F1115',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 15,
-    backgroundColor: 'transparent',
-  },
-  headerBackButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  backIcon: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: -2,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#FF6B6B',
-  },
-  backButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  companyCard: {
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(22, 24, 29, 0.8)',
-  },
-  companyInfo: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  companyName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-    color: '#FFFFFF',
-  },
-  companyLegalName: {
-    fontSize: 14,
-    marginBottom: 4,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  detailsCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(22, 24, 29, 0.8)',
-  },
-  detailsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
-    color: '#FFFFFF',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  detailValue: {
-    fontSize: 14,
-    flex: 1,
-    textAlign: 'right',
-    color: '#FFFFFF',
-  },
-  documentsSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  documentsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#FFFFFF',
-  },
-  documentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: 'rgba(108, 99, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.2)',
-  },
-  documentIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  documentInfo: {
-    flex: 1,
-  },
-  documentName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-    color: '#FFFFFF',
-  },
-  documentMeta: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
-  infoBox: {
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6C63FF',
-    backgroundColor: 'rgba(108, 99, 255, 0.1)',
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#FFFFFF',
-  },
-  infoText: {
-    fontSize: 14,
-    marginBottom: 8,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  infoBullet: {
-    fontSize: 14,
-    marginBottom: 4,
-    color: '#FFFFFF',
-  },
-});
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 15,
+      backgroundColor: "transparent",
+    },
+    headerBackButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.surfaceElevated,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    backIcon: {
+      fontSize: 26,
+      fontWeight: "700",
+      color: colors.text,
+      marginLeft: -2,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.text,
+      letterSpacing: -0.5,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
+    errorText: {
+      fontSize: 16,
+      marginBottom: 16,
+      color: colors.error,
+    },
+    backButton: {
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    backButtonText: {
+      color: colors.textOnPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    scrollView: {
+      flex: 1,
+    },
+    content: {
+      padding: 16,
+      paddingBottom: 40,
+    },
+    companyCard: {
+      borderRadius: 12,
+      padding: 20,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    companyInfo: {
+      marginLeft: 16,
+      flex: 1,
+    },
+    companyName: {
+      fontSize: 20,
+      fontWeight: "700",
+      marginBottom: 4,
+      color: colors.text,
+    },
+    companyLegalName: {
+      fontSize: 14,
+      marginBottom: 4,
+      color: colors.textMuted,
+    },
+    detailsCard: {
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    detailsTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 16,
+      color: colors.text,
+    },
+    detailRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    detailLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.textMuted,
+    },
+    detailValue: {
+      fontSize: 14,
+      flex: 1,
+      textAlign: "right",
+      color: colors.text,
+    },
+    documentsSection: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    documentsTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 12,
+      color: colors.text,
+    },
+    documentItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 8,
+      backgroundColor: colors.badgePrimary,
+      borderWidth: 1,
+      borderColor: colors.primary + "44",
+    },
+    documentIcon: {
+      fontSize: 24,
+      marginRight: 12,
+    },
+    documentInfo: {
+      flex: 1,
+    },
+    documentName: {
+      fontSize: 14,
+      fontWeight: "600",
+      marginBottom: 2,
+      color: colors.text,
+    },
+    documentMeta: {
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    infoBox: {
+      borderRadius: 12,
+      padding: 16,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
+      backgroundColor: colors.badgeInfo,
+    },
+    infoTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      marginBottom: 8,
+      color: colors.text,
+    },
+    infoText: {
+      fontSize: 14,
+      marginBottom: 8,
+      color: colors.textMuted,
+    },
+    infoBullet: {
+      fontSize: 14,
+      marginBottom: 4,
+      color: colors.text,
+    },
+  });
 const Badge = ({ label, tone = "default" }: { label: string; tone?: "default" | "primary" | "success" | "warning" }) => {
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
   const palette = {
-    default: { bg: "rgba(255, 255, 255, 0.1)", text: "#FFFFFF" },
-    primary: { bg: "rgba(108, 99, 255, 0.2)", text: "#6C63FF" },
-    success: { bg: "rgba(74, 222, 128, 0.15)", text: "#4ADE80" },
-    warning: { bg: "rgba(255, 140, 60, 0.15)", text: "#FF8C3C" },
+    default: { bg: colors.badgeNeutral, text: colors.text },
+    primary: { bg: colors.badgePrimary, text: colors.primary },
+    success: { bg: colors.badgeSuccess, text: colors.success },
+    warning: { bg: colors.badgeWarning, text: colors.warning },
   }[tone];
 
   return (

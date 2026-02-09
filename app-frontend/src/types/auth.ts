@@ -100,7 +100,7 @@ export type UserCommunicationsPreferences = {
 export type UserPreferences = {
   locale?: string;
   timezone?: string;
-  theme?: string;
+  theme?: "system" | "light" | "dark";
   communications?: UserCommunicationsPreferences;
 };
 

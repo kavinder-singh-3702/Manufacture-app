@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   View,
   Text,
   TouchableOpacity,
@@ -12,6 +14,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../hooks/useTheme";
+import { BrandLockup } from "../../components/brand/BrandLockup";
 
 type CredentialMode = "email" | "phone";
 
@@ -23,6 +27,7 @@ type LoginScreenProps = {
 
 export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) => {
   const { login } = useAuth();
+  const { colors } = useTheme();
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,10 +35,48 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const headerIntro = useRef(new Animated.Value(0)).current;
+  const formIntro = useRef(new Animated.Value(0)).current;
+  const ctaScale = useRef(new Animated.Value(1)).current;
 
   const identifierValue = credentialMode === "email" ? email : phone;
   const identifierPlaceholder =
     credentialMode === "email" ? "Enter Email Id" : "Enter Mobile Number";
+
+  useEffect(() => {
+    headerIntro.setValue(0);
+    formIntro.setValue(0);
+    Animated.stagger(90, [
+      Animated.timing(headerIntro, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(formIntro, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [formIntro, headerIntro]);
+
+  const handleCtaPressIn = () => {
+    Animated.spring(ctaScale, {
+      toValue: 0.97,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCtaPressOut = () => {
+    Animated.spring(ctaScale, {
+      toValue: 1,
+      friction: 6,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleLogin = async () => {
     setError(null);
@@ -60,7 +103,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
   };
 
   const renderIdentifierToggle = () => (
-    <View style={styles.toggleWrap}>
+    <View style={[styles.toggleWrap, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
       {(["email", "phone"] as CredentialMode[]).map((mode) => {
         const isActive = credentialMode === mode;
         return (
@@ -71,17 +114,17 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
           >
             {isActive ? (
               <LinearGradient
-                colors={["#6C63FF", "#5248E6"]}
+                colors={[colors.primary, colors.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.toggleButtonGradient}
               >
-                <Text style={styles.toggleTextActive}>
+                <Text style={[styles.toggleTextActive, { color: colors.textOnPrimary }]}>
                   {mode === "email" ? "Email" : "Mobile"}
                 </Text>
               </LinearGradient>
             ) : (
-              <Text style={styles.toggleText}>
+              <Text style={[styles.toggleText, { color: colors.textMuted }]}>
                 {mode === "email" ? "Email" : "Mobile"}
               </Text>
             )}
@@ -93,9 +136,9 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   const renderIdentifierInput = () => (
     <TextInput
-      style={styles.input}
+      style={[styles.input, { borderColor: colors.border, color: colors.textOnDarkSurface, backgroundColor: colors.surfaceElevated }]}
       placeholder={identifierPlaceholder}
-      placeholderTextColor="#888"
+      placeholderTextColor={colors.textMuted}
       value={identifierValue}
       onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
       keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
@@ -115,35 +158,70 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          {/* Indigo glow blob */}
           <LinearGradient
-            colors={["rgba(108, 99, 255, 0.25)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+            colors={[colors.primary + "2e", colors.primary + "0d", "transparent"]}
             style={[styles.blob, styles.blobPrimary]}
           />
-          {/* Salmon glow blob */}
           <LinearGradient
-            colors={["rgba(255, 140, 60, 0.2)", "rgba(255, 140, 60, 0.05)", "transparent"]}
+            colors={[colors.accent + "2e", colors.accent + "0d", "transparent"]}
             style={[styles.blob, styles.blobSecondary]}
           />
 
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backIcon}>‹</Text>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.overlayLight, borderColor: colors.border }]} onPress={onBack}>
+            <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
           </TouchableOpacity>
 
-          <View style={styles.headerBlock}>
-            <Text style={styles.heading}>Welcome Back!</Text>
-            <Text style={styles.subheading}>Enter your email or mobile number to continue</Text>
-          </View>
+          <Animated.View
+            style={{
+              opacity: headerIntro,
+              transform: [
+                {
+                  translateY: headerIntro.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [16, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <BrandLockup showSubtitle style={styles.brandStrip} textColor={colors.textOnDarkSurface} subtitleColor={colors.subtextOnDarkSurface} />
+            <View style={styles.headerBlock}>
+              <Text style={[styles.heading, { color: colors.textOnDarkSurface }]}>Welcome Back!</Text>
+              <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>Enter your email or mobile number to continue</Text>
+            </View>
+            {renderIdentifierToggle()}
+          </Animated.View>
 
-          {renderIdentifierToggle()}
-
-          <View style={styles.form}>
+          <Animated.View
+            style={[
+              styles.form,
+              {
+                opacity: formIntro,
+                transform: [
+                  {
+                    translateY: formIntro.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [18, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             {renderIdentifierInput()}
             <View style={styles.passwordWrapper}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    borderColor: colors.border,
+                    color: colors.textOnDarkSurface,
+                    backgroundColor: colors.surfaceElevated,
+                  },
+                ]}
                 placeholder="Password"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -154,30 +232,48 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                 onPress={() => setShowPassword((prev) => !prev)}
                 accessibilityLabel={`${showPassword ? "Hide" : "Show"} password`}
               >
-                <Text style={styles.eyeText}>{showPassword ? "Hide" : "Show"}</Text>
+                <Text style={[styles.eyeText, { color: colors.primary }]}>
+                  {showPassword ? "Hide" : "Show"}
+                </Text>
               </TouchableOpacity>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            <TouchableOpacity style={styles.primaryButtonWrapper} onPress={handleLogin} disabled={loading}>
-              <LinearGradient
-                colors={["#6C63FF", "#5248E6"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.primaryButton}
+            <Animated.View
+              style={[
+                styles.primaryButtonWrapper,
+                {
+                  shadowColor: colors.primary,
+                  transform: [{ scale: ctaScale }],
+                  opacity: loading ? 0.88 : 1,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={loading}
+                onPressIn={handleCtaPressIn}
+                onPressOut={handleCtaPressOut}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryButton}
+                >
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
 
             <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
-              <Text style={styles.helperText}>Forgotten your password?</Text>
+              <Text style={[styles.helperText, { color: colors.subtextOnDarkSurface }]}>Forgotten your password?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onSignup}>
-              <Text style={[styles.helperText, styles.signupLink]}>Or Create a New Account</Text>
+              <Text style={[styles.helperText, styles.signupLink, { color: colors.primary }]}>Or Create a New Account</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -227,17 +323,17 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#FFFFFF",
+  },
+  brandStrip: {
+    marginBottom: 12,
   },
   headerBlock: {
     marginBottom: 16,
@@ -245,21 +341,17 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#FFFFFF",
   },
   subheading: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 4,
   },
   toggleWrap: {
     flexDirection: "row",
     borderRadius: 32,
-    backgroundColor: "rgba(30, 33, 39, 0.8)",
     padding: 4,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
   },
   toggleButton: {
     flex: 1,
@@ -268,9 +360,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   toggleButtonActive: {
-    shadowColor: "#6C63FF",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -283,13 +375,11 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.5)",
     paddingVertical: 12,
   },
   toggleTextActive: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
   },
   form: {
     flex: 1,
@@ -297,14 +387,11 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 18,
-    color: "#FFFFFF",
-    backgroundColor: "rgba(22, 24, 29, 0.9)",
   },
   passwordWrapper: {
     position: "relative",
@@ -320,13 +407,11 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontWeight: "600",
-    color: "#6C63FF",
   },
   primaryButtonWrapper: {
     marginTop: 12,
     borderRadius: 32,
     overflow: "hidden",
-    shadowColor: "#6C63FF",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -345,12 +430,10 @@ const styles = StyleSheet.create({
   },
   helperText: {
     textAlign: "center",
-    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 16,
     fontSize: 13,
   },
   signupLink: {
-    color: "#6C63FF",
     fontWeight: "600",
   },
   helperLink: {

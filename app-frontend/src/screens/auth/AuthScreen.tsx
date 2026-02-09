@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { SafeAreaView, View, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
@@ -7,12 +7,20 @@ import { SignupScreen } from "./SignupScreen";
 import { ForgotPasswordScreen } from "./ForgotPasswordScreen";
 import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { useAuth } from "../../hooks/useAuth";
+import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { AuthView } from "../../types/auth";
+import { BrandLockup } from "../../components/brand/BrandLockup";
+import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
 
 export const AuthScreen = () => {
   const { bootstrapError, setUser, authView, clearAuthView } = useAuth();
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
   const [view, setView] = useState<AuthView>(authView ?? "intro");
   const [resetToken, setResetToken] = useState<string | undefined>(undefined);
+  const entryOpacity = useRef(new Animated.Value(0)).current;
+  const entryTranslate = useRef(new Animated.Value(18)).current;
 
   useEffect(() => {
     if (authView) {
@@ -21,40 +29,71 @@ export const AuthScreen = () => {
     }
   }, [authView, clearAuthView]);
 
+  useEffect(() => {
+    entryOpacity.setValue(0);
+    entryTranslate.setValue(18);
+    Animated.parallel([
+      Animated.timing(entryOpacity, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(entryTranslate, {
+        toValue: 0,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [entryOpacity, entryTranslate, view]);
+
   const handleGuestAccess = () => {
     setUser({
       id: "guest",
-      email: "guest@manufacture.app",
+      email: GUEST_EMAIL,
       displayName: "Guest Explorer",
       role: "guest",
     });
   };
 
+  const backgroundGradient = useMemo(
+    () => [colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd] as const,
+    [colors.surfaceCanvasEnd, colors.surfaceCanvasMid, colors.surfaceCanvasStart]
+  );
+
   return (
-    <LinearGradient
-      colors={["#0F1115", "#101318", "#0F1115"]}
-      locations={[0, 0.5, 1]}
-      style={styles.safeArea}
-    >
-      {/* Royal Indigo glow - top left */}
+    <LinearGradient colors={backgroundGradient} locations={[0, 0.5, 1]} style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={["rgba(108, 99, 255, 0.15)", "rgba(108, 99, 255, 0.05)", "transparent"]}
+        colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlayPrimary.replace("0.1", "0.04").replace("0.12", "0.04"), "transparent"]}
         locations={[0, 0.4, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 0.7 }}
         style={StyleSheet.absoluteFill}
       />
-      {/* Muted Salmon glow - bottom right */}
       <LinearGradient
-        colors={["transparent", "rgba(255, 140, 60, 0.08)", "rgba(255, 140, 60, 0.12)"]}
+        colors={["transparent", colors.surfaceOverlayAccent, "transparent"]}
         locations={[0, 0.6, 1]}
         start={{ x: 0.3, y: 0.3 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={{ flex: 1 }}>
-        <StatusBar style="light" />
-        <View style={styles.slideWrapper}>
+        <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />
+
+        <View style={styles.brandRail}>
+          <BrandLockup compact textColor={colors.textOnDarkSurface} subtitleColor={colors.subtextOnDarkSurface} />
+        </View>
+
+        <Animated.View
+          style={[
+            styles.slideWrapper,
+            {
+              opacity: entryOpacity,
+              transform: [{ translateY: entryTranslate }],
+            },
+          ]}
+        >
           {view === "intro" ? (
             <IntroPanel onJoin={() => setView("signup")} onSkip={handleGuestAccess} />
           ) : null}
@@ -88,12 +127,12 @@ export const AuthScreen = () => {
               onSuccess={() => setView("intro")}
             />
           ) : null}
-        </View>
+        </Animated.View>
 
         {bootstrapError ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorTitle}>Environment issue</Text>
-            <Text style={styles.errorText}>
+          <View style={[styles.errorBanner, { borderColor: colors.error + "66", backgroundColor: colors.error + "1a" }]}>
+            <Text style={[styles.errorTitle, { color: colors.error }]}>Environment issue</Text>
+            <Text style={[styles.errorText, { color: colors.errorLight }]}>
               {bootstrapError}. Ensure EXPO_PUBLIC_API_URL points to your backend (e.g., http://192.168.x.x:4000/api).
             </Text>
           </View>
@@ -109,41 +148,60 @@ type IntroPanelProps = {
 };
 
 const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.slideCard}>
       <View style={styles.illustrationArea}>
-        {/* Indigo gradient blob */}
         <LinearGradient
-          colors={["rgba(108, 99, 255, 0.4)", "rgba(108, 99, 255, 0.1)"]}
+          colors={[colors.primary + "66", colors.primary + "1a"]}
           style={[styles.blob, styles.blueBlob]}
         />
-        <View style={[styles.imagePlaceholderLarge, styles.imageShadow]}>
-          <Text style={styles.imageLabel}>IMAGE</Text>
+        <View
+          style={[
+            styles.logoTile,
+            styles.imageShadow,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.primary + "4d",
+            },
+          ]}
+        >
+          <Image source={BRAND_IMAGES.logo} style={styles.logoTileImage} />
         </View>
-        <View style={[styles.imagePlaceholderSmall, styles.imageShadow]}>
-          <Text style={styles.imageLabelSmall}>IMG</Text>
+        <View
+          style={[
+            styles.wordmarkTile,
+            styles.imageShadow,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.accent + "55",
+            },
+          ]}
+        >
+          <Image source={BRAND_IMAGES.wordmark} style={styles.wordmarkImage} />
         </View>
       </View>
 
       <View style={{ marginTop: 16 }}>
-        <Text style={styles.introHeading}>Let&apos;s Get Started</Text>
-        <Text style={styles.introSubheading}>Grow Together</Text>
+        <Text style={[styles.introHeading, { color: colors.textOnDarkSurface }]}>Welcome to {APP_NAME}</Text>
+        <Text style={[styles.introSubheading, { color: colors.subtextOnDarkSurface }]}>Built for industrial trade and operations</Text>
       </View>
 
       <View style={styles.buttonContainer}>
         <LinearGradient
-          colors={["#6C63FF", "#5248E6"]}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { shadowColor: colors.primary }]}
         >
           <TouchableOpacity onPress={onJoin} style={styles.primaryButtonInner}>
-            <Text style={styles.primaryButtonText}>JOIN NOW</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>JOIN NOW</Text>
           </TouchableOpacity>
         </LinearGradient>
 
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+        <TouchableOpacity style={[styles.skipButton, { backgroundColor: colors.overlayLight }]} onPress={onSkip}>
+          <Text style={[styles.skipText, { color: colors.textOnDarkSurface }]}>Skip</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -153,7 +211,11 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0F1115",
+  },
+  brandRail: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   slideWrapper: {
     flex: 1,
@@ -180,7 +242,6 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     padding: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 20,
     paddingHorizontal: 24,
     marginTop: 20,
@@ -188,7 +249,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.7)",
+    opacity: 0.85,
   },
   illustrationArea: {
     width: "100%",
@@ -206,62 +267,57 @@ const styles = StyleSheet.create({
     top: 0,
     left: -20,
   },
-  imagePlaceholderLarge: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: "rgba(30, 33, 39, 0.9)",
+  logoTile: {
+    width: 146,
+    height: 146,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(108, 99, 255, 0.3)",
+    padding: 16,
   },
-  imagePlaceholderSmall: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "rgba(30, 33, 39, 0.9)",
+  logoTileImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
+  wordmarkTile: {
+    width: 182,
+    height: 62,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
-    top: 16,
-    right: 30,
+    bottom: 18,
+    right: 24,
     borderWidth: 2,
-    borderColor: "rgba(255, 140, 60, 0.3)",
+    paddingHorizontal: 12,
+  },
+  wordmarkImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
   },
   imageShadow: {
-    shadowColor: "#6C63FF",
-    shadowOpacity: 0.25,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  imageLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.5)",
-  },
-  imageLabelSmall: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.5)",
-  },
   introHeading: {
-    fontSize: 34,
-    fontWeight: "700",
+    fontSize: 30,
+    fontWeight: "800",
     textAlign: "center",
-    color: "#FFFFFF",
   },
   introSubheading: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: 15,
     marginTop: 8,
     textAlign: "center",
   },
   primaryButton: {
     borderRadius: 40,
     overflow: "hidden",
-    shadowColor: "#6C63FF",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -273,7 +329,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#fff",
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 1.5,
@@ -285,18 +340,14 @@ const styles = StyleSheet.create({
     maxWidth: 380,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 107, 107, 0.4)",
-    backgroundColor: "rgba(255, 107, 107, 0.1)",
     padding: 16,
     alignSelf: "center",
   },
   errorTitle: {
     fontWeight: "700",
-    color: "#FF6B6B",
     marginBottom: 4,
   },
   errorText: {
-    color: "rgba(255, 107, 107, 0.8)",
     lineHeight: 18,
   },
 });

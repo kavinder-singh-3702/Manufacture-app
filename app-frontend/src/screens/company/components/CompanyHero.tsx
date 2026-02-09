@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../hooks/useTheme";
+import { useThemeMode } from "../../../hooks/useThemeMode";
 import { Company } from "../../../types/company";
 
 type Props = {
@@ -11,6 +14,10 @@ type Props = {
 };
 
 export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading }: Props) => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const isVerified = complianceStatus === "approved";
   const logoUrl = company.logoUrl;
   const initials = company.displayName
@@ -36,8 +43,8 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
           {/* Animated gradient ring */}
           <LinearGradient
             colors={isVerified
-              ? ["#10B981", "#34D399", "#059669", "#10B981"]
-              : ["#8B5CF6", "#6366F1", "#EC4899", "#8B5CF6"]}
+              ? [colors.success, "#34D399", "#059669", colors.success]
+              : [colors.primary, colors.primaryDark, colors.accent, colors.primary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.avatarGradient}
@@ -47,7 +54,7 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
                 <Image source={{ uri: logoUrl }} style={styles.avatarImage} />
               ) : (
                 <LinearGradient
-                  colors={["#1E1E24", "#141418"]}
+                  colors={[colors.backgroundSecondary, colors.background]}
                   style={styles.avatarPlaceholder}
                 >
                   <Text style={styles.avatarInitials}>{initials}</Text>
@@ -59,15 +66,15 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
           {/* Camera Icon with gradient */}
           {onUploadLogo && (
             <LinearGradient
-              colors={["#6366F1", "#8B5CF6"]}
+              colors={[colors.primaryDark, colors.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cameraButton}
             >
               {uploading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={colors.textOnPrimary} />
               ) : (
-                <Ionicons name="camera" size={14} color="#fff" />
+                <Ionicons name="camera" size={14} color={colors.textOnPrimary} />
               )}
             </LinearGradient>
           )}
@@ -75,10 +82,10 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
           {/* Verified Badge with glow */}
           {isVerified && (
             <LinearGradient
-              colors={["#10B981", "#059669"]}
+              colors={[colors.success, "#059669"]}
               style={styles.verifiedBadge}
             >
-              <Ionicons name="checkmark" size={12} color="#fff" />
+              <Ionicons name="checkmark" size={12} color={colors.textOnPrimary} />
             </LinearGradient>
           )}
         </TouchableOpacity>
@@ -90,7 +97,7 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
           <Text style={styles.companyName} numberOfLines={2}>{company.displayName}</Text>
           {isVerified && (
             <View style={styles.verifiedInline}>
-              <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={22} color={colors.success} />
             </View>
           )}
         </View>
@@ -108,7 +115,7 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
 
       {/* Stats Row with glassmorphism */}
       <LinearGradient
-        colors={["rgba(255, 255, 255, 0.06)", "rgba(255, 255, 255, 0.02)"]}
+        colors={[colors.badgeSecondary, "transparent"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.statsRow}
@@ -133,18 +140,18 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
       {/* Verified Banner with premium styling */}
       {isVerified && (
         <View style={styles.verifiedBanner}>
-          <LinearGradient
-            colors={["rgba(16, 185, 129, 0.18)", "rgba(16, 185, 129, 0.06)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.verifiedBannerGradient}
-          >
             <LinearGradient
-              colors={["rgba(16, 185, 129, 0.25)", "rgba(16, 185, 129, 0.12)"]}
-              style={styles.verifiedBannerIcon}
+              colors={[colors.badgeSuccess, "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.verifiedBannerGradient}
             >
-              <Ionicons name="shield-checkmark" size={18} color="#10B981" />
-            </LinearGradient>
+              <LinearGradient
+                colors={[colors.badgeSuccess, colors.badgeSuccess]}
+                style={styles.verifiedBannerIcon}
+              >
+                <Ionicons name="shield-checkmark" size={18} color={colors.success} />
+              </LinearGradient>
             <View style={styles.verifiedBannerText}>
               <Text style={styles.verifiedLabel}>VERIFIED BUSINESS</Text>
               <Text style={styles.verifiedCompanyName} numberOfLines={1}>Trusted & Compliant</Text>
@@ -156,7 +163,8 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+  StyleSheet.create({
   container: {
     alignItems: "center",
     paddingVertical: 12,
@@ -172,15 +180,15 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(139, 92, 246, 0.25)",
-    shadowColor: "#8B5CF6",
+    backgroundColor: colors.badgePrimary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 30,
   },
   avatarGlowVerified: {
-    backgroundColor: "rgba(16, 185, 129, 0.25)",
-    shadowColor: "#10B981",
+    backgroundColor: colors.badgeSuccess,
+    shadowColor: colors.success,
   },
   avatarWrapper: {
     position: "relative",
@@ -190,7 +198,7 @@ const styles = StyleSheet.create({
     height: 118,
     borderRadius: 59,
     padding: 4,
-    shadowColor: "#8B5CF6",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.5,
     shadowRadius: 24,
@@ -200,7 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 55,
     overflow: "hidden",
-    backgroundColor: "#0F1115",
+    backgroundColor: colors.background,
   },
   avatarImage: {
     width: "100%",
@@ -214,7 +222,7 @@ const styles = StyleSheet.create({
   avatarInitials: {
     fontSize: 34,
     fontWeight: "700",
-    color: "#FAFAFA",
+    color: colors.text,
     letterSpacing: 2,
   },
   cameraButton: {
@@ -227,8 +235,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#0F1115",
-    shadowColor: "#6366F1",
+    borderColor: colors.background,
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -244,8 +252,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#0F1115",
-    shadowColor: "#10B981",
+    borderColor: colors.background,
+    shadowColor: colors.success,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -263,7 +271,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: colors.text,
     letterSpacing: -0.8,
     textAlign: "center",
   },
@@ -272,7 +280,7 @@ const styles = StyleSheet.create({
   },
   legalName: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.45)",
+    color: colors.textMuted,
     marginTop: 6,
     fontWeight: "500",
     letterSpacing: 0.2,
@@ -283,7 +291,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.65)",
+    color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 21,
     fontWeight: "400",
@@ -298,7 +306,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     width: "100%",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: colors.border,
   },
   statItem: {
     flex: 1,
@@ -311,15 +319,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   statusDotVerified: {
-    backgroundColor: "#10B981",
-    shadowColor: "#10B981",
+    backgroundColor: colors.success,
+    shadowColor: colors.success,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 6,
   },
   statusDotPending: {
-    backgroundColor: "#F59E0B",
-    shadowColor: "#F59E0B",
+    backgroundColor: colors.warning,
+    shadowColor: colors.warning,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 6,
@@ -327,12 +335,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: colors.text,
     textTransform: "capitalize",
   },
   statLabel: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.45)",
+    color: colors.textMuted,
     marginTop: 5,
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -341,7 +349,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 36,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colors.border,
   },
   verifiedBanner: {
     width: "100%",
@@ -355,7 +363,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.25)",
+    borderColor: colors.success + "44",
     borderRadius: 16,
   },
   verifiedBannerIcon: {
@@ -372,13 +380,13 @@ const styles = StyleSheet.create({
   verifiedLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#34D399",
+    color: colors.success,
     letterSpacing: 1.2,
   },
   verifiedCompanyName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.text,
     marginTop: 3,
   },
-});
+  });

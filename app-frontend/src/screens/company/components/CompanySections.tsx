@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../hooks/useTheme";
 import { Company } from "../../../types/company";
 import { CompanyEditorSection } from "./types";
 
@@ -9,6 +11,12 @@ type Props = {
   onEdit?: (section: Exclude<CompanyEditorSection, null>) => void;
   formatAddress: (company?: Company | null) => string | null;
   formatCategories: (company?: Company | null) => string;
+};
+
+const useCompanySectionsTheme = () => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  return { colors, styles };
 };
 
 const SectionCard = ({
@@ -22,9 +30,10 @@ const SectionCard = ({
   children: React.ReactNode;
   onEdit?: () => void;
 }) => {
+  const { colors, styles } = useCompanySectionsTheme();
   return (
     <LinearGradient
-      colors={["rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)"]}
+      colors={[colors.badgeSecondary, "transparent"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
       style={styles.sectionCard}
@@ -32,23 +41,23 @@ const SectionCard = ({
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
           <LinearGradient
-            colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
+            colors={[colors.badgePrimary, colors.badgePrimary]}
             style={styles.sectionIcon}
           >
-            <Ionicons name={icon} size={18} color="#A78BFA" />
+            <Ionicons name={icon} size={18} color={colors.primaryLight} />
           </LinearGradient>
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         {onEdit && (
           <TouchableOpacity onPress={onEdit} activeOpacity={0.7}>
             <LinearGradient
-              colors={["rgba(139, 92, 246, 0.18)", "rgba(99, 102, 241, 0.12)"]}
+              colors={[colors.badgePrimary, colors.badgePrimary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.editButton}
             >
               <Text style={styles.editButtonText}>Edit</Text>
-              <Ionicons name="pencil" size={13} color="#A78BFA" />
+              <Ionicons name="pencil" size={13} color={colors.primaryLight} />
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -67,10 +76,11 @@ const InfoRow = ({
   label: string;
   value?: string | null;
 }) => {
+  const { colors, styles } = useCompanySectionsTheme();
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIconWrapper}>
-        <Ionicons name={icon} size={18} color="rgba(255, 255, 255, 0.4)" />
+        <Ionicons name={icon} size={18} color={colors.textMuted} />
       </View>
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
@@ -82,18 +92,22 @@ const InfoRow = ({
   );
 };
 
-const TagPill = ({ label }: { label: string }) => (
-  <LinearGradient
-    colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={styles.tagPill}
-  >
-    <Text style={styles.tagText}>{label}</Text>
-  </LinearGradient>
-);
+const TagPill = ({ label }: { label: string }) => {
+  const { colors, styles } = useCompanySectionsTheme();
+  return (
+    <LinearGradient
+      colors={[colors.badgePrimary, colors.badgePrimary]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.tagPill}
+    >
+      <Text style={styles.tagText}>{label}</Text>
+    </LinearGradient>
+  );
+};
 
 export const CompanySections = ({ company, onEdit, formatAddress, formatCategories }: Props) => {
+  const { colors, styles } = useCompanySectionsTheme();
   const categories = company.categories || [];
 
   return (
@@ -109,7 +123,7 @@ export const CompanySections = ({ company, onEdit, formatAddress, formatCategori
         <View style={styles.tagsSection}>
           <View style={styles.tagsSectionHeader}>
             <View style={styles.tagsIconWrapper}>
-              <Ionicons name="grid" size={16} color="#F59E0B" />
+              <Ionicons name="grid" size={16} color={colors.warning} />
             </View>
             <Text style={styles.tagsTitle}>Categories</Text>
           </View>
@@ -134,8 +148,8 @@ export const CompanySections = ({ company, onEdit, formatAddress, formatCategori
         {/* Social Links */}
         <View style={styles.socialSection}>
           <View style={styles.tagsSectionHeader}>
-            <View style={[styles.tagsIconWrapper, { backgroundColor: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.2)" }]}>
-              <Ionicons name="share-social" size={16} color="#3B82F6" />
+            <View style={[styles.tagsIconWrapper, { backgroundColor: colors.badgeInfo, borderColor: colors.info + "44" }]}>
+              <Ionicons name="share-social" size={16} color={colors.info} />
             </View>
             <Text style={styles.tagsTitle}>Social Links</Text>
           </View>
@@ -169,18 +183,20 @@ const SocialLink = ({
   label: string;
   value?: string | null;
 }) => {
+  const { colors, styles } = useCompanySectionsTheme();
   const hasValue = Boolean(value);
   return (
     <View style={[styles.socialLinkItem, !hasValue && styles.socialLinkItemEmpty]}>
       <View style={[styles.socialLinkIcon, hasValue && styles.socialLinkIconActive]}>
-        <Ionicons name={icon} size={18} color={hasValue ? "#FAFAFA" : "rgba(255, 255, 255, 0.3)"} />
+        <Ionicons name={icon} size={18} color={hasValue ? colors.text : colors.textMuted} />
       </View>
       <Text style={[styles.socialLinkLabel, hasValue && styles.socialLinkLabelActive]}>{label}</Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
+  StyleSheet.create({
   container: {
     gap: 18,
     marginTop: 8,
@@ -188,7 +204,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: colors.border,
     overflow: "hidden",
   },
   sectionHeader: {
@@ -198,7 +214,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+    borderBottomColor: colors.border,
   },
   sectionTitleRow: {
     flexDirection: "row",
@@ -215,7 +231,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#FAFAFA",
+    color: colors.text,
     letterSpacing: -0.3,
   },
   editButton: {
@@ -226,12 +242,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
+    borderColor: colors.primary + "44",
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#A78BFA",
+    color: colors.primaryLight,
   },
   sectionContent: {
     padding: 16,
@@ -241,18 +257,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: colors.border,
   },
   infoIconWrapper: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)",
+    borderColor: colors.border,
   },
   infoContent: {
     flex: 1,
@@ -261,7 +277,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.4)",
+    color: colors.textMuted,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 5,
@@ -269,13 +285,13 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#FAFAFA",
+    color: colors.text,
   },
   // Tags Section
   tagsSection: {
     paddingVertical: 18,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.06)",
+    borderTopColor: colors.border,
     marginTop: 8,
   },
   tagsSectionHeader: {
@@ -287,17 +303,17 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 10,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    backgroundColor: colors.badgeWarning,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
+    borderColor: colors.warning + "44",
   },
   tagsTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FAFAFA",
+    color: colors.text,
     letterSpacing: -0.2,
   },
   tagsContainer: {
@@ -307,7 +323,7 @@ const styles = StyleSheet.create({
   },
   tagsPlaceholder: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.35)",
+    color: colors.textMuted,
     fontStyle: "italic",
   },
   tagPill: {
@@ -315,19 +331,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.35)",
+    borderColor: colors.primary + "66",
   },
   tagText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#C4B5FD",
+    color: colors.primaryLight,
     letterSpacing: 0.2,
   },
   // Social Section
   socialSection: {
     paddingVertical: 18,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.06)",
+    borderTopColor: colors.border,
     marginTop: 8,
   },
   socialLinksGrid: {
@@ -341,9 +357,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: colors.border,
     gap: 8,
   },
   socialLinkItemEmpty: {
@@ -353,19 +369,19 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   socialLinkIconActive: {
-    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    backgroundColor: colors.badgeInfo,
   },
   socialLinkLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.4)",
+    color: colors.textMuted,
   },
   socialLinkLabelActive: {
-    color: "#FAFAFA",
+    color: colors.text,
   },
-});
+  });

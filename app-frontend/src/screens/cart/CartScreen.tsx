@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,27 +13,35 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useCart } from "../../hooks/useCart";
 import { CartItem } from "../../providers/CartProvider";
 
 const { width } = Dimensions.get("window");
 
-// Premium color palette - subtle and elegant
-const COLORS = {
-  background: "#0a0a0f",
-  surface: "rgba(22, 22, 30, 0.9)",
-  surfaceLight: "rgba(32, 32, 42, 0.8)",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  text: "#ffffff",
-  textMuted: "rgba(255, 255, 255, 0.6)",
-  textSubtle: "rgba(255, 255, 255, 0.4)",
-  accent: "#7c8aff", // Soft indigo
-  accentMuted: "rgba(124, 138, 255, 0.15)",
-  success: "#5ed4a5", // Soft teal
-  successMuted: "rgba(94, 212, 165, 0.15)",
-  danger: "#ff7b7b",
-  dangerMuted: "rgba(255, 123, 123, 0.12)",
+const useCartPalette = () => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+
+  return useMemo(
+    () => ({
+      background: colors.background,
+      surface: resolvedMode === "dark" ? "rgba(22, 22, 30, 0.9)" : colors.surface,
+      surfaceLight: resolvedMode === "dark" ? "rgba(32, 32, 42, 0.8)" : colors.surfaceElevated,
+      border: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.08)" : colors.border,
+      borderLight: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.12)" : colors.borderLight,
+      text: colors.text,
+      textMuted: colors.textMuted,
+      textSubtle: colors.textSecondary,
+      accent: colors.primary,
+      accentMuted: colors.badgePrimary,
+      success: colors.success,
+      successMuted: colors.badgeSuccess,
+      danger: colors.error,
+      dangerMuted: colors.badgeError,
+    }),
+    [colors, resolvedMode]
+  );
 };
 
 // ============================================================
@@ -47,6 +55,8 @@ type CartItemCardProps = {
 };
 
 const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemCardProps) => {
+  const COLORS = useCartPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { item, quantity } = cartItem;
 
   const handleIncrement = () => {
@@ -179,6 +189,8 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
 // EMPTY CART STATE - Elegant Design
 // ============================================================
 const EmptyCart = () => {
+  const COLORS = useCartPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const navigation = useNavigation();
 
   return (
@@ -230,7 +242,8 @@ const EmptyCart = () => {
 // CART SCREEN
 // ============================================================
 export const CartScreen = () => {
-  const { colors } = useTheme();
+  const COLORS = useCartPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, refreshCartItems } = useCart();
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
@@ -412,7 +425,8 @@ export const CartScreen = () => {
 // ============================================================
 // STYLES
 // ============================================================
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -855,4 +869,4 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: COLORS.textSubtle,
   },
-});
+  });

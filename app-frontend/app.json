@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "Manufacture App",
+    "name": "ARVANN",
     "slug": "app-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/brand/arvann-icon-1024.png",
     "splash": {
       "backgroundColor": "#000000",
-      "image": "./assets/brand/splash-logo.png",
+      "image": "./assets/brand/arvann-splash-logo.png",
       "resizeMode": "contain"
     },
     "ios": {
@@ -17,7 +18,8 @@
     "android": {
       "package": "com.manufactureapp.frontend",
       "adaptiveIcon": {
-        "backgroundColor": "#1C1C1C"
+        "foregroundImage": "./assets/brand/arvann-icon-1024.png",
+        "backgroundColor": "#454545"
       },
       "usesCleartextTraffic": true
     },

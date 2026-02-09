@@ -2,6 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthUser } from "../../../types/auth";
+import { useTheme } from "../../../hooks/useTheme";
 
 type Props = {
   user: AuthUser | null | undefined;
@@ -19,36 +20,30 @@ const SectionCard = ({
   children: React.ReactNode;
   onEdit?: () => void;
 }) => {
+  const { colors } = useTheme();
+
   return (
     <LinearGradient
-      colors={["rgba(255, 255, 255, 0.05)", "rgba(255, 255, 255, 0.02)"]}
+      colors={[colors.surface + "ee", colors.surfaceElevated + "f2"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.sectionCard}
+      style={[styles.sectionCard, { borderColor: colors.border }]}
     >
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}> 
         <View style={styles.sectionTitleRow}>
-          <LinearGradient
-            colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
-            style={styles.sectionIcon}
-          >
-            <Ionicons name={icon} size={18} color="#A78BFA" />
+          <LinearGradient colors={[colors.primary + "33", colors.primary + "22"]} style={styles.sectionIcon}>
+            <Ionicons name={icon} size={18} color={colors.primary} />
           </LinearGradient>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
         </View>
-        {onEdit && (
+        {onEdit ? (
           <TouchableOpacity onPress={onEdit} activeOpacity={0.7}>
-            <LinearGradient
-              colors={["rgba(139, 92, 246, 0.18)", "rgba(99, 102, 241, 0.12)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.editButton}
-            >
-              <Text style={styles.editButtonText}>Edit</Text>
-              <Ionicons name="pencil" size={13} color="#A78BFA" />
+            <LinearGradient colors={[colors.primary + "2e", colors.primary + "1c"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.editButton, { borderColor: colors.primary + "55" }]}> 
+              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+              <Ionicons name="pencil" size={13} color={colors.primary} />
             </LinearGradient>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
       <View style={styles.sectionContent}>{children}</View>
     </LinearGradient>
@@ -60,59 +55,46 @@ const InfoRow = ({
   label,
   value,
   verified,
-  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value?: string | null;
   verified?: boolean;
-  onPress?: () => void;
 }) => {
-  const content = (
-    <View style={styles.infoRow}>
-      <View style={styles.infoIconWrapper}>
-        <Ionicons name={icon} size={18} color="rgba(255, 255, 255, 0.4)" />
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.infoRow, { borderBottomColor: colors.borderLight }]}> 
+      <View style={[styles.infoIconWrapper, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}> 
+        <Ionicons name={icon} size={18} color={colors.textMuted} />
       </View>
       <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={[styles.infoLabel, { color: colors.textMuted }]}>{label}</Text>
         <View style={styles.infoValueRow}>
-          <Text style={[styles.infoValue, onPress && styles.infoValueLink]} numberOfLines={2}>
+          <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={2}>
             {value || "Not provided"}
           </Text>
-          {verified && (
-            <View style={styles.verifiedTag}>
-              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-              <Text style={styles.verifiedText}>Verified</Text>
+          {verified ? (
+            <View style={[styles.verifiedTag, { backgroundColor: colors.success + "26", borderColor: colors.success + "4d" }]}> 
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={[styles.verifiedText, { color: colors.success }]}>Verified</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
   );
-
-  if (onPress && value) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return content;
 };
 
-const TagPill = ({ label }: { label: string }) => (
-  <LinearGradient
-    colors={["rgba(139, 92, 246, 0.2)", "rgba(99, 102, 241, 0.15)"]}
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={styles.tagPill}
-  >
-    <Text style={styles.tagText}>{label}</Text>
-  </LinearGradient>
-);
+const TagPill = ({ label }: { label: string }) => {
+  const { colors } = useTheme();
+  return (
+    <LinearGradient colors={[colors.primary + "2e", colors.primary + "1c"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.tagPill, { borderColor: colors.primary + "59" }]}> 
+      <Text style={[styles.tagText, { color: colors.primaryLight }]}>{label}</Text>
+    </LinearGradient>
+  );
+};
 
-// Featured card for Company About and Bio
 const FeaturedCard = ({
   icon,
   title,
@@ -126,36 +108,33 @@ const FeaturedCard = ({
   placeholder: string;
   gradientColors: [string, string];
 }) => {
+  const { colors } = useTheme();
   const hasContent = !!content;
 
   return (
     <View style={styles.featuredCard}>
       <LinearGradient
-        colors={hasContent ? gradientColors : ["rgba(255,255,255,0.03)", "rgba(255,255,255,0.01)"]}
+        colors={hasContent ? gradientColors : [colors.surfaceElevated, colors.surface]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.featuredCardGradient}
+        style={[styles.featuredCardGradient, { borderColor: colors.border }]}
       >
         <View style={styles.featuredCardHeader}>
-          <View style={[styles.featuredCardIcon, hasContent && { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-            <Ionicons name={icon} size={16} color={hasContent ? "#FFFFFF" : "rgba(255,255,255,0.4)"} />
+          <View style={[styles.featuredCardIcon, hasContent && { backgroundColor: "rgba(255,255,255,0.18)" }]}> 
+            <Ionicons name={icon} size={16} color={hasContent ? "#FFFFFF" : colors.textMuted} />
           </View>
-          <Text style={[styles.featuredCardTitle, hasContent && { color: "#FFFFFF" }]}>{title}</Text>
+          <Text style={[styles.featuredCardTitle, { color: hasContent ? "#FFFFFF" : colors.textMuted }]}>{title}</Text>
         </View>
-        <Text style={[styles.featuredCardContent, !hasContent && styles.featuredCardPlaceholder]} numberOfLines={3}>
+        <Text style={[styles.featuredCardContent, { color: hasContent ? "rgba(255,255,255,0.95)" : colors.textSecondary }, !hasContent && styles.featuredCardPlaceholder]} numberOfLines={3}>
           {content || placeholder}
         </Text>
-        {hasContent && (
-          <View style={styles.featuredCardQuote}>
-            <Ionicons name="chatbox-ellipses" size={18} color="rgba(255,255,255,0.1)" />
-          </View>
-        )}
       </LinearGradient>
     </View>
   );
 };
 
 export const ProfileSections = ({ user, onEdit }: Props) => {
+  const { colors } = useTheme();
   const tags = (user?.activityTags as string[]) ?? [];
 
   const formatAddress = () => {
@@ -175,7 +154,6 @@ export const ProfileSections = ({ user, onEdit }: Props) => {
 
   return (
     <View style={styles.container}>
-      {/* Identity & Contact Section */}
       <SectionCard title="Personal Info" icon="person-outline" onEdit={() => onEdit("identity")}>
         <InfoRow icon="person" label="Full Name" value={fullName} />
         <InfoRow icon="at" label="Display Name" value={user?.displayName} />
@@ -184,45 +162,37 @@ export const ProfileSections = ({ user, onEdit }: Props) => {
         <InfoRow icon="location" label="Address" value={formatAddress()} />
       </SectionCard>
 
-      {/* Professional Section */}
       <SectionCard title="Professional" icon="briefcase-outline" onEdit={() => onEdit("professional")}>
-        {/* Featured Cards Row */}
         <View style={styles.featuredCardsRow}>
           <FeaturedCard
             icon="business"
             title="Company"
             content={user?.companyAbout}
             placeholder="Share what your company does..."
-            gradientColors={["rgba(99, 102, 241, 0.25)", "rgba(139, 92, 246, 0.15)"]}
+            gradientColors={[colors.primary + "66", colors.primaryDark + "3d"]}
           />
           <FeaturedCard
             icon="person-circle"
             title="About Me"
             content={user?.bio}
             placeholder="Tell your story..."
-            gradientColors={["rgba(236, 72, 153, 0.2)", "rgba(168, 85, 247, 0.15)"]}
+            gradientColors={[colors.accent + "5c", colors.primary + "33"]}
           />
         </View>
 
-        {/* Activity Tags */}
-        <View style={styles.tagsSection}>
+        <View style={[styles.tagsSection, { borderTopColor: colors.border }]}> 
           <View style={styles.tagsSectionHeader}>
-            <View style={styles.tagsIconWrapper}>
-              <Ionicons name="sparkles" size={16} color="#F59E0B" />
+            <View style={[styles.tagsIconWrapper, { backgroundColor: colors.warning + "26", borderColor: colors.warning + "4d" }]}> 
+              <Ionicons name="sparkles" size={16} color={colors.warning} />
             </View>
-            <Text style={styles.tagsTitle}>Interests & Skills</Text>
+            <Text style={[styles.tagsTitle, { color: colors.text }]}>Interests & Skills</Text>
           </View>
           {tags.length > 0 ? (
-            <View style={styles.tagsContainer}>
-              {tags.map((tag) => (
-                <TagPill key={tag} label={tag} />
-              ))}
-            </View>
+            <View style={styles.tagsContainer}>{tags.map((tag) => <TagPill key={tag} label={tag} />)}</View>
           ) : (
-            <Text style={styles.tagsPlaceholder}>Add tags to highlight your expertise</Text>
+            <Text style={[styles.tagsPlaceholder, { color: colors.textMuted }]}>Add tags to highlight your expertise</Text>
           )}
         </View>
-
       </SectionCard>
     </View>
   );
@@ -236,7 +206,6 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
     overflow: "hidden",
   },
   sectionHeader: {
@@ -246,7 +215,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.06)",
   },
   sectionTitleRow: {
     flexDirection: "row",
@@ -263,7 +231,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#FAFAFA",
     letterSpacing: -0.3,
   },
   editButton: {
@@ -274,33 +241,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.2)",
   },
   editButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#A78BFA",
   },
   sectionContent: {
     padding: 16,
   },
-  // Info Row Styles
   infoRow: {
     flexDirection: "row",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
   },
   infoIconWrapper: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)",
   },
   infoContent: {
     flex: 1,
@@ -309,7 +270,6 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.4)",
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 5,
@@ -323,10 +283,6 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#FAFAFA",
-  },
-  infoValueLink: {
-    color: "#A78BFA",
   },
   verifiedTag: {
     flexDirection: "row",
@@ -334,17 +290,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 14,
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
     gap: 4,
     borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.2)",
   },
   verifiedText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#34D399",
   },
-  // Featured Cards
   featuredCardsRow: {
     flexDirection: "row",
     gap: 12,
@@ -360,7 +312,6 @@ const styles = StyleSheet.create({
     minHeight: 115,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
     position: "relative",
   },
   featuredCardHeader: {
@@ -372,7 +323,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -380,31 +330,21 @@ const styles = StyleSheet.create({
   featuredCardTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "rgba(255, 255, 255, 0.55)",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   featuredCardContent: {
     fontSize: 13,
     lineHeight: 19,
-    color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
   },
   featuredCardPlaceholder: {
-    color: "rgba(255, 255, 255, 0.3)",
     fontStyle: "italic",
     fontSize: 12,
   },
-  featuredCardQuote: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-  },
-  // Tags Section
   tagsSection: {
     paddingVertical: 18,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.06)",
   },
   tagsSectionHeader: {
     flexDirection: "row",
@@ -415,17 +355,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 10,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "rgba(245, 158, 11, 0.2)",
   },
   tagsTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FAFAFA",
     letterSpacing: -0.2,
   },
   tagsContainer: {
@@ -435,7 +372,6 @@ const styles = StyleSheet.create({
   },
   tagsPlaceholder: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.35)",
     fontStyle: "italic",
   },
   tagPill: {
@@ -443,12 +379,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.35)",
   },
   tagText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#C4B5FD",
     letterSpacing: 0.2,
   },
 });

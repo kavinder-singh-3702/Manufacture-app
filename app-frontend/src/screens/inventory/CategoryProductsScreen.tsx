@@ -17,6 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
 import { productService, Product } from "../../services/product.service";
@@ -27,35 +29,45 @@ import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProd
 const PAGE_SIZE = 25;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// Premium dark color palette (matching app theme)
-const COLORS = {
-  background: "#0a0a0f",
-  surface: "#16161e",
-  surfaceLight: "#1e1e28",
-  surfaceElevated: "#252530",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  text: "#ffffff",
-  textSecondary: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-  textSubtle: "rgba(255, 255, 255, 0.4)",
-  accent: "#7c8aff",
-  accentMuted: "#5a6fd6",
-  accentGlow: "rgba(124, 138, 255, 0.15)",
-  link: "#7c8aff",
-  success: "#5ed4a5",
-  successMuted: "rgba(94, 212, 165, 0.15)",
-  warning: "#f0b429",
-  warningMuted: "rgba(240, 180, 41, 0.15)",
-  error: "#ef6b6b",
-  errorMuted: "rgba(239, 107, 107, 0.15)",
-  verified: "#5ed4a5",
-  unverified: "#f0b429",
-  headerBg: "#12121a",
-  headerText: "#ffffff",
+const useCategoryProductsPalette = () => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+
+  return useMemo(
+    () => ({
+      background: colors.background,
+      surface: resolvedMode === "dark" ? "#16161e" : colors.surface,
+      surfaceLight: resolvedMode === "dark" ? "#1e1e28" : colors.surfaceElevated,
+      surfaceElevated: resolvedMode === "dark" ? "#252530" : colors.backgroundSecondary,
+      border: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.08)" : colors.border,
+      borderLight: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.12)" : colors.borderLight,
+      text: colors.text,
+      textSecondary: colors.textSecondary,
+      textMuted: colors.textMuted,
+      textSubtle: colors.textTertiary,
+      accent: colors.primary,
+      accentMuted: colors.primaryDark,
+      accentGlow: colors.badgePrimary,
+      link: colors.primary,
+      success: colors.success,
+      successMuted: colors.badgeSuccess,
+      warning: colors.warning,
+      warningMuted: colors.badgeWarning,
+      error: colors.error,
+      errorMuted: colors.badgeError,
+      verified: colors.success,
+      unverified: colors.warning,
+      headerBg: resolvedMode === "dark" ? "#12121a" : colors.surface,
+      headerText: colors.text,
+    }),
+    [colors, resolvedMode]
+  );
 };
 
 export const CategoryProductsScreen = () => {
+  const COLORS = useCategoryProductsPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const { resolvedMode } = useThemeMode();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title, subCategory: initialSubCategory } = route.params;
@@ -220,7 +232,7 @@ export const CategoryProductsScreen = () => {
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
+        <StatusBar barStyle={resolvedMode === "dark" ? "light-content" : "dark-content"} backgroundColor={COLORS.headerBg} />
         {/* Amazon-style Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -241,7 +253,7 @@ export const CategoryProductsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
+      <StatusBar barStyle={resolvedMode === "dark" ? "light-content" : "dark-content"} backgroundColor={COLORS.headerBg} />
 
       {/* Amazon-style Dark Header */}
       <View style={styles.header}>
@@ -335,7 +347,7 @@ export const CategoryProductsScreen = () => {
           ) : null
         }
         ListEmptyComponent={
-          !loading && (
+          loading ? null : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>📦</Text>
               <Text style={styles.emptyTitle}>No products found</Text>
@@ -454,7 +466,8 @@ export const CategoryProductsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
+  StyleSheet.create({
   // Container
   container: {
     flex: 1,
@@ -866,4 +879,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-});
+  });

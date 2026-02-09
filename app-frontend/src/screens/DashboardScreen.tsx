@@ -849,7 +849,7 @@ const UserDashboardContent = () => {
             <NoAdHero
               loading={offersLoading}
               onPress={() => navigation.navigate("ProductSearch")}
-              onBrowseServices={() => navigation.navigate("Help")}
+              onBrowseServices={() => navigation.navigate("Main", { screen: routes.SERVICES })}
             />
           )}
 

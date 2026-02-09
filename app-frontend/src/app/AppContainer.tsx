@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { AppProviders } from "../providers/AppProviders";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { useTheme } from "../hooks/useTheme";
+import { useThemeMode } from "../hooks/useThemeMode";
 import { AnimatedSplashScreen } from "../components/splash/AnimatedSplashScreen";
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -13,11 +14,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 const AppShell = () => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
 
   return (
-    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <StatusBar style="light" />
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+      <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
         <AppNavigator />
       </View>
     </View>

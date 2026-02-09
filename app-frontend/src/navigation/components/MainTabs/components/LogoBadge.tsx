@@ -2,6 +2,7 @@ import { FC } from "react";
 import { Image, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { Typography } from "../../../../components/common/Typography";
 import { useTheme } from "../../../../hooks/useTheme";
+import { BRAND_SHORT } from "../../../../constants/brand";
 
 type LogoBadgeProps = {
   label?: string;
@@ -9,7 +10,7 @@ type LogoBadgeProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export const LogoBadge: FC<LogoBadgeProps> = ({ label = "MF", imageUri, style }) => {
+export const LogoBadge: FC<LogoBadgeProps> = ({ label = BRAND_SHORT, imageUri, style }) => {
   const { colors } = useTheme();
 
   return (

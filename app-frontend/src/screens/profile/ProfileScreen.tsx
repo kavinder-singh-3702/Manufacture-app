@@ -20,10 +20,11 @@ import { ProfileEditorModal } from "./components/ProfileEditorModal";
 import { EditorType } from "./types";
 
 export const ProfileScreen = () => {
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
   const { user, setUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+
   const [activeEditor, setActiveEditor] = useState<EditorType>(null);
   const [identityForm, setIdentityForm] = useState(createIdentityFormState(user));
   const [professionalForm, setProfessionalForm] = useState(createProfessionalFormState(user));
@@ -51,7 +52,7 @@ export const ProfileScreen = () => {
           console.error("Failed to fetch verification status:", error);
         }
       };
-      fetchVerificationStatus();
+      void fetchVerificationStatus();
     }, [user?.activeCompany])
   );
 
@@ -65,13 +66,16 @@ export const ProfileScreen = () => {
     if (segments.length) return segments.join(" ");
     if (typeof user?.displayName === "string") return user.displayName;
     return "Unnamed operator";
-  }, [user]);
+  }, [user?.displayName, user?.firstName, user?.lastName]);
 
   const avatarUrl = typeof user?.avatarUrl === "string" ? user.avatarUrl : undefined;
 
   const avatarInitials = useMemo(() => {
     const source = fullName !== "Unnamed operator" ? fullName : user?.email ?? "NA";
-    const parts = source.split(/\s+/).map((part) => part.trim()).filter(Boolean);
+    const parts = source
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
     if (!parts.length) return "NA";
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
@@ -114,7 +118,7 @@ export const ProfileScreen = () => {
     };
     const address = buildAddressPayload(identityForm);
     if (address) payload.address = address;
-    submitUpdate(payload);
+    void submitUpdate(payload);
   };
 
   const handleSaveProfessional = () => {
@@ -127,7 +131,7 @@ export const ProfileScreen = () => {
       bio: professionalForm.bio.trim() || undefined,
       activityTags,
     };
-    submitUpdate(payload);
+    void submitUpdate(payload);
   };
 
   const handleUploadAvatar = async () => {
@@ -177,101 +181,80 @@ export const ProfileScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Premium Blended Gradient Background */}
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}> 
       <View style={StyleSheet.absoluteFill}>
-        {/* Base gradient - deep purple to dark */}
         <LinearGradient
-          colors={["#0F0A1A", "#0A0A0F", "#08080C", "#0A0812"]}
+          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
           locations={[0, 0.3, 0.7, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* Top gradient wash - purple/indigo blend */}
         <LinearGradient
-          colors={["rgba(139, 92, 246, 0.15)", "rgba(99, 102, 241, 0.08)", "transparent"]}
+          colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlaySecondary, "transparent"]}
           locations={[0, 0.4, 0.8]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0.6 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* Bottom gradient wash - subtle pink accent */}
         <LinearGradient
-          colors={["transparent", "rgba(168, 85, 247, 0.06)", "rgba(139, 92, 246, 0.1)"]}
+          colors={["transparent", colors.surfaceOverlayAccent, colors.surfaceOverlayPrimary]}
           locations={[0.3, 0.7, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/* Subtle vignette effect */}
-        <LinearGradient
-          colors={["transparent", "transparent", "rgba(0, 0, 0, 0.3)"]}
-          locations={[0, 0.6, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
       </View>
 
-      {/* Header with glass effect */}
       <View style={styles.headerWrapper}>
-        <LinearGradient
-          colors={["rgba(15, 15, 20, 0.95)", "rgba(15, 15, 20, 0.85)"]}
-          style={styles.headerGlass}
-        >
+        <LinearGradient colors={[colors.overlay, colors.overlayLight]} style={[styles.headerGlass, { borderBottomColor: colors.border }]}> 
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={22} color="#FAFAFA" />
+            <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Profile</Text>
-            <View style={styles.headerSpacer} />
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+            <TouchableOpacity
+              style={[styles.appearanceButton, { backgroundColor: colors.primary + "1f", borderColor: colors.primary + "55" }]}
+              onPress={() => navigation.navigate("Appearance")}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="contrast-outline" size={16} color={colors.primary} />
+              <Text style={[styles.appearanceButtonText, { color: colors.primary }]}>Appearance</Text>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </View>
 
-      {avatarError && (
+      {avatarError ? (
         <View style={styles.alertBanner}>
-          <LinearGradient
-            colors={["rgba(248, 113, 113, 0.15)", "rgba(248, 113, 113, 0.08)"]}
-            style={styles.alertGlass}
-          >
-            <Ionicons name="alert-circle" size={18} color="#F87171" />
-            <Text style={styles.alertText}>{avatarError}</Text>
+          <LinearGradient colors={[colors.error + "26", colors.error + "14"]} style={[styles.alertGlass, { borderColor: colors.error + "4d" }]}> 
+            <Ionicons name="alert-circle" size={18} color={colors.error} />
+            <Text style={[styles.alertText, { color: colors.error }]}>{avatarError}</Text>
             <TouchableOpacity onPress={() => setAvatarError(null)}>
-              <Ionicons name="close" size={18} color="#F87171" />
+              <Ionicons name="close" size={18} color={colors.error} />
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      )}
+      ) : null}
 
-      {banner && (
+      {banner ? (
         <View style={styles.alertBanner}>
           <LinearGradient
-            colors={
-              banner.type === "success"
-                ? ["rgba(52, 211, 153, 0.15)", "rgba(52, 211, 153, 0.08)"]
-                : ["rgba(248, 113, 113, 0.15)", "rgba(248, 113, 113, 0.08)"]
-            }
-            style={styles.alertGlass}
+            colors={banner.type === "success" ? [colors.success + "26", colors.success + "14"] : [colors.error + "26", colors.error + "14"]}
+            style={[styles.alertGlass, { borderColor: banner.type === "success" ? colors.success + "55" : colors.error + "55" }]}
           >
             <Ionicons
               name={banner.type === "success" ? "checkmark-circle" : "alert-circle"}
               size={18}
-              color={banner.type === "success" ? "#34D399" : "#F87171"}
+              color={banner.type === "success" ? colors.success : colors.error}
             />
-            <Text style={[styles.alertText, { color: banner.type === "success" ? "#34D399" : "#F87171" }]}>
-              {banner.message}
-            </Text>
+            <Text style={[styles.alertText, { color: banner.type === "success" ? colors.success : colors.error }]}>{banner.message}</Text>
             <TouchableOpacity onPress={() => setBanner(null)}>
-              <Ionicons name="close" size={18} color={banner.type === "success" ? "#34D399" : "#F87171"} />
+              <Ionicons name="close" size={18} color={banner.type === "success" ? colors.success : colors.error} />
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      )}
+      ) : null}
 
       <ScrollView
         style={styles.scrollView}
@@ -296,7 +279,6 @@ export const ProfileScreen = () => {
         <ProfileSections user={user} onEdit={openEditor} />
       </ScrollView>
 
-      {/* Modals */}
       <ProfileEditorModal
         title="Edit Personal Info"
         visible={activeEditor === "identity"}
@@ -396,43 +378,48 @@ const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#09090B",
   },
-  // Header
   headerWrapper: {
     zIndex: 10,
   },
   headerGlass: {
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "700",
-    color: "#FAFAFA",
     letterSpacing: -0.5,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
   },
-  headerSpacer: {
-    width: 40,
+  appearanceButton: {
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  // Alerts
+  appearanceButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   alertBanner: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -445,16 +432,13 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 10,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 16,
   },
   alertText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "500",
-    color: "#F87171",
+    fontWeight: "600",
   },
-  // Content
   scrollView: {
     flex: 1,
   },

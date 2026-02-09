@@ -1,6 +1,6 @@
 import { palette } from "./colors";
 
-// Linear gradient definitions - Luxury Indigo & Muted Salmon Theme
+// Linear gradient definitions - ARVANN Blue & Forge Red Theme
 export const gradients = {
   // Primary gradients (Royal Indigo)
   primaryLight: `linear-gradient(135deg, ${palette.royalIndigo} 0%, ${palette.greenLight} 100%)`,
@@ -31,11 +31,11 @@ export const gradients = {
   backgroundMint: `linear-gradient(180deg, ${palette.elevatedSurface} 0%, ${palette.charcoalMuted} 100%)`,
   backgroundWarm: `linear-gradient(180deg, ${palette.richBackground} 0%, ${palette.elevatedSurface} 100%)`,
 
-  // Overlay gradients (luxury dark)
-  overlayDark: `linear-gradient(180deg, rgba(15, 17, 21, 0.95) 0%, rgba(15, 17, 21, 0.8) 100%)`,
-  overlayBurgundy: `linear-gradient(180deg, rgba(108, 99, 255, 0.15) 0%, rgba(108, 99, 255, 0.05) 100%)`,
-  overlaySalmon: `linear-gradient(180deg, rgba(255, 140, 60, 0.15) 0%, rgba(255, 140, 60, 0.05) 100%)`,
-  overlayPink: `linear-gradient(180deg, rgba(255, 140, 60, 0.15) 0%, rgba(255, 140, 60, 0.05) 100%)`,
+  // Overlay gradients (ARVANN dark)
+  overlayDark: `linear-gradient(180deg, rgba(10, 11, 14, 0.95) 0%, rgba(10, 11, 14, 0.8) 100%)`,
+  overlayBurgundy: `linear-gradient(180deg, rgba(140, 165, 239, 0.16) 0%, rgba(140, 165, 239, 0.06) 100%)`,
+  overlaySalmon: `linear-gradient(180deg, rgba(227, 72, 62, 0.15) 0%, rgba(227, 72, 62, 0.05) 100%)`,
+  overlayPink: `linear-gradient(180deg, rgba(227, 72, 62, 0.15) 0%, rgba(227, 72, 62, 0.05) 100%)`,
 
   // Radial gradients (for special effects)
   radialGreen: `radial-gradient(circle, ${palette.greenLight} 0%, ${palette.royalIndigo} 100%)`,
@@ -51,7 +51,7 @@ export const gradients = {
     ${palette.aquaBlue} 100%)`,
 } as const;
 
-// Shadow definitions - Luxury Indigo & Muted Salmon Theme
+// Shadow definitions - ARVANN Blue & Forge Red Theme
 export const shadows = {
   // Soft dark shadows
   sm: `0 1px 2px 0 rgba(0, 0, 0, 0.4)`,
@@ -66,14 +66,14 @@ export const shadows = {
   xlDark: `0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.3)`,
 
   // Colored shadows (brand colors)
-  green: `0 4px 12px rgba(108, 99, 255, 0.4)`,
-  burgundy: `0 4px 12px rgba(108, 99, 255, 0.3)`,
-  pink: `0 4px 12px rgba(255, 140, 60, 0.4)`,
-  salmon: `0 4px 12px rgba(255, 140, 60, 0.4)`,
+  green: `0 4px 12px rgba(140, 165, 239, 0.4)`,
+  burgundy: `0 4px 12px rgba(140, 165, 239, 0.3)`,
+  pink: `0 4px 12px rgba(227, 72, 62, 0.4)`,
+  salmon: `0 4px 12px rgba(227, 72, 62, 0.4)`,
 
   // Luxury color glows
-  greenGlow: `0 0 20px rgba(108, 99, 255, 0.5), 0 0 40px rgba(108, 99, 255, 0.25)`,
-  pinkGlow: `0 0 20px rgba(255, 140, 60, 0.5), 0 0 40px rgba(255, 140, 60, 0.25)`,
-  salmonGlow: `0 0 20px rgba(255, 140, 60, 0.5), 0 0 40px rgba(255, 140, 60, 0.25)`,
-  burgundyGlow: `0 0 20px rgba(108, 99, 255, 0.4), 0 0 40px rgba(108, 99, 255, 0.2)`,
+  greenGlow: `0 0 20px rgba(140, 165, 239, 0.5), 0 0 40px rgba(140, 165, 239, 0.25)`,
+  pinkGlow: `0 0 20px rgba(227, 72, 62, 0.5), 0 0 40px rgba(227, 72, 62, 0.25)`,
+  salmonGlow: `0 0 20px rgba(227, 72, 62, 0.5), 0 0 40px rgba(227, 72, 62, 0.25)`,
+  burgundyGlow: `0 0 20px rgba(140, 165, 239, 0.4), 0 0 40px rgba(140, 165, 239, 0.2)`,
 } as const;

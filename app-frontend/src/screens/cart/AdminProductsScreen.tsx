@@ -18,28 +18,36 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { productService, Product, ProductCategory } from "../../services/product.service";
 import { useCart } from "../../hooks/useCart";
 import { RootStackParamList } from "../../navigation/types";
 import { preferenceService } from "../../services/preference.service";
 
-// Premium color palette - subtle and elegant
-const COLORS = {
-  background: "#0a0a0f",
-  surface: "rgba(22, 22, 30, 0.9)",
-  surfaceLight: "rgba(32, 32, 42, 0.8)",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  text: "#ffffff",
-  textMuted: "rgba(255, 255, 255, 0.6)",
-  textSubtle: "rgba(255, 255, 255, 0.4)",
-  accent: "#7c8aff",
-  accentMuted: "rgba(124, 138, 255, 0.15)",
-  success: "#5ed4a5",
-  successMuted: "rgba(94, 212, 165, 0.15)",
-  warning: "#f0b429",
-  warningMuted: "rgba(240, 180, 41, 0.15)",
+const useAdminProductsPalette = () => {
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+
+  return useMemo(
+    () => ({
+      background: colors.background,
+      surface: resolvedMode === "dark" ? "rgba(22, 22, 30, 0.9)" : colors.surface,
+      surfaceLight: resolvedMode === "dark" ? "rgba(32, 32, 42, 0.8)" : colors.surfaceElevated,
+      border: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.08)" : colors.border,
+      borderLight: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.12)" : colors.borderLight,
+      text: colors.text,
+      textMuted: colors.textMuted,
+      textSubtle: colors.textSecondary,
+      accent: colors.primary,
+      accentMuted: colors.badgePrimary,
+      success: colors.success,
+      successMuted: colors.badgeSuccess,
+      warning: colors.warning,
+      warningMuted: colors.badgeWarning,
+    }),
+    [colors, resolvedMode]
+  );
 };
 
 type ProductCardProps = {
@@ -50,6 +58,8 @@ type ProductCardProps = {
 };
 
 const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: ProductCardProps) => {
+  const COLORS = useAdminProductsPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const price = product.price?.amount || 0;
   const currency = product.price?.currency === "INR" ? "₹" : product.price?.currency || "₹";
   const primaryImage = product.images?.[0]?.url;
@@ -161,6 +171,8 @@ const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: Product
 const PAGE_SIZE = 16;
 
 export const AdminProductsScreen = () => {
+  const COLORS = useAdminProductsPalette();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -561,7 +573,8 @@ export const AdminProductsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: ReturnType<typeof useAdminProductsPalette>) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -1062,4 +1075,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-});
+  });

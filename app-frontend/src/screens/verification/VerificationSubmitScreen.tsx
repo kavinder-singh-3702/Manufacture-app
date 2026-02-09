@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,21 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from '../../hooks/useTheme';
+import { useThemeMode } from '../../hooks/useThemeMode';
 import { DocumentUploader, PickedDocument } from '../../components/company/DocumentUploader';
 import { verificationService } from '../../services/verificationService';
 import { SubmitVerificationPayload } from '../../types/company';
-
-type RouteParams = {
-  VerificationSubmit: {
-    companyId: string;
-  };
-};
+import { RootStackParamList } from '../../navigation/types';
 
 export const VerificationSubmitScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'VerificationSubmit'>>();
+  const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'VerificationSubmit'>>();
   const { companyId } = route.params;
 
   const [gstDocument, setGstDocument] = useState<PickedDocument | null>(null);
@@ -78,13 +80,13 @@ export const VerificationSubmitScreen = () => {
 
   return (
     <LinearGradient
-      colors={["#0F1115", "#101318", "#0F1115"]}
+      colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
       locations={[0, 0.5, 1]}
       style={styles.container}
     >
       {/* Indigo glow - top left */}
       <LinearGradient
-        colors={["rgba(108, 99, 255, 0.12)", "rgba(108, 99, 255, 0.04)", "transparent"]}
+        colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlayPrimary.replace("0.12", "0.04"), "transparent"]}
         locations={[0, 0.4, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 0.7 }}
@@ -92,7 +94,7 @@ export const VerificationSubmitScreen = () => {
       />
       {/* Salmon glow - bottom right */}
       <LinearGradient
-        colors={["transparent", "rgba(255, 140, 60, 0.06)", "rgba(255, 140, 60, 0.1)"]}
+        colors={["transparent", colors.surfaceOverlayAccent.replace("0.10", "0.06"), colors.surfaceOverlayAccent]}
         locations={[0, 0.6, 1]}
         start={{ x: 0.3, y: 0.3 }}
         end={{ x: 1, y: 1 }}
@@ -144,7 +146,7 @@ export const VerificationSubmitScreen = () => {
                   multiline
                   numberOfLines={4}
                   placeholder="Add any additional information..."
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  placeholderTextColor={colors.textTertiary}
                   value={notes}
                   onChangeText={setNotes}
                 />
@@ -162,14 +164,14 @@ export const VerificationSubmitScreen = () => {
               >
                 <LinearGradient
                   colors={(!gstDocument || !aadhaarDocument || isSubmitting)
-                    ? ["#2A2A2A", "#1A1A1A"]
-                    : ["#6C63FF", "#5248E6"]}
+                    ? [colors.buttonSecondary, colors.backgroundSecondary]
+                    : [colors.primary, colors.primaryDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.submitButton}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={colors.textOnPrimary} />
                   ) : (
                     <Text style={styles.submitButtonText}>Submit for Verification</Text>
                   )}
@@ -187,10 +189,11 @@ export const VerificationSubmitScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1115',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -204,23 +207,23 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   backIcon: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     marginLeft: -2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   keyboardAvoid: {
@@ -237,7 +240,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textSecondary,
     marginBottom: 24,
     marginTop: 16,
     lineHeight: 20,
@@ -248,17 +251,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 8,
   },
   textArea: {
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
-    color: '#FFFFFF',
-    backgroundColor: 'rgba(22, 24, 29, 0.9)',
+    color: colors.text,
+    backgroundColor: isDark ? 'rgba(22, 24, 29, 0.9)' : colors.surface,
     textAlignVertical: 'top',
     minHeight: 100,
   },
@@ -266,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 12,
-    shadowColor: '#6C63FF',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -279,20 +282,20 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: {
     opacity: 0.5,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.2,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   disclaimer: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
     marginBottom: 16,
   },
-});
+  });

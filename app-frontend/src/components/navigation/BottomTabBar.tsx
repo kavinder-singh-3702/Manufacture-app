@@ -2,6 +2,7 @@ import { FC } from "react";
 import { View, TouchableOpacity, Text, StyleSheet, Image, ImageSourcePropType } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { RouteName } from "../../navigation/routes";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -24,14 +25,17 @@ export const BottomTabBar: FC<BottomTabBarProps> = ({
   tabs
 }) => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const tabBackground = resolvedMode === "dark" ? colors.backgroundSecondary : colors.background;
+  const tabBorder = resolvedMode === "dark" ? "rgba(255,255,255,0.12)" : colors.borderDark;
 
   return (
     <View
       style={[
         styles.container,
         {
-          backgroundColor: colors.background,
-          borderTopColor: colors.borderDark
+          backgroundColor: tabBackground,
+          borderTopColor: tabBorder
         }
       ]}
     >

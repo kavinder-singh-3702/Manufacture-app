@@ -1,5 +1,5 @@
-import { FC, useMemo } from "react";
-import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import { FC, useEffect, useMemo, useRef } from "react";
+import { Animated, Image, StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useAuth } from "../../../../hooks/useAuth";
@@ -8,6 +8,7 @@ import { LogoBadge } from "./LogoBadge";
 import { SearchBar } from "./SearchBar";
 import { Company } from "../../../../types/company";
 import { CompanyAvatar } from "./ProfileAvatar";
+import { APP_NAME, BRAND_IMAGES } from "../../../../constants/brand";
 
 type HomeToolbarProps = {
   onMenuPress: () => void;
@@ -34,6 +35,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
 }) => {
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
+  const notificationPulse = useRef(new Animated.Value(1)).current;
 
   const buildInitials = () => {
     const segments = [user?.firstName, user?.lastName].filter(Boolean);
@@ -65,22 +67,40 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
     return <LogoBadge label={avatarLabel} imageUri={avatarUri} />;
   }, [activeCompany, avatarLabel, avatarUri, colors.border]);
 
+  useEffect(() => {
+    if (notificationCount <= 0) {
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(notificationPulse, {
+        toValue: 1.16,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+      Animated.timing(notificationPulse, {
+        toValue: 1,
+        duration: 170,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [notificationCount, notificationPulse]);
+
   return (
     <View style={[styles.wrapper, { backgroundColor: "transparent" }]}>
       {/* Glassmorphism background */}
       <LinearGradient
         colors={[
-          "rgba(22, 24, 29, 0.95)",
-          "rgba(22, 24, 29, 0.85)",
+          colors.overlay,
+          colors.overlayLight,
         ]}
         style={StyleSheet.absoluteFill}
       />
       {/* Subtle accent glow */}
       <LinearGradient
         colors={[
-          "rgba(108, 99, 255, 0.08)",
+          colors.surfaceOverlayPrimary,
           "transparent",
-          "rgba(74, 201, 255, 0.05)",
+          colors.surfaceOverlaySecondary,
         ]}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
@@ -92,6 +112,21 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         paddingVertical: spacing.sm,
       }]}>
         <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
+        <View
+          style={[
+            styles.brandChip,
+            {
+              marginRight: spacing.xs,
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceElevated,
+            },
+          ]}
+        >
+          <Image source={BRAND_IMAGES.logo} style={styles.brandLogo} />
+          <Text numberOfLines={1} style={[styles.brandText, { color: colors.text }]}>
+            {APP_NAME}
+          </Text>
+        </View>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => {
@@ -110,7 +145,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         >
           {avatarNode}
           {onAvatarLongPress && (
-            <View style={[styles.longPressHint, { backgroundColor: colors.primary }]}>
+            <View style={[styles.longPressHint, { backgroundColor: colors.primary, borderColor: colors.background }]}>
               <Text style={styles.longPressHintText}>⇅</Text>
             </View>
           )}
@@ -123,33 +158,39 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             onPress={onSearchPress}
           />
         </View>
-        <TouchableOpacity
-          onPress={onNotificationsPress}
-          style={[
-            styles.notificationButton,
-            {
-              marginLeft: spacing.sm,
-              borderColor: "rgba(108, 99, 255, 0.3)",
-              backgroundColor: "rgba(30, 33, 39, 0.8)",
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Notifications"
+        <Animated.View
+          style={{
+            transform: [{ scale: notificationPulse }],
+          }}
         >
-          <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
-          {notificationCount > 0 ? (
-            <LinearGradient
-              colors={["#FF8C3C", "#E87A30"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.notificationBadge}
-            >
-              <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
-                {notificationCount}
-              </Text>
-            </LinearGradient>
-          ) : null}
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onNotificationsPress}
+            style={[
+              styles.notificationButton,
+              {
+                marginLeft: spacing.sm,
+                borderColor: colors.borderPrimary,
+                backgroundColor: colors.surfaceElevated,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+          >
+            <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
+            {notificationCount > 0 ? (
+              <LinearGradient
+                colors={["#E3483E", "#C93B33"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.notificationBadge}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
+                  {notificationCount}
+                </Text>
+              </LinearGradient>
+            ) : null}
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );
@@ -170,6 +211,29 @@ const styles = StyleSheet.create({
     minWidth: 0,
     borderRadius: 1,
   },
+  brandChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minWidth: 96,
+    maxWidth: 120,
+  },
+  brandLogo: {
+    width: 18,
+    height: 18,
+    resizeMode: "contain",
+    borderRadius: 4,
+  },
+  brandText: {
+    marginLeft: 6,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.9,
+    textTransform: "uppercase",
+  },
   avatarButton: {
     position: "relative",
     borderRadius: 24,
@@ -185,7 +249,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#0F1115",
+    borderColor: "transparent",
   },
   longPressHintText: {
     color: "#fff",

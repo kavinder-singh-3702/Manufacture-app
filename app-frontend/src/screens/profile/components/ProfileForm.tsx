@@ -31,16 +31,16 @@ export const FormField = ({
     <View style={styles.formField}>
       <Text style={[styles.formLabel, { color: colors.muted }]}>{label}</Text>
       <TextInput
-        style={[styles.formInput, { color: colors.text }]}
+        style={[styles.formInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
         value={value}
         onChangeText={onChangeText}
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}
         placeholder={`Enter ${label.toLowerCase()}`}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.textMuted}
       />
-      {helperText ? <Text style={styles.formHelper}>{helperText}</Text> : null}
+      {helperText ? <Text style={[styles.formHelper, { color: colors.textMuted }]}>{helperText}</Text> : null}
     </View>
   );
 };
@@ -60,7 +60,7 @@ export const TagList = ({ items }: { items: string[] }) => {
   return (
     <View style={styles.tagWrap}>
       {items.map((item) => (
-        <View key={item} style={[styles.tag, { borderColor: colors.border }]}>
+        <View key={item} style={[styles.tag, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}> 
           <Text style={{ fontWeight: "600", color: colors.text }}>{item}</Text>
         </View>
       ))}
@@ -111,7 +111,6 @@ const styles = StyleSheet.create({
   },
   formInput: {
     borderWidth: 1,
-    borderColor: "#E5E7EB",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -120,7 +119,6 @@ const styles = StyleSheet.create({
   formHelper: {
     marginTop: 4,
     fontSize: 12,
-    color: "#6B7280",
   },
   switchRow: {
     flexDirection: "row",

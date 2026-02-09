@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SidebarMenu } from "../../../components/navigation/SidebarMenu";
 import { BottomTabBar } from "../../../components/navigation/BottomTabBar";
 import { useAuth } from "../../../hooks/useAuth";
+import { useTheme } from "../../../hooks/useTheme";
 import { RouteName, routes } from "../../routes";
 import { tabDefinitions, tabScreens } from "../../config/mainTabs";
 import { HomeToolbar } from "./components/HomeToolbar";
@@ -18,6 +19,7 @@ export const MainTabs = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors } = useTheme();
   const { user, logout } = useAuth();
   const ActiveScreen = tabScreens[activeRoute];
   const displayName =
@@ -79,14 +81,14 @@ export const MainTabs = () => {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <HomeToolbar
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onSearchPress={handleSearchPress}
         />
-        <View style={styles.screenContainer}>
+        <View style={[styles.screenContainer, { backgroundColor: colors.background }]}>
           <ActiveScreen />
         </View>
         <BottomTabBar

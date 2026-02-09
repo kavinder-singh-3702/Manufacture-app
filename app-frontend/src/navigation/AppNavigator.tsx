@@ -6,6 +6,7 @@ import { AuthScreen } from "../screens/auth/AuthScreen";
 import { useAuth } from "../hooks/useAuth";
 import { FullScreenLoader } from "./components/FullScreenLoader";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
+import { AppearanceScreen } from "../screens/settings/AppearanceScreen";
 import { MainTabs } from "./MainTabs";
 import { useTheme } from "../hooks/useTheme";
 import { RootStackParamList } from "./types";
@@ -109,6 +110,11 @@ export const AppNavigator = () => {
               name="Profile"
               component={ProfileScreen}
               options={{ presentation: "modal", animation: "fade_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="Appearance"
+              component={AppearanceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="Cart"

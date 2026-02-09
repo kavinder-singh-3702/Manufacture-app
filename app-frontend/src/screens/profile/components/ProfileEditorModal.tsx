@@ -1,5 +1,16 @@
 import { ReactNode } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTheme } from "../../../hooks/useTheme";
 
 type Props = {
@@ -16,19 +27,19 @@ export const ProfileEditorModal = ({ title, visible, onClose, onSubmit, saving, 
   const { colors, spacing } = useTheme();
   return (
     <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: colors.background }]}>
-        <View style={styles.modalHeader}>
+      <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: colors.background }]}> 
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}> 
           <TouchableOpacity onPress={onClose} style={styles.modalClose}>
-            <Text style={styles.modalCloseText}>Close</Text>
+            <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>Close</Text>
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
         </View>
         <KeyboardAvoidingView behavior={Platform.select({ ios: "padding", android: undefined })} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
             {children}
-            {error ? <Text style={[styles.errorText, { marginTop: spacing.md }]}>{error}</Text> : null}
+            {error ? <Text style={[styles.errorText, { marginTop: spacing.md, color: colors.error }]}>{error}</Text> : null}
             <TouchableOpacity
-              style={[styles.primaryButton, { marginTop: spacing.lg, opacity: saving ? 0.7 : 1 }]}
+              style={[styles.primaryButton, { marginTop: spacing.lg, opacity: saving ? 0.7 : 1, backgroundColor: colors.primary }]}
               onPress={onSubmit}
               disabled={saving}
             >
@@ -50,20 +61,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingVertical: 16,
+    borderBottomWidth: 1,
   },
   modalClose: {
     marginRight: 12,
   },
   modalCloseText: {
     fontWeight: "600",
-    color: "#6B7280",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
   },
   primaryButton: {
-    backgroundColor: "#000",
     borderRadius: 32,
     paddingVertical: 14,
     alignItems: "center",
@@ -74,7 +84,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   errorText: {
-    color: "#DC2626",
     marginBottom: 8,
   },
 });
