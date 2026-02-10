@@ -16,7 +16,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
@@ -300,7 +299,7 @@ const AdminDashboardContent = () => {
             <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", marginHorizontal: spacing.lg, padding: spacing.md, borderRadius: radius.lg, marginTop: spacing.lg }]}>
               <Ionicons name="alert-circle" size={20} color={colors.error} />
               <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-              <TouchableOpacity onPress={fetchStats} style={[styles.retryButton, { backgroundColor: colors.error }]}>
+              <TouchableOpacity onPress={() => fetchStats()} style={[styles.retryButton, { backgroundColor: colors.error }]}>
                 <Text style={styles.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>
