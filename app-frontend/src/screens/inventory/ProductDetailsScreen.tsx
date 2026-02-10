@@ -20,6 +20,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
 import { AppRole } from "../../constants/roles";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -31,6 +32,7 @@ export const ProductDetailsScreen = () => {
   const { productId, product: passedProduct } = route.params;
 
   const { user } = useAuth();
+  const { addToCart, isInCart, getCartItem } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -387,6 +389,27 @@ export const ProductDetailsScreen = () => {
             ) : null}
           </View>
 
+          {/* Add to Cart button - shown for non-guest, non-own products */}
+          {!isGuest && !isOwnProduct && product && (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => addToCart(product, 1)}
+              style={[
+                styles.addToCartButton,
+                {
+                  borderRadius: radius.md,
+                  backgroundColor: isInCart(product._id) ? "#10B981" : colors.primary,
+                },
+              ]}
+            >
+              <Text style={styles.addToCartButtonText}>
+                {isInCart(product._id)
+                  ? `In Cart (${getCartItem(product._id)?.quantity ?? 0}) — Add More`
+                  : "Add to Cart"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Show Message/Call buttons only if NOT the user's own product */}
           {!isGuest && !isOwnProduct && (
             <View style={styles.actionRow}>
@@ -594,7 +617,20 @@ const styles = StyleSheet.create({
   descriptionBox: { marginTop: 12, padding: 12, borderWidth: 1 },
   descriptionLabel: { fontSize: 14, fontWeight: "800", marginBottom: 6 },
   descriptionText: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  addButton: {
+  addToCartButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  addToCartButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "800",
   },
   actionRow: { flexDirection: "row", gap: 12, marginTop: 16 },
   messageButton: {

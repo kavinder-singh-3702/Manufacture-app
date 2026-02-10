@@ -15,6 +15,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
 import { AppRole } from "../../constants/roles";
 import { productService, Product, ProductCategory } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
@@ -39,6 +40,7 @@ export const ProductSearchScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { success: toastSuccess } = useToast();
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
 
   const [query, setQuery] = useState(route.params?.initialQuery || "");
@@ -168,6 +170,14 @@ export const ProductSearchScreen = () => {
     if (fetchingMore || loading || !hasMore) return;
     executeSearch(undefined, false);
   }, [executeSearch, fetchingMore, hasMore, loading]);
+
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      addToCart(product, 1);
+      toastSuccess("Added to cart");
+    },
+    [addToCart, toastSuccess]
+  );
 
   const handleSuggestionPress = useCallback(
     (sug: Suggestion) => {
