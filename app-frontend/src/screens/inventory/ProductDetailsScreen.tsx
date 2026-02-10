@@ -4,795 +4,612 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Linking,
-  Alert,
-  Modal,
-  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
-import { useAuth } from "../../hooks/useAuth";
-import { AppRole } from "../../constants/roles";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
+import { ProductVariant, productVariantService } from "../../services/productVariant.service";
+import { useToast } from "../../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+
+type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
+const getRating = (product: Product): number | null => {
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const value = typeof attrs?.rating === "number" ? attrs.rating : typeof attrs?.stars === "number" ? attrs.stars : null;
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return Math.max(0, Math.min(5, value));
+};
+
+const getCompareAt = (product: Product): number | null => {
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const compareAt = typeof attrs?.mrp === "number" ? attrs.mrp : typeof attrs?.oldPrice === "number" ? attrs.oldPrice : null;
+  return typeof compareAt === "number" && compareAt > Number(product.price?.amount || 0) ? compareAt : null;
+};
+
+const currencyFormat = (amount: number, currency?: string) => {
+  const symbol = currency === "INR" || !currency ? "₹" : `${currency} `;
+  return `${symbol}${Number(amount || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  })}`;
+};
+
+const variantLabel = (variant: ProductVariant) => {
+  if (variant.title?.trim()) return variant.title;
+  const entries = Object.entries((variant.options || {}) as Record<string, unknown>);
+  if (!entries.length) return "Variant";
+  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(" • ");
+};
 
 export const ProductDetailsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, "ProductDetails">>();
+  const route = useRoute<ScreenRoute>();
   const { productId, product: passedProduct } = route.params;
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
 
-  const { user } = useAuth();
-  const isGuest = user?.role === AppRole.GUEST;
-
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<Product | null>(passedProduct || null);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-  const [selectedImageName, setSelectedImageName] = useState<string>("image.jpg");
-  const [imageConfirmModalVisible, setImageConfirmModalVisible] = useState(false);
 
-  const loadProduct = useCallback(async () => {
-    // If product was passed from navigation, use it directly
-    if (passedProduct) {
-      console.log("Using passed product data");
-      setProduct(passedProduct);
-      setLoading(false);
-      return;
-    }
+  const isGuest = user?.role === "guest";
 
-    if (!productId) {
-      setError("No product ID provided");
-      setLoading(false);
-      return;
-    }
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log("Loading product with ID:", productId);
-      // Try marketplace scope first (for products from category listing)
-      const response = await productService.getById(productId, { scope: "marketplace" });
-      console.log("Product response:", response);
-      if (!response) {
-        setError("Product not found");
-      } else {
-        setProduct(response);
+      const fetchedProduct = await productService.getById(productId, {
+        scope: "marketplace",
+        includeVariantSummary: true,
+      });
+      setProduct(fetchedProduct);
+
+      try {
+        const variantRes = await productVariantService.list(productId, {
+          scope: "marketplace",
+          limit: 50,
+          offset: 0,
+        });
+        setVariants(variantRes.variants || []);
+        setSelectedVariantId((prev) => {
+          if (prev && variantRes.variants.some((variant) => variant._id === prev)) return prev;
+          return variantRes.variants?.[0]?._id || null;
+        });
+      } catch {
+        setVariants([]);
+        setSelectedVariantId(null);
       }
     } catch (err: any) {
-      console.error("Error loading product:", err);
       setError(err?.message || "Failed to load product");
     } finally {
       setLoading(false);
     }
-  }, [productId, passedProduct]);
+  }, [productId]);
 
   useEffect(() => {
-    loadProduct();
-  }, [loadProduct]);
+    loadData();
+  }, [loadData]);
 
-  const sliderWidth = Dimensions.get("window").width - spacing.lg * 2;
-  const images =
-    product?.images && product.images.length > 0
-      ? product.images
-      : ([{ url: undefined, fileName: "placeholder" }] as Product["images"]);
-  const [activeImage, setActiveImage] = useState(0);
+  const selectedVariant = useMemo(
+    () => variants.find((variant) => variant._id === selectedVariantId) || null,
+    [selectedVariantId, variants]
+  );
 
-  const packSize = product?.unit || product?.price?.unit;
-  const attributes = product?.attributes as Record<string, any> | undefined;
-  const companyName = product?.company?.displayName || "Unknown company";
-  const compliance = product?.company?.complianceStatus;
-  const verified = compliance === "approved";
-  const ratingValue =
-    typeof attributes?.rating === "number"
-      ? attributes.rating
-      : typeof attributes?.stars === "number"
-      ? attributes.stars
-      : 0;
-  const companyPhone =
-    product?.company && typeof product.company === "object" && "contact" in product.company
-      ? (product.company as any).contact?.phone
-      : undefined;
-  const compareAt =
-    typeof attributes?.mrp === "number"
-      ? attributes.mrp
-      : typeof attributes?.oldPrice === "number"
-      ? attributes.oldPrice
-      : undefined;
-
-  const currencySymbol = product?.price?.currency === "INR" ? "₹" : product?.price?.currency || "₹";
-  const priceLabel = product ? `${currencySymbol}${(product.price?.amount || 0).toFixed(2)}` : "";
-  const compareAtLabel =
-    product && typeof compareAt === "number" && compareAt > (product.price?.amount || 0)
-      ? `${currencySymbol}${compareAt.toFixed(2)}`
-      : undefined;
-
-  // Check if current user is the product owner (by creator or company)
   const isOwnProduct = useMemo(() => {
     if (!product || !user) return false;
-    // Check if user created the product
-    if (product.createdBy && user.id && String(product.createdBy) === String(user.id)) {
-      return true;
-    }
-    // Check if product belongs to user's active company
-    if (product.company?._id && user.activeCompany && String(product.company._id) === String(user.activeCompany)) {
-      return true;
-    }
+    if (product.createdBy && user.id && String(product.createdBy) === String(user.id)) return true;
+    if (product.company?._id && user.activeCompany && String(product.company._id) === String(user.activeCompany)) return true;
     return false;
   }, [product, user]);
+  const canManageVariants = isOwnProduct || user?.role === "admin";
 
-  const pickImageFromGallery = useCallback(async () => {
-    setImagePickerModalVisible(false);
+  const images = useMemo(() => {
+    if (product?.images?.length) return product.images;
+    return [{ url: undefined, fileName: "placeholder" }];
+  }, [product?.images]);
 
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow access to your photo library to upload images.");
-      return;
-    }
+  const displayPrice = selectedVariant?.price?.amount ?? product?.price?.amount ?? 0;
+  const displayCurrency = selectedVariant?.price?.currency || product?.price?.currency || "INR";
+  const compareAt = product ? getCompareAt(product) : null;
+  const rating = product ? getRating(product) : null;
+  const displayStock = selectedVariant ? Number(selectedVariant.availableQuantity || 0) : Number(product?.availableQuantity || 0);
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setSelectedImageUri(result.assets[0].uri);
-      setSelectedImageName(result.assets[0].fileName || "image.jpg");
-      setImageConfirmModalVisible(true);
-    }
-  }, []);
-
-  const pickImageFromCamera = useCallback(async () => {
-    setImagePickerModalVisible(false);
-
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert("Permission Required", "Please allow camera access to take photos.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setSelectedImageUri(result.assets[0].uri);
-      setSelectedImageName(result.assets[0].fileName || "photo.jpg");
-      setImageConfirmModalVisible(true);
-    }
-  }, []);
-
-  const uploadImage = useCallback(async (uri: string, fileName: string) => {
+  const handleShare = useCallback(async () => {
     if (!product) return;
-
-    setUploadingImage(true);
     try {
-      // Read the file and convert to base64
-      const base64Content = await FileSystem.readAsStringAsync(uri, {
-        encoding: "base64",
+      await Share.share({
+        message: `${product.name} - ${currencyFormat(displayPrice, displayCurrency)}`,
       });
-
-      // Determine mime type from file extension
-      const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
-      const mimeType = extension === "png" ? "image/png" : extension === "gif" ? "image/gif" : "image/jpeg";
-
-      const response = await productService.uploadImage(product._id, {
-        fileName,
-        mimeType,
-        content: base64Content,
-      });
-
-      // Update the product with the new image
-      setProduct(response.product);
-      Alert.alert("Success", "Image uploaded successfully!");
-    } catch (err: any) {
-      console.error("Error uploading image:", err);
-      Alert.alert("Upload Failed", err?.message || "Failed to upload image. Please try again.");
-    } finally {
-      setUploadingImage(false);
+    } catch {
+      toastError("Share failed", "Could not open share menu.");
     }
-  }, [product]);
+  }, [displayCurrency, displayPrice, product, toastError]);
 
-  const handleConfirmUpload = useCallback(async () => {
-    if (selectedImageUri) {
-      setImageConfirmModalVisible(false);
-      await uploadImage(selectedImageUri, selectedImageName);
-      setSelectedImageUri(null);
+  const openManageVariants = useCallback(() => {
+    if (!product) return;
+    if (isGuest) {
+      requestLogin();
+      return;
     }
-  }, [selectedImageUri, selectedImageName, uploadImage]);
+    navigation.navigate("ProductVariants", {
+      productId: product._id,
+      productName: product.name,
+      scope: "company",
+    });
+  }, [isGuest, navigation, product, requestLogin]);
 
-  const handleCancelUpload = useCallback(() => {
-    setImageConfirmModalVisible(false);
-    setSelectedImageUri(null);
-  }, []);
+  const sellerName = product?.company?.displayName || "Seller";
+  const heroWidth = Math.max(280, SCREEN_WIDTH - spacing.lg * 2 - 2);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomColor: colors.border }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+      <View style={[styles.topBar, { borderBottomColor: colors.border, paddingHorizontal: spacing.lg, paddingVertical: spacing.md }]}> 
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
-          <Text style={[styles.backButton, { color: colors.primary }]}>←</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-          Product Details
-        </Text>
-        <View style={{ width: 24 }} />
+        <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1}>Product</Text>
+        <View style={styles.topActions}>
+          <TouchableOpacity onPress={() => navigation.navigate("ProductSearch")} hitSlop={8}>
+            <Ionicons name="search-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} hitSlop={8}>
+            <Ionicons name="share-social-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
-        <View style={[styles.centerContent, { padding: spacing.lg }]}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading product...</Text>
         </View>
       ) : error ? (
-        <View style={[styles.centerContent, { padding: spacing.lg, gap: spacing.sm }]}>
+        <View style={styles.centered}>
           <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-          <TouchableOpacity onPress={loadProduct} style={[styles.retryButton, { borderColor: colors.primary, borderRadius: radius.sm }]}>
+          <TouchableOpacity style={[styles.retryBtn, { borderColor: colors.primary, borderRadius: radius.md }]} onPress={loadData}>
             <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : product ? (
-        <ScrollView
-          contentContainerStyle={{
-            padding: spacing.lg,
-            paddingBottom: spacing.xxxl || spacing.xxl,
-            gap: spacing.lg,
-          }}
-        >
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                borderRadius: radius.lg,
-                shadowColor: "#000",
-              },
-            ]}
+        <>
+          <ScrollView
+            contentContainerStyle={{
+              padding: spacing.lg,
+              gap: spacing.md,
+              paddingBottom: 130,
+            }}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.imageWrap, { borderRadius: radius.md }]}>
+            <View style={[styles.galleryCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
               <ScrollView
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onScroll={(e) => {
-                  const idx = Math.round(e.nativeEvent.contentOffset.x / sliderWidth);
-                  setActiveImage(idx);
+                onScroll={(event) => {
+                  const width = event.nativeEvent.layoutMeasurement.width;
+                  const page = Math.round(event.nativeEvent.contentOffset.x / width);
+                  setActiveImage(page);
                 }}
                 scrollEventThrottle={16}
               >
-                {images.map((img, index) =>
-                  img.url ? (
+                {images.map((image, index) =>
+                  image.url ? (
                     <Image
-                      key={img.key || img.url || index}
-                      source={{ uri: img.url }}
-                      style={[styles.heroImage, { borderRadius: radius.md, width: sliderWidth }]}
+                      key={`${image.url}-${index}`}
+                      source={{ uri: image.url }}
+                      style={[styles.heroImage, { width: heroWidth }]}
                       resizeMode="contain"
                     />
                   ) : (
-                    <View
-                      key={`placeholder-${index}`}
-                      style={[styles.imagePlaceholder, { borderRadius: radius.md, width: sliderWidth }]}
-                    >
-                      <Text style={{ fontSize: 28 }}>🛍️</Text>
+                    <View key={`placeholder-${index}`} style={[styles.heroPlaceholder, { width: heroWidth }]}>
+                      <Ionicons name="image-outline" size={42} color={colors.textMuted} />
                     </View>
                   )
                 )}
               </ScrollView>
-              {images.length > 1 && (
-                <View style={[styles.dotsRow, { marginTop: spacing.sm }]}>
+              {images.length > 1 ? (
+                <View style={styles.dotRow}>
                   {images.map((_, idx) => (
                     <View
-                      key={idx}
+                      key={`dot-${idx}`}
                       style={[
                         styles.dot,
                         {
-                          backgroundColor: idx === activeImage ? colors.primary : colors.textMuted + "55",
+                          backgroundColor: idx === activeImage ? colors.primary : colors.textMuted + "66",
                         },
                       ]}
                     />
                   ))}
                 </View>
-              )}
-
-              {/* Add Image Button for Own Products */}
-              {isOwnProduct && (
-                <TouchableOpacity
-                  style={[styles.addImageButton, { backgroundColor: colors.primary }]}
-                  onPress={() => setImagePickerModalVisible(true)}
-                  disabled={uploadingImage}
-                >
-                  {uploadingImage ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.addImageButtonText}>+</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Text style={[styles.productTitle, { color: colors.text }]} numberOfLines={3}>
-              {product.name}
-            </Text>
-            <View style={styles.companyRow}>
-              <Text style={[styles.companyName, { color: colors.textMuted }]} numberOfLines={2}>
-                {companyName}
-              </Text>
-              <View
-                style={[
-                  styles.badge,
-                  {
-                    backgroundColor: verified ? "#e0f2fe" : "#fff7ed",
-                    borderColor: verified ? "#0ea5e9" : "#fb923c",
-                  },
-                ]}
-              >
-                <Text style={[styles.badgeText, { color: verified ? "#0ea5e9" : "#f97316" }]}>
-                  {verified ? "Verified" : "Unverified"}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.ratingRow}>
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <Text key={idx} style={[styles.star, { color: ratingValue >= idx + 1 ? "#facc15" : colors.textMuted }]}>
-                  ★
-                </Text>
-              ))}
-              <Text style={[styles.ratingValue, { color: colors.textMuted }]}>
-                {ratingValue ? ratingValue.toFixed(1) : "No rating"}
-              </Text>
-            </View>
-
-            {packSize ? (
-              <Text style={[styles.productMeta, { color: colors.textMuted }]}>{packSize}</Text>
-            ) : null}
-
-            <View style={styles.priceRow}>
-              <Text style={[styles.priceText, { color: colors.text }]}>{priceLabel}</Text>
-              {compareAtLabel ? (
-                <Text style={[styles.comparePrice, { color: colors.textMuted }]}>{compareAtLabel}</Text>
               ) : null}
             </View>
 
-            <View style={{ marginTop: spacing.md, flexDirection: "row", gap: spacing.lg }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={[styles.metaLabel, { color: colors.textMuted }]}>Category</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{product.category}</Text>
+            <View style={[styles.infoCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+              <Text style={[styles.sellerName, { color: colors.primary }]}>{sellerName}</Text>
+              <Text style={[styles.productName, { color: colors.text }]}>{product.name}</Text>
+
+              {rating !== null ? (
+                <View style={styles.ratingRow}>
+                  <Text style={[styles.ratingValue, { color: colors.text }]}>{rating.toFixed(1)}</Text>
+                  <View style={styles.starsRow}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Ionicons
+                        key={n}
+                        name={n <= Math.floor(rating) ? "star" : "star-outline"}
+                        size={13}
+                        color={colors.warning}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={styles.priceRow}>
+                <Text style={[styles.price, { color: colors.text }]}>{currencyFormat(displayPrice, displayCurrency)}</Text>
+                {compareAt ? <Text style={[styles.compareAt, { color: colors.textMuted }]}>{currencyFormat(compareAt, displayCurrency)}</Text> : null}
               </View>
+
+              <Text style={[styles.stockLine, { color: displayStock > 0 ? colors.success : colors.error }]}> 
+                {displayStock > 0 ? `In stock (${displayStock})` : "Out of stock"}
+              </Text>
+
+              {product.variantSummary?.totalVariants ? (
+                <Text style={[styles.variantSummary, { color: colors.textMuted }]}> 
+                  {product.variantSummary.totalVariants} variants available
+                </Text>
+              ) : null}
+            </View>
+
+            {variants.length > 0 ? (
+              <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose variant</Text>
+                  <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{variants.length} options</Text>
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                  {variants.map((variant) => {
+                    const active = variant._id === selectedVariantId;
+                    return (
+                      <TouchableOpacity
+                        key={variant._id}
+                        onPress={() => setSelectedVariantId(variant._id)}
+                        style={[
+                          styles.variantCard,
+                          {
+                            borderRadius: radius.md,
+                            borderColor: active ? colors.primary : colors.border,
+                            backgroundColor: active ? colors.primary + "14" : colors.surface,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.variantTitle, { color: colors.text }]} numberOfLines={2}>
+                          {variantLabel(variant)}
+                        </Text>
+                        <Text style={[styles.variantPrice, { color: colors.text }]}> 
+                          {currencyFormat(Number(variant.price?.amount || 0), variant.price?.currency || displayCurrency)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.variantStock,
+                            { color: Number(variant.availableQuantity || 0) > 0 ? colors.success : colors.error },
+                          ]}
+                        >
+                          {Number(variant.availableQuantity || 0) > 0 ? "In stock" : "Out of stock"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Product details</Text>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{product.category}</Text>
+              </View>
+              {product.subCategory ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Sub-category</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.subCategory}</Text>
+                </View>
+              ) : null}
+              {product.sku ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>SKU</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.sku}</Text>
+                </View>
+              ) : null}
             </View>
 
             {product.description ? (
-              <View
-                style={[
-                  styles.descriptionBox,
-                  { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.md },
-                ]}
-              >
-                <Text style={[styles.descriptionLabel, { color: colors.text }]}>Description</Text>
-                <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{product.description}</Text>
+              <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
+                <Text style={[styles.description, { color: colors.textSecondary }]}>{product.description}</Text>
               </View>
             ) : null}
-          </View>
+          </ScrollView>
 
-          {/* Show Message/Call buttons only if NOT the user's own product */}
-          {!isGuest && !isOwnProduct && (
-            <View style={styles.actionRow}>
+          <View style={[styles.bottomBar, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: spacing.lg }]}> 
+            {canManageVariants ? (
               <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => {
-                  if (product?.createdBy) {
-                    navigation.navigate("Chat", {
-                      conversationId: product.createdBy,
-                      recipientId: product.createdBy,
-                      recipientName: product.company?.displayName || "Seller",
-                      meta: { productId: product._id, productName: product.name },
-                    } as any);
+                onPress={openManageVariants}
+                style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+              >
+                <Ionicons name="options-outline" size={18} color={colors.textOnPrimary} />
+                <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Manage variants</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.bottomRow}>
+                <TouchableOpacity
+                  onPress={() =>
+                    startProductConversation({
+                      product,
+                      isGuest,
+                      requestLogin,
+                      navigation,
+                      toastError,
+                    })
                   }
-                }}
-                style={[
-                  styles.messageButton,
-                  { borderRadius: radius.md, borderColor: colors.primary },
-                ]}
-              >
-                <Text style={[styles.messageButtonText, { color: colors.primary }]}>Message</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => {
-                  if (!companyPhone) return;
-                  Linking.openURL(`tel:${companyPhone}`).catch(() => {
-                    Alert.alert("Call failed", "Could not start call on this device.");
-                  });
-                }}
-                disabled={!companyPhone}
-                style={[
-                  styles.callButton,
-                  {
-                    borderRadius: radius.md,
-                    opacity: companyPhone ? 1 : 0.5,
-                    backgroundColor: companyPhone ? "#4f46e5" : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.callButtonText, { color: companyPhone ? "#fff" : colors.textMuted }]}>
-                  {companyPhone ? "Call" : "No Phone"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                  style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                </TouchableOpacity>
 
-          {/* Show "Your Product" indicator for owner */}
-          {!isGuest && isOwnProduct && (
-            <View style={[styles.ownProductBanner, { borderRadius: radius.md, backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.ownProductText, { color: colors.textMuted }]}>This is your product</Text>
-            </View>
-          )}
-        </ScrollView>
-      ) : null}
-
-      {/* Image Picker Modal */}
-      <Modal
-        visible={imagePickerModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setImagePickerModalVisible(false)}
-      >
-        <Pressable
-          style={styles.imagePickerModalBackdrop}
-          onPress={() => setImagePickerModalVisible(false)}
-        >
-          <Pressable style={[styles.imagePickerModalCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.imagePickerModalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.imagePickerModalTitle, { color: colors.text }]}>Add Product Image</Text>
-              <TouchableOpacity
-                onPress={() => setImagePickerModalVisible(false)}
-                style={[styles.imagePickerCloseBtn, { backgroundColor: colors.border }]}
-              >
-                <Text style={[styles.imagePickerCloseText, { color: colors.textMuted }]}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.imagePickerOptions}>
-              <TouchableOpacity
-                style={[styles.imagePickerOption, { backgroundColor: colors.primary }]}
-                onPress={pickImageFromCamera}
-              >
-                <Text style={styles.imagePickerOptionIcon}>📷</Text>
-                <Text style={styles.imagePickerOptionText}>Take Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.imagePickerOption, { backgroundColor: "#5ed4a5" }]}
-                onPress={pickImageFromGallery}
-              >
-                <Text style={styles.imagePickerOptionIcon}>🖼️</Text>
-                <Text style={styles.imagePickerOptionText}>Choose from Gallery</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.imagePickerCancelBtn, { borderColor: colors.border }]}
-              onPress={() => setImagePickerModalVisible(false)}
-            >
-              <Text style={[styles.imagePickerCancelText, { color: colors.textMuted }]}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* Image Confirmation Modal */}
-      <Modal
-        visible={imageConfirmModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelUpload}
-      >
-        <View style={styles.imageConfirmBackdrop}>
-          <View style={[styles.imageConfirmCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.imageConfirmHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.imageConfirmTitle, { color: colors.text }]}>Confirm Image</Text>
-              <TouchableOpacity
-                onPress={handleCancelUpload}
-                style={[styles.imagePickerCloseBtn, { backgroundColor: colors.border }]}
-              >
-                <Text style={[styles.imagePickerCloseText, { color: colors.textMuted }]}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {selectedImageUri && (
-              <View style={styles.imagePreviewContainer}>
-                <Image
-                  source={{ uri: selectedImageUri }}
-                  style={styles.imagePreview}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity
+                  onPress={() => callProductSeller({ product, toastError })}
+                  style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="call-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Call</Text>
+                </TouchableOpacity>
               </View>
             )}
-
-            <Text style={[styles.imageConfirmText, { color: colors.textMuted }]}>
-              Do you want to upload this image?
-            </Text>
-
-            <View style={styles.imageConfirmActions}>
-              <TouchableOpacity
-                style={[styles.imageConfirmCancelBtn, { borderColor: colors.border }]}
-                onPress={handleCancelUpload}
-              >
-                <Text style={[styles.imageConfirmCancelText, { color: colors.textMuted }]}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.imageConfirmUploadBtn, { backgroundColor: colors.primary }]}
-                onPress={handleConfirmUpload}
-                disabled={uploadingImage}
-              >
-                {uploadingImage ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.imageConfirmUploadText}>Upload Image</Text>
-                )}
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
-      </Modal>
+        </>
+      ) : null}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  backButton: { fontSize: 18, fontWeight: "700" },
-  headerTitle: { fontSize: 18, fontWeight: "800" },
-  centerContent: { alignItems: "center", justifyContent: "center", gap: 8 },
-  loadingText: { fontSize: 14, fontWeight: "600" },
-  errorText: { fontSize: 14, fontWeight: "700", textAlign: "center" },
-  retryButton: { paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1.5 },
-  retryText: { fontSize: 14, fontWeight: "700" },
-  card: {
-    padding: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  imageWrap: { width: "100%", height: 260, backgroundColor: "#f7f7f7", marginBottom: 16, alignItems: "center", justifyContent: "center" },
-  heroImage: { width: "100%", height: "100%" },
-  imagePlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "#f1f5f9" },
-  productTitle: { fontSize: 20, fontWeight: "800" },
-  companyRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-  companyName: { flex: 1, fontSize: 14, fontWeight: "700" },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderRadius: 999 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
-  star: { fontSize: 13 },
-  ratingValue: { fontSize: 12, fontWeight: "700" },
-  productMeta: { fontSize: 14, fontWeight: "600", marginTop: 4 },
-  priceRow: { flexDirection: "row", alignItems: "baseline", gap: 10, marginTop: 8 },
-  priceText: { fontSize: 22, fontWeight: "900" },
-  comparePrice: { fontSize: 16, fontWeight: "700", textDecorationLine: "line-through" },
-  sectionTitle: { fontSize: 16, fontWeight: "800", marginBottom: 6 },
-  description: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  metaLabel: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
-  metaValue: { fontSize: 14, fontWeight: "700" },
-  descriptionBox: { marginTop: 12, padding: 12, borderWidth: 1 },
-  descriptionLabel: { fontSize: 14, fontWeight: "800", marginBottom: 6 },
-  descriptionText: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  addButton: {
-  },
-  actionRow: { flexDirection: "row", gap: 12, marginTop: 16 },
-  messageButton: {
+  container: {
     flex: 1,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    alignItems: "center",
-    backgroundColor: "#1f2937",
-    shadowColor: "#1f2937",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  messageButtonText: { fontSize: 14, fontWeight: "800" },
-  callButton: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: "center",
-    backgroundColor: "#4f46e5",
-    shadowColor: "#4f46e5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  callButtonText: { fontSize: 14, fontWeight: "800", color: "#fff" },
-  dotsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  ownProductBanner: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  ownProductText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  // Add Image Button
-  addImageButton: {
-    position: "absolute",
-    bottom: 12,
-    right: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  addImageButtonText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  // Image Picker Modal
-  imagePickerModalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "flex-end",
-  },
-  imagePickerModalCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-  },
-  imagePickerModalHeader: {
+  topBar: {
+    borderBottomWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
   },
-  imagePickerModalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  imagePickerCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imagePickerCloseText: {
-    fontSize: 18,
-  },
-  imagePickerOptions: {
-    gap: 12,
-  },
-  imagePickerOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  imagePickerOptionIcon: {
-    fontSize: 24,
-  },
-  imagePickerOptionText: {
+  topTitle: {
+    flex: 1,
+    marginHorizontal: 12,
     fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
+    fontWeight: "800",
   },
-  imagePickerCancelBtn: {
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  imagePickerCancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  // Image Confirmation Modal
-  imageConfirmBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  imageConfirmCard: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  imageConfirmHeader: {
+  topActions: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    gap: 14,
   },
-  imageConfirmTitle: {
-    fontSize: 18,
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  errorText: {
+    fontSize: 13,
     fontWeight: "700",
-  },
-  imagePreviewContainer: {
-    width: "100%",
-    height: 250,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#1e1e28",
-    marginBottom: 16,
-  },
-  imagePreview: {
-    width: "100%",
-    height: "100%",
-  },
-  imageConfirmText: {
-    fontSize: 14,
     textAlign: "center",
-    marginBottom: 20,
   },
-  imageConfirmActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  imageConfirmCancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+  retryBtn: {
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  retryText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  galleryCard: {
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  heroImage: {
+    height: 320,
+  },
+  heroPlaceholder: {
+    height: 320,
     alignItems: "center",
     justifyContent: "center",
   },
-  imageConfirmCancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  imageConfirmUploadBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
+  dotRow: {
+    flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    paddingBottom: 12,
   },
-  imageConfirmUploadText: {
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  infoCard: {
+    borderWidth: 1,
+    padding: 14,
+  },
+  sellerName: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  productName: {
+    fontSize: 22,
+    fontWeight: "900",
+    marginTop: 4,
+    lineHeight: 30,
+  },
+  ratingRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  ratingValue: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 1,
+  },
+  priceRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  price: {
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  compareAt: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#fff",
+    textDecorationLine: "line-through",
+  },
+  stockLine: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  variantSummary: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  sectionCard: {
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  sectionCount: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  variantCard: {
+    width: 160,
+    borderWidth: 1,
+    padding: 10,
+    gap: 6,
+  },
+  variantTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    minHeight: 34,
+  },
+  variantPrice: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  variantStock: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  detailValue: {
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "right",
+  },
+  description: {
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 20,
+  },
+  bottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 1,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bottomSecondaryBtn: {
+    flex: 1,
+    borderWidth: 1,
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  bottomSecondaryText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  bottomPrimaryBtn: {
+    flex: 1,
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  bottomPrimaryText: {
+    fontSize: 13,
+    fontWeight: "900",
   },
 });
+
+export default ProductDetailsScreen;

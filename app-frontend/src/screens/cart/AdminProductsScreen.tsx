@@ -24,6 +24,9 @@ import { productService, Product, ProductCategory } from "../../services/product
 import { useCart } from "../../hooks/useCart";
 import { RootStackParamList } from "../../navigation/types";
 import { preferenceService } from "../../services/preference.service";
+import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { useToast } from "../../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 const useAdminProductsPalette = () => {
   const { colors } = useTheme();
@@ -175,7 +178,8 @@ export const AdminProductsScreen = () => {
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user } = useAuth();
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
   const { addToCart, isInCart, getCartItem, totalItems } = useCart();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -225,6 +229,7 @@ export const AdminProductsScreen = () => {
           sort: sortMode !== "none" ? sortMode : undefined,
           minPrice: minPrice ? parseFloat(minPrice) : undefined,
           maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+          includeVariantSummary: true,
         });
         const nextProducts = response.products;
 
@@ -264,7 +269,12 @@ export const AdminProductsScreen = () => {
     (product: Product) => {
       addToCart(product, 1);
       preferenceService
-        .logEvent({ type: "add_to_cart", productId: product._id, category: product.category })
+        .logEvent({
+          type: "view_product",
+          productId: product._id,
+          category: product.category,
+          meta: { action: "add_to_cart" },
+        })
         .catch(() => {});
     },
     [addToCart]
@@ -273,6 +283,17 @@ export const AdminProductsScreen = () => {
   const handleOpenDetails = useCallback(
     (productId: string) => {
       navigation.navigate("ProductDetails", { productId });
+    },
+    [navigation]
+  );
+
+  const handleOpenVariants = useCallback(
+    (product: Product) => {
+      navigation.navigate("ProductVariants", {
+        productId: product._id,
+        productName: product.name,
+        scope: "company",
+      });
     },
     [navigation]
   );
@@ -373,14 +394,38 @@ export const AdminProductsScreen = () => {
 
   const renderItem = ({ item }: { item: Product }) => {
     const inCartQty = isInCart(item._id) ? getCartItem(item._id)?.quantity : undefined;
+    const isGuest = user?.role === "guest";
     return (
       <View style={styles.cardContainer}>
-        <ProductCard
+        <AmazonStyleProductCard
           product={item}
-          onAddToCart={handleAddToCart}
-          onOpenDetails={handleOpenDetails}
-          inCartQty={inCartQty}
+          onPress={handleOpenDetails}
+          onMessagePress={(product) =>
+            startProductConversation({
+              product,
+              isGuest,
+              requestLogin,
+              navigation,
+              toastError,
+            })
+          }
+          onCallPress={(product) =>
+            callProductSeller({
+              product,
+              toastError,
+            })
+          }
+          showPrimaryAction
+          primaryActionLabel={inCartQty ? `In cart (${inCartQty})` : "Add to cart"}
+          onPrimaryActionPress={(product) => handleAddToCart(product)}
         />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => handleOpenVariants(item)}
+          style={styles.manageVariantsPill}
+        >
+          <Text style={styles.manageVariantsText}>Manage variants</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -442,10 +487,10 @@ export const AdminProductsScreen = () => {
         data={products}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        numColumns={2}
+        numColumns={1}
         ListHeaderComponent={renderListHeader}
-        columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -786,14 +831,27 @@ const createStyles = (COLORS: ReturnType<typeof useAdminProductsPalette>) =>
   // List
   listContent: {
     paddingBottom: 100,
-  },
-  columnWrapper: {
-    paddingHorizontal: 0,
-    gap: 0,
+    paddingHorizontal: 14,
   },
   cardContainer: {
     flex: 1,
     padding: 0,
+    gap: 8,
+  },
+  manageVariantsPill: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  manageVariantsText: {
+    color: COLORS.accent,
+    fontSize: 12,
+    fontWeight: "800",
   },
   footerLoader: {
     paddingVertical: 20,

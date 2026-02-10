@@ -20,6 +20,9 @@ import { productService, Product, ProductCategory } from "../../services/product
 import { RootStackParamList } from "../../navigation/types";
 import { preferenceService } from "../../services/preference.service";
 import { useToast } from "../../components/ui/Toast";
+import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { useCart } from "../../hooks/useCart";
 
 type ProductSearchRoute = RouteProp<RootStackParamList, "ProductSearch">;
 
@@ -37,8 +40,9 @@ export const ProductSearchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ProductSearchRoute>();
   const { colors, spacing, radius } = useTheme();
-  const { success: toastSuccess } = useToast();
-  const { user } = useAuth();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const { user, requestLogin } = useAuth();
+  const { addToCart } = useCart();
   const isGuest = user?.role === AppRole.GUEST;
 
   const [query, setQuery] = useState(route.params?.initialQuery || "");
@@ -69,7 +73,7 @@ export const ProductSearchScreen = () => {
       setCategoryChips(res.categories || []);
     } catch (err) {
       // Non-blocking
-      console.warn("Failed to load category chips", err?.message || err);
+      console.warn("Failed to load category chips", (err as any)?.message || err);
     }
   }, []);
 
@@ -103,6 +107,7 @@ export const ProductSearchScreen = () => {
           limit: PAGE_SIZE,
           offset,
           scope: "marketplace",
+          includeVariantSummary: true,
         });
 
         setResults((prev) => {
@@ -187,52 +192,55 @@ export const ProductSearchScreen = () => {
     [categoryChips, executeSearch, navigation]
   );
 
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      addToCart(product, 1);
+      toastSuccess("Added to cart", product.name);
+      preferenceService
+        .logEvent({
+          type: "view_product",
+          productId: product._id,
+          category: product.category,
+          quantity: 1,
+          meta: { action: "add_to_cart" },
+        })
+        .catch(() => {});
+    },
+    [addToCart, toastSuccess]
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: Product }) => {
-      const priceLabel = `${item.price?.currency || "INR"} ${
-        item.price?.amount?.toFixed?.(2) ?? item.price?.amount ?? ""
-      }`;
-
       return (
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={[
-            styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg },
-          ]}
-          onPress={() => navigation.navigate("ProductDetails", { productId: item._id })}
-        >
-          <View style={[styles.cardHeader, { marginBottom: spacing.xs }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={[styles.productMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                {item.category}
-                {item.subCategory ? ` • ${item.subCategory}` : ""}
-                {item.sku ? ` • ${item.sku}` : ""}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.cardFooter}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.priceLabel, { color: colors.primary }]}>{priceLabel}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+        <AmazonStyleProductCard
+          product={item}
+          onPress={(id) => navigation.navigate("ProductDetails", { productId: id })}
+          onMessagePress={(product) =>
+            startProductConversation({
+              product,
+              isGuest,
+              requestLogin,
+              navigation,
+              toastError: (title, message) => {
+                toastError(title, message);
+              },
+            })
+          }
+          onCallPress={(product) =>
+            callProductSeller({
+              product,
+              toastError: (title, message) => {
+                toastError(title, message);
+              },
+            })
+          }
+          showPrimaryAction
+          primaryActionLabel="Add to cart"
+          onPrimaryActionPress={(product) => handleAddToCart(product)}
+        />
       );
     },
-    [
-      colors.border,
-      colors.primary,
-      colors.surface,
-      colors.text,
-      colors.textMuted,
-      navigation,
-      radius.lg,
-      radius.md,
-    ]
+    [handleAddToCart, isGuest, navigation, requestLogin, toastError]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
@@ -15,12 +16,18 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { productService, Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
+import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 export const FilteredProductsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "FilteredProducts">>();
   const { filter, title } = route.params;
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +37,12 @@ export const FilteredProductsScreen = () => {
   const fetchItems = useCallback(async () => {
     try {
       setError(null);
-      const response = await productService.getAll({ status: filter, limit: 100, scope: "company" });
+      const response = await productService.getAll({
+        status: filter,
+        limit: 100,
+        scope: "company",
+        includeVariantSummary: true,
+      });
       setItems(response.products);
     } catch (err: any) {
       setError(err.message || "Failed to load products");
@@ -63,77 +75,32 @@ export const FilteredProductsScreen = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => {
-      const price = item.price?.amount || 0;
       return (
-        <TouchableOpacity
-          onPress={() => handleEditItem(item._id)}
-          activeOpacity={0.7}
-          style={[
-            styles.itemCard,
-            {
-              backgroundColor: colors.surface,
-              borderColor: statusColor + "40",
-              borderRadius: radius.md,
-              padding: spacing.md,
-              marginBottom: spacing.sm,
-            },
-          ]}
-        >
-          <View style={styles.itemHeader}>
-            <View style={styles.itemInfo}>
-              <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={[styles.itemCategory, { color: colors.textMuted }]}>
-                {item.category} {item.sku ? `• ${item.sku}` : ""}
-              </Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor + "20", borderColor: statusColor }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>
-                {filter === "low_stock" ? "Low Stock" : "Out of Stock"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.itemDetails}>
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Current Stock:</Text>
-              <Text style={[styles.detailValue, { color: item.availableQuantity === 0 ? colors.error : colors.text }]}>
-                {item.availableQuantity} {item.unit || item.price?.unit || "units"}
-              </Text>
-            </View>
-            {price > 0 && (
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Price:</Text>
-                <Text style={[styles.detailValue, { color: colors.primary }]}>
-                  {(item.price?.currency || "INR")} {price.toFixed(2)}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              onPress={() => handleEditItem(item._id)}
-              style={[styles.editButton, { borderColor: colors.primary }]}
-            >
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit Product</Text>
-            </TouchableOpacity>
-            {filter === "low_stock" && (
-              <View style={[styles.alertBadge, { backgroundColor: "#FEF3C7" }]}>
-                <Text style={styles.alertText}>⚠️ Restock Soon</Text>
-              </View>
-            )}
-            {filter === "out_of_stock" && (
-              <View style={[styles.alertBadge, { backgroundColor: "#FEE2E2" }]}>
-                <Text style={styles.alertText}>🚨 Urgent Restock</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+        <AmazonStyleProductCard
+          product={item}
+          onPress={(productId) => handleEditItem(productId)}
+          onMessagePress={(product) =>
+            startProductConversation({
+              product,
+              isGuest: user?.role === "guest",
+              requestLogin,
+              navigation,
+              toastError,
+            })
+          }
+          onCallPress={(product) =>
+            callProductSeller({
+              product,
+              toastError,
+            })
+          }
+          showPrimaryAction
+          primaryActionLabel="Edit product"
+          onPrimaryActionPress={(product) => handleEditItem(product._id)}
+        />
       );
     },
-    [colors, radius, spacing, statusColor, handleEditItem, filter]
+    [handleEditItem, navigation, requestLogin, toastError, user?.role]
   );
 
   if (loading) {
@@ -163,7 +130,9 @@ export const FilteredProductsScreen = () => {
       </View>
 
       <View style={[styles.summaryCard, { backgroundColor: colors.surface, margin: spacing.md, padding: spacing.md, borderRadius: radius.md }]}>
-        <Text style={[styles.summaryIcon]}>{filter === "low_stock" ? "⚠️" : "🚨"}</Text>
+        <View style={styles.summaryIconWrap}>
+          <Ionicons name={filter === "low_stock" ? "warning-outline" : "alert-circle-outline"} size={30} color={statusColor} />
+        </View>
         <View style={styles.summaryInfo}>
           <Text style={[styles.summaryCount, { color: statusColor }]}>
             {items.length} {items.length === 1 ? "Product" : "Products"}
@@ -198,7 +167,7 @@ export const FilteredProductsScreen = () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📦</Text>
+              <Ionicons name="cube-outline" size={46} color={colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No products</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 Nothing matches this stock status right now
@@ -219,7 +188,7 @@ const styles = StyleSheet.create({
   backButton: { fontSize: 16, fontWeight: "600" },
   headerTitle: { fontSize: 18, fontWeight: "700" },
   summaryCard: { flexDirection: "row", alignItems: "center", gap: 12 },
-  summaryIcon: { fontSize: 32 },
+  summaryIconWrap: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
   summaryInfo: { flex: 1 },
   summaryCount: { fontSize: 18, fontWeight: "800" },
   summaryLabel: { fontSize: 14, fontWeight: "500" },
@@ -243,7 +212,6 @@ const styles = StyleSheet.create({
   alertBadge: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   alertText: { fontSize: 12, fontWeight: "700" },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100, gap: 8 },
-  emptyIcon: { fontSize: 48, marginBottom: 8 },
   emptyTitle: { fontSize: 18, fontWeight: "700" },
   emptySubtitle: { fontSize: 14, fontWeight: "500" },
 });

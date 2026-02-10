@@ -11,7 +11,6 @@ import {
   Modal,
   Pressable,
   TextInput,
-  Dimensions,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,10 +24,10 @@ import { productService, Product } from "../../services/product.service";
 import { preferenceService } from "../../services/preference.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { useToast } from "../../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 const PAGE_SIZE = 25;
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 const useCategoryProductsPalette = () => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
@@ -71,7 +70,8 @@ export const CategoryProductsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title, subCategory: initialSubCategory } = route.params;
-  const { user } = useAuth();
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
   const isGuest = user?.role === AppRole.GUEST;
 
   const [items, setItems] = useState<Product[]>([]);
@@ -113,10 +113,11 @@ export const CategoryProductsScreen = () => {
         const response = await productService.getProductsByCategory(categoryId, {
           limit: PAGE_SIZE,
           offset,
-          sort: effectiveSort,
+          sort: effectiveSort === "none" ? undefined : effectiveSort,
           minPrice: effectiveMin,
           maxPrice: effectiveMax,
           scope: "marketplace",
+          includeVariantSummary: true,
         });
         setItems((prev) => (append ? [...prev, ...response.products] : response.products));
         setPagination(response.pagination);
@@ -220,11 +221,25 @@ export const CategoryProductsScreen = () => {
         <AmazonStyleProductCard
           product={item}
           onPress={openDetails}
-          isGuest={isGuest}
+          onMessagePress={(product) =>
+            startProductConversation({
+              product,
+              isGuest,
+              requestLogin,
+              navigation,
+              toastError,
+            })
+          }
+          onCallPress={(product) =>
+            callProductSeller({
+              product,
+              toastError,
+            })
+          }
         />
       );
     },
-    [isGuest, openDetails]
+    [isGuest, navigation, openDetails, requestLogin, toastError]
   );
 
   const keyExtractor = useCallback((item: Product) => item._id, []);

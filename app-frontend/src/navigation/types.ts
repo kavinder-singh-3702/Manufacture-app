@@ -22,6 +22,7 @@ export type RootStackParamList = {
   FilteredProducts: { filter: "low_stock" | "out_of_stock"; title: string };
   CategoryProducts: { categoryId: string; title: string; subCategory?: string };
   ProductDetails: { productId: string; product?: any };
+  ProductVariants: { productId: string; productName?: string; scope?: "company" | "marketplace" };
   ProductSearch: { initialQuery?: string } | undefined;
   UserPreferences: { userId: string; displayName?: string };
   // Chat screens

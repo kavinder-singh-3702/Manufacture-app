@@ -18,6 +18,10 @@ import { useTheme } from "../../hooks/useTheme";
 import { productService, type Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
+import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 const PAGE_SIZE = 25;
 type StatusFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
@@ -27,6 +31,8 @@ export const MyProductsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "MyProducts">>();
   const isFocused = useIsFocused();
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +75,7 @@ export const MyProductsScreen = () => {
           offset,
           search: query.trim() ? query.trim() : undefined,
           status: statusFilter === "all" ? undefined : statusFilter,
+          includeVariantSummary: true,
         });
 
         setProducts((prev) => (append ? [...prev, ...(response.products || [])] : response.products || []));
@@ -131,63 +138,32 @@ export const MyProductsScreen = () => {
 
   const renderProduct = useCallback(
     ({ item: product }: { item: Product }) => {
-      const price = product.price?.amount || 0;
-      const currencySymbol = product.price?.currency === "INR" ? "₹" : "₹";
-      const stockQty = product.availableQuantity || 0;
-      const stockStatus =
-        product.stockStatus || (stockQty <= 0 ? "out_of_stock" : stockQty <= (product.minStockQuantity || 0) ? "low_stock" : "in_stock");
-
-      const statusColor =
-        stockStatus === "in_stock" ? colors.success : stockStatus === "low_stock" ? colors.warning : colors.error;
-
-      const statusLabel = stockStatus === "in_stock" ? "In Stock" : stockStatus === "low_stock" ? "Low Stock" : "Out of Stock";
-
       return (
-        <TouchableOpacity
-          style={[
-            styles.productCard,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md },
-          ]}
-          onPress={() => handleProductPress(product._id)}
-          activeOpacity={0.75}
-        >
-          <View style={styles.productHeader}>
-            <View style={styles.productInfo}>
-              <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
-                {product.name}
-              </Text>
-              <Text style={[styles.productCategory, { color: colors.textMuted }]} numberOfLines={1}>
-                {product.category?.replace(/-/g, " ") || "Uncategorized"}
-                {product.sku ? `  •  ${product.sku}` : ""}
-              </Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor + "20", borderColor: statusColor + "40" }]}>
-              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.productDetails, { borderTopColor: colors.border }]}>
-            <View style={styles.detailItem}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Price</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{currencySymbol}{price.toLocaleString("en-IN")}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Stock</Text>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{stockQty} units</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => openAdjustSheet(product, 1)}
-              style={[styles.adjustPill, { borderRadius: radius.pill, borderColor: colors.border }]}
-            >
-              <Ionicons name="swap-vertical" size={16} color={colors.text} />
-              <Text style={[styles.adjustPillText, { color: colors.text }]}>Adjust</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+        <AmazonStyleProductCard
+          product={product}
+          onPress={handleProductPress}
+          onMessagePress={(selectedProduct) =>
+            startProductConversation({
+              product: selectedProduct,
+              isGuest: user?.role === "guest",
+              requestLogin,
+              navigation,
+              toastError,
+            })
+          }
+          onCallPress={(selectedProduct) =>
+            callProductSeller({
+              product: selectedProduct,
+              toastError,
+            })
+          }
+          showPrimaryAction
+          primaryActionLabel="Adjust stock"
+          onPrimaryActionPress={(selectedProduct) => openAdjustSheet(selectedProduct, 1)}
+        />
       );
     },
-    [colors.border, colors.error, colors.success, colors.text, colors.textMuted, colors.warning, handleProductPress, openAdjustSheet, radius.md, radius.pill]
+    [handleProductPress, navigation, openAdjustSheet, requestLogin, toastError, user?.role]
   );
 
   const headerCount = pagination.total || products.length;

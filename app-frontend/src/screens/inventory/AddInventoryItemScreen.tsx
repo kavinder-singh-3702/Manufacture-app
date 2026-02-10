@@ -31,6 +31,7 @@ export const AddProductScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { success: toastSuccess, error: toastError } = useToast();
+  const surfaceElevated = (colors as any).surfaceElevated || colors.surface;
 
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -78,7 +79,7 @@ export const AddProductScreen = () => {
         subCategories: c.subCategories,
       })));
     } catch (err) {
-      console.warn("Failed to load categories", err?.message || err);
+      console.warn("Failed to load categories", (err as any)?.message || err);
     } finally {
       setLoadingCategories(false);
     }
@@ -222,9 +223,24 @@ export const AddProductScreen = () => {
       } else {
         toastSuccess("Product added", String(formData.name || "Created successfully"));
       }
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      }
+      Alert.alert("Product created", "Do you want to add variants now?", [
+        {
+          text: "Later",
+          style: "cancel",
+          onPress: () => {
+            if (navigation.canGoBack()) navigation.goBack();
+          },
+        },
+        {
+          text: "Add variants",
+          onPress: () =>
+            navigation.replace("ProductVariants", {
+              productId: created._id,
+              productName: created.name,
+              scope: "company",
+            }),
+        },
+      ]);
     } catch (error: any) {
       const apiMessage =
         (error instanceof ApiError && (error.data as any)?.error) ||
@@ -373,7 +389,7 @@ export const AddProductScreen = () => {
                   styles.badgePill,
                   {
                     borderColor: colors.border,
-                    backgroundColor: colors.surfaceElevated || colors.surface,
+                    backgroundColor: surfaceElevated,
                     borderRadius: radius.sm,
                   },
                 ]}
@@ -396,7 +412,7 @@ export const AddProductScreen = () => {
                 styles.selectInput,
                 {
                   borderColor: colors.border,
-                  backgroundColor: colors.surfaceElevated || colors.surface,
+                  backgroundColor: surfaceElevated,
                   borderRadius: radius.md,
                   marginTop: 8,
                 },
@@ -437,7 +453,7 @@ export const AddProductScreen = () => {
                       color: colors.text,
                       borderRadius: radius.sm,
                       marginBottom: spacing.sm,
-                      backgroundColor: colors.surfaceElevated || colors.surface,
+                      backgroundColor: surfaceElevated,
                     },
                   ]}
                 />
@@ -558,7 +574,7 @@ export const AddProductScreen = () => {
                     styles.dropdown,
                     {
                       borderColor: colors.border,
-                      backgroundColor: colors.surfaceElevated || colors.surface,
+                      backgroundColor: surfaceElevated,
                       borderRadius: radius.md,
                       marginTop: 6,
                     },
@@ -685,6 +701,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "800",
   },
   errorText: {
     fontSize: 12,

@@ -21,14 +21,14 @@ import {
   FilteredProductsScreen,
   CategoryProductsScreen,
   ProductDetailsScreen,
+  ProductVariantsScreen,
   ProductSearchScreen,
   MyProductsScreen,
 } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
-import { UserServicesScreen } from "../screens/chat";
-import { ServiceDetailScreen, ServicesOverviewScreen } from "../screens/services";
+import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
 import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
 import { PartyOutstandingScreen } from "../screens/accounting/PartyOutstandingScreen";
@@ -177,13 +177,18 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
+              name="ProductVariants"
+              component={ProductVariantsScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
               name="Chat"
               component={ChatScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ServiceRequest"
-              component={UserServicesScreen}
+              component={ServiceRequestScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

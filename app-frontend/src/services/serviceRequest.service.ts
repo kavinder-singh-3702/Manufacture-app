@@ -116,9 +116,40 @@ export type ServiceRequest = {
   updatedAt: string;
 };
 
+export type ServiceRequestListFilters = {
+  serviceType?: ServiceType;
+  status?: ServiceStatus;
+  priority?: ServicePriority;
+  limit?: number;
+  offset?: number;
+  sort?: "newest" | "oldest" | "priority";
+  companyId?: string;
+  createdBy?: string;
+  assignedTo?: string;
+};
+
+export type ServiceRequestListResponse = {
+  services: ServiceRequest[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+};
+
 class ServiceRequestService {
   async create(payload: CreateServiceRequestInput): Promise<ServiceRequest> {
     const response = await apiClient.post<{ service: ServiceRequest }>("/services", payload);
+    return response.service;
+  }
+
+  async list(filters?: ServiceRequestListFilters): Promise<ServiceRequestListResponse> {
+    return apiClient.get<ServiceRequestListResponse>("/services", { params: filters });
+  }
+
+  async getById(serviceId: string): Promise<ServiceRequest> {
+    const response = await apiClient.get<{ service: ServiceRequest }>(`/services/${serviceId}`);
     return response.service;
   }
 }

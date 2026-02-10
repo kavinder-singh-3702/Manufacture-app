@@ -23,6 +23,14 @@ export type ProductImage = {
   uploadedBy?: string;
 };
 
+export type ProductVariantSummary = {
+  totalVariants: number;
+  inStockVariants: number;
+  minPrice: number | null;
+  maxPrice: number | null;
+  currency: string | null;
+};
+
 export type Product = {
   _id: string;
   name: string;
@@ -54,6 +62,7 @@ export type Product = {
   };
   attributes?: Record<string, unknown>;
   images?: ProductImage[];
+  variantSummary?: ProductVariantSummary;
   createdAt: string;
   updatedAt: string;
 };
@@ -99,6 +108,7 @@ export type ProductStats = {
 };
 
 export type ProductListScope = "company" | "marketplace";
+export type ProductSort = "priceAsc" | "priceDesc" | "ratingDesc";
 
 type PaginatedResponse = {
   products: Product[];
@@ -127,11 +137,12 @@ class ProductService {
       limit?: number;
       offset?: number;
       status?: string;
-      sort?: string;
+      sort?: ProductSort;
       minPrice?: number;
       maxPrice?: number;
       scope?: ProductListScope;
       createdByRole?: "admin" | "user";
+      includeVariantSummary?: boolean;
     }
   ): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>(`/products/categories/${categoryId}/products`, { params });
@@ -141,16 +152,20 @@ class ProductService {
     limit?: number;
     offset?: number;
     category?: string;
-    status?: string;
-    search?: string;
-    visibility?: string;
-    scope?: ProductListScope;
-    createdByRole?: "admin" | "user";
+      status?: string;
+      search?: string;
+      visibility?: string;
+      scope?: ProductListScope;
+      createdByRole?: "admin" | "user";
+      sort?: ProductSort;
+      minPrice?: number;
+      maxPrice?: number;
+      includeVariantSummary?: boolean;
   }): Promise<PaginatedResponse> {
     return apiClient.get<PaginatedResponse>("/products", { params });
   }
 
-  async getById(productId: string, params?: { scope?: ProductListScope }): Promise<Product> {
+  async getById(productId: string, params?: { scope?: ProductListScope; includeVariantSummary?: boolean }): Promise<Product> {
     const response = await apiClient.get<{ product: Product }>(`/products/${productId}`, { params });
     return response.product;
   }

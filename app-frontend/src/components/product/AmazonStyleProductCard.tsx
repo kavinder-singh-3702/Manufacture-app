@@ -5,541 +5,419 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Product } from "../../services/product.service";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
-import { scale, moderateScale } from "../../utils/responsive";
 
-const useProductCardPalette = () => {
-  const { colors } = useTheme();
-  const { resolvedMode } = useThemeMode();
-
-  return useMemo(
-    () => ({
-      background: colors.background,
-      cardBg: resolvedMode === "dark" ? "#16161e" : colors.surface,
-      cardBgLight: resolvedMode === "dark" ? "#1e1e28" : colors.surfaceElevated,
-      border: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.08)" : colors.border,
-      borderLight: resolvedMode === "dark" ? "rgba(255, 255, 255, 0.12)" : colors.borderLight,
-      text: colors.text,
-      textSecondary: colors.textSecondary,
-      textMuted: colors.textMuted,
-      price: colors.text,
-      priceDeal: colors.success,
-      accent: colors.primary,
-      accentMuted: colors.primaryDark,
-      rating: colors.warning,
-      ratingBg: colors.badgeWarning,
-      deal: colors.success,
-      dealBg: colors.badgeSuccess,
-      addToCart: colors.primary,
-      addToCartPressed: colors.primaryDark,
-      addToCartBorder: colors.primary,
-      wishlist: colors.textMuted,
-      wishlistActive: colors.error,
-      verified: colors.success,
-      unverified: colors.warning,
-      sponsored: colors.textTertiary,
-      bestSeller: resolvedMode === "dark" ? "#FFB366" : "#C45500",
-      bestSellerBg: resolvedMode === "dark" ? "rgba(196,85,0,0.24)" : "#fef3e2",
-      urgency: colors.error,
-      linkBlue: colors.primary,
-    }),
-    [colors, resolvedMode]
-  );
-};
-
-interface AmazonStyleProductCardProps {
+type AmazonStyleProductCardProps = {
   product: Product;
   onPress: (productId: string) => void;
-  onWishlistToggle?: (productId: string) => void;
-  isWishlisted?: boolean;
-  isGuest?: boolean;
-}
+  onMessagePress?: (product: Product) => void;
+  onCallPress?: (product: Product) => void;
+  onPrimaryActionPress?: (product: Product) => void;
+  primaryActionLabel?: string;
+  primaryActionDisabled?: boolean;
+  showQuickActions?: boolean;
+  showPrimaryAction?: boolean;
+  containerStyle?: object;
+};
+
+const formatCurrency = (amount: number, currency?: string) => {
+  const symbol = currency === "INR" || !currency ? "₹" : `${currency} `;
+  return `${symbol}${Number(amount || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  })}`;
+};
+
+const getRating = (product: Product): number | null => {
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const rating = typeof attrs?.rating === "number" ? attrs.rating : typeof attrs?.stars === "number" ? attrs.stars : null;
+  if (typeof rating !== "number" || Number.isNaN(rating)) return null;
+  return Math.max(0, Math.min(5, rating));
+};
+
+const getReviewCount = (product: Product): number | null => {
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const reviews = typeof attrs?.reviews === "number" ? attrs.reviews : null;
+  return typeof reviews === "number" ? reviews : null;
+};
+
+const getCompareAt = (product: Product): number | null => {
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const compareAt = typeof attrs?.mrp === "number" ? attrs.mrp : typeof attrs?.oldPrice === "number" ? attrs.oldPrice : null;
+  return typeof compareAt === "number" && compareAt > (product.price?.amount || 0) ? compareAt : null;
+};
+
+const getStockStatus = (product: Product): "in_stock" | "low_stock" | "out_of_stock" => {
+  const qty = Number(product.availableQuantity || 0);
+  const min = Number(product.minStockQuantity || 0);
+  if (qty <= 0) return "out_of_stock";
+  if (qty <= min) return "low_stock";
+  return "in_stock";
+};
+
+const getVariantSummaryText = (product: Product): string | null => {
+  const summary = product.variantSummary;
+  if (summary?.totalVariants && summary.totalVariants > 0) {
+    const range =
+      typeof summary.minPrice === "number" && typeof summary.maxPrice === "number"
+        ? ` • ${formatCurrency(summary.minPrice, summary.currency || product.price?.currency)} - ${formatCurrency(
+            summary.maxPrice,
+            summary.currency || product.price?.currency
+          )}`
+        : "";
+    return `${summary.totalVariants} variants${range}`;
+  }
+
+  const attrs = product.attributes as Record<string, unknown> | undefined;
+  const fallback = typeof attrs?.variants === "number" ? attrs.variants : null;
+  if (typeof fallback === "number" && fallback > 0) return `${fallback} variants`;
+  return null;
+};
 
 export const AmazonStyleProductCard = memo(
   ({
     product,
     onPress,
-    onWishlistToggle,
-    isWishlisted = false,
-    isGuest = false,
+    onMessagePress,
+    onCallPress,
+    onPrimaryActionPress,
+    primaryActionLabel,
+    primaryActionDisabled,
+    showQuickActions = true,
+    showPrimaryAction = false,
+    containerStyle,
   }: AmazonStyleProductCardProps) => {
-    const COLORS = useProductCardPalette();
-    const styles = useMemo(() => createStyles(COLORS), [COLORS]);
-    const { width: SCREEN_WIDTH } = useWindowDimensions();
-    const CARD_WIDTH = SCREEN_WIDTH; // Full width single column
-    const IMAGE_HEIGHT = scale(280); // Responsive height for better image visibility
+    const { colors, radius, spacing } = useTheme();
+    const { resolvedMode } = useThemeMode();
 
-    const price = product.price?.amount || 0;
-    const currencySymbol = product.price?.currency === "INR" ? "₹" : product.price?.currency || "₹";
+    const palette = useMemo(
+      () => ({
+        cardBg: resolvedMode === "dark" ? "#10141C" : colors.surface,
+        cardBorder: resolvedMode === "dark" ? "rgba(255,255,255,0.08)" : colors.border,
+        imageBg: resolvedMode === "dark" ? "#161B26" : colors.surfaceElevated,
+        title: colors.text,
+        subtext: colors.textMuted,
+        text: colors.textSecondary,
+        price: colors.text,
+        compare: colors.textMuted,
+        badgeInStock: colors.success,
+        badgeLow: colors.warning,
+        badgeOut: colors.error,
+      }),
+      [colors, resolvedMode]
+    );
 
-    const attributes = product.attributes as Record<string, any> | undefined;
-    const compareAt =
-      typeof attributes?.mrp === "number"
-        ? attributes.mrp
-        : typeof attributes?.oldPrice === "number"
-        ? attributes.oldPrice
-        : undefined;
-
-    const hasDiscount = typeof compareAt === "number" && compareAt > price;
-    const discountPercent = hasDiscount ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
+    const styles = useMemo(() => createStyles(colors, palette, radius, spacing), [colors, palette, radius, spacing]);
 
     const primaryImage = product.images?.[0]?.url;
-    const companyName = product.company?.displayName || "Unknown seller";
+    const price = Number(product.price?.amount || 0);
+    const currency = product.price?.currency || "INR";
+    const compareAt = getCompareAt(product);
+    const rating = getRating(product);
+    const reviewCount = getReviewCount(product);
+    const variantText = getVariantSummaryText(product);
+    const seller = product.company?.displayName || "Seller";
     const isVerified = product.company?.complianceStatus === "approved";
+    const stockStatus = getStockStatus(product);
 
-    // Rating from attributes
-    const ratingValue =
-      typeof attributes?.rating === "number"
-        ? attributes.rating
-        : typeof attributes?.stars === "number"
-        ? attributes.stars
-        : null;
+    const stockLabel =
+      stockStatus === "in_stock" ? "In stock" : stockStatus === "low_stock" ? "Low stock" : "Out of stock";
+    const stockColor =
+      stockStatus === "in_stock" ? palette.badgeInStock : stockStatus === "low_stock" ? palette.badgeLow : palette.badgeOut;
 
-    const reviewCount = typeof attributes?.reviews === "number" ? attributes.reviews : null;
-
-    // Mock delivery date (you can make this dynamic)
-    const deliveryDate = "Tomorrow";
-    const hasFreeDelivery = price >= 499;
-
-    // Amazon-style additional attributes
-    // Using product index hash for demo variety (some products show different badges)
-    const productHash = product._id ? product._id.charCodeAt(0) % 10 : 0;
-    const isBestSeller = attributes?.bestSeller === true || attributes?.isBestSeller === true || productHash < 3; // ~30% show best seller
-    const stockQuantity = product.inventory?.quantity ?? product.availableQuantity ?? attributes?.stock ?? null;
-    const isLowStock = (typeof stockQuantity === "number" && stockQuantity > 0 && stockQuantity <= 5) || productHash === 4;
-    const variantCount = typeof attributes?.variants === "number" ? attributes.variants :
-                         typeof attributes?.colors === "number" ? attributes.colors :
-                         productHash > 6 ? (productHash - 4) : null; // Some products show variants
+    const showMessage = showQuickActions && Boolean(onMessagePress);
+    const showCall = showQuickActions && Boolean(onCallPress);
 
     return (
       <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => {
-          console.log("Clicking product with _id:", product._id);
-          console.log("Full product object:", JSON.stringify(product, null, 2));
-          onPress(product._id);
-        }}
-        style={[styles.card, { width: CARD_WIDTH }]}
+        activeOpacity={0.86}
+        onPress={() => onPress(product._id)}
+        style={[styles.card, containerStyle]}
       >
-        {/* Best Seller Badge - Amazon style orange tag */}
-        {isBestSeller && (
-          <View style={styles.bestSellerBadge}>
-            <Text style={styles.bestSellerText}>Best seller</Text>
-          </View>
-        )}
-
-        {/* Wishlist Button */}
-        {!isGuest && onWishlistToggle && (
-          <TouchableOpacity
-            style={styles.wishlistButton}
-            onPress={() => onWishlistToggle(product._id)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.wishlistIcon, isWishlisted && styles.wishlistIconActive]}>
-              {isWishlisted ? "♥" : "♡"}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Discount Badge */}
-        {hasDiscount && discountPercent > 0 && (
-          <View style={[styles.discountBadge, isBestSeller && styles.discountBadgeWithBestSeller]}>
-            <Text style={styles.discountText}>{discountPercent}% off</Text>
-          </View>
-        )}
-
-        {/* Product Image */}
-        <View style={[styles.imageContainer, { height: IMAGE_HEIGHT }]}>
-          {primaryImage ? (
-            <Image
-              source={{ uri: primaryImage }}
-              style={styles.productImage}
-              resizeMode="contain"
-              onError={(e) => console.log("Image load error:", e.nativeEvent.error, primaryImage)}
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>No Image</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Product Info */}
-        <View style={styles.infoContainer}>
-          {/* Sponsored tag (optional - show for some products) */}
-          {attributes?.sponsored && (
-            <Text style={styles.sponsoredText}>Sponsored</Text>
-          )}
-
-          {/* Product Title */}
-          <Text style={styles.title} numberOfLines={2}>
-            {product.name}
-          </Text>
-
-          {/* Seller with verification */}
-          <View style={styles.sellerRow}>
-            <Text style={styles.sellerText} numberOfLines={1}>
-              by {companyName}
-            </Text>
-            {isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>✓</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Rating */}
-          {ratingValue !== null && (
-            <View style={styles.ratingRow}>
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Text
-                    key={star}
-                    style={[
-                      styles.star,
-                      star <= Math.floor(ratingValue) ? styles.starFilled : styles.starEmpty,
-                    ]}
-                  >
-                    ★
-                  </Text>
-                ))}
-              </View>
-              <Text style={styles.ratingText}>{ratingValue.toFixed(1)}</Text>
-              {reviewCount !== null && (
-                <Text style={styles.reviewCount}>({reviewCount.toLocaleString()})</Text>
-              )}
-            </View>
-          )}
-
-          {/* Price Section */}
-          <View style={styles.priceSection}>
-            {hasDiscount && (
-              <View style={styles.dealRow}>
-                <Text style={styles.dealLabel}>Deal</Text>
-              </View>
-            )}
-            <View style={styles.priceRow}>
-              <Text style={styles.currencySymbol}>{currencySymbol}</Text>
-              <Text style={[styles.priceAmount, hasDiscount && styles.priceAmountDeal]}>
-                {Math.floor(price).toLocaleString()}
-              </Text>
-              {price % 1 !== 0 && (
-                <Text style={styles.priceDecimal}>
-                  {(price % 1).toFixed(2).substring(1)}
-                </Text>
-              )}
-            </View>
-            {hasDiscount && compareAt && (
-              <View style={styles.originalPriceRow}>
-                <Text style={styles.mrpLabel}>M.R.P.: </Text>
-                <Text style={styles.originalPrice}>
-                  {currencySymbol}{compareAt.toLocaleString()}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Delivery Info */}
-          <View style={styles.deliverySection}>
-            {hasFreeDelivery ? (
-              <Text style={styles.freeDelivery}>FREE Delivery <Text style={styles.deliveryDateBold}>Tue, 20 Jan</Text></Text>
+        <View style={styles.row}>
+          <View style={styles.imageContainer}>
+            {primaryImage ? (
+              <Image source={{ uri: primaryImage }} style={styles.productImage} resizeMode="contain" />
             ) : (
-              <Text style={styles.deliveryText}>Delivery {currencySymbol}40</Text>
-            )}
-            {isLowStock && (
-              <Text style={styles.urgencyText}>Only {stockQuantity} left in stock.</Text>
+              <View style={styles.placeholder}>
+                <Ionicons name="image-outline" size={24} color={palette.subtext} />
+                <Text style={styles.placeholderText}>No image</Text>
+              </View>
             )}
           </View>
 
-          {/* Variant Options - Amazon style */}
-          {variantCount && variantCount > 0 && (
-            <Text style={styles.variantLink}>+{variantCount} other colors/patterns</Text>
-          )}
+          <View style={styles.content}>
+            <Text numberOfLines={2} style={styles.title}>
+              {product.name}
+            </Text>
+
+            <View style={styles.sellerRow}>
+              <Text style={styles.sellerText} numberOfLines={1}>
+                {seller}
+              </Text>
+              {isVerified ? (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                  <Text style={styles.verifiedLabel}>Verified</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {rating !== null ? (
+              <View style={styles.ratingRow}>
+                <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Ionicons
+                      key={n}
+                      name={n <= Math.floor(rating) ? "star" : "star-outline"}
+                      size={12}
+                      color={colors.warning}
+                    />
+                  ))}
+                </View>
+                {reviewCount !== null ? (
+                  <Text style={styles.reviewCount}>({reviewCount.toLocaleString("en-IN")})</Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>{formatCurrency(price, currency)}</Text>
+              {compareAt ? <Text style={styles.comparePrice}>{formatCurrency(compareAt, currency)}</Text> : null}
+            </View>
+
+            <View style={styles.metaRow}>
+              <View style={[styles.stockBadge, { borderColor: `${stockColor}66`, backgroundColor: `${stockColor}1A` }]}>
+                <Text style={[styles.stockText, { color: stockColor }]}>{stockLabel}</Text>
+              </View>
+              <Text style={styles.quantityText}>{Number(product.availableQuantity || 0)} {product.unit || "units"}</Text>
+            </View>
+
+            {variantText ? <Text style={styles.variantText}>{variantText}</Text> : null}
+          </View>
         </View>
+
+        {(showMessage || showCall || (showPrimaryAction && primaryActionLabel && onPrimaryActionPress)) ? (
+          <View style={styles.actionsRow}>
+            {showMessage ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.secondaryAction}
+                onPress={() => onMessagePress?.(product)}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primary} />
+                <Text style={styles.secondaryActionText}>Message</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {showCall ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={styles.secondaryAction}
+                onPress={() => onCallPress?.(product)}
+              >
+                <Ionicons name="call-outline" size={16} color={colors.primary} />
+                <Text style={styles.secondaryActionText}>Call</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {showPrimaryAction && primaryActionLabel && onPrimaryActionPress ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                disabled={primaryActionDisabled}
+                style={[styles.primaryAction, primaryActionDisabled ? styles.primaryActionDisabled : null]}
+                onPress={() => onPrimaryActionPress(product)}
+              >
+                <Text style={styles.primaryActionText}>{primaryActionLabel}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   }
 );
 
-const createStyles = (COLORS: ReturnType<typeof useProductCardPalette>) =>
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Record<string, string>, radius: ReturnType<typeof useTheme>["radius"], spacing: ReturnType<typeof useTheme>["spacing"]) =>
   StyleSheet.create({
-  card: {
-    // width is set dynamically via inline style
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 0, // No rounded corners for edge-to-edge look
-    borderWidth: 0,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 0,
-    overflow: "hidden",
-    position: "relative",
-  },
-
-  // Wishlist
-  wishlistButton: {
-    position: "absolute",
-    top: scale(8),
-    right: scale(8),
-    zIndex: 10,
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  wishlistIcon: {
-    fontSize: moderateScale(18),
-    color: COLORS.wishlist,
-  },
-  wishlistIconActive: {
-    color: COLORS.wishlistActive,
-  },
-
-  // Best Seller Badge - Amazon orange tag style
-  bestSellerBadge: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    backgroundColor: COLORS.bestSellerBg,
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(5),
-    borderBottomRightRadius: scale(8),
-    zIndex: 11,
-  },
-  bestSellerText: {
-    color: COLORS.bestSeller,
-    fontSize: moderateScale(11),
-    fontWeight: "700",
-  },
-
-  // Discount Badge
-  discountBadge: {
-    position: "absolute",
-    top: scale(8),
-    left: scale(8),
-    backgroundColor: COLORS.dealBg,
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(8),
-    zIndex: 10,
-    borderWidth: 1,
-    borderColor: COLORS.deal + "40",
-  },
-  discountBadgeWithBestSeller: {
-    top: scale(32), // Move down when best seller badge is present
-  },
-  discountText: {
-    color: COLORS.deal,
-    fontSize: moderateScale(11),
-    fontWeight: "700",
-  },
-
-  // Image
-  imageContainer: {
-    width: "100%",
-    // height is set dynamically via inline style
-    backgroundColor: COLORS.cardBgLight,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: scale(12),
-  },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  placeholderImage: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.cardBgLight,
-  },
-  placeholderText: {
-    color: COLORS.textMuted,
-    fontSize: moderateScale(12),
-  },
-
-  // Info
-  infoContainer: {
-    padding: scale(12),
-    gap: scale(4),
-  },
-
-  // Sponsored
-  sponsoredText: {
-    fontSize: moderateScale(10),
-    color: COLORS.sponsored,
-    marginBottom: scale(2),
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-
-  // Title
-  title: {
-    fontSize: moderateScale(13),
-    fontWeight: "600",
-    color: COLORS.text,
-    lineHeight: moderateScale(18),
-    marginBottom: scale(4),
-  },
-
-  // Seller
-  sellerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(6),
-    marginBottom: scale(6),
-  },
-  sellerText: {
-    fontSize: moderateScale(11),
-    color: COLORS.textSecondary,
-    flex: 1,
-  },
-  verifiedBadge: {
-    backgroundColor: COLORS.verified + "20",
-    borderWidth: 1,
-    borderColor: COLORS.verified + "60",
-    width: scale(16),
-    height: scale(16),
-    borderRadius: scale(8),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifiedText: {
-    color: COLORS.verified,
-    fontSize: moderateScale(9),
-    fontWeight: "700",
-  },
-
-  // Rating
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(6),
-    marginBottom: scale(6),
-  },
-  starsContainer: {
-    flexDirection: "row",
-    gap: scale(1),
-  },
-  star: {
-    fontSize: moderateScale(11),
-  },
-  starFilled: {
-    color: COLORS.rating,
-  },
-  starEmpty: {
-    color: COLORS.textMuted,
-  },
-  ratingText: {
-    fontSize: moderateScale(11),
-    color: COLORS.rating,
-    fontWeight: "600",
-  },
-  reviewCount: {
-    fontSize: moderateScale(10),
-    color: COLORS.textMuted,
-  },
-
-  // Price
-  priceSection: {
-    marginTop: scale(4),
-  },
-  dealRow: {
-    marginBottom: scale(4),
-  },
-  dealLabel: {
-    fontSize: moderateScale(10),
-    color: COLORS.deal,
-    backgroundColor: COLORS.dealBg,
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(3),
-    borderRadius: scale(6),
-    alignSelf: "flex-start",
-    fontWeight: "700",
-    overflow: "hidden",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-  },
-  currencySymbol: {
-    fontSize: moderateScale(13),
-    fontWeight: "600",
-    color: COLORS.price,
-  },
-  priceAmount: {
-    fontSize: moderateScale(20),
-    fontWeight: "800",
-    color: COLORS.price,
-  },
-  priceAmountDeal: {
-    color: COLORS.priceDeal,
-  },
-  priceDecimal: {
-    fontSize: moderateScale(12),
-    fontWeight: "500",
-    color: COLORS.price,
-  },
-  originalPriceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: scale(2),
-  },
-  mrpLabel: {
-    fontSize: moderateScale(11),
-    color: COLORS.textMuted,
-  },
-  originalPrice: {
-    fontSize: moderateScale(11),
-    color: COLORS.textMuted,
-    textDecorationLine: "line-through",
-  },
-
-  // Delivery
-  deliverySection: {
-    marginTop: scale(8),
-    paddingTop: scale(8),
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  freeDelivery: {
-    fontSize: moderateScale(11),
-    color: COLORS.text,
-    fontWeight: "400",
-  },
-  deliveryDateBold: {
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  deliveryText: {
-    fontSize: moderateScale(11),
-    color: COLORS.textSecondary,
-  },
-  deliveryDate: {
-    fontSize: moderateScale(10),
-    color: COLORS.textMuted,
-    marginTop: scale(2),
-  },
-  urgencyText: {
-    fontSize: moderateScale(11),
-    color: COLORS.urgency,
-    marginTop: scale(4),
-    fontWeight: "500",
-  },
-  variantLink: {
-    fontSize: moderateScale(11),
-    color: COLORS.linkBlue,
-    marginTop: scale(6),
-    textDecorationLine: "underline",
-  },
+    card: {
+      backgroundColor: palette.cardBg,
+      borderWidth: 1,
+      borderColor: palette.cardBorder,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+    },
+    row: {
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    imageContainer: {
+      width: 116,
+      height: 116,
+      borderRadius: radius.md,
+      backgroundColor: palette.imageBg,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    productImage: {
+      width: "100%",
+      height: "100%",
+    },
+    placeholder: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+    },
+    placeholderText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: palette.subtext,
+    },
+    content: {
+      flex: 1,
+      minHeight: 116,
+    },
+    title: {
+      fontSize: 15,
+      fontWeight: "800",
+      color: palette.title,
+      lineHeight: 20,
+    },
+    sellerRow: {
+      marginTop: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    sellerText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: palette.text,
+      flex: 1,
+    },
+    verifiedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    verifiedLabel: {
+      color: colors.success,
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    ratingRow: {
+      marginTop: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    ratingValue: {
+      color: palette.text,
+      fontSize: 12,
+      fontWeight: "800",
+    },
+    starsRow: {
+      flexDirection: "row",
+      gap: 1,
+    },
+    reviewCount: {
+      color: palette.subtext,
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    priceRow: {
+      marginTop: 8,
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 8,
+    },
+    price: {
+      color: palette.price,
+      fontSize: 18,
+      fontWeight: "900",
+    },
+    comparePrice: {
+      color: palette.compare,
+      fontSize: 12,
+      fontWeight: "700",
+      textDecorationLine: "line-through",
+    },
+    metaRow: {
+      marginTop: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stockBadge: {
+      borderWidth: 1,
+      borderRadius: radius.pill,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    stockText: {
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "capitalize",
+    },
+    quantityText: {
+      color: palette.subtext,
+      fontSize: 11,
+      fontWeight: "700",
+    },
+    variantText: {
+      marginTop: 6,
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.primary,
+    },
+    actionsRow: {
+      marginTop: spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    secondaryAction: {
+      flex: 1,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: palette.cardBorder,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: colors.surface,
+    },
+    secondaryActionText: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: "800",
+    },
+    primaryAction: {
+      flex: 1.2,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryActionDisabled: {
+      opacity: 0.45,
+    },
+    primaryActionText: {
+      color: colors.textOnPrimary,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 0.2,
+    },
   });
 
 export default AmazonStyleProductCard;

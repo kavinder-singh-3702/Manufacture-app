@@ -174,9 +174,22 @@ export const EditProductScreen = () => {
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Product</Text>
-          <TouchableOpacity onPress={handleDelete}>
-            <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("ProductVariants", {
+                  productId,
+                  productName: formData.name,
+                  scope: "company",
+                })
+              }
+            >
+              <Text style={[styles.variantsButton, { color: colors.primary }]}>Variants</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete}>
+              <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -358,6 +371,15 @@ const styles = StyleSheet.create({
   deleteButton: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  variantsButton: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
   },
   sectionTitle: {
     fontSize: 16,

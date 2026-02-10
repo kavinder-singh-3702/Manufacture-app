@@ -11,7 +11,8 @@ const {
 
 const listProductVariantsController = async (req, res, next) => {
   try {
-    const companyId = req.user?.activeCompany;
+    const { scope } = req.query;
+    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
     const { productId } = req.params;
     const { limit, offset, status } = req.query;
 
@@ -28,7 +29,8 @@ const listProductVariantsController = async (req, res, next) => {
 
 const getProductVariantController = async (req, res, next) => {
   try {
-    const companyId = req.user?.activeCompany;
+    const { scope } = req.query;
+    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
     const { productId, variantId } = req.params;
 
     const variant = await getVariantById(productId, variantId, companyId);
@@ -172,4 +174,3 @@ module.exports = {
   deleteProductVariantController,
   listVariantLogsController
 };
-

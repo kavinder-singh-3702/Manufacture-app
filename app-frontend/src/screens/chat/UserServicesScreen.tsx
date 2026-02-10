@@ -27,6 +27,11 @@ import { ApiError } from "../../services/http";
 import type { RouteProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../../navigation/types";
 
+/**
+ * Legacy service request screen kept for backward reference.
+ * Active service request flow now lives in /screens/services/ServiceRequestScreen.
+ */
+
 type ServiceFormState = {
   serviceType: ServiceType | null;
   title: string;
@@ -983,14 +988,16 @@ export const UserServicesScreen = () => {
                 <AnimatedCard
                   key={option.id}
                   variant="gradient"
-                  style={[
-                    styles.serviceCard,
-                    active && {
-                      borderColor: colors.primary,
-                      shadowColor: colors.primary,
-                      shadowOpacity: 0.35,
-                    },
-                  ]}
+                  style={
+                    active
+                      ? {
+                          ...styles.serviceCard,
+                          borderColor: colors.primary,
+                          shadowColor: colors.primary,
+                          shadowOpacity: 0.35,
+                        }
+                      : styles.serviceCard
+                  }
                 >
                   <LinearGradient
                     colors={option.gradient}

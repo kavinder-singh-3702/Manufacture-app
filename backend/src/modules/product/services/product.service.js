@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Product = require('../../../models/product.model');
+const ProductVariant = require('../../../models/productVariant.model');
 const User = require('../../../models/user.model');
 const UserFavorite = require('../../../models/userFavorite.model');
 const { uploadProductImage } = require('../../../services/storage.service');
@@ -28,6 +29,81 @@ const buildAdminCreatorFilter = async (createdByRole) => {
       { createdBy: { $in: adminIds } }
     ]
   };
+};
+
+const getSortOptions = (sort) => {
+  if (sort === 'priceAsc') return { 'price.amount': 1 };
+  if (sort === 'priceDesc') return { 'price.amount': -1 };
+  if (sort === 'ratingDesc') return { 'attributes.rating': -1, 'attributes.stars': -1 };
+  return { createdAt: -1 };
+};
+
+const attachVariantSummary = async (products, companyId) => {
+  if (!Array.isArray(products) || products.length === 0) return products;
+
+  const productIds = products
+    .map((product) => product?._id)
+    .filter(Boolean)
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  if (productIds.length === 0) return products;
+
+  const matchQuery = {
+    product: { $in: productIds },
+    deletedAt: { $exists: false }
+  };
+
+  if (companyId) {
+    matchQuery.company = new mongoose.Types.ObjectId(companyId);
+  }
+
+  const summaries = await ProductVariant.aggregate([
+    { $match: matchQuery },
+    {
+      $group: {
+        _id: '$product',
+        totalVariants: { $sum: 1 },
+        inStockVariants: {
+          $sum: { $cond: [{ $gt: ['$availableQuantity', 0] }, 1, 0] }
+        },
+        minPrice: { $min: '$price.amount' },
+        maxPrice: { $max: '$price.amount' },
+        currencies: { $addToSet: '$price.currency' }
+      }
+    }
+  ]);
+
+  const summaryMap = new Map(
+    summaries.map((summary) => {
+      const validCurrencies = Array.isArray(summary.currencies)
+        ? summary.currencies.filter((currency) => typeof currency === 'string' && currency)
+        : [];
+      return [
+        String(summary._id),
+        {
+          totalVariants: Number(summary.totalVariants || 0),
+          inStockVariants: Number(summary.inStockVariants || 0),
+          minPrice: Number.isFinite(summary.minPrice) ? summary.minPrice : null,
+          maxPrice: Number.isFinite(summary.maxPrice) ? summary.maxPrice : null,
+          currency: validCurrencies[0] || null
+        }
+      ];
+    })
+  );
+
+  return products.map((product) => {
+    const summary = summaryMap.get(String(product._id));
+    return {
+      ...product,
+      variantSummary: summary || {
+        totalVariants: 0,
+        inStockVariants: 0,
+        minPrice: null,
+        maxPrice: null,
+        currency: null
+      }
+    };
+  });
 };
 
 const getCategoryStats = async (companyId, { createdByRole } = {}) => {
@@ -74,44 +150,41 @@ const getCategoryStats = async (companyId, { createdByRole } = {}) => {
 const getProductsByCategory = async (
   companyId,
   categoryId,
-  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, createdByRole } = {}
+  { limit = 20, offset = 0, status, userId, minPrice, maxPrice, sort, createdByRole, includeVariantSummary } = {}
 ) => {
   const query = { category: categoryId, deletedAt: { $exists: false } };
+  const andFilters = [];
+
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
   }
   if (createdByRole) {
     const adminFilter = await buildAdminCreatorFilter(createdByRole);
     if (adminFilter) {
-      query.$or = adminFilter.$or;
+      andFilters.push({ $or: adminFilter.$or });
     } else {
-      query.createdByRole = createdByRole;
+      andFilters.push({ createdByRole });
     }
   }
   if (status) {
     const expr = buildStockStatusExpr(status);
     if (expr) {
-      query.$expr = expr;
+      andFilters.push({ $expr: expr });
     } else {
-      query.status = status;
+      andFilters.push({ status });
     }
   }
   if (minPrice !== undefined || maxPrice !== undefined) {
-    query['price.amount'] = {};
-    if (minPrice !== undefined) query['price.amount'].$gte = minPrice;
-    if (maxPrice !== undefined) query['price.amount'].$lte = maxPrice;
-    // Clean empty operator object
-    if (Object.keys(query['price.amount']).length === 0) {
-      delete query['price.amount'];
+    const priceFilter = {};
+    if (minPrice !== undefined) priceFilter.$gte = minPrice;
+    if (maxPrice !== undefined) priceFilter.$lte = maxPrice;
+    if (Object.keys(priceFilter).length > 0) {
+      andFilters.push({ 'price.amount': priceFilter });
     }
   }
-
-  const sortOptions = (() => {
-    if (sort === 'priceAsc') return { 'price.amount': 1 };
-    if (sort === 'priceDesc') return { 'price.amount': -1 };
-    if (sort === 'ratingDesc') return { 'attributes.rating': -1, 'attributes.stars': -1 };
-    return { createdAt: -1 };
-  })();
+  if (andFilters.length) {
+    query.$and = andFilters;
+  }
 
   let favoritesSet = new Set();
   if (userId) {
@@ -119,18 +192,22 @@ const getProductsByCategory = async (
     favoritesSet = new Set(favorites.map((f) => f.product?.toString()));
   }
 
-  const [products, total] = await Promise.all([
+  const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone' })
-      .sort(sortOptions)
+      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+      .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
       .lean(),
     Product.countDocuments(query)
   ]);
 
+  const productsWithVariants = includeVariantSummary
+    ? await attachVariantSummary(fetchedProducts, companyId)
+    : fetchedProducts;
+
   return {
-    products: products.map((p) => ({
+    products: productsWithVariants.map((p) => ({
       ...p,
       isFavorite: favoritesSet.has(p._id?.toString())
     })),
@@ -138,16 +215,30 @@ const getProductsByCategory = async (
       total,
       limit,
       offset,
-      hasMore: offset + products.length < total
+      hasMore: offset + fetchedProducts.length < total
     }
   };
 };
 
 const getAllProducts = async (
   companyId,
-  { limit = 20, offset = 0, category, status, search, visibility, userId, createdByRole } = {}
+  {
+    limit = 20,
+    offset = 0,
+    category,
+    status,
+    search,
+    visibility,
+    userId,
+    createdByRole,
+    minPrice,
+    maxPrice,
+    sort,
+    includeVariantSummary
+  } = {}
 ) => {
   const query = { deletedAt: { $exists: false } };
+  const andFilters = [];
 
   if (companyId) {
     query.company = new mongoose.Types.ObjectId(companyId);
@@ -155,28 +246,39 @@ const getAllProducts = async (
   if (createdByRole) {
     const adminFilter = await buildAdminCreatorFilter(createdByRole);
     if (adminFilter) {
-      query.$or = adminFilter.$or;
+      andFilters.push({ $or: adminFilter.$or });
     } else {
-      query.createdByRole = createdByRole;
+      andFilters.push({ createdByRole });
     }
   }
   if (category) {
-    query.category = category;
+    andFilters.push({ category });
   }
   if (visibility) {
-    query.visibility = visibility;
+    andFilters.push({ visibility });
   }
   if (status) {
     const expr = buildStockStatusExpr(status);
     if (expr) {
-      query.$expr = expr;
+      andFilters.push({ $expr: expr });
     } else {
-      query.status = status;
+      andFilters.push({ status });
+    }
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    const priceFilter = {};
+    if (minPrice !== undefined) priceFilter.$gte = minPrice;
+    if (maxPrice !== undefined) priceFilter.$lte = maxPrice;
+    if (Object.keys(priceFilter).length > 0) {
+      andFilters.push({ 'price.amount': priceFilter });
     }
   }
   if (search) {
     const regex = new RegExp(search, 'i');
-    query.$or = [{ name: regex }, { description: regex }, { sku: regex }];
+    andFilters.push({ $or: [{ name: regex }, { description: regex }, { sku: regex }] });
+  }
+  if (andFilters.length) {
+    query.$and = andFilters;
   }
 
   let favoritesSet = new Set();
@@ -185,17 +287,22 @@ const getAllProducts = async (
     favoritesSet = new Set(favorites.map((f) => f.product?.toString()));
   }
 
-  const [products, total] = await Promise.all([
+  const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .sort({ createdAt: -1 })
+      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+      .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
       .lean(),
     Product.countDocuments(query)
   ]);
 
+  const productsWithVariants = includeVariantSummary
+    ? await attachVariantSummary(fetchedProducts, companyId)
+    : fetchedProducts;
+
   return {
-    products: products.map((p) => ({
+    products: productsWithVariants.map((p) => ({
       ...p,
       isFavorite: favoritesSet.has(p._id?.toString())
     })),
@@ -203,17 +310,25 @@ const getAllProducts = async (
       total,
       limit,
       offset,
-      hasMore: offset + products.length < total
+      hasMore: offset + fetchedProducts.length < total
     }
   };
 };
 
-const getProductById = async (productId, companyId) => {
+const getProductById = async (productId, companyId, { includeVariantSummary } = {}) => {
   const query = { _id: productId, deletedAt: { $exists: false } };
   if (companyId) {
-    query.company = companyId;
+    query.company = new mongoose.Types.ObjectId(companyId);
   }
-  return Product.findOne(query).lean();
+  const product = await Product.findOne(query)
+    .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+    .lean();
+  if (!product) return null;
+
+  if (!includeVariantSummary) return product;
+
+  const [withSummary] = await attachVariantSummary([product], companyId);
+  return withSummary;
 };
 
 const createProduct = async (payload, userId, companyId, creatorRole = 'user') => {

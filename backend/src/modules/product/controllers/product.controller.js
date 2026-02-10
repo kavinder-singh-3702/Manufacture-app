@@ -18,6 +18,12 @@ const normalizeCreatorRole = (role) => {
   return value === 'admin' || value === 'user' ? value : undefined;
 };
 
+const parseBooleanQuery = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return false;
+  return value.toLowerCase() === 'true';
+};
+
 const getCategoryStatsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
@@ -37,7 +43,7 @@ const getProductsByCategoryController = async (req, res, next) => {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
     const { categoryId } = req.params;
-    const { limit, offset, status, minPrice, maxPrice, sort } = req.query;
+    const { limit, offset, status, minPrice, maxPrice, sort, includeVariantSummary } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
     const createdByRole = normalizedRole;
 
@@ -48,6 +54,7 @@ const getProductsByCategoryController = async (req, res, next) => {
       minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
       maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
       sort,
+      includeVariantSummary: parseBooleanQuery(includeVariantSummary),
       userId: req.user?.id,
       createdByRole
     });
@@ -62,7 +69,7 @@ const listProductsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
-    const { limit, offset, category, status, search, visibility } = req.query;
+    const { limit, offset, category, status, search, visibility, minPrice, maxPrice, sort, includeVariantSummary } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
     const createdByRole = normalizedRole;
 
@@ -73,6 +80,10 @@ const listProductsController = async (req, res, next) => {
       status,
       search,
       visibility,
+      minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
+      sort,
+      includeVariantSummary: parseBooleanQuery(includeVariantSummary),
       userId: req.user?.id,
       createdByRole
     });
@@ -85,8 +96,11 @@ const listProductsController = async (req, res, next) => {
 
 const getProductController = async (req, res, next) => {
   try {
-    const companyId = req.user?.activeCompany;
-    const product = await getProductById(req.params.productId, companyId);
+    const { scope, includeVariantSummary } = req.query;
+    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const product = await getProductById(req.params.productId, companyId, {
+      includeVariantSummary: parseBooleanQuery(includeVariantSummary)
+    });
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
