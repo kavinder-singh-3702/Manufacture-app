@@ -16,6 +16,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useCart } from "../../hooks/useCart";
 import { CartItem } from "../../providers/CartProvider";
+import { preferenceService } from "../../services/preference.service";
 
 const { width } = Dimensions.get("window");
 
@@ -49,40 +50,40 @@ const useCartPalette = () => {
 // ============================================================
 type CartItemCardProps = {
   cartItem: CartItem;
-  onUpdateQuantity: (itemId: string, quantity: number) => void;
-  onRemove: (itemId: string) => void;
+  onUpdateQuantity: (lineKey: string, quantity: number) => void;
+  onRemove: (lineKey: string) => void;
   index: number;
 };
 
 const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemCardProps) => {
   const COLORS = useCartPalette();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
-  const { item, quantity } = cartItem;
+  const { item, variant, quantity, lineKey } = cartItem;
 
   const handleIncrement = () => {
-    onUpdateQuantity(item._id, quantity + 1);
+    onUpdateQuantity(lineKey, quantity + 1);
   };
 
   const handleDecrement = () => {
     if (quantity <= 1) {
       Alert.alert("Remove Item", `Remove ${item.name} from cart?`, [
         { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: () => onRemove(item._id) },
+        { text: "Remove", style: "destructive", onPress: () => onRemove(lineKey) },
       ]);
     } else {
-      onUpdateQuantity(item._id, quantity - 1);
+      onUpdateQuantity(lineKey, quantity - 1);
     }
   };
 
   const handleRemove = () => {
     Alert.alert("Remove Item", `Remove ${item.name} from cart?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => onRemove(item._id) },
+      { text: "Remove", style: "destructive", onPress: () => onRemove(lineKey) },
     ]);
   };
 
-  const unitPrice = item.price?.amount || 0;
-  const currency = item.price?.currency || "INR";
+  const unitPrice = (variant?.price?.amount ?? item.price?.amount) || 0;
+  const currency = variant?.price?.currency || item.price?.currency || "INR";
   const totalPrice = unitPrice * quantity;
 
   const getCategoryIcon = (category: string) => {
@@ -141,6 +142,11 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
                 <Text style={styles.skuText}>SKU: {item.sku}</Text>
               )}
             </View>
+            {variant ? (
+              <Text style={styles.variantText} numberOfLines={2}>
+                Variant: {variant.title || "Selected"}
+              </Text>
+            ) : null}
 
             {/* Price & Quantity Row */}
             <View style={styles.priceQuantityRow}>
@@ -279,9 +285,36 @@ export const CartScreen = () => {
   }, [items.length, clearCart]);
 
   const totalValue = items.reduce((sum, ci) => {
-    const price = ci.item.price?.amount || 0;
+    const price = (ci.variant?.price?.amount ?? ci.item.price?.amount) || 0;
     return sum + price * ci.quantity;
   }, 0);
+
+  const handleCheckout = useCallback(() => {
+    const productIds = items.map((ci) => ci.item._id).filter(Boolean);
+    const categoryCounts = items.reduce<Record<string, number>>((acc, ci) => {
+      const category = ci.item.category || "other";
+      acc[category] = (acc[category] || 0) + ci.quantity;
+      return acc;
+    }, {});
+    const primaryCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+    preferenceService
+      .logEvent({
+        type: "checkout_start",
+        category: primaryCategory,
+        quantity: totalItems,
+        meta: {
+          source: "cart_screen",
+          totalItems,
+          totalValue,
+          productIds,
+          categoryCounts,
+        },
+      })
+      .catch(() => {});
+
+    Alert.alert("Checkout", "Checkout flow will be connected here.");
+  }, [items, totalItems, totalValue]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: CartItem; index: number }) => (
@@ -295,7 +328,7 @@ export const CartScreen = () => {
     [updateQuantity, removeFromCart]
   );
 
-  const keyExtractor = useCallback((item: CartItem) => item.item._id, []);
+  const keyExtractor = useCallback((item: CartItem) => item.lineKey, []);
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
@@ -396,7 +429,7 @@ export const CartScreen = () => {
             </View>
 
             {/* Checkout Button */}
-            <TouchableOpacity style={styles.checkoutButton} activeOpacity={0.9}>
+            <TouchableOpacity style={styles.checkoutButton} activeOpacity={0.9} onPress={handleCheckout}>
               <LinearGradient
                 colors={[COLORS.success, "#4bc08f"]}
                 start={{ x: 0, y: 0 }}
@@ -606,6 +639,12 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     fontSize: 11,
     fontWeight: "500",
     color: COLORS.textSubtle,
+  },
+  variantText: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "600",
+    color: COLORS.textMuted,
   },
   priceQuantityRow: {
     flexDirection: "row",

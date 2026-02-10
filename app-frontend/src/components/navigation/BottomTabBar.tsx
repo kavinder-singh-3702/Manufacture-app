@@ -1,3 +1,4 @@
+// Legacy tab bar component retained for older screens. Active bottom rail is FooterRail in src/navigation/MainTabs.tsx.
 import { FC } from "react";
 import { View, TouchableOpacity, Text, StyleSheet, Image, ImageSourcePropType } from "react-native";
 import { Ionicons } from "@expo/vector-icons";

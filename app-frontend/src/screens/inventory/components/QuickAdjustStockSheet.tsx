@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../hooks/useTheme";
 import { useToast } from "../../../components/ui/Toast";
 import { productService, type Product } from "../../../services/product.service";
+import { ProductVariant, productVariantService } from "../../../services/productVariant.service";
+import { syncProductFromVariants, variantDisplayLabel } from "./variantDomain";
 
 type Mode = "add" | "remove";
 
@@ -27,6 +29,7 @@ const clampInt = (value: number, min: number, max: number) => {
 export const QuickAdjustStockSheet = ({
   visible,
   product,
+  variant,
   suggestedQty,
   initialMode = "add",
   onClose,
@@ -34,6 +37,7 @@ export const QuickAdjustStockSheet = ({
 }: {
   visible: boolean;
   product: Product | null;
+  variant?: ProductVariant | null;
   suggestedQty?: number;
   initialMode?: Mode;
   onClose: () => void;
@@ -63,10 +67,10 @@ export const QuickAdjustStockSheet = ({
 
   const projectedStock = useMemo(() => {
     if (!product) return null;
-    const current = Number(product.availableQuantity || 0);
+    const current = Number(variant ? variant.availableQuantity : product.availableQuantity || 0);
     if (!Number.isFinite(current)) return null;
     return Math.max(0, current + adjustment);
-  }, [adjustment, product]);
+  }, [adjustment, product, variant]);
 
   const bump = useCallback((delta: number) => {
     setQtyText((prev) => {
@@ -85,8 +89,14 @@ export const QuickAdjustStockSheet = ({
     if (saving) return;
     setSaving(true);
     try {
-      await productService.adjustQuantity(product._id, adjustment);
-      toastSuccess("Stock updated", product.name);
+      if (variant?._id) {
+        await productVariantService.adjustQuantity(product._id, variant._id, adjustment);
+        await syncProductFromVariants(product._id, "company");
+        toastSuccess("Variant stock updated", variantDisplayLabel(variant));
+      } else {
+        await productService.adjustQuantity(product._id, adjustment);
+        toastSuccess("Stock updated", product.name);
+      }
       onClose();
       onSaved?.();
     } catch (err: any) {
@@ -94,7 +104,7 @@ export const QuickAdjustStockSheet = ({
     } finally {
       setSaving(false);
     }
-  }, [adjustment, onClose, onSaved, product, qty, saving, toastError, toastSuccess]);
+  }, [adjustment, onClose, onSaved, product, qty, saving, toastError, toastSuccess, variant]);
 
   const disabled = !product;
 
@@ -122,7 +132,7 @@ export const QuickAdjustStockSheet = ({
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={[styles.title, { color: colors.textOnLightSurface }]}>Quick Adjust</Text>
                   <Text style={[styles.subtitle, { color: colors.subtextOnLightSurface }]} numberOfLines={2}>
-                    {product?.name || "Select a product"}
+                    {variant ? `${product?.name || "Product"} • ${variantDisplayLabel(variant)}` : product?.name || "Select a product"}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={onClose} activeOpacity={0.8} hitSlop={10}>
@@ -217,7 +227,9 @@ export const QuickAdjustStockSheet = ({
                   <View style={[styles.previewRow, { backgroundColor: colors.surfaceElevated, borderRadius: radius.lg, borderColor: colors.border }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.previewLabel, { color: colors.subtextOnLightSurface }]}>Current</Text>
-                      <Text style={[styles.previewValue, { color: colors.textOnLightSurface }]}>{Number(product.availableQuantity || 0).toLocaleString("en-IN")}</Text>
+                      <Text style={[styles.previewValue, { color: colors.textOnLightSurface }]}>
+                        {Number(variant ? variant.availableQuantity : product.availableQuantity || 0).toLocaleString("en-IN")}
+                      </Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.previewLabel, { color: colors.subtextOnLightSurface }]}>After</Text>

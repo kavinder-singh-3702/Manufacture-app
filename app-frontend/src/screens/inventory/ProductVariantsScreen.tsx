@@ -19,6 +19,7 @@ import { RootStackParamList } from "../../navigation/types";
 import { ProductVariant, ProductVariantUpsertInput, productVariantService } from "../../services/productVariant.service";
 import { VariantCardRow } from "./components/VariantCardRow";
 import { VariantFormSheet } from "./components/VariantFormSheet";
+import { syncProductFromVariants } from "./components/variantDomain";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductVariants">;
 
@@ -37,6 +38,7 @@ export const ProductVariantsScreen = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const loadVariants = useCallback(async () => {
     try {
@@ -78,6 +80,17 @@ export const ProductVariantsScreen = () => {
     setEditingVariant(null);
   };
 
+  const syncProduct = useCallback(async () => {
+    try {
+      setSyncing(true);
+      await syncProductFromVariants(productId, "company");
+    } catch (err: any) {
+      toastError("Sync failed", err?.message || "Variants were saved but product totals were not synced");
+    } finally {
+      setSyncing(false);
+    }
+  }, [productId, toastError]);
+
   const saveVariant = async (payload: ProductVariantUpsertInput) => {
     setSaving(true);
     try {
@@ -88,8 +101,9 @@ export const ProductVariantsScreen = () => {
         await productVariantService.create(productId, payload);
         toastSuccess("Variant created");
       }
+      await syncProduct();
       closeForm();
-      loadVariants();
+      await loadVariants();
     } catch (err: any) {
       toastError("Save failed", err?.message || "Could not save variant");
     } finally {
@@ -100,13 +114,8 @@ export const ProductVariantsScreen = () => {
   const adjustVariant = async (variant: ProductVariant, delta: number) => {
     try {
       await productVariantService.adjustQuantity(productId, variant._id, delta);
-      setVariants((prev) =>
-        prev.map((item) =>
-          item._id === variant._id
-            ? { ...item, availableQuantity: Math.max(0, Number(item.availableQuantity || 0) + delta) }
-            : item
-        )
-      );
+      await syncProduct();
+      await loadVariants();
       toastSuccess("Variant stock updated");
     } catch (err: any) {
       toastError("Update failed", err?.message || "Could not adjust quantity");
@@ -122,7 +131,8 @@ export const ProductVariantsScreen = () => {
         onPress: async () => {
           try {
             await productVariantService.delete(productId, variant._id);
-            setVariants((prev) => prev.filter((item) => item._id !== variant._id));
+            await syncProduct();
+            await loadVariants();
             toastSuccess("Variant deleted");
           } catch (err: any) {
             toastError("Delete failed", err?.message || "Could not delete variant");
@@ -146,6 +156,7 @@ export const ProductVariantsScreen = () => {
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
             {productName || "Product"} • {variants.length} total • {totalInStock} in stock
+            {syncing ? " • syncing..." : ""}
           </Text>
         </View>
         <TouchableOpacity onPress={openCreate} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>

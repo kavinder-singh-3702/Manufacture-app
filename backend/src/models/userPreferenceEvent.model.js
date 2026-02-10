@@ -2,7 +2,18 @@ const mongoose = require('mongoose');
 
 const { Schema } = mongoose;
 
-const EVENT_TYPES = ['search', 'view_category', 'view_product', 'add_to_cart', 'remove_from_cart'];
+const EVENT_TYPES = [
+  'search',
+  'view_category',
+  'view_product',
+  'add_to_cart',
+  'remove_from_cart',
+  'campaign_impression',
+  'campaign_click',
+  'campaign_message',
+  'campaign_call',
+  'checkout_start'
+];
 
 const userPreferenceEventSchema = new Schema(
   {

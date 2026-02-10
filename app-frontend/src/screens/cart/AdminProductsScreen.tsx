@@ -27,6 +27,8 @@ import { preferenceService } from "../../services/preference.service";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { VariantChoiceSelection, VariantChoiceSheet } from "../inventory/components/VariantChoiceSheet";
+import { hasVariants, variantDisplayLabel } from "../inventory/components/variantDomain";
 
 const useAdminProductsPalette = () => {
   const { colors } = useTheme();
@@ -179,8 +181,8 @@ export const AdminProductsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, requestLogin } = useAuth();
-  const { error: toastError } = useToast();
-  const { addToCart, isInCart, getCartItem, totalItems } = useCart();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const { addToCart, getProductQuantity } = useCart();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -198,6 +200,8 @@ export const AdminProductsScreen = () => {
   const [sortMode, setSortMode] = useState<"none" | "priceAsc" | "priceDesc" | "ratingDesc">("none");
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
+  const [variantChoiceProduct, setVariantChoiceProduct] = useState<Product | null>(null);
+  const [variantChoiceVisible, setVariantChoiceVisible] = useState(false);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -265,19 +269,49 @@ export const AdminProductsScreen = () => {
     loadProducts(pagination.offset + pagination.limit, true);
   }, [loadProducts, loading, loadingMore, pagination]);
 
-  const handleAddToCart = useCallback(
-    (product: Product) => {
-      addToCart(product, 1);
+  const applyCartSelection = useCallback(
+    (selection: VariantChoiceSelection) => {
+      if (selection.mode === "variant") {
+        addToCart(selection.product, 1, {
+          id: selection.variant._id,
+          title: variantDisplayLabel(selection.variant),
+          options: (selection.variant.options || {}) as Record<string, unknown>,
+          price: selection.variant.price || null,
+          unit: selection.variant.unit || selection.variant.price?.unit || selection.product.unit,
+        });
+        toastSuccess("Added variant", variantDisplayLabel(selection.variant));
+      } else {
+        addToCart(selection.product, 1);
+        toastSuccess("Added to cart", selection.product.name);
+      }
+
       preferenceService
         .logEvent({
           type: "view_product",
-          productId: product._id,
-          category: product.category,
+          productId: selection.product._id,
+          category: selection.product.category,
           meta: { action: "add_to_cart" },
         })
         .catch(() => {});
     },
-    [addToCart]
+    [addToCart, toastSuccess]
+  );
+
+  const closeVariantChoice = useCallback(() => {
+    setVariantChoiceVisible(false);
+    setVariantChoiceProduct(null);
+  }, []);
+
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      if (hasVariants(product)) {
+        setVariantChoiceProduct(product);
+        setVariantChoiceVisible(true);
+        return;
+      }
+      applyCartSelection({ mode: "base", product });
+    },
+    [applyCartSelection]
   );
 
   const handleOpenDetails = useCallback(
@@ -297,10 +331,6 @@ export const AdminProductsScreen = () => {
     },
     [navigation]
   );
-
-  const handleOpenCart = useCallback(() => {
-    navigation.navigate("Cart");
-  }, [navigation]);
 
   const renderCategoryChips = useCallback(() => {
     if (!categories.length) return null;
@@ -393,7 +423,7 @@ export const AdminProductsScreen = () => {
   }, [renderCategoryChips, error, loadProducts, totalLabel]);
 
   const renderItem = ({ item }: { item: Product }) => {
-    const inCartQty = isInCart(item._id) ? getCartItem(item._id)?.quantity : undefined;
+    const inCartQty = getProductQuantity(item._id) || undefined;
     const isGuest = user?.role === "guest";
     return (
       <View style={styles.cardContainer}>
@@ -614,6 +644,18 @@ export const AdminProductsScreen = () => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <VariantChoiceSheet
+        visible={variantChoiceVisible}
+        product={variantChoiceProduct}
+        scope="marketplace"
+        title="Add product to cart"
+        subtitle="Choose the base product or a specific variant for accurate pricing and stock."
+        onClose={closeVariantChoice}
+        onSelect={async (selection) => {
+          applyCartSelection(selection);
+        }}
+      />
     </SafeAreaView>
   );
 };

@@ -16,12 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { tallyService, VoucherItemLine } from '../../services/tally.service';
 import { productService, type Product } from '../../services/product.service';
+import { VariantChoiceSelection, VariantChoiceSheet } from '../inventory/components/VariantChoiceSheet';
+import { hasVariants, variantDisplayLabel } from '../inventory/components/variantDomain';
 
 export const PurchaseBillScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation();
 
-  type LineItem = VoucherItemLine & { productName?: string };
+  type LineItem = VoucherItemLine & { productName?: string; variantLabel?: string };
 
   const [loading, setLoading] = useState(false);
   const [supplierName, setSupplierName] = useState('');
@@ -44,6 +46,7 @@ export const PurchaseBillScreen = () => {
   const [productResults, setProductResults] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
+  const [variantChoiceProduct, setVariantChoiceProduct] = useState<Product | null>(null);
 
   const addItem = () => {
     setItems([
@@ -84,6 +87,7 @@ export const PurchaseBillScreen = () => {
         scope: 'company',
         search: searchText.trim() ? searchText.trim() : undefined,
         limit: 50,
+        includeVariantSummary: true,
       });
       setProductResults(resp.products || []);
     } catch (err) {
@@ -105,26 +109,51 @@ export const PurchaseBillScreen = () => {
   const openProductPicker = (lineIndex: number) => {
     setActiveLineIndex(lineIndex);
     setProductSearch('');
+    setVariantChoiceProduct(null);
     setProductPickerVisible(true);
     loadProducts('');
   };
 
-  const selectProductForLine = (product: Product) => {
+  const applySelectionToLine = useCallback((selection: VariantChoiceSelection) => {
     if (activeLineIndex === null) return;
     const next = [...items];
     const current = next[activeLineIndex];
-    const rate = product.price?.amount || 0;
+    const variantLabel = selection.mode === 'variant' ? variantDisplayLabel(selection.variant) : undefined;
+    const rate =
+      selection.mode === 'variant'
+        ? Number((selection.variant.price?.amount ?? selection.product.price?.amount) || 0)
+        : Number(selection.product.price?.amount || 0);
     next[activeLineIndex] = {
       ...current,
-      product: product._id,
-      productName: product.name,
-      description: current.description?.trim() ? current.description : product.name,
+      product: selection.product._id,
+      variant: selection.mode === 'variant' ? selection.variant._id : undefined,
+      unit:
+        selection.mode === 'variant'
+          ? selection.variant.unit || selection.variant.price?.unit || selection.product.unit || current.unit
+          : selection.product.unit || current.unit,
+      productName: variantLabel ? `${selection.product.name} • ${variantLabel}` : selection.product.name,
+      variantLabel,
+      description: current.description?.trim()
+        ? current.description
+        : variantLabel
+          ? `${selection.product.name} - ${variantLabel}`
+          : selection.product.name,
       rate,
       amount: (current.quantity || 0) * rate,
     };
     setItems(next);
     setProductPickerVisible(false);
+    setVariantChoiceProduct(null);
     setActiveLineIndex(null);
+  }, [activeLineIndex, items]);
+
+  const selectProductForLine = (product: Product) => {
+    if (hasVariants(product)) {
+      setProductPickerVisible(false);
+      setVariantChoiceProduct(product);
+      return;
+    }
+    applySelectionToLine({ mode: 'base', product });
   };
 
   const calculateTotals = () => {
@@ -178,6 +207,7 @@ export const PurchaseBillScreen = () => {
         date,
         items: items.map((item) => ({
           product: item.product,
+          variant: item.variant,
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -338,9 +368,16 @@ export const PurchaseBillScreen = () => {
                 activeOpacity={0.8}
                 onPress={() => openProductPicker(index)}
               >
-                <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                  {item.productName || 'Select product'}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600' }} numberOfLines={1}>
+                    {item.productName || 'Select product'}
+                  </Text>
+                  {item.variantLabel ? (
+                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 3 }} numberOfLines={1}>
+                      Variant: {item.variantLabel}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text style={{ color: colors.textMuted, fontWeight: '700', marginLeft: 10 }}>›</Text>
               </TouchableOpacity>
 
@@ -561,6 +598,11 @@ export const PurchaseBillScreen = () => {
                       <Text style={[styles.productMeta, { color: colors.textMuted }]} numberOfLines={1}>
                         {p.category?.replace(/-/g, " ")}  ·  {p.price?.amount ? `₹${p.price.amount.toLocaleString("en-IN")}` : "No price"}
                       </Text>
+                      {Number(p.variantSummary?.totalVariants || 0) > 0 ? (
+                        <Text style={[styles.productMeta, { color: colors.primary }]} numberOfLines={1}>
+                          {p.variantSummary?.totalVariants} variants available
+                        </Text>
+                      ) : null}
                     </View>
                     <Text style={[styles.productChevron, { color: colors.textMuted }]}>›</Text>
                   </TouchableOpacity>
@@ -575,6 +617,18 @@ export const PurchaseBillScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <VariantChoiceSheet
+        visible={Boolean(variantChoiceProduct)}
+        product={variantChoiceProduct}
+        scope="company"
+        title="Choose product option"
+        subtitle="Use base product or pick a variant for accurate bill rate and stock."
+        onClose={() => setVariantChoiceProduct(null)}
+        onSelect={async (selection) => {
+          applySelectionToLine(selection);
+        }}
+      />
     </SafeAreaView>
   );
 };

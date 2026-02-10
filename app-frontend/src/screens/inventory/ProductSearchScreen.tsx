@@ -23,6 +23,8 @@ import { useToast } from "../../components/ui/Toast";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { useCart } from "../../hooks/useCart";
+import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
+import { hasVariants, variantDisplayLabel } from "./components/variantDomain";
 
 type ProductSearchRoute = RouteProp<RootStackParamList, "ProductSearch">;
 
@@ -56,6 +58,8 @@ export const ProductSearchScreen = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [seedProducts, setSeedProducts] = useState<Product[]>([]);
+  const [variantChoiceVisible, setVariantChoiceVisible] = useState(false);
+  const [variantChoiceProduct, setVariantChoiceProduct] = useState<Product | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoggedSearch = useRef<string>("");
@@ -192,21 +196,50 @@ export const ProductSearchScreen = () => {
     [categoryChips, executeSearch, navigation]
   );
 
-  const handleAddToCart = useCallback(
-    (product: Product) => {
-      addToCart(product, 1);
-      toastSuccess("Added to cart", product.name);
+  const applyCartSelection = useCallback(
+    (selection: VariantChoiceSelection) => {
+      if (selection.mode === "variant") {
+        addToCart(selection.product, 1, {
+          id: selection.variant._id,
+          title: variantDisplayLabel(selection.variant),
+          options: (selection.variant.options || {}) as Record<string, unknown>,
+          price: selection.variant.price || null,
+          unit: selection.variant.unit || selection.variant.price?.unit || selection.product.unit,
+        });
+        toastSuccess("Added variant", variantDisplayLabel(selection.variant));
+      } else {
+        addToCart(selection.product, 1);
+        toastSuccess("Added to cart", selection.product.name);
+      }
+
       preferenceService
         .logEvent({
           type: "view_product",
-          productId: product._id,
-          category: product.category,
+          productId: selection.product._id,
+          category: selection.product.category,
           quantity: 1,
           meta: { action: "add_to_cart" },
         })
         .catch(() => {});
     },
     [addToCart, toastSuccess]
+  );
+
+  const closeVariantChoice = useCallback(() => {
+    setVariantChoiceVisible(false);
+    setVariantChoiceProduct(null);
+  }, []);
+
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      if (hasVariants(product)) {
+        setVariantChoiceProduct(product);
+        setVariantChoiceVisible(true);
+        return;
+      }
+      applyCartSelection({ mode: "base", product });
+    },
+    [applyCartSelection]
   );
 
   const renderItem = useCallback(
@@ -499,6 +532,18 @@ export const ProductSearchScreen = () => {
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Searching products...</Text>
         </View>
       ) : null}
+
+      <VariantChoiceSheet
+        visible={variantChoiceVisible}
+        product={variantChoiceProduct}
+        scope="marketplace"
+        title="Add product to cart"
+        subtitle="Choose the base product or pick a specific variant."
+        onClose={closeVariantChoice}
+        onSelect={async (selection) => {
+          applyCartSelection(selection);
+        }}
+      />
     </SafeAreaView>
   );
 };

@@ -1,17 +1,18 @@
 import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
-import { View, StyleSheet, TouchableOpacity, Modal, Text, TouchableWithoutFeedback, Image } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SvgXml } from "react-native-svg";
 import { useTheme } from "../hooks/useTheme";
-import { useThemeMode } from "../hooks/useThemeMode";
 import { useAuth } from "../hooks/useAuth";
 import { useUnreadMessages } from "../providers/UnreadMessagesProvider";
 import { useNotifications } from "../providers/NotificationsProvider";
 import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
+import { FooterRail } from "./components/MainTabs/components/FooterRail";
 import { CompanySwitcherCard } from "../components/company";
 import { AppRole } from "../constants/roles";
 import { companyService } from "../services/company.service";
@@ -26,10 +27,10 @@ import { ServicesOverviewScreen } from "../screens/services";
 import { AccountingDashboardScreen } from "../screens/accounting/AccountingDashboardScreen";
 
 import { FloatingCartBar } from "../components/cart";
-import { SvgXml } from "react-native-svg";
 
-import { routes, RouteName, getTabsForRole, RouteConfig } from "./routes";
+import { routes, RouteName, getTabsForRole } from "./routes";
 import { MainTabParamList, RootStackParamList } from "./types";
+import { TopBarConfig } from "./components/MainTabs/components/navigation.types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -73,29 +74,41 @@ const TAB_ICON_XML: Partial<Record<RouteName, (color: string) => string>> = {
       <path d="M4 21a8 8 0 0 1 16 0" />
     </svg>
   `,
+  [routes.USERS]: (color) => `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  `,
+  [routes.VERIFICATIONS]: (color) => `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  `,
+  [routes.COMPANIES]: (color) => `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 21h18" />
+      <path d="M5 21V7l7-4 7 4v14" />
+      <path d="M9 9h1" />
+      <path d="M14 9h1" />
+      <path d="M9 13h1" />
+      <path d="M14 13h1" />
+      <path d="M11 21v-4h2v4" />
+    </svg>
+  `,
+  [routes.CHAT]: (color) => `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  `,
 };
 
 const getTabIconXml = (route: RouteName, color: string) => {
   const fn = TAB_ICON_XML[route];
   return fn ? fn(color) : "";
-};
-
-const footerIcons: Partial<Record<RouteName, { type: "svg"; xml: string } | { type: "png"; src: any }>> = {
-  [routes.DASHBOARD]: {
-    type: "svg",
-    xml: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48"><path fill="rgba(255,255,255,0.75)" d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-4v-6h-4v6H4a1 1 0 0 1-1-1Z"/></svg>`,
-  },
-  [routes.CART]: {
-    type: "svg",
-    xml: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48"><path fill="rgba(255,255,255,0.8)" d="M7.2 6H20a1 1 0 0 1 .96 1.27l-1.75 6A1 1 0 0 1 18.25 14H9.1l-.35 1.38a1 1 0 0 1-.97.74H5a1 1 0 1 1 0-2h1.16l1.6-6.31A1 1 0 0 1 7.2 6Zm1.8 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm9 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg>`,
-  },
-  [routes.SERVICES]: { type: "png", src: require("../../assets/footer/services.png") },
-  [routes.ACCOUNTING]: {
-    type: "svg",
-    xml: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48"><path fill="rgba(255,255,255,0.75)" d="M7 3h8.5L19 6.5V21a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm8 1.5V7h2.5L15 4.5Z"/><path fill="rgba(255,255,255,0.55)" d="M8 10h8v1.6H8V10Zm0 3.2h8v1.6H8v-1.6Zm0 3.2h6v1.6H8V16.4Z"/></svg>`,
-  },
-  [routes.STATS]: { type: "png", src: require("../../assets/footer/stats.png") },
-  [routes.PROFILE_TAB]: { type: "png", src: require("../../assets/footer/profile.png") },
 };
 
 const PlaceholderScreen = ({ title, icon }: { title: string; icon: string }) => {
@@ -149,8 +162,9 @@ export const MainTabs = () => {
   const [accountsPickerOpen, setAccountsPickerOpen] = useState(false);
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
 
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing } = useTheme();
   const { user, logout, requestLogin } = useAuth();
+  const { totalUnread } = useUnreadMessages();
   const { unreadCount: notificationUnreadCount } = useNotifications();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -187,6 +201,34 @@ export const MainTabs = () => {
     if (!isAdmin && activeRoute === routes.STATS) return routes.ACCOUNTING;
     return activeRoute;
   }, [activeRoute, isAdmin]);
+
+  const activeTabConfig = useMemo(() => {
+    if (!tabs.length) return null;
+    return tabs.find((tab) => tab.route === activeRouteForNav) ?? tabs.find((tab) => tab.route === activeRoute) ?? tabs[0];
+  }, [activeRoute, activeRouteForNav, tabs]);
+
+  const isInventoryShortcutOpen = !isAdmin && activeRoute === routes.STATS;
+  const topBarMode = isInventoryShortcutOpen ? "two_row" : activeTabConfig?.topBarMode ?? "two_row";
+  const topBarTitle = isInventoryShortcutOpen
+    ? "Inventory"
+    : activeTabConfig?.tabLabel ?? activeTabConfig?.label ?? (isAdmin ? "Dashboard" : "Home");
+
+  const topBarSubtitle = useMemo(() => {
+    if (topBarMode !== "two_row") return undefined;
+    if (!isAuthenticated) return "Guest workspace";
+    if (activeCompany?.displayName) return activeCompany.displayName;
+    return isAdmin ? "Admin workspace" : "Operations workspace";
+  }, [activeCompany?.displayName, isAdmin, isAuthenticated, topBarMode]);
+
+  const topBarConfig = useMemo<TopBarConfig>(
+    () => ({
+      mode: topBarMode,
+      title: topBarTitle,
+      subtitle: topBarSubtitle,
+      showSearch: topBarMode === "two_row",
+    }),
+    [topBarMode, topBarTitle, topBarSubtitle]
+  );
 
   const displayName = useMemo(() => {
     if (typeof user?.displayName === "string" && user.displayName.trim().length) {
@@ -312,10 +354,6 @@ export const MainTabs = () => {
     stackNavigation.navigate("CompanyCreate");
   }, [closeCompanyModal, stackNavigation]);
 
-  const gradientOverlay = isAdmin
-    ? { primary: "rgba(139, 92, 246, 0.15)", secondary: "rgba(236, 72, 153, 0.08)" }
-    : { primary: colors.surfaceOverlayPrimary, secondary: colors.surfaceOverlaySecondary };
-
   return (
     <>
       <LinearGradient
@@ -326,30 +364,18 @@ export const MainTabs = () => {
         style={[styles.container, { paddingTop: insets.top }]}
       >
         <LinearGradient
-          colors={[gradientOverlay.primary, gradientOverlay.primary.replace("0.15", "0.04").replace("0.12", "0.04"), "transparent"]}
-          locations={[0, 0.4, 1]}
+          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlaySecondary]}
+          locations={[0, 0.58, 1]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0.6, y: 0.6 }}
+          end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <LinearGradient
-          colors={["transparent", gradientOverlay.secondary, "transparent"]}
-          locations={[0, 0.5, 1]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.3, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {!isAdmin ? (
-          <LinearGradient
-            colors={["transparent", colors.surfaceOverlayAccent.replace("0.10", "0.06"), colors.surfaceOverlayAccent]}
-            locations={[0, 0.6, 1]}
-            start={{ x: 0.4, y: 0.4 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        ) : null}
 
         <HomeToolbar
+          mode={topBarConfig.mode}
+          title={topBarConfig.title}
+          subtitle={topBarConfig.subtitle}
+          showSearch={topBarConfig.showSearch}
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
@@ -382,16 +408,18 @@ export const MainTabs = () => {
 
         {!isAdmin && !isGuest ? <FloatingCartBar /> : null}
 
-        {isAdmin ? (
-          <AdminFooterBar tabs={tabs} activeTab={activeRoute} onTabPress={handleNavigateToRoute} />
-        ) : (
-          <UserFooterBar
-            tabs={tabs}
-            activeTab={activeRouteForNav}
-            onTabPress={handleNavigateToRoute}
-            onProfileLongPress={handleOpenCompanySwitcher}
-          />
-        )}
+        <FooterRail
+          tabs={tabs}
+          activeTab={activeRouteForNav}
+          onTabPress={handleNavigateToRoute}
+          onTabLongPress={(route) => {
+            if (route === routes.PROFILE_TAB) {
+              handleOpenCompanySwitcher();
+            }
+          }}
+          unreadByRoute={isAdmin ? { [routes.CHAT]: totalUnread } : undefined}
+          getSvgIconXml={getTabIconXml}
+        />
       </LinearGradient>
 
       <SidebarMenu
@@ -496,234 +524,9 @@ export const MainTabs = () => {
   );
 };
 
-type FooterBarProps = {
-  tabs: RouteConfig[];
-  activeTab: RouteName;
-  onTabPress: (route: RouteName) => void;
-  onProfileLongPress?: () => void;
-};
-
-const UserFooterBar = ({ tabs, activeTab, onTabPress, onProfileLongPress }: FooterBarProps) => {
-  const { colors } = useTheme();
-  const { resolvedMode } = useThemeMode();
-  const footerBackground = resolvedMode === "dark" ? colors.backgroundSecondary : colors.footerBackground;
-  const footerBorder = resolvedMode === "dark" ? "rgba(255,255,255,0.12)" : colors.footerBorder;
-
-  const renderTab = (tab: RouteConfig) => {
-    const isActive = activeTab === tab.route;
-    const isProfileTab = tab.route === routes.PROFILE_TAB;
-    const iconColor = isActive ? colors.footerActive : colors.footerInactive;
-    const labelColor = isActive ? colors.footerActive : colors.footerInactive;
-
-    return (
-      <TouchableOpacity
-        key={tab.route}
-        onPress={() => onTabPress(tab.route)}
-        onLongPress={isProfileTab && onProfileLongPress ? onProfileLongPress : undefined}
-        delayLongPress={300}
-        style={styles.simpleTabButton}
-        activeOpacity={0.75}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        {getTabIconXml(tab.route, iconColor) ? <SvgXml xml={getTabIconXml(tab.route, iconColor)} width={26} height={26} /> : <Text>{tab.icon}</Text>}
-        <Text style={[styles.simpleTabLabel, { color: labelColor, fontWeight: isActive ? "800" : "600" }]} numberOfLines={1}>
-          {tab.label}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: footerBackground }}>
-      <View style={[styles.simpleFooter, { borderTopColor: footerBorder, backgroundColor: footerBackground }]}>{tabs.map(renderTab)}</View>
-    </SafeAreaView>
-  );
-};
-
-const AdminFooterBar = ({ tabs, activeTab, onTabPress }: FooterBarProps) => {
-  const { colors, spacing, radius } = useTheme();
-  const { resolvedMode } = useThemeMode();
-  const { totalUnread } = useUnreadMessages();
-  const footerBase = resolvedMode === "dark" ? colors.backgroundSecondary : colors.surface;
-  const footerAccent = resolvedMode === "dark" ? colors.surface : colors.backgroundSecondary;
-
-  const renderIcon = (tab: RouteConfig, isActive: boolean) => {
-    const asset = footerIcons[tab.route];
-    if (asset?.type === "svg") {
-      return <SvgXml xml={asset.xml} width={24} height={24} />;
-    }
-    if (asset?.type === "png") {
-      return <Image source={asset.src} style={[styles.footerIcon, { opacity: isActive ? 1 : 0.85 }]} resizeMode="contain" />;
-    }
-    return <Text style={{ color: isActive ? colors.text : colors.textMuted }}>{tab.icon}</Text>;
-  };
-
-  const renderTab = (tab: RouteConfig) => {
-    const isActive = activeTab === tab.route;
-    const unreadCount = tab.route === routes.CHAT ? totalUnread : 0;
-
-    return (
-      <TouchableOpacity key={tab.route} onPress={() => onTabPress(tab.route)} style={styles.tabButton} activeOpacity={0.7}>
-        {isActive ? (
-          <View style={styles.activeTabContainer}>
-            <View style={styles.adminTabIconWrap}>
-              <LinearGradient
-                colors={tab.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.activeTabGlow, { borderRadius: radius.lg, shadowColor: tab.gradientColors[0] }]}
-              >
-                {renderIcon(tab, true)}
-              </LinearGradient>
-              {unreadCount > 0 ? (
-                <View style={[styles.adminUnreadBadge, { borderColor: colors.background }]}> 
-                  <Text style={styles.adminUnreadBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={[styles.tabLabelActive, { color: tab.gradientColors[0] }]}>{tab.label}</Text>
-          </View>
-        ) : (
-          <View style={styles.inactiveTabContainer}>
-            <View style={styles.adminTabIconWrap}>
-              <LinearGradient
-                colors={[`${tab.gradientColors[0]}40`, `${tab.gradientColors[1]}20`]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.inactiveGradientBorder, { borderRadius: radius.lg }]}
-              >
-                <View style={[styles.inactiveIconInner, { borderRadius: radius.lg - 1.5, backgroundColor: colors.background }]}> 
-                  {renderIcon(tab, false)}
-                </View>
-              </LinearGradient>
-              {unreadCount > 0 ? (
-                <View style={[styles.adminUnreadBadge, { borderColor: colors.background }]}> 
-                  <Text style={styles.adminUnreadBadgeText}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={[styles.tabLabel, { color: colors.textMuted }]}>{tab.label}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  return (
-    <SafeAreaView edges={["bottom"]} style={{ backgroundColor: "transparent" }}>
-      <LinearGradient
-        colors={[footerBase, footerAccent, footerBase]}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[
-          styles.footer,
-          {
-            paddingHorizontal: spacing.sm,
-            paddingTop: spacing.md,
-            paddingBottom: spacing.xs,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            borderTopWidth: 1,
-            borderLeftWidth: 1,
-            borderRightWidth: 1,
-            borderColor: colors.sidebarBorder,
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}
-        />
-        {tabs.map(renderTab)}
-      </LinearGradient>
-    </SafeAreaView>
-  );
-};
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentArea: { flex: 1 },
-
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  tabButton: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 4 },
-  activeTabContainer: { alignItems: "center", justifyContent: "center", gap: 4 },
-  inactiveTabContainer: { alignItems: "center", justifyContent: "center", gap: 4 },
-  activeTabGlow: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  inactiveGradientBorder: { width: 46, height: 46, padding: 1.5, alignItems: "center", justifyContent: "center" },
-  inactiveIconInner: { width: 43, height: 43, alignItems: "center", justifyContent: "center" },
-  tabLabel: { fontSize: 12, fontWeight: "600" },
-  tabLabelActive: { fontSize: 12, fontWeight: "700" },
-  adminTabIconWrap: {
-    position: "relative",
-  },
-  adminUnreadBadge: {
-    position: "absolute",
-    top: -6,
-    right: -8,
-    backgroundColor: "#FF4757",
-    borderRadius: 12,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 5,
-    borderWidth: 2,
-    shadowColor: "#FF4757",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  adminUnreadBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "800",
-  },
-
-  footerIcon: { width: 22, height: 22 },
-
-  simpleFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: 6,
-  },
-  simpleTabButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 2,
-  },
-  simpleTabLabel: {
-    marginTop: 4,
-    fontSize: 13,
-    letterSpacing: 0.2,
-  },
 
   modalBackdrop: { flex: 1, justifyContent: "flex-end" },
   modalContent: { maxHeight: "80%", borderWidth: 1, width: "100%" },

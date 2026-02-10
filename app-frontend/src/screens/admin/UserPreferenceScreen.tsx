@@ -7,11 +7,13 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { preferenceService, PreferenceSummary, PersonalizedOffer } from "../../services/preference.service";
 import { productService, Product, ProductCategory } from "../../services/product.service";
+import { ServiceType } from "../../services/serviceRequest.service";
 import { RootStackParamList } from "../../navigation/types";
 
 type RouteProps = RouteProp<RootStackParamList, "UserPreferences">;
 
 const metricLabel = (label: string, value?: number) => `${label}: ${value ?? 0}`;
+const SERVICE_TYPE_OPTIONS: ServiceType[] = ["machine_repair", "worker", "transport"];
 
 export const UserPreferenceScreen = () => {
   const { colors, spacing, radius } = useTheme();
@@ -28,6 +30,8 @@ export const UserPreferenceScreen = () => {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [campaignType, setCampaignType] = useState<"product" | "service">("product");
+  const [serviceType, setServiceType] = useState<ServiceType>("machine_repair");
   const [form, setForm] = useState({
     productId: "",
     title: "",
@@ -55,7 +59,7 @@ export const UserPreferenceScreen = () => {
     try {
       const { offers: list } = await preferenceService.listUserOffers(userId, { includeExpired: true });
       setOffers(list || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Failed to load personalized offers", err?.message || err);
     }
   }, [userId]);
@@ -64,7 +68,7 @@ export const UserPreferenceScreen = () => {
     try {
       const res = await productService.getCategoryStats();
       setCategories(res.categories || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Failed to load categories for offers", err?.message || err);
     }
   }, []);
@@ -75,7 +79,7 @@ export const UserPreferenceScreen = () => {
     try {
       const res = await productService.getProductsByCategory(categoryId, { limit: 200 });
       setProducts(res.products || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Failed to load products for category", err?.message || err);
       setProducts([]);
     } finally {
@@ -99,24 +103,30 @@ export const UserPreferenceScreen = () => {
 
   const handleCreateOffer = useCallback(async () => {
     const trimmedTitle = form.title.trim();
-    if (!form.productId || !trimmedTitle || !form.newPrice) {
-      setOfferError("Product, title, and new price are required");
+    if (!trimmedTitle) {
+      setOfferError("Title is required");
       return;
     }
     if (trimmedTitle.length < 3) {
       setOfferError("Title must be at least 3 characters");
       return;
     }
+    if (campaignType === "product" && (!form.productId || !form.newPrice)) {
+      setOfferError("Product, title, and new price are required for product campaigns");
+      return;
+    }
     setCreating(true);
     setOfferError(null);
     try {
-      await preferenceService.createUserOffer(userId, {
-        productId: form.productId.trim(),
+      await preferenceService.createCampaign(userId, {
+        contentType: campaignType,
+        serviceType: campaignType === "service" ? serviceType : undefined,
+        productId: campaignType === "product" ? form.productId.trim() : undefined,
         title: trimmedTitle,
         message: form.message.trim() || undefined,
-        newPrice: Number(form.newPrice),
-        oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
-        minOrderValue: form.minOrderValue ? Number(form.minOrderValue) : undefined,
+        newPrice: campaignType === "product" ? Number(form.newPrice) : undefined,
+        oldPrice: campaignType === "product" && form.oldPrice ? Number(form.oldPrice) : undefined,
+        minOrderValue: campaignType === "product" && form.minOrderValue ? Number(form.minOrderValue) : undefined,
         expiresAt: form.expiresAt || undefined,
       });
       setForm({ productId: "", title: "", message: "", newPrice: "", oldPrice: "", minOrderValue: "", expiresAt: "" });
@@ -140,7 +150,7 @@ export const UserPreferenceScreen = () => {
     } finally {
       setCreating(false);
     }
-  }, [form, loadOffers, userId]);
+  }, [campaignType, form, loadOffers, serviceType, userId]);
 
   const renderTopList = (
     title: string,
@@ -207,6 +217,13 @@ export const UserPreferenceScreen = () => {
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             {displayName || "User"} • Last {summary?.windowDays ?? 60} days
           </Text>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={() => navigation.navigate("CampaignStudio")}
+            style={[styles.studioButton, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md }]}
+          >
+            <Text style={[styles.studioButtonText, { color: colors.primary }]}>Open Campaign Studio</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.heroCard, { borderRadius: radius.lg, overflow: "hidden" }]}>
@@ -230,8 +247,8 @@ export const UserPreferenceScreen = () => {
         <View style={{ gap: spacing.md, marginTop: spacing.md }}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }]}>
             <View style={[styles.cardHeader, { marginBottom: spacing.sm }]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Create personalized offer</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Target this user with a tailored deal</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Quick campaign create</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Publish a product or service campaign for this user</Text>
             </View>
             <View style={{ gap: spacing.sm }}>
               {offerError && (
@@ -240,65 +257,120 @@ export const UserPreferenceScreen = () => {
                 </View>
               )}
               <View style={{ gap: spacing.xs }}>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>Pick a category</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
-                  {categories.map((cat) => (
+                <Text style={[styles.meta, { color: colors.textMuted }]}>Campaign type</Text>
+                <View style={{ flexDirection: "row", gap: spacing.xs }}>
+                  {(["product", "service"] as const).map((type) => (
                     <TouchableOpacity
-                      key={cat.id}
+                      key={type}
                       onPress={() => {
-                        setForm((prev) => ({ ...prev, productId: "", oldPrice: "", newPrice: "", minOrderValue: "" }));
-                        loadProductsForCategory(cat.id);
+                        setCampaignType(type);
+                        setOfferError(null);
                       }}
                       style={[
                         styles.chip,
                         {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
+                          backgroundColor: campaignType === type ? colors.primary + "20" : colors.surface,
+                          borderColor: campaignType === type ? colors.primary : colors.border,
                           borderRadius: radius.pill,
                         },
                       ]}
                     >
-                      <Text style={{ color: colors.text }}>{cat.title}</Text>
+                      <Text style={{ color: campaignType === type ? colors.primary : colors.text, fontWeight: "700" }}>
+                        {type}
+                      </Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </View>
               </View>
 
-              <View style={{ gap: spacing.xs }}>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>Select product</Text>
-                {productsLoading ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : products.length === 0 ? (
-                  <Text style={[styles.meta, { color: colors.textSecondary }]}>Pick a category to see products</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
-                    {products.map((prod) => (
+              {campaignType === "product" ? (
+                <>
+                  <View style={{ gap: spacing.xs }}>
+                    <Text style={[styles.meta, { color: colors.textMuted }]}>Pick a category</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
+                      {categories.map((cat) => (
+                        <TouchableOpacity
+                          key={cat.id}
+                          onPress={() => {
+                            setForm((prev) => ({ ...prev, productId: "", oldPrice: "", newPrice: "", minOrderValue: "" }));
+                            loadProductsForCategory(cat.id);
+                          }}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.border,
+                              borderRadius: radius.pill,
+                            },
+                          ]}
+                        >
+                          <Text style={{ color: colors.text }}>{cat.title}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  <View style={{ gap: spacing.xs }}>
+                    <Text style={[styles.meta, { color: colors.textMuted }]}>Select product</Text>
+                    {productsLoading ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : products.length === 0 ? (
+                      <Text style={[styles.meta, { color: colors.textSecondary }]}>Pick a category to see products</Text>
+                    ) : (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
+                        {products.map((prod) => (
+                          <TouchableOpacity
+                            key={prod._id}
+                            onPress={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                productId: prod._id,
+                                title: prev.title || prod.name,
+                                oldPrice: prod.price?.amount ? String(prod.price.amount) : "",
+                                newPrice: prod.price?.amount ? String(prod.price.amount) : "",
+                              }));
+                            }}
+                            style={[
+                              styles.chip,
+                              {
+                                backgroundColor: form.productId === prod._id ? colors.primary + "20" : colors.surface,
+                                borderColor: form.productId === prod._id ? colors.primary : colors.border,
+                                borderRadius: radius.pill,
+                              },
+                            ]}
+                          >
+                            <Text style={{ color: colors.text }}>{prod.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
+                </>
+              ) : (
+                <View style={{ gap: spacing.xs }}>
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>Service type</Text>
+                  <View style={{ flexDirection: "row", gap: spacing.xs, flexWrap: "wrap" }}>
+                    {SERVICE_TYPE_OPTIONS.map((item) => (
                       <TouchableOpacity
-                        key={prod._id}
-                        onPress={() => {
-                          setForm((prev) => ({
-                            ...prev,
-                            productId: prod._id,
-                            title: prev.title || prod.name,
-                            oldPrice: prod.price?.amount ? String(prod.price.amount) : "",
-                            newPrice: prod.price?.amount ? String(prod.price.amount) : "",
-                          }));
-                        }}
+                        key={item}
+                        onPress={() => setServiceType(item)}
                         style={[
                           styles.chip,
                           {
-                            backgroundColor: form.productId === prod._id ? colors.primary + "20" : colors.surface,
-                            borderColor: form.productId === prod._id ? colors.primary : colors.border,
+                            backgroundColor: serviceType === item ? colors.primary + "20" : colors.surface,
+                            borderColor: serviceType === item ? colors.primary : colors.border,
                             borderRadius: radius.pill,
                           },
                         ]}
                       >
-                        <Text style={{ color: colors.text }}>{prod.name}</Text>
+                        <Text style={{ color: serviceType === item ? colors.primary : colors.text, textTransform: "capitalize" }}>
+                          {item.replace(/_/g, " ")}
+                        </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
-                )}
-              </View>
+                  </View>
+                </View>
+              )}
 
               <TextInput
                 placeholder="Offer title"
@@ -314,41 +386,53 @@ export const UserPreferenceScreen = () => {
                 style={[styles.input, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
                 placeholderTextColor={colors.textMuted}
               />
-              <View style={[styles.row, { gap: spacing.sm }]}>
-                <TextInput
-                  placeholder="New price"
-                  keyboardType="numeric"
-                  value={form.newPrice}
-                  onChangeText={(text) => setForm((prev) => ({ ...prev, newPrice: text }))}
-                  style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
-                  placeholderTextColor={colors.textMuted}
-                />
-                <TextInput
-                  placeholder="Old price (optional)"
-                  keyboardType="numeric"
-                  value={form.oldPrice}
-                  onChangeText={(text) => setForm((prev) => ({ ...prev, oldPrice: text }))}
-                  style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
-              <View style={[styles.row, { gap: spacing.sm }]}>
-                <TextInput
-                  placeholder="Min order value (optional)"
-                  keyboardType="numeric"
-                  value={form.minOrderValue}
-                  onChangeText={(text) => setForm((prev) => ({ ...prev, minOrderValue: text }))}
-                  style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
-                  placeholderTextColor={colors.textMuted}
-                />
+              {campaignType === "product" ? (
+                <>
+                  <View style={[styles.row, { gap: spacing.sm }]}>
+                    <TextInput
+                      placeholder="New price"
+                      keyboardType="numeric"
+                      value={form.newPrice}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, newPrice: text }))}
+                      style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
+                      placeholderTextColor={colors.textMuted}
+                    />
+                    <TextInput
+                      placeholder="Old price (optional)"
+                      keyboardType="numeric"
+                      value={form.oldPrice}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, oldPrice: text }))}
+                      style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
+                      placeholderTextColor={colors.textMuted}
+                    />
+                  </View>
+                  <View style={[styles.row, { gap: spacing.sm }]}>
+                    <TextInput
+                      placeholder="Min order value (optional)"
+                      keyboardType="numeric"
+                      value={form.minOrderValue}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, minOrderValue: text }))}
+                      style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
+                      placeholderTextColor={colors.textMuted}
+                    />
+                    <TextInput
+                      placeholder="Expires at (ISO date, optional)"
+                      value={form.expiresAt}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, expiresAt: text }))}
+                      style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
+                      placeholderTextColor={colors.textMuted}
+                    />
+                  </View>
+                </>
+              ) : (
                 <TextInput
                   placeholder="Expires at (ISO date, optional)"
                   value={form.expiresAt}
                   onChangeText={(text) => setForm((prev) => ({ ...prev, expiresAt: text }))}
-                  style={[styles.input, styles.halfInput, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, borderRadius: radius.sm }]}
                   placeholderTextColor={colors.textMuted}
                 />
-              </View>
+              )}
               <TouchableOpacity
                 onPress={handleCreateOffer}
                 disabled={creating}
@@ -357,7 +441,7 @@ export const UserPreferenceScreen = () => {
                   { backgroundColor: colors.primary, borderRadius: radius.md, opacity: creating ? 0.7 : 1 },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>{creating ? "Saving..." : "Create offer"}</Text>
+                <Text style={styles.primaryButtonText}>{creating ? "Saving..." : "Create campaign"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -420,11 +504,11 @@ export const UserPreferenceScreen = () => {
 
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md }]}>
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Personalized offers</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Active and past offers for this user</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Campaign history</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>Active and past campaigns for this user</Text>
             </View>
             {offers.length === 0 ? (
-              <Text style={[styles.emptyLabel, { color: colors.textSecondary }]}>No offers yet</Text>
+              <Text style={[styles.emptyLabel, { color: colors.textSecondary }]}>No campaigns yet</Text>
             ) : (
               <View style={{ gap: spacing.sm }}>
                 {offers.map((offer) => (
@@ -432,8 +516,12 @@ export const UserPreferenceScreen = () => {
                     <View>
                       <Text style={[styles.rowLabel, { color: colors.text }]}>{offer.title}</Text>
                       <Text style={[styles.meta, { color: colors.textMuted }]}>
-                        {offer.product?.name || "Product"} • ₹{offer.newPrice}
-                        {offer.oldPrice ? ` (was ₹${offer.oldPrice})` : ""}
+                        {(offer.contentType || "product").toUpperCase()} •{" "}
+                        {offer.contentType === "service"
+                          ? offer.serviceType?.replace(/_/g, " ") || "service"
+                          : `${offer.product?.name || "Product"}${offer.newPrice ? ` • ₹${offer.newPrice}` : ""}${
+                              offer.oldPrice ? ` (was ₹${offer.oldPrice})` : ""
+                            }`}
                       </Text>
                       {offer.expiresAt && (
                         <Text style={[styles.meta, { color: colors.textSecondary }]}>Expires {formatDate(offer.expiresAt)}</Text>
@@ -458,6 +546,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: "800" },
   subtitle: { fontSize: 14, fontWeight: "600" },
   backText: { fontSize: 14, fontWeight: "700" },
+  studioButton: { marginTop: 8, borderWidth: 1, alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 8 },
+  studioButtonText: { fontSize: 12, fontWeight: "800" },
   heroCard: { shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   heroTitle: { color: "#fff", fontSize: 20, fontWeight: "800" },
   heroSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "600", marginTop: 2 },

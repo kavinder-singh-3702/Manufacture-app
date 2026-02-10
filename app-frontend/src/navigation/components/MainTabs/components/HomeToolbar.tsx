@@ -1,16 +1,21 @@
-import { FC, useEffect, useMemo, useRef } from "react";
-import { Animated, Image, StyleSheet, View, TouchableOpacity, Text } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../../../../hooks/useTheme";
+import { Ionicons } from "@expo/vector-icons";
+import { FC } from "react";
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../../../../hooks/useAuth";
-import { HamburgerButton } from "./HamburgerButton";
-import { LogoBadge } from "./LogoBadge";
-import { SearchBar } from "./SearchBar";
+import { useTheme } from "../../../../hooks/useTheme";
+import { useThemeMode } from "../../../../hooks/useThemeMode";
 import { Company } from "../../../../types/company";
 import { CompanyAvatar } from "./ProfileAvatar";
-import { APP_NAME, BRAND_IMAGES } from "../../../../constants/brand";
+import { LogoBadge } from "./LogoBadge";
+import { SearchBar } from "./SearchBar";
+import { TopBarMode } from "./navigation.types";
+import { getNavigationTokens } from "./navigation.tokens";
 
 type HomeToolbarProps = {
+  mode?: TopBarMode;
+  title?: string;
+  subtitle?: string;
+  showSearch?: boolean;
   onMenuPress: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -23,6 +28,10 @@ type HomeToolbarProps = {
 };
 
 export const HomeToolbar: FC<HomeToolbarProps> = ({
+  mode = "two_row",
+  title = "Home",
+  subtitle,
+  showSearch,
   onMenuPress,
   searchValue,
   onSearchChange,
@@ -33,18 +42,20 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   onAvatarLongPress,
   onAvatarPress,
 }) => {
-  const { colors, spacing } = useTheme();
+  const theme = useTheme();
+  const { colors } = theme;
+  const { resolvedMode } = useThemeMode();
+  const tokens = getNavigationTokens(theme, resolvedMode);
   const { user } = useAuth();
-  const notificationPulse = useRef(new Animated.Value(1)).current;
 
   const buildInitials = () => {
     const segments = [user?.firstName, user?.lastName].filter(Boolean);
     const name = segments.length ? segments.join(" ") : user?.displayName ?? user?.email ?? "";
     const trimmed = name.trim();
     if (!trimmed.length) return "U";
-    const tokens = trimmed.split(" ").filter(Boolean);
-    if (tokens.length >= 2) {
-      return `${tokens[0][0]}${tokens[1][0]}`.toUpperCase();
+    const chunks = trimmed.split(" ").filter(Boolean);
+    if (chunks.length >= 2) {
+      return `${chunks[0][0]}${chunks[1][0]}`.toUpperCase();
     }
     const [first] = trimmed;
     const second = trimmed.length > 1 ? trimmed[1] : "";
@@ -53,145 +64,122 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
 
   const avatarLabel = buildInitials();
   const avatarUri = typeof user?.avatarUrl === "string" && user.avatarUrl.trim().length ? user.avatarUrl : undefined;
-
-  const avatarNode = useMemo(() => {
-    if (activeCompany) {
-      return (
-        <CompanyAvatar
-          company={activeCompany}
-          size={42}
-          style={{ borderWidth: 2, borderColor: colors.border }}
-        />
-      );
-    }
-    return <LogoBadge label={avatarLabel} imageUri={avatarUri} />;
-  }, [activeCompany, avatarLabel, avatarUri, colors.border]);
-
-  useEffect(() => {
-    if (notificationCount <= 0) {
-      return;
-    }
-    Animated.sequence([
-      Animated.timing(notificationPulse, {
-        toValue: 1.16,
-        duration: 130,
-        useNativeDriver: true,
-      }),
-      Animated.timing(notificationPulse, {
-        toValue: 1,
-        duration: 170,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [notificationCount, notificationPulse]);
+  const isTwoRow = mode === "two_row" && showSearch !== false;
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: "transparent" }]}>
-      {/* Glassmorphism background */}
-      <LinearGradient
-        colors={[
-          colors.overlay,
-          colors.overlayLight,
-        ]}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Subtle accent glow */}
-      <LinearGradient
-        colors={[
-          colors.surfaceOverlayPrimary,
-          "transparent",
-          colors.surfaceOverlaySecondary,
-        ]}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.content, {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-      }]}>
-        <HamburgerButton onPress={onMenuPress} style={{ marginRight: spacing.xs }} />
-        <View
+    <View
+      style={[
+        styles.wrapper,
+        {
+          backgroundColor: tokens.colors.topBarBackground,
+          borderBottomColor: tokens.colors.topBarBorder,
+          minHeight: isTwoRow ? tokens.topBar.twoRowMinHeight : tokens.topBar.compactMinHeight,
+          paddingHorizontal: tokens.spacing.md,
+          paddingTop: tokens.spacing.sm,
+          paddingBottom: isTwoRow ? tokens.spacing.sm : tokens.spacing.xs,
+        },
+      ]}
+    >
+      <View style={[styles.primaryRow, { marginBottom: isTwoRow ? tokens.spacing.sm : 0 }]}>
+        <Pressable
+          onPress={onMenuPress}
           style={[
-            styles.brandChip,
+            styles.iconButton,
             {
-              marginRight: spacing.xs,
-              borderColor: colors.border,
-              backgroundColor: colors.surfaceElevated,
+              width: tokens.topBar.iconButtonSize,
+              height: tokens.topBar.iconButtonSize,
+              borderColor: tokens.colors.topBarIconBorder,
+              backgroundColor: tokens.colors.topBarIconBackground,
+              borderRadius: 14,
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel="Open menu"
         >
-          <Image source={BRAND_IMAGES.logo} style={styles.brandLogo} />
-          <Text numberOfLines={1} style={[styles.brandText, { color: colors.text }]}>
-            {APP_NAME}
+          <Ionicons name="menu-outline" size={22} color={tokens.colors.topBarIcon} />
+        </Pressable>
+
+        <View style={styles.headingWrap}>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.title,
+              {
+                color: tokens.colors.topBarTitle,
+                fontSize: tokens.topBar.titleSize,
+              },
+            ]}
+          >
+            {title}
           </Text>
+          {subtitle ? (
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.subtitle,
+                {
+                  color: tokens.colors.topBarSubtitle,
+                  fontSize: tokens.topBar.subtitleSize,
+                },
+              ]}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            console.log("[HomeToolbar] Avatar pressed");
-            onAvatarPress?.();
-          }}
-          onLongPress={() => {
-            console.log("[HomeToolbar] Avatar LONG pressed - opening company switcher");
-            onAvatarLongPress?.();
-          }}
-          delayLongPress={300}
-          style={[
-            styles.avatarButton,
-            { marginRight: spacing.xs, borderColor: onAvatarLongPress ? colors.primary + "50" : "transparent" }
-          ]}
-        >
-          {avatarNode}
-          {onAvatarLongPress && (
-            <View style={[styles.longPressHint, { backgroundColor: colors.primary, borderColor: colors.background }]}>
-              <Text style={styles.longPressHintText}>⇅</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <View style={styles.searchContainer}>
-          <SearchBar
-            value={searchValue}
-            onChangeText={onSearchChange}
-            placeholder="Search"
-            onPress={onSearchPress}
-          />
-        </View>
-        <Animated.View
-          style={{
-            transform: [{ scale: notificationPulse }],
-          }}
-        >
-          <TouchableOpacity
+
+        <View style={styles.trailingActions}>
+          <Pressable
             onPress={onNotificationsPress}
             style={[
-              styles.notificationButton,
+              styles.iconButton,
               {
-                marginLeft: spacing.sm,
-                borderColor: colors.borderPrimary,
-                backgroundColor: colors.surfaceElevated,
+                width: tokens.topBar.iconButtonSize,
+                height: tokens.topBar.iconButtonSize,
+                borderColor: tokens.colors.topBarIconBorder,
+                backgroundColor: tokens.colors.topBarIconBackground,
+                borderRadius: 14,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Text style={{ fontSize: 18, color: colors.text }}>🔔</Text>
+            <Ionicons name="notifications-outline" size={20} color={tokens.colors.topBarIcon} />
             {notificationCount > 0 ? (
-              <LinearGradient
-                colors={["#E3483E", "#C93B33"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.notificationBadge}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>
-                  {notificationCount}
+              <View style={[styles.notificationBadge, { backgroundColor: tokens.colors.unreadBadgeBackground }]}>
+                <Text style={[styles.notificationBadgeText, { color: tokens.colors.unreadBadgeText }]}>
+                  {notificationCount > 99 ? "99+" : notificationCount}
                 </Text>
-              </LinearGradient>
+              </View>
             ) : null}
+          </Pressable>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onAvatarPress}
+            onLongPress={onAvatarLongPress}
+            delayLongPress={300}
+            style={styles.avatarButton}
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+          >
+            {activeCompany ? (
+              <CompanyAvatar company={activeCompany} size={40} style={{ borderWidth: 2, borderColor: colors.border }} />
+            ) : (
+              <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ width: 40, height: 40, borderRadius: 20 }} />
+            )}
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </View>
+
+      {isTwoRow ? (
+        <SearchBar
+          value={searchValue}
+          onChangeText={onSearchChange}
+          placeholder="Search products or SKUs"
+          onPress={onSearchPress}
+        />
+      ) : null}
     </View>
   );
 };
@@ -199,78 +187,53 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     width: "100%",
-    elevation: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     zIndex: 10,
   },
-  content: {
+  primaryRow: {
     flexDirection: "row",
     alignItems: "center",
   },
-  searchContainer: {
+  iconButton: {
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  headingWrap: {
     flex: 1,
     minWidth: 0,
-    borderRadius: 1,
+    marginHorizontal: 10,
   },
-  brandChip: {
+  title: {
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  trailingActions: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minWidth: 96,
-    maxWidth: 120,
-  },
-  brandLogo: {
-    width: 18,
-    height: 18,
-    resizeMode: "contain",
-    borderRadius: 4,
-  },
-  brandText: {
-    marginLeft: 6,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
   },
   avatarButton: {
-    position: "relative",
-    borderRadius: 24,
-    borderWidth: 2,
+    borderRadius: 20,
+    marginLeft: 8,
   },
-  longPressHint: {
+  notificationBadge: {
     position: "absolute",
-    bottom: -4,
-    right: -4,
-    width: 18,
+    top: -6,
+    right: -7,
+    minWidth: 18,
     height: 18,
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    paddingHorizontal: 4,
   },
-  longPressHintText: {
-    color: "#fff",
+  notificationBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: -4,
-    right: -6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
   },
 });

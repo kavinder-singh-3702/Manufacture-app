@@ -22,7 +22,14 @@ import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
 import { verificationService } from "../services/verificationService";
 import { productService, ProductCategory } from "../services/product.service";
-import { preferenceService, PersonalizedOffer } from "../services/preference.service";
+import { preferenceService, PersonalizedOffer, HomeFeedRecommendation } from "../services/preference.service";
+import { CampaignHeroCarousel, RecommendedProductsRail } from "./dashboard/components";
+import {
+  canCallCampaign,
+  canMessageCampaign,
+  callCampaignContact,
+  startCampaignConversation,
+} from "./campaign/utils/campaignContact";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
@@ -474,6 +481,12 @@ const AdminDashboardContent = () => {
                 value={`${stats?.companies.total ?? 0} total`}
                 onPress={() => navigateToTab(routes.COMPANIES)}
               />
+              <ManagementCard
+                icon="megaphone"
+                title="Campaign Studio"
+                subtitle="Create and manage targeted campaign ads"
+                onPress={() => navigation.navigate("CampaignStudio")}
+              />
             </View>
           </View>
         </Animated.View>
@@ -620,7 +633,7 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
 const UserDashboardContent = () => {
   const { spacing, colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user, requestSignup } = useAuth();
+  const { user, requestSignup, requestLogin } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isGuest = user?.role === AppRole.GUEST;
 
@@ -651,8 +664,9 @@ const UserDashboardContent = () => {
   );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
-  const [personalizedOffer, setPersonalizedOffer] = useState<PersonalizedOffer | null>(null);
-  const [offersLoading, setOffersLoading] = useState(false);
+  const [campaigns, setCampaigns] = useState<PersonalizedOffer[]>([]);
+  const [recommendations, setRecommendations] = useState<HomeFeedRecommendation[]>([]);
+  const [campaignFeedLoading, setCampaignFeedLoading] = useState(false);
 
   const mapCategories = useCallback(
     (incoming?: ProductCategory[]) => {
@@ -729,21 +743,26 @@ const UserDashboardContent = () => {
     }, [fetchCategories])
   );
 
-  useEffect(() => {
-    const fetchOffers = async () => {
-      setOffersLoading(true);
-      try {
-        const { offers } = await preferenceService.getMyOffers();
-        setPersonalizedOffer(offers?.[0] ?? null);
-      } catch (err: any) {
-        console.warn("Failed to fetch personalized offers", err?.message || err);
-        setPersonalizedOffer(null);
-      } finally {
-        setOffersLoading(false);
-      }
-    };
-    fetchOffers();
+  const fetchHomeFeed = useCallback(async () => {
+    setCampaignFeedLoading(true);
+    try {
+      const feed = await preferenceService.getHomeFeed({ campaignLimit: 5, recommendationLimit: 10 });
+      setCampaigns(feed.campaigns || []);
+      setRecommendations(feed.recommendations || []);
+    } catch (err: any) {
+      console.warn("Failed to fetch home campaign feed", err?.message || err);
+      setCampaigns([]);
+      setRecommendations([]);
+    } finally {
+      setCampaignFeedLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeFeed();
+    }, [fetchHomeFeed])
+  );
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -817,39 +836,79 @@ const UserDashboardContent = () => {
             <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
           </View>
 
-          {personalizedOffer ? (
-            <PromoBanner
-              offer={{
-                id: personalizedOffer.id,
-                title: personalizedOffer.title,
-                description: personalizedOffer.message || "Special pick for you based on recent activity.",
-                oldPrice: personalizedOffer.oldPrice ? `₹${personalizedOffer.oldPrice.toLocaleString()}` : undefined,
-                newPrice: `₹${personalizedOffer.newPrice.toLocaleString()}`,
-                discountLabel:
-                  personalizedOffer.discountPercent !== undefined
-                    ? `Save ${personalizedOffer.discountPercent}%`
-                    : personalizedOffer.offerType === "combo"
-                    ? "Combo offer"
-                    : "Special price",
-                tag: personalizedOffer.product?.category || personalizedOffer.product?.name || "Personalized",
-                accent: "#FACC15",
-                gradient: ["#22C55E", "#16A34A"],
-              }}
-              loading={offersLoading}
-              onPress={() =>
-                personalizedOffer?.product?.id
-                  ? navigation.navigate("CategoryProducts", {
-                      categoryId: personalizedOffer.product.category || "",
-                      title: personalizedOffer.product.category || "Category",
+          {campaigns.length > 0 ? (
+            <CampaignHeroCarousel
+              campaigns={campaigns}
+              loading={campaignFeedLoading}
+              canMessage={canMessageCampaign}
+              canCall={canCallCampaign}
+              onImpression={(campaign) => {
+                preferenceService
+                  .logEvent({
+                    type: "campaign_impression",
+                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
                   })
-                : navigation.navigate("ProductSearch")
-            }
-          />
+                  .catch(() => {});
+              }}
+              onPrimaryPress={(campaign) => {
+                preferenceService
+                  .logEvent({
+                    type: "campaign_click",
+                    productId: campaign.product?.id,
+                    category: campaign.product?.category,
+                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                  })
+                  .catch(() => {});
+
+                if (campaign.contentType === "service") {
+                  navigation.navigate("ServiceRequest", { serviceType: campaign.serviceType });
+                  return;
+                }
+                if (campaign.product?.id) {
+                  navigation.navigate("ProductDetails", { productId: campaign.product.id });
+                  return;
+                }
+                navigation.navigate("ProductSearch");
+              }}
+              onMessagePress={(campaign) => {
+                preferenceService
+                  .logEvent({
+                    type: "campaign_message",
+                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                  })
+                  .catch(() => {});
+                startCampaignConversation({
+                  campaign,
+                  isGuest,
+                  requestLogin,
+                  navigation,
+                  toastError: (title, message) => Alert.alert(title, message),
+                });
+              }}
+              onCallPress={(campaign) => {
+                preferenceService
+                  .logEvent({
+                    type: "campaign_call",
+                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                  })
+                  .catch(() => {});
+                callCampaignContact({
+                  campaign,
+                  toastError: (title, message) => Alert.alert(title, message),
+                });
+              }}
+            />
           ) : (
-            <NoAdHero
-              loading={offersLoading}
-              onPress={() => navigation.navigate("ProductSearch")}
-              onBrowseServices={() => navigation.navigate("Main", { screen: routes.SERVICES })}
+            <RecommendedProductsRail
+              recommendations={recommendations}
+              loading={campaignFeedLoading}
+              onBrowseAll={() => navigation.navigate("ProductSearch")}
+              onOpenProduct={(productId) => {
+                preferenceService
+                  .logEvent({ type: "view_product", productId, meta: { source: "home_fallback_reco" } })
+                  .catch(() => {});
+                navigation.navigate("ProductDetails", { productId });
+              }}
             />
           )}
 

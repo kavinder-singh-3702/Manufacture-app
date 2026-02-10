@@ -79,8 +79,16 @@ const listCompanies = async (ownerId) => {
   return companies.map(buildCompanyResponse);
 };
 
-const getCompany = async (ownerId, companyId) => {
-  const company = await ensureOwnedCompany(ownerId, companyId);
+const getCompany = async (ownerId, companyId, requesterRole) => {
+  const company =
+    requesterRole === 'admin'
+      ? await Company.findById(companyId)
+      : await ensureOwnedCompany(ownerId, companyId);
+
+  if (!company) {
+    throw createError(404, 'Company not found');
+  }
+
   return buildCompanyResponse(company);
 };
 

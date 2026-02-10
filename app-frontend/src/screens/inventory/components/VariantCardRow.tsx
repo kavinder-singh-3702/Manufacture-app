@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
 import { ProductVariant } from "../../../services/productVariant.service";
+import { variantDisplayLabel } from "./variantDomain";
 
 const optionLabel = (variant: ProductVariant) => {
   const entries = Object.entries((variant.options || {}) as Record<string, unknown>);
-  if (!entries.length) return variant.title || "Variant";
+  if (!entries.length) return variantDisplayLabel(variant);
   return entries.map(([key, value]) => `${key}: ${String(value)}`).join(" • ");
 };
 
@@ -32,7 +33,7 @@ export const VariantCardRow = ({
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-            {variant.title || "Variant"}
+            {variantDisplayLabel(variant)}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={2}>
             {optionLabel(variant)}
@@ -132,4 +133,3 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
-

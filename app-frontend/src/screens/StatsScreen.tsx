@@ -22,6 +22,9 @@ import { LightCard } from "./inventory/components/LightCard";
 import { StockStatusBadge, type StockStatus } from "./inventory/components/StockStatusBadge";
 import { MiniBarRow } from "./inventory/components/MiniBarRow";
 import { QuickAdjustStockSheet } from "./inventory/components/QuickAdjustStockSheet";
+import { ProductVariant } from "../services/productVariant.service";
+import { VariantChoiceSelection, VariantChoiceSheet } from "./inventory/components/VariantChoiceSheet";
+import { hasVariants } from "./inventory/components/variantDomain";
 import Svg, { Circle } from "react-native-svg";
 
 const formatINR = (value: number) => {
@@ -62,8 +65,19 @@ export const StatsScreen = () => {
   const [alertMode, setAlertMode] = useState<AlertMode>("low_stock");
   const didUserToggleAlertMode = useRef(false);
 
-  const [adjustSheet, setAdjustSheet] = useState<{ open: boolean; product: Product | null; suggestedQty: number }>({
+  const [adjustSheet, setAdjustSheet] = useState<{
+    open: boolean;
+    product: Product | null;
+    variant: ProductVariant | null;
+    suggestedQty: number;
+  }>({
     open: false,
+    product: null,
+    variant: null,
+    suggestedQty: 1,
+  });
+  const [variantChoice, setVariantChoice] = useState<{ visible: boolean; product: Product | null; suggestedQty: number }>({
+    visible: false,
     product: null,
     suggestedQty: 1,
   });
@@ -161,16 +175,49 @@ export const StatsScreen = () => {
   }, [navigation]);
 
   const openAdjustSheet = useCallback((product: Product, suggestedQty?: number) => {
+    const resolvedSuggestedQty = typeof suggestedQty === "number" && suggestedQty > 0 ? suggestedQty : computeSuggestedRestock(product);
+    if (hasVariants(product)) {
+      setVariantChoice({
+        visible: true,
+        product,
+        suggestedQty: resolvedSuggestedQty,
+      });
+      return;
+    }
     setAdjustSheet({
       open: true,
       product,
-      suggestedQty: typeof suggestedQty === "number" && suggestedQty > 0 ? suggestedQty : computeSuggestedRestock(product),
+      variant: null,
+      suggestedQty: resolvedSuggestedQty,
     });
   }, []);
 
   const closeAdjustSheet = useCallback(() => {
-    setAdjustSheet({ open: false, product: null, suggestedQty: 1 });
+    setAdjustSheet({ open: false, product: null, variant: null, suggestedQty: 1 });
   }, []);
+
+  const closeVariantChoice = useCallback(() => {
+    setVariantChoice({ visible: false, product: null, suggestedQty: 1 });
+  }, []);
+
+  const handleVariantChoice = useCallback((selection: VariantChoiceSelection) => {
+    if (selection.mode === "variant") {
+      setAdjustSheet({
+        open: true,
+        product: selection.product,
+        variant: selection.variant,
+        suggestedQty: variantChoice.suggestedQty,
+      });
+    } else {
+      setAdjustSheet({
+        open: true,
+        product: selection.product,
+        variant: null,
+        suggestedQty: variantChoice.suggestedQty,
+      });
+    }
+    closeVariantChoice();
+  }, [closeVariantChoice, variantChoice.suggestedQty]);
 
   const handleAlertModeChange = useCallback((mode: AlertMode) => {
     didUserToggleAlertMode.current = true;
@@ -662,9 +709,23 @@ export const StatsScreen = () => {
       <QuickAdjustStockSheet
         visible={adjustSheet.open}
         product={adjustSheet.product}
+        variant={adjustSheet.variant}
         suggestedQty={adjustSheet.suggestedQty}
         onClose={closeAdjustSheet}
         onSaved={fetchAll}
+      />
+
+      <VariantChoiceSheet
+        visible={variantChoice.visible}
+        product={variantChoice.product}
+        scope="company"
+        title="Quick adjust stock"
+        subtitle="This product has variants. Choose what stock you want to adjust."
+        baseActionLabel="Adjust base product stock"
+        onClose={closeVariantChoice}
+        onSelect={async (selection) => {
+          handleVariantChoice(selection);
+        }}
       />
     </SafeAreaView>
   );

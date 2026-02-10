@@ -1,26 +1,30 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { userService } from "../../services/user.service";
-import { verificationService } from "../../services/verificationService";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
-import { ComplianceStatus } from "../../types/company";
 import { RootStackParamList } from "../../navigation/types";
-import { ProfileHero } from "./components/ProfileHero";
-import { ProfileSections } from "./components/ProfileSections";
 import { FormField } from "./components/ProfileForm";
 import { ProfileEditorModal } from "./components/ProfileEditorModal";
+import { ProfileTopBar } from "./components/ProfileTopBar";
+import { ProfileSummaryCard } from "./components/ProfileSummaryCard";
+import { ProfileQuickActionsCard } from "./components/ProfileQuickActionsCard";
+import { ProfileAccountCard } from "./components/ProfileAccountCard";
+import { ProfileProfessionalCard } from "./components/ProfileProfessionalCard";
+import { ProfilePreferencesCard } from "./components/ProfilePreferencesCard";
 import { EditorType } from "./types";
 
 export const ProfileScreen = () => {
   const { spacing, colors } = useTheme();
+  const { mode } = useThemeMode();
   const { user, setUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -33,28 +37,6 @@ export const ProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
-  const [companyName, setCompanyName] = useState<string | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetchVerificationStatus = async () => {
-        if (!user?.activeCompany) return;
-        try {
-          const response = await verificationService.getVerificationStatus(user.activeCompany);
-          if (response.request && response.request.status === "pending") {
-            setVerificationStatus("submitted");
-          } else {
-            setVerificationStatus(response.company?.complianceStatus || null);
-          }
-          setCompanyName(response.company?.displayName || null);
-        } catch (error) {
-          console.error("Failed to fetch verification status:", error);
-        }
-      };
-      void fetchVerificationStatus();
-    }, [user?.activeCompany])
-  );
 
   useEffect(() => {
     setIdentityForm(createIdentityFormState(user));
@@ -180,50 +162,67 @@ export const ProfileScreen = () => {
     }
   };
 
+  const actions = [
+    {
+      key: "edit-identity",
+      label: "Edit Personal",
+      icon: "person-circle-outline" as const,
+      onPress: () => openEditor("identity"),
+    },
+    {
+      key: "edit-professional",
+      label: "Edit Professional",
+      icon: "briefcase-outline" as const,
+      onPress: () => openEditor("professional"),
+    },
+    {
+      key: "appearance",
+      label: "Appearance",
+      icon: "contrast-outline" as const,
+      onPress: () => navigation.navigate("Appearance"),
+    },
+    {
+      key: "company",
+      label: "Open Company",
+      icon: "business-outline" as const,
+      onPress: () => {
+        if (user?.activeCompany) {
+          navigation.navigate("CompanyProfile", { companyId: user.activeCompany });
+          return;
+        }
+        navigation.navigate("CompanyCreate");
+      },
+    },
+  ];
+
+  const fullAddress = formatAddress(user);
+  const tagList = Array.isArray(user?.activityTags) ? user.activityTags : [];
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}> 
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}> 
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
           colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
-          locations={[0, 0.3, 0.7, 1]}
+          locations={[0, 0.35, 0.72, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlaySecondary, "transparent"]}
-          locations={[0, 0.4, 0.8]}
+          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlaySecondary]}
+          locations={[0, 0.55, 1]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0.6 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={["transparent", colors.surfaceOverlayAccent, colors.surfaceOverlayPrimary]}
-          locations={[0.3, 0.7, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
+          end={{ x: 1, y: 0.7 }}
           style={StyleSheet.absoluteFill}
         />
       </View>
 
-      <View style={styles.headerWrapper}>
-        <LinearGradient colors={[colors.overlay, colors.overlayLight]} style={[styles.headerGlass, { borderBottomColor: colors.border }]}> 
-          <View style={styles.header}>
-            <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]} onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={22} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-            <TouchableOpacity
-              style={[styles.appearanceButton, { backgroundColor: colors.primary + "1f", borderColor: colors.primary + "55" }]}
-              onPress={() => navigation.navigate("Appearance")}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="contrast-outline" size={16} color={colors.primary} />
-              <Text style={[styles.appearanceButtonText, { color: colors.primary }]}>Appearance</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </View>
+      <ProfileTopBar
+        title="Profile"
+        subtitle="Manage your account and company context"
+        onBack={() => navigation.goBack()}
+        onOpenAppearance={() => navigation.navigate("Appearance")}
+      />
 
       {avatarError ? (
         <View style={styles.alertBanner}>
@@ -258,25 +257,46 @@ export const ProfileScreen = () => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.lg + insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        <ProfileHero
+        <ProfileSummaryCard
           fullName={fullName}
           email={user?.email}
           avatarUrl={avatarUrl}
           avatarInitials={avatarInitials}
           role={user?.role}
           accountType={user?.accountType}
+          companiesCount={activeCompanyCount}
+          bio={user?.bio as string | undefined}
           onUploadAvatar={handleUploadAvatar}
           uploading={avatarUploading}
-          verificationStatus={verificationStatus === "approved" ? "approved" : null}
-          companyName={companyName}
-          companiesCount={activeCompanyCount}
-          bio={user?.bio}
         />
 
-        <ProfileSections user={user} onEdit={openEditor} />
+        <ProfileQuickActionsCard actions={actions} />
+
+        <ProfileAccountCard
+          fullName={fullName}
+          displayName={user?.displayName as string | undefined}
+          email={user?.email}
+          phone={user?.phone as string | undefined}
+          address={fullAddress}
+          onEdit={() => openEditor("identity")}
+        />
+
+        <ProfileProfessionalCard
+          companyAbout={user?.companyAbout as string | undefined}
+          bio={user?.bio as string | undefined}
+          tags={tagList}
+          onEdit={() => openEditor("professional")}
+        />
+
+        <ProfilePreferencesCard
+          themeMode={mode}
+          locale={user?.preferences?.locale}
+          timezone={user?.preferences?.timezone}
+          onOpenAppearance={() => navigation.navigate("Appearance")}
+        />
       </ScrollView>
 
       <ProfileEditorModal
@@ -367,6 +387,13 @@ const buildAddressPayload = (form: IdentityFormState) => {
   return Object.keys(payload).length ? payload : undefined;
 };
 
+const formatAddress = (user?: AuthUser | null) => {
+  const address = user?.address;
+  if (!address) return null;
+  const parts = [address.line1, address.line2, address.city, address.state, address.postalCode, address.country].filter(Boolean);
+  return parts.length ? parts.join(", ") : null;
+};
+
 const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
   return Object.entries(obj).reduce((acc, [key, value]) => {
     if (value === undefined || value === null || value === "") return acc;
@@ -379,71 +406,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerWrapper: {
-    zIndex: 10,
-  },
-  headerGlass: {
-    borderBottomWidth: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  appearanceButton: {
-    height: 36,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  appearanceButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
   alertBanner: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 14,
     overflow: "hidden",
   },
   alertGlass: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    gap: 10,
+    padding: 12,
+    gap: 8,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 14,
   },
   alertText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 12,
   },
 });

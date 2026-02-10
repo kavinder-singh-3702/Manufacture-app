@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +23,9 @@ import { CompanyHero } from "./components/CompanyHero";
 import { CompanySections } from "./components/CompanySections";
 import { CompanyEditorModal } from "./components/CompanyEditorModal";
 import { CompanyEditorSection, CompanyProfileFormState } from "./components/types";
+import { CompanyProfileTab, CompanyProfileTabs } from "./components/CompanyProfileTabs";
+import { CompanyComplianceSection } from "./components/CompanyComplianceSection";
+import { CompanyProductsSection } from "./components/CompanyProductsSection";
 
 type CompanyProfileRoute = RouteProp<RootStackParamList, "CompanyProfile">;
 
@@ -74,6 +77,10 @@ export const CompanyProfileScreen = () => {
   const route = useRoute<CompanyProfileRoute>();
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
+
+  const [activeTab, setActiveTab] = useState<CompanyProfileTab>("overview");
+  const [productsTotal, setProductsTotal] = useState(0);
+
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,19 +92,16 @@ export const CompanyProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const targetCompanyId = route.params?.companyId ?? user?.activeCompany ?? null;
+  const isReadOnly = user?.role === "admin";
+  const canEdit = !isReadOnly;
 
-  // Check if user is admin viewing another company (read-only mode)
-  const isAdmin = user?.role === "admin";
-  const isOwnCompany = user?.activeCompany === targetCompanyId ||
-    (user?.companies && user.companies.some((c: any) => String(c.id || c) === String(targetCompanyId)));
-  const isReadOnly = isAdmin && !isOwnCompany;
-
-  const loadCompany = async () => {
+  const loadCompany = useCallback(async () => {
     if (!targetCompanyId) {
       setCompany(null);
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
       setError(null);
@@ -109,11 +113,13 @@ export const CompanyProfileScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadCompany();
   }, [targetCompanyId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCompany();
+    }, [loadCompany])
+  );
 
   useEffect(() => {
     setForm(createFormState(company));
@@ -123,21 +129,18 @@ export const CompanyProfileScreen = () => {
   const needsVerification = complianceStatus !== "approved";
   const companyId = company?.id ? String(company.id) : null;
 
-  const openVerification = () => {
+  const openVerification = useCallback(() => {
     if (!companyId) {
       setError("Unable to open verification: missing company id.");
       return;
     }
-    const parentNav = navigation.getParent?.();
-    if (parentNav) {
-      (parentNav.navigate as any)("CompanyVerification", { companyId });
-      return;
-    }
+
     navigation.push("CompanyVerification", { companyId });
-  };
+  }, [companyId, navigation]);
 
   const handleUploadLogo = async () => {
-    if (!company?.id) return;
+    if (!company?.id || !canEdit) return;
+
     try {
       setLogoError(null);
       const result = await DocumentPicker.getDocumentAsync({
@@ -182,7 +185,8 @@ export const CompanyProfileScreen = () => {
   };
 
   const handleSave = async () => {
-    if (!company?.id) return;
+    if (!company?.id || !canEdit) return;
+
     try {
       setSaving(true);
       setError(null);
@@ -190,6 +194,7 @@ export const CompanyProfileScreen = () => {
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
+
       const payload = {
         displayName: form.displayName.trim() || undefined,
         legalName: form.legalName.trim() || undefined,
@@ -217,6 +222,7 @@ export const CompanyProfileScreen = () => {
           country: form.country.trim() || undefined,
         }),
       };
+
       const response = await companyService.update(company.id, payload);
       setCompany(response.company);
       setBanner({ type: "success", message: "Company updated successfully." });
@@ -230,396 +236,353 @@ export const CompanyProfileScreen = () => {
     }
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Premium Blended Gradient Background */}
-      <View style={StyleSheet.absoluteFill}>
-        {/* Base gradient - deep purple to dark */}
-        <LinearGradient
-          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd, colors.background]}
-          locations={[0, 0.3, 0.7, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Top gradient wash - purple/indigo blend */}
-        <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlaySecondary, "transparent"]}
-          locations={[0, 0.4, 0.8]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0.6 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Bottom gradient wash - subtle pink accent */}
-        <LinearGradient
-          colors={["transparent", colors.surfaceOverlayAccent.replace("0.10", "0.06"), colors.surfaceOverlayPrimary]}
-          locations={[0.3, 0.7, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Subtle vignette effect */}
-        <LinearGradient
-          colors={["transparent", "transparent", colors.modalBackdrop]}
-          locations={[0, 0.6, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
-      {/* Header with glass effect */}
-      <View style={styles.headerWrapper}>
-        <LinearGradient
-          colors={[colors.overlay, colors.overlayLight]}
-          style={styles.headerGlass}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={22} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Company Profile</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-        </LinearGradient>
-      </View>
-
-      {/* Error Banner */}
+  const renderTopBanner = () => (
+    <View style={styles.bannerStack}>
       {(error || logoError) && (
-        <View style={styles.alertBanner}>
-          <LinearGradient
-            colors={[colors.badgeError, colors.badgeError]}
-            style={styles.alertGlass}
-          >
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
-            <Text style={styles.alertText}>{error || logoError}</Text>
-            <TouchableOpacity onPress={() => { setError(null); setLogoError(null); }}>
-              <Ionicons name="close" size={18} color={colors.error} />
-            </TouchableOpacity>
-          </LinearGradient>
+        <View style={[styles.alertBanner, { borderColor: colors.error + "55", backgroundColor: colors.error + "14" }]}>
+          <Ionicons name="alert-circle" size={16} color={colors.error} />
+          <Text style={[styles.alertText, { color: colors.error }]} numberOfLines={2}>
+            {error || logoError}
+          </Text>
+          <TouchableOpacity onPress={() => { setError(null); setLogoError(null); }}>
+            <Ionicons name="close" size={16} color={colors.error} />
+          </TouchableOpacity>
         </View>
       )}
 
-      {/* Success Banner */}
       {banner && (
-        <View style={styles.alertBanner}>
-          <LinearGradient
-            colors={
-              banner.type === "success"
-                ? [colors.badgeSuccess, colors.badgeSuccess]
-                : [colors.badgeError, colors.badgeError]
-            }
-            style={styles.alertGlass}
+        <View
+          style={[
+            styles.alertBanner,
+            {
+              borderColor: banner.type === "success" ? colors.success + "55" : colors.error + "55",
+              backgroundColor: banner.type === "success" ? colors.success + "14" : colors.error + "14",
+            },
+          ]}
+        >
+          <Ionicons
+            name={banner.type === "success" ? "checkmark-circle" : "alert-circle"}
+            size={16}
+            color={banner.type === "success" ? colors.success : colors.error}
+          />
+          <Text
+            style={[
+              styles.alertText,
+              {
+                color: banner.type === "success" ? colors.success : colors.error,
+              },
+            ]}
+            numberOfLines={2}
           >
-            <Ionicons
-              name={banner.type === "success" ? "checkmark-circle" : "alert-circle"}
-              size={18}
-              color={banner.type === "success" ? colors.success : colors.error}
-            />
-            <Text style={[styles.alertText, { color: banner.type === "success" ? colors.success : colors.error }]}>
-              {banner.message}
-            </Text>
-            <TouchableOpacity onPress={() => setBanner(null)}>
-              <Ionicons name="close" size={18} color={banner.type === "success" ? colors.success : colors.error} />
-            </TouchableOpacity>
-          </LinearGradient>
+            {banner.message}
+          </Text>
+          <TouchableOpacity onPress={() => setBanner(null)}>
+            <Ionicons name="close" size={16} color={banner.type === "success" ? colors.success : colors.error} />
+          </TouchableOpacity>
         </View>
       )}
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}> 
+      <LinearGradient
+        colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}> 
+        <TouchableOpacity
+          style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerTextWrap}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Company Profile</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>Overview, products and compliance</Text>
+        </View>
+      </View>
+
+      {renderTopBanner()}
 
       {loading ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={styles.loaderText}>Loading company...</Text>
+          <Text style={[styles.loaderText, { color: colors.textMuted }]}>Loading company...</Text>
         </View>
       ) : !targetCompanyId ? (
         <View style={styles.loaderWrap}>
-          <LinearGradient
-            colors={[colors.badgePrimary, colors.badgePrimary]}
-            style={styles.emptyIcon}
-          >
-            <Ionicons name="business-outline" size={40} color={colors.primaryLight} />
-          </LinearGradient>
-          <Text style={styles.emptyText}>No active company</Text>
-          <Text style={styles.emptySubtext}>Link or create a company to view its profile.</Text>
+          <Ionicons name="business-outline" size={48} color={colors.textMuted} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No active company</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Select or create a company to continue.</Text>
+          {!isReadOnly ? (
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate("CompanyCreate")}
+            >
+              <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>Create Company</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ) : company ? (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 + insets.bottom }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <CompanyHero
-            company={company}
-            complianceStatus={complianceStatus}
-            onUploadLogo={isReadOnly ? undefined : handleUploadLogo}
-            uploading={logoUploading}
-          />
+        <View style={styles.contentWrap}>
+          <View style={styles.tabsWrap}>
+            <CompanyProfileTabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              productCount={productsTotal}
+            />
+          </View>
 
-          {/* Read-only Banner for Admin */}
-          {isReadOnly && (
-            <LinearGradient
-              colors={[colors.badgeInfo, colors.badgeInfo]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.readOnlyBanner}
+          {activeTab === "products" ? (
+            <View style={styles.productsWrap}>
+              <CompanyProductsSection
+                companyId={company.id}
+                isReadOnly={isReadOnly}
+                onAddProduct={canEdit ? () => navigation.navigate("AddProduct") : undefined}
+                onTotalChange={setProductsTotal}
+                onRefreshCompany={loadCompany}
+              />
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: insets.bottom + 24 },
+              ]}
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.readOnlyIconWrap}>
-                <Ionicons name="eye-outline" size={20} color={colors.info} />
-              </View>
-              <View style={styles.readOnlyTextWrap}>
-                <Text style={styles.readOnlyTitle}>Viewing as Admin</Text>
-                <Text style={styles.readOnlySubtext}>This is a read-only view of the company profile.</Text>
-              </View>
-            </LinearGradient>
-          )}
+              <CompanyHero
+                company={company}
+                complianceStatus={complianceStatus}
+                onUploadLogo={canEdit ? handleUploadLogo : undefined}
+                uploading={logoUploading}
+              />
 
-          {/* Verification CTA Card - only show for own company */}
-          {needsVerification && !isReadOnly && (
-            <LinearGradient
-              colors={[colors.badgeWarning, colors.badgeWarning]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.verificationCard}
-            >
-              <View style={styles.verificationCardHeader}>
-                <LinearGradient
-                  colors={[colors.badgeWarning, colors.badgeWarning]}
-                  style={styles.verificationIcon}
-                >
-                  <Ionicons name="shield-checkmark" size={22} color={colors.warning} />
-                </LinearGradient>
-                <View style={styles.verificationTextWrap}>
-                  <Text style={styles.verificationTitle}>Get verified to unlock priority</Text>
-                  <Text style={styles.verificationSubtext}>
-                    Verified companies earn sourcing priority and improved visibility.
-                  </Text>
+              {isReadOnly ? (
+                <View style={[styles.readOnlyBanner, { borderColor: colors.info + "55", backgroundColor: colors.info + "14" }]}>
+                  <Ionicons name="eye-outline" size={18} color={colors.info} />
+                  <Text style={[styles.readOnlyText, { color: colors.info }]}>Admin mode: this company profile is read-only.</Text>
                 </View>
-              </View>
-              <TouchableOpacity onPress={openVerification} activeOpacity={0.8}>
-                <LinearGradient
-                  colors={[colors.warning, colors.accentDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.verificationButton}
-                >
-                  <Text style={styles.verificationButtonText}>Get Verified</Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.textOnPrimary} />
-                </LinearGradient>
-              </TouchableOpacity>
-            </LinearGradient>
-          )}
+              ) : null}
 
-          <CompanySections
-            company={company}
-            onEdit={isReadOnly ? undefined : (section) => setActiveEditor(section)}
-            formatAddress={formatAddress}
-            formatCategories={formatCategories}
-          />
-        </ScrollView>
+              {activeTab === "overview" ? (
+                <>
+                  {needsVerification && canEdit ? (
+                    <View style={[styles.verifyCard, { borderColor: colors.warning + "55", backgroundColor: colors.warning + "12" }]}>
+                      <View style={styles.verifyHeader}>
+                        <Ionicons name="shield-checkmark-outline" size={18} color={colors.warning} />
+                        <View style={styles.verifyTextWrap}>
+                          <Text style={[styles.verifyTitle, { color: colors.text }]}>Verification pending</Text>
+                          <Text style={[styles.verifySubtitle, { color: colors.textMuted }]}>Submit company documents to boost trust signals.</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.verifyButton, { backgroundColor: colors.warning }]}
+                        onPress={openVerification}
+                        activeOpacity={0.9}
+                      >
+                        <Text style={[styles.verifyButtonText, { color: colors.textOnPrimary }]}>Open Verification</Text>
+                        <Ionicons name="arrow-forward" size={16} color={colors.textOnPrimary} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+
+                  <CompanySections
+                    company={company}
+                    onEdit={canEdit ? (section) => setActiveEditor(section) : undefined}
+                    formatAddress={formatAddress}
+                    formatCategories={formatCategories}
+                  />
+                </>
+              ) : (
+                <CompanyComplianceSection
+                  complianceStatus={complianceStatus}
+                  isReadOnly={isReadOnly}
+                  onOpenVerification={openVerification}
+                />
+              )}
+            </ScrollView>
+          )}
+        </View>
       ) : null}
 
-      <CompanyEditorModal
-        visible={Boolean(activeEditor)}
-        form={form}
-        section={activeEditor}
-        onChange={(changes) => setForm((prev) => ({ ...prev, ...changes }))}
-        onClose={() => setActiveEditor(null)}
-        onSubmit={handleSave}
-        saving={saving}
-      />
+      {canEdit ? (
+        <CompanyEditorModal
+          visible={Boolean(activeEditor)}
+          form={form}
+          section={activeEditor}
+          onChange={(changes) => setForm((previous) => ({ ...previous, ...changes }))}
+          onClose={() => setActiveEditor(null)}
+          onSubmit={handleSave}
+          saving={saving}
+        />
+      ) : null}
     </View>
   );
 };
 
 const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
   StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  // Header
-  headerWrapper: {
-    zIndex: 10,
-  },
-  headerGlass: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceElevated,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  // Alerts
-  alertBanner: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  alertGlass: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-  },
-  alertText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.error,
-  },
-  // Loader
-  loaderWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  loaderText: {
-    color: colors.textMuted,
-    marginTop: 16,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  emptySubtext: {
-    color: colors.textMuted,
-    marginTop: 8,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  // Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  // Verification Card
-  verificationCard: {
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: colors.warning + "44",
-  },
-  verificationCardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  verificationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  verificationTextWrap: {
-    flex: 1,
-  },
-  verificationTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  verificationSubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 19,
-  },
-  verificationButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    gap: 8,
-    shadowColor: colors.warning,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  verificationButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.textOnPrimary,
-  },
-  // Read-only banner styles
-  readOnlyBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: colors.info + "44",
-  },
-  readOnlyIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.badgeInfo,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  readOnlyTextWrap: {
-    flex: 1,
-  },
-  readOnlyTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.info,
-    marginBottom: 2,
-  },
-  readOnlySubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      minHeight: 62,
+      borderBottomWidth: 1,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTextWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: -0.3,
+    },
+    headerSubtitle: {
+      marginTop: 2,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    bannerStack: {
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      gap: 8,
+    },
+    alertBanner: {
+      borderRadius: 12,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    alertText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    loaderWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      gap: 10,
+    },
+    loaderText: {
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "800",
+      marginTop: 4,
+    },
+    emptySubtitle: {
+      fontSize: 13,
+      fontWeight: "500",
+      textAlign: "center",
+    },
+    primaryButton: {
+      marginTop: 10,
+      minHeight: 42,
+      borderRadius: 12,
+      paddingHorizontal: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryButtonText: {
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    contentWrap: {
+      flex: 1,
+    },
+    tabsWrap: {
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 8,
+    },
+    productsWrap: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      gap: 12,
+    },
+    readOnlyBanner: {
+      minHeight: 44,
+      borderRadius: 12,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    readOnlyText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    verifyCard: {
+      borderWidth: 1,
+      borderRadius: 14,
+      padding: 12,
+      gap: 10,
+    },
+    verifyHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    verifyTextWrap: {
+      flex: 1,
+      gap: 2,
+    },
+    verifyTitle: {
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    verifySubtitle: {
+      fontSize: 12,
+      fontWeight: "500",
+    },
+    verifyButton: {
+      minHeight: 40,
+      borderRadius: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
+    verifyButtonText: {
+      fontSize: 13,
+      fontWeight: "800",
+    },
   });

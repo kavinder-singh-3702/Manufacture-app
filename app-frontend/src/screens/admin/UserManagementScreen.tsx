@@ -268,6 +268,13 @@ export const UserManagementScreen = () => {
               // Future: navigate to activity screen
             },
           },
+          {
+            label: "Campaign Studio",
+            icon: "megaphone-outline",
+            onPress: () => {
+              navigation.navigate("CampaignStudio");
+            },
+          },
         ]}
       />
     </View>

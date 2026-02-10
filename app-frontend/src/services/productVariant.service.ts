@@ -103,6 +103,32 @@ class ProductVariantService {
   async delete(productId: string, variantId: string): Promise<{ success: boolean }> {
     return apiClient.delete<{ success: boolean }>(`/products/${productId}/variants/${variantId}`);
   }
+
+  async listAll(
+    productId: string,
+    params?: {
+      status?: ProductVariantStatus;
+      scope?: ProductListScope;
+    }
+  ): Promise<ProductVariant[]> {
+    const limit = 100;
+    let offset = 0;
+    let hasMore = true;
+    const variants: ProductVariant[] = [];
+
+    while (hasMore) {
+      const response = await this.list(productId, {
+        ...params,
+        limit,
+        offset,
+      });
+      variants.push(...(response.variants || []));
+      hasMore = Boolean(response.pagination?.hasMore);
+      offset += limit;
+    }
+
+    return variants;
+  }
 }
 
 export const productVariantService = new ProductVariantService();

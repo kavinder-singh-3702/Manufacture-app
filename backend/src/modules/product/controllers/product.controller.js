@@ -24,6 +24,21 @@ const parseBooleanQuery = (value) => {
   return value.toLowerCase() === 'true';
 };
 
+const resolveScopeCompanyId = (scope, user) =>
+  scope === 'company' ? user?.activeCompany : scope === 'marketplace' ? undefined : user?.activeCompany;
+
+const resolveRequestedCompanyId = (req, fallbackCompanyId) => {
+  const requestedCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : '';
+  if (!requestedCompanyId) return fallbackCompanyId;
+
+  const isAdmin = req.user?.role === 'admin';
+  if (!isAdmin) {
+    throw createError(403, 'companyId filter is restricted to admin users');
+  }
+
+  return requestedCompanyId;
+};
+
 const getCategoryStatsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
@@ -41,7 +56,8 @@ const getCategoryStatsController = async (req, res, next) => {
 const getProductsByCategoryController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const scopeCompanyId = resolveScopeCompanyId(scope, req.user);
+    const companyId = resolveRequestedCompanyId(req, scopeCompanyId);
     const { categoryId } = req.params;
     const { limit, offset, status, minPrice, maxPrice, sort, includeVariantSummary } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
@@ -68,7 +84,8 @@ const getProductsByCategoryController = async (req, res, next) => {
 const listProductsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const scopeCompanyId = resolveScopeCompanyId(scope, req.user);
+    const companyId = resolveRequestedCompanyId(req, scopeCompanyId);
     const { limit, offset, category, status, search, visibility, minPrice, maxPrice, sort, includeVariantSummary } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
     const createdByRole = normalizedRole;

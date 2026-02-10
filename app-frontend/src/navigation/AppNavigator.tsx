@@ -28,6 +28,7 @@ import {
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
+import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
 import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
@@ -199,6 +200,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="UserPreferences"
               component={UserPreferenceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="CampaignStudio"
+              component={CampaignStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

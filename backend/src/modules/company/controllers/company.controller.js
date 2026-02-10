@@ -41,7 +41,7 @@ const listCompaniesController = async (req, res, next) => {
 
 const getCompanyController = async (req, res, next) => {
   try {
-    const company = await getCompany(req.user.id, req.params.companyId);
+    const company = await getCompany(req.user.id, req.params.companyId, req.user.role);
     return res.json({ company });
   } catch (error) {
     return next(error);

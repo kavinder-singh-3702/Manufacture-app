@@ -25,6 +25,7 @@ export type RootStackParamList = {
   ProductVariants: { productId: string; productName?: string; scope?: "company" | "marketplace" };
   ProductSearch: { initialQuery?: string } | undefined;
   UserPreferences: { userId: string; displayName?: string };
+  CampaignStudio: undefined;
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };

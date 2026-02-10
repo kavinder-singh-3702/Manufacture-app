@@ -141,6 +141,7 @@ class ProductService {
       minPrice?: number;
       maxPrice?: number;
       scope?: ProductListScope;
+      companyId?: string;
       createdByRole?: "admin" | "user";
       includeVariantSummary?: boolean;
     }
@@ -156,6 +157,7 @@ class ProductService {
       search?: string;
       visibility?: string;
       scope?: ProductListScope;
+      companyId?: string;
       createdByRole?: "admin" | "user";
       sort?: ProductSort;
       minPrice?: number;

@@ -1,4 +1,4 @@
-const { recordPreferenceEvent, aggregateSummary } = require('../services/preferences.service');
+const { recordPreferenceEvent, aggregateSummary, getHomeFeedForUser } = require('../services/preferences.service');
 
 const logPreferenceEventController = async (req, res, next) => {
   try {
@@ -41,7 +41,27 @@ const getUserPreferenceSummaryController = async (req, res, next) => {
   }
 };
 
+const getHomeFeedController = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    const companyId = req.user?.activeCompany;
+    const { campaignLimit, recommendationLimit } = req.query;
+
+    const feed = await getHomeFeedForUser({
+      userId,
+      companyId,
+      campaignLimit: campaignLimit ? Number(campaignLimit) : undefined,
+      recommendationLimit: recommendationLimit ? Number(recommendationLimit) : undefined
+    });
+
+    return res.json(feed);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   logPreferenceEventController,
-  getUserPreferenceSummaryController
+  getUserPreferenceSummaryController,
+  getHomeFeedController
 };

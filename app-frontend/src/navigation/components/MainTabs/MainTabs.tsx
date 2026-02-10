@@ -1,3 +1,4 @@
+// Legacy shell kept for backward compatibility. Active app navigation uses src/navigation/MainTabs.tsx.
 import { useState, useCallback } from "react";
 import { View, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -21,7 +22,7 @@ export const MainTabs = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const { user, logout } = useAuth();
-  const ActiveScreen = tabScreens[activeRoute];
+  const ActiveScreen = tabScreens[activeRoute] ?? tabScreens[DEFAULT_ROUTE];
   const displayName =
     typeof user?.displayName === "string" && user.displayName.trim().length ? user.displayName : "Operator";
   const email = user?.email;
@@ -89,7 +90,7 @@ export const MainTabs = () => {
           onSearchPress={handleSearchPress}
         />
         <View style={[styles.screenContainer, { backgroundColor: colors.background }]}>
-          <ActiveScreen />
+          {ActiveScreen ? <ActiveScreen /> : null}
         </View>
         <BottomTabBar
           activeRoute={activeRoute}
