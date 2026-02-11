@@ -19,8 +19,10 @@ import { useAuth } from "../../hooks/useAuth";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { ProductVariant, productVariantService } from "../../services/productVariant.service";
+import { quoteService } from "../../services/quote.service";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { QuoteRequestFormSubmit, QuoteRequestSheet } from "../quotes/components/QuoteRequestSheet";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -53,13 +55,21 @@ const variantLabel = (variant: ProductVariant) => {
   return entries.map(([key, value]) => `${key}: ${String(value)}`).join(" • ");
 };
 
+const parseApiErrorMessage = (error: any): string => {
+  if (Array.isArray(error?.data?.errors) && error.data.errors.length > 0) {
+    const first = error.data.errors[0];
+    if (first?.msg) return String(first.msg);
+  }
+  return error?.message || "Unable to submit quote request.";
+};
+
 export const ProductDetailsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ScreenRoute>();
   const { productId, product: passedProduct } = route.params;
   const { user, requestLogin } = useAuth();
-  const { error: toastError } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [product, setProduct] = useState<Product | null>(passedProduct || null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
@@ -67,6 +77,8 @@ export const ProductDetailsScreen = () => {
   const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quoteSheetOpen, setQuoteSheetOpen] = useState(false);
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
 
   const isGuest = user?.role === "guest";
 
@@ -110,6 +122,7 @@ export const ProductDetailsScreen = () => {
     () => variants.find((variant) => variant._id === selectedVariantId) || null,
     [selectedVariantId, variants]
   );
+  const selectedVariantObjectId = selectedVariant?._id;
 
   const isOwnProduct = useMemo(() => {
     if (!product || !user) return false;
@@ -153,6 +166,41 @@ export const ProductDetailsScreen = () => {
       scope: "company",
     });
   }, [isGuest, navigation, product, requestLogin]);
+
+  const openQuoteSheet = useCallback(() => {
+    if (isGuest) {
+      requestLogin();
+      return;
+    }
+    setQuoteSheetOpen(true);
+  }, [isGuest, requestLogin]);
+
+  const submitQuoteRequest = useCallback(
+    async (payload: QuoteRequestFormSubmit) => {
+      if (!product) return;
+      try {
+        setQuoteSubmitting(true);
+        await quoteService.create({
+          productId: product._id,
+          variantId: selectedVariantObjectId,
+          quantity: payload.quantity,
+          requirements: payload.requirements,
+          targetPrice: payload.targetPrice,
+          currency: payload.targetPrice !== undefined ? "INR" : undefined,
+          requiredBy: payload.requiredBy,
+          buyerContact: payload.buyerContact,
+        });
+        setQuoteSheetOpen(false);
+        toastSuccess("Quote requested", "Your request has been sent to the seller.");
+        navigation.navigate("QuoteCenter", { initialTab: "asked" });
+      } catch (err: any) {
+        toastError("Quote request failed", parseApiErrorMessage(err));
+      } finally {
+        setQuoteSubmitting(false);
+      }
+    },
+    [navigation, product, selectedVariantObjectId, toastError, toastSuccess]
+  );
 
   const sellerName = product?.company?.displayName || "Seller";
   const heroWidth = Math.max(280, SCREEN_WIDTH - spacing.lg * 2 - 2);
@@ -358,33 +406,57 @@ export const ProductDetailsScreen = () => {
                 <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Manage variants</Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.bottomRow}>
+              <View style={styles.bottomColumn}>
                 <TouchableOpacity
-                  onPress={() =>
-                    startProductConversation({
-                      product,
-                      isGuest,
-                      requestLogin,
-                      navigation,
-                      toastError,
-                    })
-                  }
-                  style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                  onPress={openQuoteSheet}
+                  style={[styles.quotePrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
                 >
-                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                  <Ionicons name="receipt-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Get Quote</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => callProductSeller({ product, toastError })}
-                  style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
-                >
-                  <Ionicons name="call-outline" size={18} color={colors.textOnPrimary} />
-                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Call</Text>
-                </TouchableOpacity>
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      startProductConversation({
+                        product,
+                        isGuest,
+                        requestLogin,
+                        navigation,
+                        toastError,
+                      })
+                    }
+                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => callProductSeller({ product, toastError })}
+                    style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                  >
+                    <Ionicons name="call-outline" size={18} color={colors.textOnPrimary} />
+                    <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Call</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
+
+          <QuoteRequestSheet
+            visible={quoteSheetOpen}
+            loading={quoteSubmitting}
+            productName={product.name}
+            variantLabel={selectedVariant ? variantLabel(selectedVariant) : undefined}
+            defaultContact={{
+              name: user?.displayName || user?.firstName,
+              phone: user?.phone,
+              email: user?.email,
+            }}
+            onClose={() => setQuoteSheetOpen(false)}
+            onSubmit={submitQuoteRequest}
+          />
         </>
       ) : null}
     </SafeAreaView>
@@ -584,6 +656,16 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: "row",
     gap: 10,
+  },
+  bottomColumn: {
+    gap: 10,
+  },
+  quotePrimaryBtn: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
   bottomSecondaryBtn: {
     flex: 1,

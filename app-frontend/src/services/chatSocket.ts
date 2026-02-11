@@ -28,7 +28,10 @@ let connecting: Promise<Socket<ServerToClientEvents, ClientToServerEvents>> | nu
 const resolveSocketUrl = () => {
   // Derive socket URL from API_BASE_URL (remove /api path)
   const baseUrl = API_BASE_URL.replace(/\/api\/?$/, "");
-  return baseUrl || "http://3.108.52.140";
+  if (!baseUrl) {
+    throw new Error("Unable to derive chat socket URL from EXPO_PUBLIC_API_URL.");
+  }
+  return baseUrl;
 };
 
 export const getChatSocket = async () => {

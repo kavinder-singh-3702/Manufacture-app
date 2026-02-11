@@ -30,6 +30,7 @@ import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
+import { QuoteCenterScreen } from "../screens/quotes";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
 import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
 import { PartyOutstandingScreen } from "../screens/accounting/PartyOutstandingScreen";
@@ -176,6 +177,11 @@ export const AppNavigator = () => {
               name="ProductDetails"
               component={ProductDetailsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="QuoteCenter"
+              component={QuoteCenterScreen}
+              options={{ presentation: "modal", animation: "slide_from_right", title: "Quotes" }}
             />
             <RootStack.Screen
               name="ProductVariants"

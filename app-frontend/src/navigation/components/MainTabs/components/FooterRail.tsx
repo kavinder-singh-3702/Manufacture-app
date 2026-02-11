@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FC } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
 import { useTheme } from "../../../../hooks/useTheme";
@@ -28,7 +28,17 @@ export const FooterRail: FC<FooterRailProps> = ({
 }) => {
   const theme = useTheme();
   const { resolvedMode } = useThemeMode();
-  const tokens = getNavigationTokens(theme, resolvedMode);
+  const { width, fontScale } = useWindowDimensions();
+  const tokens = getNavigationTokens(theme, resolvedMode, {
+    viewportWidth: width,
+    fontScale,
+  });
+  const isCompact = tokens.footer.density !== "regular";
+
+  const unreadBadgeSize = isCompact ? 14 : 16;
+  const unreadBadgeTop = isCompact ? -6 : -8;
+  const unreadBadgeRight = isCompact ? -9 : -11;
+  const unreadBadgeFontSize = isCompact ? 8 : 9;
 
   const renderIcon = (tab: FooterItemConfig, color: string, isActive: boolean) => {
     const svgXml = getSvgIconXml?.(tab.route, color) ?? "";
@@ -67,7 +77,13 @@ export const FooterRail: FC<FooterRailProps> = ({
               onPress={() => onTabPress(tab.route)}
               onLongPress={onTabLongPress ? () => onTabLongPress(tab.route) : undefined}
               delayLongPress={280}
-              style={styles.tab}
+              style={[
+                styles.tab,
+                {
+                  minHeight: tokens.footer.tabMinHeight,
+                  paddingHorizontal: isCompact ? 2 : 0,
+                },
+              ]}
               accessibilityRole="tab"
               accessibilityLabel={label}
               accessibilityState={{ selected: isActive }}
@@ -86,7 +102,15 @@ export const FooterRail: FC<FooterRailProps> = ({
                   ]}
                 />
               </View>
-              <View style={styles.iconWrap}>
+              <View
+                style={[
+                  styles.iconWrap,
+                  {
+                    width: tokens.footer.iconWrapSize,
+                    height: tokens.footer.iconWrapSize,
+                  },
+                ]}
+              >
                 {renderIcon(tab, iconColor, isActive)}
                 {unreadCount > 0 ? (
                   <View
@@ -94,23 +118,41 @@ export const FooterRail: FC<FooterRailProps> = ({
                       styles.unreadBadge,
                       {
                         backgroundColor: tokens.colors.unreadBadgeBackground,
+                        minWidth: unreadBadgeSize,
+                        height: unreadBadgeSize,
+                        borderRadius: unreadBadgeSize / 2,
+                        top: unreadBadgeTop,
+                        right: unreadBadgeRight,
+                        paddingHorizontal: isCompact ? 3 : 4,
                       },
                     ]}
                   >
-                    <Text style={[styles.unreadBadgeText, { color: tokens.colors.unreadBadgeText }]}>
+                    <Text
+                      style={[
+                        styles.unreadBadgeText,
+                        {
+                          color: tokens.colors.unreadBadgeText,
+                          fontSize: unreadBadgeFontSize,
+                        },
+                      ]}
+                    >
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </Text>
                   </View>
                 ) : null}
               </View>
               <Text
-                numberOfLines={1}
+                numberOfLines={tokens.footer.labelMaxLines}
+                ellipsizeMode={tokens.footer.labelMaxLines === 1 ? "tail" : "clip"}
+                allowFontScaling={false}
                 style={[
                   styles.label,
                   {
                     color: iconColor,
                     fontSize: tokens.footer.labelSize,
+                    lineHeight: tokens.footer.labelLineHeight,
                     fontWeight: isActive ? "700" : "600",
+                    marginTop: tokens.footer.labelMarginTop,
                   },
                 ]}
               >
@@ -171,5 +213,7 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 4,
     letterSpacing: 0.15,
+    textAlign: "center",
+    width: "100%",
   },
 });

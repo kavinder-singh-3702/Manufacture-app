@@ -5,7 +5,11 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "dev",
+        "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
+      }
     },
     "preview": {
       "android": {
@@ -13,7 +17,8 @@
       },
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:4000/api"
+        "APP_VARIANT": "dev",
+        "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
       }
     },
     "production": {
@@ -21,7 +26,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:4000/api"
+        "APP_VARIANT": "prod",
+        "EXPO_PUBLIC_API_URL": "https://api.manufactureapp.com/api"
       }
     }
   },

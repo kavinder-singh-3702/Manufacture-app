@@ -182,6 +182,12 @@ export const ProfileScreen = () => {
       onPress: () => navigation.navigate("Appearance"),
     },
     {
+      key: "my-quotes",
+      label: "My Quotes",
+      icon: "receipt-outline" as const,
+      onPress: () => navigation.navigate("QuoteCenter", { initialTab: "asked" }),
+    },
+    {
       key: "company",
       label: "Open Company",
       icon: "business-outline" as const,

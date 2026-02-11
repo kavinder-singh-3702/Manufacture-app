@@ -24,6 +24,7 @@ export type RootStackParamList = {
   ProductDetails: { productId: string; product?: any };
   ProductVariants: { productId: string; productName?: string; scope?: "company" | "marketplace" };
   ProductSearch: { initialQuery?: string } | undefined;
+  QuoteCenter: { initialTab?: "asked" | "received" | "incoming" } | undefined;
   UserPreferences: { userId: string; displayName?: string };
   CampaignStudio: undefined;
   // Chat screens
