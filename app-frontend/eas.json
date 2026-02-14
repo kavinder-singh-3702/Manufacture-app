@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 3.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -25,7 +26,6 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true,
       "env": {
         "APP_VARIANT": "prod",
         "EXPO_PUBLIC_API_URL": "https://api.manufactureapp.com/api"

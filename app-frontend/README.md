@@ -14,14 +14,14 @@ The workflow builds a signed APK with the EAS `production` profile, uploads it a
 - Android build type: `apk`
 - Runtime API URL: `https://api.manufactureapp.com/api`
 - Package ID: `com.manufactureapp.frontend`
-- Versioning: `autoIncrement: true` (ensures installable upgrades for testers)
+- Version source: EAS `remote` (`cli.appVersionSource: "remote"`)
 
 ### One-time setup
 
 1. Add repository secret `EXPO_TOKEN` in GitHub:
    - `Settings -> Secrets and variables -> Actions -> New repository secret`
 2. Ensure the Expo account behind `EXPO_TOKEN` can access EAS project:
-   - `dd80ff5b-6e67-4ea6-acf8-2ae5d3455602`
+   - `c2343c00-43ee-4da9-a32a-d24b8f0f099b`
 3. Use Expo-managed Android keystore.
    - If credentials are not configured yet, run an interactive EAS credentials setup once, then rerun CI.
 

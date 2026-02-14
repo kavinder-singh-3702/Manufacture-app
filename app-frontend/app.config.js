@@ -13,7 +13,7 @@ module.exports = ({ config }) => {
   return {
     ...config,
     name: "ARVANN",
-    slug: "app-frontend",
+    slug: "arvann",
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
@@ -50,12 +50,22 @@ module.exports = ({ config }) => {
     },
     extra: {
       eas: {
-        projectId: "dd80ff5b-6e67-4ea6-acf8-2ae5d3455602",
+        projectId: "c2343c00-43ee-4da9-a32a-d24b8f0f099b",
       },
       appVariant,
       iosBundleIdentifierProd: PROD_BUNDLE_IDENTIFIER,
       iosBundleIdentifierDev: DEV_BUNDLE_IDENTIFIER,
     },
-    plugins: ["expo-secure-store"],
+    plugins: [
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/brand/arvann-icon-1024.png",
+          color: "#4F46E5",
+          defaultChannel: "default",
+        },
+      ],
+    ],
   };
 };
