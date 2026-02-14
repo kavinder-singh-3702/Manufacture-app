@@ -1,0 +1,128 @@
+name: Build Android APK (Production)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-production-apk:
+    name: Build and Publish APK
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo "::error::Missing required secret EXPO_TOKEN."
+            echo "Add EXPO_TOKEN in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: app-frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app-frontend
+        run: npm ci
+
+      - name: Smoke gate - Expo Doctor
+        working-directory: app-frontend
+        run: npm run doctor
+
+      - name: Smoke gate - TypeScript check (warning-only for tester APK)
+        id: typecheck
+        continue-on-error: true
+        working-directory: app-frontend
+        run: npm run typecheck
+
+      - name: Report TypeScript gate status
+        if: always()
+        run: |
+          if [ "${{ steps.typecheck.outcome }}" != "success" ]; then
+            echo "::warning::TypeScript check failed. Continuing because this workflow is configured for immediate tester APK delivery."
+          fi
+
+      - name: Install EAS CLI
+        run: npm i -g eas-cli@latest
+
+      - name: Build Android APK with EAS
+        id: eas_build
+        working-directory: app-frontend
+        run: |
+          eas build --platform android --profile production --non-interactive --wait --json > eas-build.json
+          cat eas-build.json
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const raw = fs.readFileSync("eas-build.json", "utf8").trim();
+          if (!raw) {
+            throw new Error("eas-build.json is empty.");
+          }
+
+          const parsed = JSON.parse(raw);
+          const build = Array.isArray(parsed) ? parsed[0] : parsed;
+          const artifactUrl =
+            build?.artifacts?.buildUrl ||
+            build?.artifacts?.applicationArchiveUrl ||
+            build?.artifactUrl ||
+            "";
+          const buildId = build?.id || build?.buildId || "";
+
+          if (!artifactUrl) {
+            throw new Error("Could not find APK artifact URL in EAS build output.");
+          }
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `artifact_url=${artifactUrl}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `build_id=${buildId}\n`);
+          NODE
+
+      - name: Generate UTC build timestamp
+        id: build_meta
+        run: |
+          echo "utc_timestamp=$(date -u +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK and generate checksum
+        id: apk_files
+        working-directory: app-frontend
+        run: |
+          APK_FILE="ARVANN-prod-${{ steps.build_meta.outputs.utc_timestamp }}.apk"
+          SHA_FILE="${APK_FILE}.sha256"
+          curl --fail --location "${{ steps.eas_build.outputs.artifact_url }}" --output "$APK_FILE"
+          sha256sum "$APK_FILE" > "$SHA_FILE"
+          echo "apk_file=$APK_FILE" >> "$GITHUB_OUTPUT"
+          echo "sha_file=$SHA_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-${{ steps.build_meta.outputs.utc_timestamp }}
+          path: |
+            app-frontend/${{ steps.apk_files.outputs.apk_file }}
+            app-frontend/${{ steps.apk_files.outputs.sha_file }}
+          if-no-files-found: error
+
+      - name: Publish APK in GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-test-${{ steps.build_meta.outputs.utc_timestamp }}-run${{ github.run_number }}
+          name: APK Test Build ${{ steps.build_meta.outputs.utc_timestamp }} (Run ${{ github.run_number }})
+          prerelease: true
+          files: |
+            app-frontend/${{ steps.apk_files.outputs.apk_file }}
+            app-frontend/${{ steps.apk_files.outputs.sha_file }}
+          body: |
+            Android APK generated from branch `${{ github.ref_name }}` and commit `${{ github.sha }}`.
+            EAS Build ID: `${{ steps.eas_build.outputs.build_id }}`
+            Profile: `production`
+            Runtime API URL: `https://api.manufactureapp.com/api`
