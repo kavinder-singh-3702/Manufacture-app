@@ -22,6 +22,16 @@
         "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
       }
     },
+    "staging": {
+      "android": {
+        "buildType": "apk"
+      },
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "dev",
+        "EXPO_PUBLIC_API_URL": "http://3.108.52.140/api"
+      }
+    },
     "production": {
       "android": {
         "buildType": "apk"

@@ -19,6 +19,11 @@ if (appVariant === "prod" && !rawApiBaseUrl.startsWith("https://")) {
 }
 
 export const API_BASE_URL = rawApiBaseUrl.replace(/\/$/, "");
+export const SOCKET_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+if (!SOCKET_BASE_URL) {
+  throw new Error("Unable to derive chat socket URL from EXPO_PUBLIC_API_URL.");
+}
 
 export const DEFAULT_API_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",

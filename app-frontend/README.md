@@ -2,64 +2,61 @@
 
 ## Build Tester APK via GitHub Actions
 
-This project ships a production-config Android APK pipeline at:
+APK pipeline file:
 
 - `.github/workflows/android-apk.yml`
 
-The workflow builds a signed APK with the EAS `production` profile, uploads it as a workflow artifact, and also publishes it to a unique GitHub prerelease.
+The workflow supports two profiles:
 
-### What this build uses
+- `staging` (default): internal APK for testing against `http://3.108.52.140/api`
+- `production`: APK using `https://api.manufactureapp.com/api`
 
-- Profile: `production` from `app-frontend/eas.json`
-- Android build type: `apk`
-- Runtime API URL: `https://api.manufactureapp.com/api`
-- Package ID: `com.manufactureapp.frontend`
-- Version source: EAS `remote` (`cli.appVersionSource: "remote"`)
+## Unified API Base URL
 
-### One-time setup
+All app HTTP calls are centralized through:
 
-1. Add repository secret `EXPO_TOKEN` in GitHub:
+- `src/config/api.ts` (`EXPO_PUBLIC_API_URL` -> `API_BASE_URL`)
+- `src/services/http/index.ts` (single `httpClient` initialization)
+
+Chat socket host is also derived from the same config via:
+
+- `src/config/api.ts` (`SOCKET_BASE_URL`)
+- `src/services/chatSocket.ts`
+
+## Profile Behavior
+
+- `staging`
+  - `APP_VARIANT=dev`
+  - `EXPO_PUBLIC_API_URL=http://3.108.52.140/api`
+  - Android package: `com.manufactureapp.frontend.dev`
+  - Android cleartext traffic: enabled (`usesCleartextTraffic=true`)
+- `production`
+  - `APP_VARIANT=prod`
+  - `EXPO_PUBLIC_API_URL=https://api.manufactureapp.com/api`
+  - Android package: `com.manufactureapp.frontend`
+  - Android cleartext traffic: disabled
+
+## One-time Setup
+
+1. Add GitHub secret `EXPO_TOKEN`:
    - `Settings -> Secrets and variables -> Actions -> New repository secret`
-2. Ensure the Expo account behind `EXPO_TOKEN` can access EAS project:
+2. Ensure Expo token account can access EAS project:
    - `c2343c00-43ee-4da9-a32a-d24b8f0f099b`
-3. Use Expo-managed Android keystore.
-   - If credentials are not configured yet, run an interactive EAS credentials setup once, then rerun CI.
+3. Ensure Expo-managed Android keystore exists for package ids used by your profile.
 
-### Run a tester APK build
+## Run a Staging APK Build
 
 1. Commit and push your branch.
-2. In GitHub, open `Actions -> Build Android APK (Production)`.
-3. Click `Run workflow` on the branch you want to test.
+2. Open GitHub Actions workflow: `Build Android APK`.
+3. Click `Run workflow`.
+4. Select `build_profile=staging`.
+5. Run the workflow.
 
-### Output artifacts
+## Artifacts
 
-Each run creates:
+Each run publishes:
 
 - Workflow artifact:
-  - `ARVANN-prod-<UTC_TIMESTAMP>.apk`
-  - `ARVANN-prod-<UTC_TIMESTAMP>.apk.sha256`
-- GitHub prerelease:
-  - Tag format: `apk-test-<UTC_TIMESTAMP>-run<RUN_NUMBER>`
-  - Same APK and checksum attached as release assets
-
-### Smoke gate in CI
-
-The workflow always enforces:
-
-- `npm run doctor` (`expo-doctor@latest`)
-
-The workflow also runs:
-
-- `npm run typecheck` (`tsc --noEmit`)
-
-For immediate tester delivery, typecheck is currently warning-only and does not block APK publishing.
-
-### Local preflight (optional)
-
-From `app-frontend`:
-
-```bash
-npm ci
-npm run doctor
-npm run typecheck
-```
+  - `ARVANN-<profile>-<UTC_TIMESTAMP>.apk`
+  - `ARVANN-<profile>-<UTC_TIMESTAMP>.apk.sha256`
+- GitHub prerelease with the same APK and checksum assets.

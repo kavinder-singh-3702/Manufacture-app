@@ -40,6 +40,7 @@ module.exports = ({ config }) => {
     },
     android: {
       package: isProd ? "com.manufactureapp.frontend" : "com.manufactureapp.frontend.dev",
+      usesCleartextTraffic: !isProd,
       adaptiveIcon: {
         foregroundImage: "./assets/brand/arvann-icon-1024.png",
         backgroundColor: "#454545",

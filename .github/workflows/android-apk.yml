@@ -1,17 +1,27 @@
-name: Build Android APK (Production)
+name: Build Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      build_profile:
+        description: EAS build profile to use
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
 
 permissions:
   contents: write
 
 jobs:
-  build-production-apk:
+  build-android-apk:
     name: Build and Publish APK
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      BUILD_PROFILE: ${{ github.event.inputs.build_profile || 'staging' }}
 
     steps:
       - name: Checkout repository
@@ -56,11 +66,22 @@ jobs:
       - name: Install EAS CLI
         run: npm i -g eas-cli@latest
 
+      - name: Resolve runtime metadata
+        id: runtime_meta
+        run: |
+          if [ "${BUILD_PROFILE}" = "production" ]; then
+            echo "runtime_api_url=https://api.manufactureapp.com/api" >> "$GITHUB_OUTPUT"
+            echo "android_package=com.manufactureapp.frontend" >> "$GITHUB_OUTPUT"
+          else
+            echo "runtime_api_url=http://3.108.52.140/api" >> "$GITHUB_OUTPUT"
+            echo "android_package=com.manufactureapp.frontend.dev" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build Android APK with EAS
         id: eas_build
         working-directory: app-frontend
         run: |
-          eas build --platform android --profile production --non-interactive --wait --json > eas-build.json
+          eas build --platform android --profile "${BUILD_PROFILE}" --non-interactive --wait --json > eas-build.json
           cat eas-build.json
           node <<'NODE'
           const fs = require("node:fs");
@@ -96,7 +117,7 @@ jobs:
         id: apk_files
         working-directory: app-frontend
         run: |
-          APK_FILE="ARVANN-prod-${{ steps.build_meta.outputs.utc_timestamp }}.apk"
+          APK_FILE="ARVANN-${BUILD_PROFILE}-${{ steps.build_meta.outputs.utc_timestamp }}.apk"
           SHA_FILE="${APK_FILE}.sha256"
           curl --fail --location "${{ steps.eas_build.outputs.artifact_url }}" --output "$APK_FILE"
           sha256sum "$APK_FILE" > "$SHA_FILE"
@@ -115,8 +136,8 @@ jobs:
       - name: Publish APK in GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: apk-test-${{ steps.build_meta.outputs.utc_timestamp }}-run${{ github.run_number }}
-          name: APK Test Build ${{ steps.build_meta.outputs.utc_timestamp }} (Run ${{ github.run_number }})
+          tag_name: apk-${{ env.BUILD_PROFILE }}-test-${{ steps.build_meta.outputs.utc_timestamp }}-run${{ github.run_number }}
+          name: APK ${{ env.BUILD_PROFILE }} Build ${{ steps.build_meta.outputs.utc_timestamp }} (Run ${{ github.run_number }})
           prerelease: true
           files: |
             app-frontend/${{ steps.apk_files.outputs.apk_file }}
@@ -124,5 +145,6 @@ jobs:
           body: |
             Android APK generated from branch `${{ github.ref_name }}` and commit `${{ github.sha }}`.
             EAS Build ID: `${{ steps.eas_build.outputs.build_id }}`
-            Profile: `production`
-            Runtime API URL: `https://api.manufactureapp.com/api`
+            Profile: `${{ env.BUILD_PROFILE }}`
+            Runtime API URL: `${{ steps.runtime_meta.outputs.runtime_api_url }}`
+            Android package: `${{ steps.runtime_meta.outputs.android_package }}`
