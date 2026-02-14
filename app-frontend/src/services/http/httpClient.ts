@@ -84,7 +84,15 @@ export class HttpClient {
       const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
       console.error("Network error:", errorMessage, "URL:", endpoint);
       console.error("Full error:", networkError);
-      throw new ApiError(`${errorMessage} - URL: ${endpoint}`, 0, { networkError: errorMessage });
+      throw new ApiError(
+        "Network request failed. Please check your connection and try again.",
+        0,
+        undefined,
+        {
+          kind: "network",
+          debug: { endpoint, method, networkError: errorMessage },
+        }
+      );
     }
 
     let parsedBody: unknown;
@@ -97,7 +105,7 @@ export class HttpClient {
     if (!response.ok) {
       const body = parsedBody as { message?: string; error?: string };
       const errorMessage = body?.message || body?.error || "Request failed";
-      throw new ApiError(errorMessage, response.status, parsedBody);
+      throw new ApiError(errorMessage, response.status, parsedBody, { kind: "http" });
     }
 
     return parsedBody as T;

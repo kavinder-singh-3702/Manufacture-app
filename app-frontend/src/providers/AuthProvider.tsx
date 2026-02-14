@@ -25,6 +25,7 @@ type AuthContextValue = {
   setUser: (user: AuthUser | null, options?: { requiresVerification?: boolean }) => void;
   initializing: boolean;
   bootstrapError: string | null;
+  bootstrapWarning: string | null;
   requestLogin: () => void;
   requestSignup: () => void;
   refreshUser: () => Promise<AuthUser | null>;
@@ -44,6 +45,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [bootstrapWarning, setBootstrapWarning] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [pendingVerificationRedirect, setPendingVerificationRedirect] = useState<string | null>(null);
 
@@ -53,36 +55,66 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
+    setBootstrapWarning(null);
     return normalized;
   }, []);
 
   useEffect(() => {
     let isMounted = true;
+    const sessionRestoreWarning = "Could not restore previous session. You can still log in.";
+    const isHardConfigFailure = (message: string) =>
+      /(EXPO_PUBLIC_API_URL|Production builds require an HTTPS|Unable to derive chat socket URL)/i.test(message);
+
     const bootstrap = async () => {
       try {
+        const token = await tokenStorage.getToken();
+        if (!isMounted) return;
+
+        if (!token) {
+          setUserState(null);
+          setBootstrapError(null);
+          setBootstrapWarning(null);
+          return;
+        }
+
         const { user: currentUser } = await userService.getCurrentUser();
         if (!isMounted) return;
         setUserState(normalizeUser(currentUser));
         setAuthView(null);
         setBootstrapError(null);
+        setBootstrapWarning(null);
       } catch (error) {
-        if (isMounted) {
-          setUserState(null);
-          if (error instanceof ApiError) {
-            // 401 = not logged in, this is expected - don't show error
-            if (error.status === 401) {
-              setBootstrapError(null);
-            } else if (error.status === 0) {
-              // Network error - couldn't connect
-              setBootstrapError(error.message);
-            } else {
-              setBootstrapError(error.message);
-            }
-          } else if (error instanceof Error) {
-            setBootstrapError(`Network error: ${error.message}`);
+        if (!isMounted) return;
+
+        setUserState(null);
+        if (error instanceof ApiError) {
+          // 401 = token expired/invalid, clear it and continue logged out.
+          if (error.status === 401) {
+            await tokenStorage.removeToken();
+            setBootstrapWarning(null);
+            setBootstrapError(null);
+          } else if (error.kind === "network" || error.status === 0) {
+            console.warn("Session restore skipped due to network issue.", error.debug);
+            setBootstrapWarning(sessionRestoreWarning);
+            setBootstrapError(null);
           } else {
-            setBootstrapError("Unable to reach the backend.");
+            console.warn("Session restore failed with API error.", { status: error.status, data: error.data });
+            setBootstrapWarning(sessionRestoreWarning);
+            setBootstrapError(null);
           }
+        } else if (error instanceof Error) {
+          if (isHardConfigFailure(error.message)) {
+            setBootstrapWarning(null);
+            setBootstrapError(error.message);
+          } else {
+            console.warn("Session restore failed unexpectedly.", error);
+            setBootstrapWarning(sessionRestoreWarning);
+            setBootstrapError(null);
+          }
+        } else {
+          console.warn("Session restore failed with unknown error.", error);
+          setBootstrapWarning(sessionRestoreWarning);
+          setBootstrapError(null);
         }
       } finally {
         if (isMounted) {
@@ -106,6 +138,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setUserState(normalizeUser(response.user));
     setAuthView(null);
+    setBootstrapError(null);
+    setBootstrapWarning(null);
   }, []);
 
   const logout = useCallback(async () => {
@@ -115,6 +149,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     disconnectChatSocket();
     setUserState(null);
     setAuthView("login");
+    setBootstrapError(null);
+    setBootstrapWarning(null);
   }, []);
 
   const switchCompany = useCallback(async (companyId: string) => {
@@ -145,11 +181,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const requestLogin = useCallback(() => {
     setUserState(null);
     setAuthView("login");
+    setBootstrapWarning(null);
   }, []);
 
   const requestSignup = useCallback(() => {
     setUserState(null);
     setAuthView("signup");
+    setBootstrapWarning(null);
   }, []);
 
   const clearAuthView = useCallback(() => {
@@ -169,6 +207,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser,
       initializing,
       bootstrapError,
+      bootstrapWarning,
       requestLogin,
       requestSignup,
       refreshUser,
@@ -177,7 +216,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       pendingVerificationRedirect,
       clearPendingVerificationRedirect,
     }),
-    [authView, bootstrapError, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, switchCompany, user]
+    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

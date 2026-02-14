@@ -9,12 +9,13 @@ import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { AuthView } from "../../types/auth";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
 
 export const AuthScreen = () => {
-  const { bootstrapError, setUser, authView, clearAuthView } = useAuth();
+  const { bootstrapError, bootstrapWarning, setUser, authView, clearAuthView } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const [view, setView] = useState<AuthView>(authView ?? "intro");
@@ -129,12 +130,16 @@ export const AuthScreen = () => {
           ) : null}
         </Animated.View>
 
+        {bootstrapWarning && !bootstrapError ? (
+          <View style={[styles.warningBanner, { borderColor: colors.warning + "4d", backgroundColor: colors.warningBg }]}>
+            <Text style={[styles.warningText, { color: colors.warningLight }]}>{bootstrapWarning}</Text>
+          </View>
+        ) : null}
+
         {bootstrapError ? (
           <View style={[styles.errorBanner, { borderColor: colors.error + "66", backgroundColor: colors.error + "1a" }]}>
             <Text style={[styles.errorTitle, { color: colors.error }]}>Environment issue</Text>
-            <Text style={[styles.errorText, { color: colors.errorLight }]}>
-              {bootstrapError}. Ensure EXPO_PUBLIC_API_URL points to your backend (e.g., http://192.168.x.x:4000/api).
-            </Text>
+            <Text style={[styles.errorText, { color: colors.errorLight }]}>{bootstrapError}</Text>
           </View>
         ) : null}
       </SafeAreaView>
@@ -149,13 +154,30 @@ type IntroPanelProps = {
 
 const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const { colors } = useTheme();
+  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
 
   return (
-    <View style={styles.slideCard}>
+    <View
+      style={[
+        styles.slideCard,
+        {
+          paddingHorizontal: isXCompact ? 18 : isCompact ? 22 : 32,
+          paddingVertical: isCompact ? 22 : 32,
+          justifyContent: isCompact ? "flex-start" : "center",
+        },
+      ]}
+    >
       <View style={styles.illustrationArea}>
         <LinearGradient
           colors={[colors.primary + "66", colors.primary + "1a"]}
-          style={[styles.blob, styles.blueBlob]}
+          style={[
+            styles.blob,
+            styles.blueBlob,
+            {
+              width: isCompact ? 180 : 220,
+              height: isCompact ? 180 : 220,
+            },
+          ]}
         />
         <View
           style={[
@@ -164,6 +186,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             {
               backgroundColor: colors.surfaceElevated,
               borderColor: colors.primary + "4d",
+              width: isXCompact ? 120 : isCompact ? 132 : 146,
+              height: isXCompact ? 120 : isCompact ? 132 : 146,
             },
           ]}
         >
@@ -176,6 +200,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             {
               backgroundColor: colors.surfaceElevated,
               borderColor: colors.accent + "55",
+              width: isXCompact ? 156 : isCompact ? 170 : 182,
+              height: isXCompact ? 54 : isCompact ? 58 : 62,
             },
           ]}
         >
@@ -184,7 +210,9 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
       </View>
 
       <View style={{ marginTop: 16 }}>
-        <Text style={[styles.introHeading, { color: colors.textOnDarkSurface }]}>Welcome to {APP_NAME}</Text>
+        <Text style={[styles.introHeading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 30, 22, 30) }]}>
+          Welcome to {APP_NAME}
+        </Text>
         <Text style={[styles.introSubheading, { color: colors.subtextOnDarkSurface }]}>Built for industrial trade and operations</Text>
       </View>
 
@@ -253,7 +281,7 @@ const styles = StyleSheet.create({
   },
   illustrationArea: {
     width: "100%",
-    height: 260,
+    height: 220,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -349,5 +377,21 @@ const styles = StyleSheet.create({
   },
   errorText: {
     lineHeight: 18,
+  },
+  warningBanner: {
+    marginTop: 16,
+    marginHorizontal: 24,
+    width: "85%",
+    maxWidth: 380,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: "center",
+  },
+  warningText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
   },
 });
