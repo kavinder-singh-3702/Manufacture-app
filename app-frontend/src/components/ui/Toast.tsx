@@ -17,10 +17,6 @@ import {
 import Svg, { Path, Circle } from "react-native-svg";
 import { useTheme } from "../../hooks/useTheme";
 
-// ============================================
-// TOAST TYPES
-// ============================================
-
 type ToastType = "success" | "error" | "warning" | "info";
 
 type ToastInput =
@@ -56,61 +52,57 @@ export const useToast = () => {
   return context;
 };
 
-// ============================================
-// TOAST ICONS
-// ============================================
-
-const ToastIcons: Record<ToastType, React.ReactNode> = {
-  success: (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path
-        d="M20 6L9 17l-5-5"
-        stroke="#4ADE80"
-        strokeWidth={2.5}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  ),
-  error: (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={10} stroke="#FF6B6B" strokeWidth={2} fill="none" />
-      <Path d="M15 9l-6 6M9 9l6 6" stroke="#FF6B6B" strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  ),
-  warning: (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path
-        d="M12 9v4M12 17h.01"
-        stroke="#FBBF24"
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
-      <Path
-        d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-        stroke="#FBBF24"
-        strokeWidth={2}
-        fill="none"
-      />
-    </Svg>
-  ),
-  info: (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={10} stroke="#4AC9FF" strokeWidth={2} fill="none" />
-      <Path d="M12 16v-4M12 8h.01" stroke="#4AC9FF" strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  ),
-};
-
-// ============================================
-// TOAST ITEM COMPONENT
-// ============================================
-
 interface ToastItemProps {
   toast: Toast;
   onRemove: (id: string) => void;
 }
+
+const ToastIcon = ({ type, color }: { type: ToastType; color: string }) => {
+  if (type === "success") {
+    return (
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Path
+          d="M20 6L9 17l-5-5"
+          stroke={color}
+          strokeWidth={2.5}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    );
+  }
+
+  if (type === "error") {
+    return (
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} fill="none" />
+        <Path d="M15 9l-6 6M9 9l6 6" stroke={color} strokeWidth={2} strokeLinecap="round" />
+      </Svg>
+    );
+  }
+
+  if (type === "warning") {
+    return (
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Path d="M12 9v4M12 17h.01" stroke={color} strokeWidth={2} strokeLinecap="round" />
+        <Path
+          d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+          stroke={color}
+          strokeWidth={2}
+          fill="none"
+        />
+      </Svg>
+    );
+  }
+
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} fill="none" />
+      <Path d="M12 16v-4M12 8h.01" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+};
 
 const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const { colors, radius } = useTheme();
@@ -119,20 +111,20 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const progressWidth = useRef(new Animated.Value(1)).current;
 
-  const getColors = () => {
+  const getTone = () => {
     switch (toast.type) {
       case "success":
-        return { bg: "#1A2E1F", border: "#4ADE80", text: "#4ADE80" };
+        return { bg: colors.successBg, border: colors.success };
       case "error":
-        return { bg: "#2E1A1A", border: "#FF6B6B", text: "#FF6B6B" };
+        return { bg: colors.errorBg, border: colors.error };
       case "warning":
-        return { bg: "#2E2A1A", border: "#FBBF24", text: "#FBBF24" };
+        return { bg: colors.warningBg, border: colors.warning };
       case "info":
-        return { bg: "#1A2A2E", border: "#4AC9FF", text: "#4AC9FF" };
+        return { bg: colors.infoBg, border: colors.info };
     }
   };
 
-  const toastColors = getColors();
+  const tone = getTone();
   const duration = toast.duration || 4000;
 
   useEffect(() => {
@@ -140,7 +132,6 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   }, [translateX, width]);
 
   useEffect(() => {
-    // Entrance animation
     Animated.parallel([
       Animated.spring(translateX, {
         toValue: 0,
@@ -154,20 +145,18 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
       }),
     ]).start();
 
-    // Progress bar animation
     Animated.timing(progressWidth, {
       toValue: 0,
       duration,
       useNativeDriver: false,
     }).start();
 
-    // Auto remove
     const timer = setTimeout(() => {
       handleRemove();
     }, duration);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [duration, opacity, progressWidth, translateX, width]);
 
   const handleRemove = () => {
     Animated.parallel([
@@ -194,45 +183,34 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
       style={[
         styles.toast,
         {
-          backgroundColor: toastColors.bg,
-          borderLeftColor: toastColors.border,
+          backgroundColor: tone.bg,
+          borderLeftColor: tone.border,
           borderRadius: radius.md,
           opacity,
           transform: [{ translateX }],
         },
       ]}
     >
-      {/* Icon */}
-      <View style={styles.iconContainer}>{ToastIcons[toast.type]}</View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>{toast.title}</Text>
-        {toast.message && (
-          <Text style={[styles.message, { color: colors.textMuted }]}>
-            {toast.message}
-          </Text>
-        )}
+      <View style={styles.iconContainer}>
+        <ToastIcon type={toast.type} color={tone.border} />
       </View>
 
-      {/* Close button */}
+      <View style={styles.content}>
+        <Text style={[styles.title, { color: colors.text }]}>{toast.title}</Text>
+        {toast.message ? <Text style={[styles.message, { color: colors.textMuted }]}>{toast.message}</Text> : null}
+      </View>
+
       <TouchableOpacity onPress={handleRemove} style={styles.closeButton}>
         <Svg width={16} height={16} viewBox="0 0 24 24">
-          <Path
-            d="M18 6L6 18M6 6l12 12"
-            stroke={colors.textMuted}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
+          <Path d="M18 6L6 18M6 6l12 12" stroke={colors.textMuted} strokeWidth={2} strokeLinecap="round" />
         </Svg>
       </TouchableOpacity>
 
-      {/* Progress bar */}
       <Animated.View
         style={[
           styles.progressBar,
           {
-            backgroundColor: toastColors.border,
+            backgroundColor: tone.border,
             width: progressWidthInterpolated,
           },
         ]}
@@ -240,10 +218,6 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
     </Animated.View>
   );
 };
-
-// ============================================
-// TOAST PROVIDER
-// ============================================
 
 interface ToastProviderProps {
   children: React.ReactNode;
@@ -255,7 +229,7 @@ const toText = (value: any) => {
   if (value instanceof Error) return value.message;
   try {
     return typeof value === "object" ? JSON.stringify(value) : String(value);
-  } catch (e) {
+  } catch {
     return String(value);
   }
 };
@@ -319,7 +293,6 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
   return (
     <ToastContext.Provider value={{ success, error, warning, info }}>
       {children}
-      {/* Toast container */}
       <View style={styles.container} pointerEvents="box-none">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
@@ -343,9 +316,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 14,
     borderLeftWidth: 4,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.26,
     shadowRadius: 8,
     elevation: 8,
     overflow: "hidden",

@@ -51,7 +51,7 @@ export const UserListItem = ({ user, onPress }: UserListItemProps) => {
       <View style={styles.leftContent}>
         {/* Avatar with initials */}
         <LinearGradient
-          colors={user.hasActiveConversation ? ["#6C63FF", "#5248E6"] : ["#3A3D4A", "#2E3138"]}
+          colors={user.hasActiveConversation ? ["#19B8E6", "#148DB2"] : ["#3A3D4A", "#2E3138"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.avatar, { borderRadius: radius.lg }]}
@@ -88,7 +88,7 @@ export const UserListItem = ({ user, onPress }: UserListItemProps) => {
       {/* Right side: Action button */}
       <View style={styles.actionContainer}>
         <LinearGradient
-          colors={user.hasActiveConversation ? ["#10B981", "#059669"] : ["#6C63FF", "#5248E6"]}
+          colors={user.hasActiveConversation ? ["#10B981", "#059669"] : ["#19B8E6", "#148DB2"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.actionButton, { borderRadius: radius.sm }]}

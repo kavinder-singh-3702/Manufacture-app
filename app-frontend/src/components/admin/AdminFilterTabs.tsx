@@ -1,4 +1,4 @@
-import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet, useWindowDimensions } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 
 type Tab<T extends string> = {
@@ -19,6 +19,8 @@ export function AdminFilterTabs<T extends string>({
   onTabChange,
 }: AdminFilterTabsProps<T>) {
   const { colors, radius } = useTheme();
+  const { width } = useWindowDimensions();
+  const compact = width < 390;
 
   return (
     <ScrollView
@@ -36,6 +38,7 @@ export function AdminFilterTabs<T extends string>({
             activeOpacity={0.7}
             style={[
               styles.tab,
+              compact ? styles.tabCompact : null,
               {
                 backgroundColor: isActive ? colors.primary : colors.surface,
                 borderColor: isActive ? colors.primary : colors.border,
@@ -46,8 +49,9 @@ export function AdminFilterTabs<T extends string>({
             <Text
               style={[
                 styles.tabText,
+                compact ? styles.tabTextCompact : null,
                 {
-                  color: isActive ? "#FFFFFF" : colors.text,
+                  color: isActive ? colors.textOnPrimary : colors.text,
                 },
               ]}
             >
@@ -59,7 +63,7 @@ export function AdminFilterTabs<T extends string>({
                   styles.countBadge,
                   {
                     backgroundColor: isActive
-                      ? "rgba(255,255,255,0.25)"
+                      ? colors.primary + "40"
                       : colors.border,
                   },
                 ]}
@@ -68,7 +72,7 @@ export function AdminFilterTabs<T extends string>({
                   style={[
                     styles.countText,
                     {
-                      color: isActive ? "#FFFFFF" : colors.textSecondary,
+                      color: isActive ? colors.textOnPrimary : colors.textSecondary,
                     },
                   ]}
                 >
@@ -100,6 +104,13 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  tabCompact: {
+    height: 33,
+    paddingHorizontal: 12,
+  },
+  tabTextCompact: {
+    fontSize: 12,
   },
   countBadge: {
     minWidth: 18,

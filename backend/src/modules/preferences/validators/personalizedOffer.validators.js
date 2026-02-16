@@ -94,13 +94,22 @@ const updateCampaignValidation = [
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     return Object.keys(value).length > 0;
   }).withMessage('At least one field is required to update'),
+  body('expectedUpdatedAt').optional().isISO8601(),
   ...sharedCampaignBodyValidation
+];
+
+const campaignIdParamValidation = [
+  param('campaignId').custom(isObjectId).withMessage('Invalid campaignId')
 ];
 
 const listOffersQueryValidation = [
   query('includeExpired').optional().isBoolean().toBoolean(),
   query('status').optional().isIn(OFFER_STATUSES),
   query('contentType').optional().isIn(CAMPAIGN_CONTENT_TYPES),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
+  query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc', 'priority:desc']),
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601(),
   query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
   query('offset').optional().isInt({ min: 0 }).toInt(),
   query('userId').optional().custom(isObjectId).withMessage('Invalid userId')
@@ -109,5 +118,6 @@ const listOffersQueryValidation = [
 module.exports = {
   createOfferValidation,
   updateCampaignValidation,
-  listOffersQueryValidation
+  listOffersQueryValidation,
+  campaignIdParamValidation
 };

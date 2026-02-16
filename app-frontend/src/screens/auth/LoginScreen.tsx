@@ -289,7 +289,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryButton}
                 >
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
+                  {loading ? <ActivityIndicator color="#F4F7FF" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#fff",
+    color: "#F4F7FF",
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 1.5,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    color: "#FF6B6B",
+    color: "#FF7B87",
     marginBottom: 8,
     textAlign: "center",
     fontWeight: "500",

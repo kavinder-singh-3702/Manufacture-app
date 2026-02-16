@@ -71,7 +71,7 @@ export const FilteredProductsScreen = () => {
     [navigation]
   );
 
-  const statusColor = filter === "low_stock" ? "#F59E0B" : "#EF4444";
+  const statusColor = filter === "low_stock" ? "#F59E0B" : "#F45E6C";
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => {

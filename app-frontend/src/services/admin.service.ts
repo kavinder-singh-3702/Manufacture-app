@@ -99,6 +99,17 @@ export type AdminOverview = {
     archived: number;
     total: number;
   };
+  servicesQueue?: {
+    pending: number;
+    inProgress: number;
+    overdue: number;
+    unresolved: number;
+  };
+  communications?: {
+    conversationsLast24h: number;
+    callsLast24h: number;
+    totalCallDurationSeconds: number;
+  };
 };
 
 export type AdminAuditEvent = {
@@ -123,6 +134,122 @@ export type AdminAuditEvent = {
   ip?: string;
   userAgent?: string;
   createdAt: string;
+};
+
+export type AdminServiceRequestActor = {
+  id: string;
+  displayName?: string;
+  email?: string;
+  role?: string;
+};
+
+export type AdminServiceRequestTimelineEntry = {
+  type: "status" | "assignment" | "note";
+  at: string;
+  entry: Record<string, any>;
+};
+
+export type AdminServiceRequest = {
+  id: string;
+  serviceType: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  company?: {
+    id: string;
+    displayName?: string;
+    status?: string;
+    type?: string;
+    complianceStatus?: string;
+  } | null;
+  createdBy?: AdminServiceRequestActor | null;
+  assignedTo?: AdminServiceRequestActor | null;
+  lastUpdatedBy?: AdminServiceRequestActor | null;
+  slaDueAt?: string;
+  firstResponseAt?: string;
+  resolvedAt?: string;
+  lastActionAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  timeline?: AdminServiceRequestTimelineEntry[];
+  statusHistory?: Array<Record<string, any>>;
+  assignmentHistory?: Array<Record<string, any>>;
+  internalNotes?: Array<Record<string, any>>;
+};
+
+export type AdminConversationQueueItem = {
+  id: string;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  unreadCount: number;
+  participantIds: string[];
+  otherParticipant?: {
+    id: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+    activeCompany?: string;
+  } | null;
+  linkedServiceRequest?: {
+    id: string;
+    title?: string;
+    status?: string;
+    priority?: string;
+    updatedAt?: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminCallLog = {
+  id: string;
+  conversationId?: string | null;
+  caller?: AdminServiceRequestActor | null;
+  callee?: AdminServiceRequestActor | null;
+  startedAt: string;
+  endedAt?: string;
+  durationSeconds: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminUserOverview = {
+  user: AdminUser;
+  activity: {
+    recent: Array<{ id: string; action?: string; label?: string; description?: string; createdAt?: string }>;
+    total: number;
+  };
+  services: {
+    recent: Array<{
+      id: string;
+      serviceType: string;
+      title: string;
+      status: string;
+      priority: string;
+      assignedTo?: AdminServiceRequestActor | null;
+      company?: { id: string; displayName?: string; status?: string } | null;
+      createdAt?: string;
+      updatedAt?: string;
+    }>;
+    total: number;
+  };
+  campaigns: {
+    total: number;
+    byStatus: Record<string, number>;
+  };
+  communications: {
+    conversations: {
+      total: number;
+      recent: Array<{ id: string; lastMessage?: string; lastMessageAt?: string; updatedAt?: string }>;
+    };
+    calls: {
+      total: number;
+      recent: AdminCallLog[];
+    };
+  };
 };
 
 // ============================================================
@@ -185,6 +312,11 @@ class AdminService {
       pagination: Pagination;
     }>("/admin/users", { params });
     return response;
+  }
+
+  async getUserOverview(userId: string, params?: { limit?: number }): Promise<AdminUserOverview> {
+    const response = await apiClient.get<{ overview: AdminUserOverview }>(`/admin/users/${userId}/overview`, { params });
+    return response.overview;
   }
 
   /**
@@ -287,6 +419,87 @@ class AdminService {
     offset?: number;
   }): Promise<{ events: AdminAuditEvent[]; pagination: Pagination }> {
     return apiClient.get<{ events: AdminAuditEvent[]; pagination: Pagination }>("/admin/audit-events", { params });
+  }
+
+  async listServiceRequests(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc" | "priority:desc" | "slaDueAt:asc";
+    status?: string;
+    priority?: string;
+    serviceType?: string;
+    companyId?: string;
+    assignedTo?: string;
+    createdBy?: string;
+    from?: string;
+    to?: string;
+  }): Promise<{ requests: AdminServiceRequest[]; pagination: Pagination }> {
+    return apiClient.get<{ requests: AdminServiceRequest[]; pagination: Pagination }>("/admin/service-requests", { params });
+  }
+
+  async getServiceRequestById(serviceRequestId: string): Promise<AdminServiceRequest> {
+    const response = await apiClient.get<{ request: AdminServiceRequest }>(`/admin/service-requests/${serviceRequestId}`);
+    return response.request;
+  }
+
+  async updateServiceRequestWorkflow(
+    serviceRequestId: string,
+    payload: {
+      status?: string;
+      priority?: string;
+      assignedTo?: string | null;
+      slaDueAt?: string | null;
+      note?: string;
+      reason: string;
+      contextCompanyId?: string;
+      expectedUpdatedAt?: string;
+    }
+  ): Promise<{ request: AdminServiceRequest; message: string }> {
+    return apiClient.patch<{ request: AdminServiceRequest; message: string }>(
+      `/admin/service-requests/${serviceRequestId}/workflow`,
+      payload
+    );
+  }
+
+  async updateServiceRequestContent(
+    serviceRequestId: string,
+    payload: {
+      updates: Record<string, unknown>;
+      reason: string;
+      contextCompanyId?: string;
+      expectedUpdatedAt?: string;
+    }
+  ): Promise<{ request: AdminServiceRequest; message: string }> {
+    return apiClient.patch<{ request: AdminServiceRequest; message: string }>(
+      `/admin/service-requests/${serviceRequestId}/content`,
+      payload
+    );
+  }
+
+  async listConversations(params?: {
+    search?: string;
+    userId?: string;
+    companyId?: string;
+    sort?: "updatedAt:desc" | "updatedAt:asc" | "lastMessageAt:desc" | "lastMessageAt:asc";
+    limit?: number;
+    offset?: number;
+  }): Promise<{ conversations: AdminConversationQueueItem[]; pagination: Pagination }> {
+    return apiClient.get<{ conversations: AdminConversationQueueItem[]; pagination: Pagination }>("/admin/conversations", { params });
+  }
+
+  async listCallLogs(params?: {
+    userId?: string;
+    companyId?: string;
+    from?: string;
+    to?: string;
+    minDuration?: number;
+    maxDuration?: number;
+    sort?: "startedAt:desc" | "startedAt:asc" | "duration:desc" | "duration:asc";
+    limit?: number;
+    offset?: number;
+  }): Promise<{ callLogs: AdminCallLog[]; pagination: Pagination }> {
+    return apiClient.get<{ callLogs: AdminCallLog[]; pagination: Pagination }>("/admin/call-logs", { params });
   }
 }
 

@@ -551,7 +551,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
                     end={{ x: 1, y: 1 }}
                     style={styles.primaryButton}
                   >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
+                    {loading ? <ActivityIndicator color="#F4F7FF" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: "#F4F7FF",
   },
   brandStrip: {
     marginBottom: 12,
@@ -660,12 +660,12 @@ const styles = StyleSheet.create({
   stepBadge: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#8CA5EF",
+    color: "#19B8E6",
   },
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#F4F7FF",
   },
   subheading: {
     fontSize: 14,
@@ -684,13 +684,13 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   inputWrapperError: {
-    borderColor: "#FF6B6B",
+    borderColor: "#FF7B87",
   },
   input: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: "#F4F7FF",
   },
   inputWithAccessory: {
     paddingRight: 64,
@@ -705,13 +705,13 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontWeight: "600",
-    color: "#8CA5EF",
+    color: "#19B8E6",
   },
   primaryButtonWrapper: {
     marginTop: 12,
     borderRadius: 32,
     overflow: "hidden",
-    shadowColor: "#8CA5EF",
+    shadowColor: "#19B8E6",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#fff",
+    color: "#F4F7FF",
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 1.5,
@@ -733,11 +733,11 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.6)",
   },
   loginLinkHighlight: {
-    color: "#8CA5EF",
+    color: "#19B8E6",
     fontWeight: "600",
   },
   errorText: {
-    color: "#FF6B6B",
+    color: "#FF7B87",
     marginBottom: 8,
     fontWeight: "500",
   },
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   fieldError: {
-    color: "#FF6B6B",
+    color: "#FF7B87",
     fontSize: 13,
     marginTop: 4,
   },
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   secondaryLink: {
-    color: "#8CA5EF",
+    color: "#19B8E6",
     textAlign: "right",
     fontWeight: "600",
   },
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     marginBottom: 8,
-    color: "#fff",
+    color: "#F4F7FF",
     fontSize: 14,
   },
   accountTypeRow: {
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   accountChipActive: {
-    borderColor: "#8CA5EF",
+    borderColor: "#19B8E6",
     backgroundColor: "rgba(140, 165, 239, 0.18)",
   },
   accountChipText: {
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   accountChipTextActive: {
-    color: "#8CA5EF",
+    color: "#19B8E6",
   },
   categoryGrid: {
     flexDirection: "row",
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryChipActive: {
-    borderColor: "#E3483E",
+    borderColor: "#F56E79",
     backgroundColor: "rgba(227, 72, 62, 0.2)",
   },
   categoryText: {
@@ -827,6 +827,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   categoryTextActive: {
-    color: "#E3483E",
+    color: "#F56E79",
   },
 });

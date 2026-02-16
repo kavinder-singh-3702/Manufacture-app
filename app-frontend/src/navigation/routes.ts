@@ -1,3 +1,5 @@
+import type { ThemeGradientKey } from "../theme";
+
 /**
  * Unified routes - All navigation tabs in one place
  * Role-based filtering happens in the navigation component
@@ -17,7 +19,7 @@ export const routes = {
   USERS: "users",
   VERIFICATIONS: "verifications",
   COMPANIES: "companies",
-  CHAT: "chat", // Admin chat tab
+  CHAT: "chat", // Admin ops tab
 } as const;
 
 export type RouteName = (typeof routes)[keyof typeof routes];
@@ -29,7 +31,7 @@ export type RouteConfig = {
   route: RouteName;
   label: string;
   icon: string;
-  gradientColors: [string, string];
+  gradientKey: ThemeGradientKey;
   tabLabel?: string;
   activeIcon?: string;
   inactiveIcon?: string;
@@ -54,7 +56,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "home",
     inactiveIcon: "home-outline",
     topBarMode: "two_row",
-    gradientColors: ["#FF6B6B", "#FF8E53"],
+    gradientKey: "heroCyan",
     roles: ["user", "guest"],
   },
   {
@@ -65,7 +67,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "bag-handle",
     inactiveIcon: "bag-handle-outline",
     topBarMode: "two_row",
-    gradientColors: ["#22C55E", "#16A34A"],
+    gradientKey: "ctaPrimary",
     roles: ["user", "guest"],
   },
   {
@@ -76,7 +78,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "grid",
     inactiveIcon: "grid-outline",
     topBarMode: "two_row",
-    gradientColors: ["#0EA5E9", "#38BDF8"],
+    gradientKey: "statusInfo",
     roles: ["user", "guest"],
   },
   {
@@ -87,7 +89,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "pie-chart",
     inactiveIcon: "pie-chart-outline",
     topBarMode: "two_row",
-    gradientColors: ["#6C63FF", "#4AC9FF"],
+    gradientKey: "canvasSubtle",
     roles: ["user", "guest"],
   },
   {
@@ -98,7 +100,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "person",
     inactiveIcon: "person-outline",
     topBarMode: "compact",
-    gradientColors: ["#EC4899", "#F43F5E"],
+    gradientKey: "heroCoral",
     roles: ["user", "guest"],
     isPlaceholder: true,
   },
@@ -112,7 +114,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "speedometer",
     inactiveIcon: "speedometer-outline",
     topBarMode: "two_row",
-    gradientColors: ["#8B5CF6", "#A78BFA"],
+    gradientKey: "heroCyan",
     roles: ["admin", "super-admin"],
   },
   {
@@ -123,18 +125,18 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "people",
     inactiveIcon: "people-outline",
     topBarMode: "compact",
-    gradientColors: ["#EC4899", "#F472B6"],
+    gradientKey: "accentDiagonal",
     roles: ["admin", "super-admin"],
   },
   {
     route: routes.CHAT,
-    label: "Messages",
-    tabLabel: "Messages",
-    icon: "💬",
+    label: "Ops",
+    tabLabel: "Ops",
+    icon: "🧭",
     activeIcon: "chatbubbles",
     inactiveIcon: "chatbubbles-outline",
     topBarMode: "compact",
-    gradientColors: ["#6C63FF", "#5248E6"],
+    gradientKey: "canvasSubtle",
     roles: ["admin", "super-admin"],
   },
   {
@@ -145,7 +147,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "clipboard",
     inactiveIcon: "clipboard-outline",
     topBarMode: "compact",
-    gradientColors: ["#F59E0B", "#FBBF24"],
+    gradientKey: "heroCoral",
     roles: ["admin", "super-admin"],
   },
   {
@@ -156,7 +158,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     activeIcon: "business",
     inactiveIcon: "business-outline",
     topBarMode: "compact",
-    gradientColors: ["#10B981", "#34D399"],
+    gradientKey: "ctaPrimary",
     roles: ["admin", "super-admin"],
   },
 ];

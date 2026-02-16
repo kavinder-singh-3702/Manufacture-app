@@ -6,7 +6,8 @@ const Product = require('../src/models/product.model');
 const { PRODUCT_CATEGORIES } = require('../src/constants/product');
 const {
   createOfferForUser,
-  updateCampaignForUser
+  updateCampaignForUser,
+  duplicateCampaign
 } = require('../src/modules/preferences/services/personalizedOffer.service');
 const {
   getHomeFeedForUser,
@@ -218,5 +219,62 @@ describe('Preference campaigns and home feed', () => {
     expect(updated).toBeTruthy();
     expect(updated.status).toBe('active');
     expect(updated.title).toBe('Published campaign');
+  });
+
+  test('campaign duplicate creates a draft copy for the same user', async () => {
+    const admin = await createUser('6501', 'admin');
+    const targetUser = await createUser('6502', 'user');
+    const company = await createCompany(admin, '6501');
+    const product = await createProduct({ company, user: admin, suffix: '6501' });
+
+    const campaign = await createOfferForUser({
+      userId: targetUser._id,
+      companyId: company._id,
+      productId: product._id,
+      contentType: 'product',
+      status: 'active',
+      title: 'High intent offer',
+      newPrice: 90,
+      createdBy: admin._id
+    });
+
+    const copy = await duplicateCampaign({
+      campaignId: campaign.id,
+      companyId: company._id,
+      actorId: admin._id
+    });
+
+    expect(copy).toBeTruthy();
+    expect(copy.id).not.toBe(campaign.id);
+    expect(copy.status).toBe('draft');
+    expect(copy.title).toContain('(copy)');
+  });
+
+  test('campaign optimistic update check rejects stale payloads', async () => {
+    const admin = await createUser('6601', 'admin');
+    const targetUser = await createUser('6602', 'user');
+    const company = await createCompany(admin, '6601');
+    const product = await createProduct({ company, user: admin, suffix: '6601' });
+
+    const campaign = await createOfferForUser({
+      userId: targetUser._id,
+      companyId: company._id,
+      productId: product._id,
+      contentType: 'product',
+      status: 'draft',
+      title: 'Concurrency test offer',
+      newPrice: 100,
+      createdBy: admin._id
+    });
+
+    await expect(
+      updateCampaignForUser({
+        userId: targetUser._id,
+        campaignId: campaign.id,
+        companyId: company._id,
+        title: 'Should fail on stale update',
+        expectedUpdatedAt: new Date(Date.now() - 60_000).toISOString()
+      })
+    ).rejects.toThrow('Campaign has changed. Refresh and retry with latest data.');
   });
 });

@@ -4,9 +4,16 @@ const validate = require('../../../middleware/validate');
 const {
   getAdminStatsController,
   getAdminOverviewController,
+  getAdminUserOverviewController,
   listAllCompaniesController,
   listAllUsersController,
   listAdminAuditEventsController,
+  listAdminServiceRequestsController,
+  getAdminServiceRequestController,
+  updateAdminServiceRequestWorkflowController,
+  updateAdminServiceRequestContentController,
+  listAdminConversationsController,
+  listAdminCallLogsController,
   setCompanyStatusController,
   archiveCompanyController,
   deleteCompanyController,
@@ -19,7 +26,14 @@ const {
   archiveCompanyValidation,
   hardDeleteCompanyValidation,
   requestDocumentsValidation,
-  listAdminAuditEventsValidation
+  listAdminAuditEventsValidation,
+  listAdminServiceRequestsValidation,
+  updateServiceRequestWorkflowValidation,
+  updateServiceRequestContentValidation,
+  listAdminConversationsValidation,
+  listAdminCallLogsValidation,
+  serviceRequestIdParamValidation,
+  userIdParamValidation
 } = require('../validators/admin.validators');
 
 const router = Router();
@@ -53,6 +67,35 @@ router.post('/companies/:companyId/request-documents', validate(requestDocuments
 
 // GET /api/admin/users - List all users
 router.get('/users', validate(listEntitiesValidation), listAllUsersController);
+
+// GET /api/admin/users/:userId/overview - User 360 details for admin console
+router.get('/users/:userId/overview', validate(userIdParamValidation), getAdminUserOverviewController);
+
+// GET /api/admin/service-requests - Global admin service queue
+router.get('/service-requests', validate(listAdminServiceRequestsValidation), listAdminServiceRequestsController);
+
+// GET /api/admin/service-requests/:serviceRequestId - Service request detail
+router.get('/service-requests/:serviceRequestId', validate(serviceRequestIdParamValidation), getAdminServiceRequestController);
+
+// PATCH /api/admin/service-requests/:serviceRequestId/workflow - workflow mutation
+router.patch(
+  '/service-requests/:serviceRequestId/workflow',
+  validate(updateServiceRequestWorkflowValidation),
+  updateAdminServiceRequestWorkflowController
+);
+
+// PATCH /api/admin/service-requests/:serviceRequestId/content - content correction mutation
+router.patch(
+  '/service-requests/:serviceRequestId/content',
+  validate(updateServiceRequestContentValidation),
+  updateAdminServiceRequestContentController
+);
+
+// GET /api/admin/conversations - admin communications queue
+router.get('/conversations', validate(listAdminConversationsValidation), listAdminConversationsController);
+
+// GET /api/admin/call-logs - admin call log queue
+router.get('/call-logs', validate(listAdminCallLogsValidation), listAdminCallLogsController);
 
 // GET /api/admin/audit-events - immutable admin audit stream
 router.get('/audit-events', validate(listAdminAuditEventsValidation), listAdminAuditEventsController);

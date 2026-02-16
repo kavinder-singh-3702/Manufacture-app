@@ -26,12 +26,21 @@ export type LogPreferenceEventInput = {
 export type CampaignContentType = "product" | "service";
 export type CampaignStatus = "draft" | "active" | "expired" | "archived";
 export type CampaignPriority = "low" | "normal" | "high" | "urgent";
+export type KnownCampaignThemeKey =
+  | "campaignFocus"
+  | "campaignWarmEmber"
+  | "campaignCyan"
+  | "default"
+  | "premium"
+  | "warm"
+  | "emerald";
+export type CampaignThemeKey = KnownCampaignThemeKey | (string & {});
 
 export type CampaignCreative = {
   headline?: string;
   subheadline?: string;
   badge?: string;
-  themeKey?: string;
+  themeKey?: CampaignThemeKey;
   ctaLabel?: string;
 };
 
@@ -75,9 +84,15 @@ export type CampaignListFilters = {
   includeExpired?: boolean;
   status?: CampaignStatus;
   contentType?: CampaignContentType;
+  search?: string;
+  sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc" | "priority:desc";
+  from?: string;
+  to?: string;
   limit?: number;
   offset?: number;
 };
+
+export type CampaignFiltersV2 = CampaignListFilters;
 
 export type CampaignListResponse = {
   campaigns?: PersonalizedOffer[];
@@ -160,6 +175,7 @@ export type CreateCampaignPayload = {
 };
 
 export type UpdateCampaignPayload = Partial<CreateCampaignPayload>;
+export type UpdateCampaignWithOptimisticPayload = UpdateCampaignPayload & { expectedUpdatedAt?: string };
 
 class PreferenceService {
   async logEvent(payload: LogPreferenceEventInput) {
@@ -205,11 +221,19 @@ class PreferenceService {
     return apiClient.post<{ offer: PersonalizedOffer }>(`/preferences/admin/users/${userId}/campaigns`, payload);
   }
 
-  async updateCampaign(userId: string, campaignId: string, payload: UpdateCampaignPayload): Promise<{ campaign: PersonalizedOffer }> {
+  async updateCampaign(
+    userId: string,
+    campaignId: string,
+    payload: UpdateCampaignWithOptimisticPayload
+  ): Promise<{ campaign: PersonalizedOffer }> {
     return apiClient.patch<{ campaign: PersonalizedOffer }>(
       `/preferences/admin/users/${userId}/campaigns/${campaignId}`,
       payload
     );
+  }
+
+  async duplicateCampaign(campaignId: string): Promise<{ campaign: PersonalizedOffer }> {
+    return apiClient.post<{ campaign: PersonalizedOffer }>(`/preferences/admin/campaigns/${campaignId}/duplicate`);
   }
 
   async createUserOffer(

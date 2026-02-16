@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
+import { routes } from "../../navigation/routes";
 import {
   AdminHeader,
   AdminSearchBar,
@@ -148,6 +149,17 @@ export const UserManagementScreen = () => {
   const actions = useMemo(
     () => [
       {
+        label: "User 360",
+        icon: "person-circle-outline" as const,
+        onPress: () => {
+          if (!selectedUser) return;
+          navigation.navigate("AdminUserDetail", {
+            userId: selectedUser.id,
+            displayName: selectedUser.displayName || selectedUser.email,
+          });
+        },
+      },
+      {
         label: "View Preferences",
         icon: "settings-outline" as const,
         onPress: () => {
@@ -174,6 +186,13 @@ export const UserManagementScreen = () => {
         icon: "megaphone-outline" as const,
         onPress: () => {
           navigation.navigate("CampaignStudio");
+        },
+      },
+      {
+        label: "Ops Console",
+        icon: "chatbubbles-outline" as const,
+        onPress: () => {
+          navigation.navigate("Main", { screen: routes.CHAT });
         },
       },
     ],
@@ -252,7 +271,7 @@ export const UserManagementScreen = () => {
             fetchUsers({ reset: true });
           }}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -326,7 +345,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryButtonText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "700",
   },

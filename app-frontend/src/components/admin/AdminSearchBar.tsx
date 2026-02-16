@@ -4,7 +4,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Animated,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
@@ -22,6 +22,8 @@ export const AdminSearchBar = ({
 }: AdminSearchBarProps) => {
   const { colors, radius } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+  const { width } = useWindowDimensions();
+  const compact = width < 390;
 
   return (
     <View
@@ -42,7 +44,7 @@ export const AdminSearchBar = ({
         style={styles.searchIcon}
       />
       <TextInput
-        style={[styles.input, { color: colors.text }]}
+        style={[styles.input, { color: colors.text, fontSize: compact ? 14 : 15 }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -67,16 +69,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    height: 52,
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    minHeight: 46,
+    paddingHorizontal: 14,
+    marginBottom: 14,
   },
   searchIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     height: "100%",
   },
   clearButton: {

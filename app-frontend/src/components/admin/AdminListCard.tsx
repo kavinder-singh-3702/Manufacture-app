@@ -64,6 +64,7 @@ export const AdminListCard = ({
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
+          shadowColor: colors.shadow,
           borderRadius: radius.lg,
           padding: isCompact ? spacing.md : spacing.lg,
         },
@@ -85,7 +86,7 @@ export const AdminListCard = ({
               },
             ]}
           >
-            <Text style={[styles.avatarText, { fontSize: isCompact ? 16 : 20 }]}>{avatarText}</Text>
+            <Text style={[styles.avatarText, { color: colors.textOnPrimary, fontSize: isCompact ? 16 : 20 }]}>{avatarText}</Text>
           </View>
         )}
 
@@ -149,7 +150,6 @@ export const AdminListCard = ({
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -164,7 +164,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: {
-    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "700",
   },

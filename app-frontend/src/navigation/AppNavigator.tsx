@@ -32,6 +32,7 @@ import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { UserActivityScreen } from "../screens/admin/UserActivityScreen";
 import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { NotificationStudioScreen } from "../screens/admin/NotificationStudioScreen";
+import { AdminUserDetailScreen } from "../screens/admin/AdminUserDetailScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
 import { QuoteCenterScreen } from "../screens/quotes";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
@@ -52,6 +53,7 @@ const GuardedUserPreferenceScreen = withAdminGuard(UserPreferenceScreen);
 const GuardedUserActivityScreen = withAdminGuard(UserActivityScreen);
 const GuardedCampaignStudioScreen = withAdminGuard(CampaignStudioScreen);
 const GuardedNotificationStudioScreen = withAdminGuard(NotificationStudioScreen);
+const GuardedAdminUserDetailScreen = withAdminGuard(AdminUserDetailScreen);
 
 /**
  * AppNavigator - Main navigation container
@@ -226,6 +228,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="UserActivity"
               component={GuardedUserActivityScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminUserDetail"
+              component={GuardedAdminUserDetailScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

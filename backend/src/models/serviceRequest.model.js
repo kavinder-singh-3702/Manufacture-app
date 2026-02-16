@@ -103,6 +103,44 @@ const TransportDetailsSchema = new Schema(
   { _id: false }
 );
 
+const ServiceStatusHistorySchema = new Schema(
+  {
+    from: { type: String, enum: SERVICE_STATUSES },
+    to: { type: String, enum: SERVICE_STATUSES, required: true },
+    at: { type: Date, default: Date.now },
+    by: { type: Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true, maxlength: 300 },
+    note: { type: String, trim: true, maxlength: 1000 }
+  },
+  { _id: false }
+);
+
+const ServiceAssignmentHistorySchema = new Schema(
+  {
+    assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
+    unassignedFrom: { type: Schema.Types.ObjectId, ref: 'User' },
+    at: { type: Date, default: Date.now },
+    by: { type: Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true, maxlength: 300 }
+  },
+  { _id: false }
+);
+
+const ServiceInternalNoteSchema = new Schema(
+  {
+    message: { type: String, trim: true, maxlength: 2000, required: true },
+    kind: {
+      type: String,
+      enum: ['workflow', 'content', 'assignment', 'system', 'other'],
+      default: 'workflow'
+    },
+    reason: { type: String, trim: true, maxlength: 300 },
+    by: { type: Schema.Types.ObjectId, ref: 'User' },
+    at: { type: Date, default: Date.now }
+  },
+  { _id: true }
+);
+
 const serviceRequestSchema = new Schema(
   {
     serviceType: { type: String, enum: SERVICE_TYPES, required: true, index: true },
@@ -115,6 +153,10 @@ const serviceRequestSchema = new Schema(
     createdByRole: { type: String, enum: ['admin', 'user'], default: 'user' },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
     lastUpdatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    slaDueAt: Date,
+    firstResponseAt: Date,
+    resolvedAt: Date,
+    lastActionAt: Date,
     contact: ContactSchema,
     location: LocationSchema,
     schedule: AvailabilityWindowSchema,
@@ -132,6 +174,9 @@ const serviceRequestSchema = new Schema(
       of: Schema.Types.Mixed,
       default: () => ({})
     },
+    assignmentHistory: { type: [ServiceAssignmentHistorySchema], default: [] },
+    statusHistory: { type: [ServiceStatusHistorySchema], default: [] },
+    internalNotes: { type: [ServiceInternalNoteSchema], default: [] },
     deletedAt: Date
   },
   { timestamps: true }
@@ -139,5 +184,8 @@ const serviceRequestSchema = new Schema(
 
 serviceRequestSchema.index({ serviceType: 1, status: 1, createdAt: -1 });
 serviceRequestSchema.index({ company: 1, serviceType: 1 });
+serviceRequestSchema.index({ status: 1, priority: 1, updatedAt: -1 });
+serviceRequestSchema.index({ company: 1, status: 1, updatedAt: -1 });
+serviceRequestSchema.index({ assignedTo: 1, status: 1, updatedAt: -1 });
 
 module.exports = mongoose.model('ServiceRequest', serviceRequestSchema);

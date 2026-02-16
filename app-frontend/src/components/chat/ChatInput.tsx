@@ -90,7 +90,7 @@ export const ChatInput = ({ onSend, loading = false, placeholder = "Type a messa
         style={styles.sendButton}
       >
         <LinearGradient
-          colors={canSend ? ["#6C63FF", "#5248E6"] : ["#3A3D4A", "#2E3138"]}
+          colors={canSend ? ["#19B8E6", "#148DB2"] : ["#3A3D4A", "#2E3138"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[

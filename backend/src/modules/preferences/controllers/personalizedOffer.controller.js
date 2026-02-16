@@ -3,7 +3,8 @@ const {
   listOffersForUserAdmin,
   listCampaignsAdmin,
   getActiveOffersForUser,
-  updateCampaignForUser
+  updateCampaignForUser,
+  duplicateCampaign
 } = require('../services/personalizedOffer.service');
 
 const createPersonalizedOfferController = async (req, res, next) => {
@@ -51,13 +52,17 @@ const listUserOffersAdminController = async (req, res, next) => {
 const listCampaignsAdminController = async (req, res, next) => {
   try {
     const companyId = req.user?.activeCompany;
-    const { userId, status, contentType, limit, offset, includeExpired } = req.query;
+    const { userId, status, contentType, search, sort, from, to, limit, offset, includeExpired } = req.query;
 
     const result = await listCampaignsAdmin({
       companyId,
       userId,
       status,
       contentType,
+      search,
+      sort,
+      from,
+      to,
       includeExpired: includeExpired === undefined
         ? true
         : !(includeExpired === false || includeExpired === 'false'),
@@ -78,12 +83,34 @@ const updateCampaignController = async (req, res, next) => {
       userId,
       campaignId,
       companyId,
+      expectedUpdatedAt: req.body.expectedUpdatedAt,
       ...req.body
     });
     if (!campaign) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
     return res.json({ campaign });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const duplicateCampaignController = async (req, res, next) => {
+  try {
+    const companyId = req.user?.activeCompany;
+    const actorId = req.user?.id;
+    const { campaignId } = req.params;
+
+    const duplicated = await duplicateCampaign({
+      campaignId,
+      companyId,
+      actorId
+    });
+    if (!duplicated) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    return res.status(201).json({ campaign: duplicated });
   } catch (error) {
     return next(error);
   }
@@ -108,5 +135,6 @@ module.exports = {
   listUserOffersAdminController,
   listCampaignsAdminController,
   updateCampaignController,
+  duplicateCampaignController,
   listMyOffersController
 };

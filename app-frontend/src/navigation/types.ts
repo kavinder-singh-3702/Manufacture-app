@@ -28,6 +28,7 @@ export type RootStackParamList = {
   QuoteCenter: { initialTab?: "asked" | "received" | "incoming" } | undefined;
   UserPreferences: { userId: string; displayName?: string };
   UserActivity: { userId: string; displayName?: string };
+  AdminUserDetail: { userId: string; displayName?: string };
   CampaignStudio: undefined;
   NotificationStudio: undefined;
   // Chat screens

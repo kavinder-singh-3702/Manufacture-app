@@ -30,7 +30,7 @@ type SidebarMenuProps = {
 };
 
 export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, menuItems }: SidebarMenuProps) => {
-  const { spacing, radius, colors } = useTheme();
+  const { spacing, radius, colors, nativeGradients } = useTheme();
   const { resolvedMode, toggleMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
   const modeLabel = isDark ? "Dark mode" : "Light mode";
@@ -45,7 +45,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
         <SafeAreaView style={styles.panelSafeArea}>
           <LinearGradient
             colors={[colors.sidebarGradientStart, colors.sidebarGradientMid, colors.sidebarGradientEnd]}
-            locations={[0, 0.5, 1]}
+            locations={[0, 0.52, 1]}
             style={[
               styles.panel,
               {
@@ -56,14 +56,14 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
             ]}
           >
             <LinearGradient
-              colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
-              locations={[0, 0.5, 1]}
+              colors={nativeGradients.statusInfo}
               start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
+              end={{ x: 1, y: 1 }}
               style={[StyleSheet.absoluteFill, { borderTopRightRadius: radius.lg, borderBottomRightRadius: radius.lg }]}
             />
+
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={nativeGradients.ctaPrimary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[
@@ -76,35 +76,57 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               ]}
             >
               <LinearGradient
-                colors={["rgba(255,255,255,0.1)", "transparent"]}
+                colors={[`${colors.textOnPrimary}1f`, "transparent"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]}
               />
+
               <View style={styles.headerTopRow}>
                 <View style={{ flex: 1 }}>
-                  <Typography variant="subheading" color="#FFFFFF" style={styles.headerTitle}>
+                  <Typography variant="subheading" color={colors.textOnPrimary} style={styles.headerTitle}>
                     {headerTitle}
                   </Typography>
                   {headerSubtitle ? (
-                    <Typography variant="body" color="rgba(255,255,255,0.8)" style={{ marginTop: spacing.xs, fontSize: 13 }}>
+                    <Typography
+                      variant="body"
+                      color={`${colors.textOnPrimary}b8`}
+                      style={{ marginTop: spacing.xs, fontSize: 13, fontWeight: "600" }}
+                    >
                       {headerSubtitle}
                     </Typography>
                   ) : null}
                 </View>
                 <TouchableOpacity
                   onPress={toggleMode}
-                  style={[styles.themeToggleBtn, { borderRadius: radius.pill }]}
+                  style={[
+                    styles.themeToggleBtn,
+                    {
+                      backgroundColor: `${colors.textOnPrimary}33`,
+                      borderRadius: radius.pill,
+                      borderColor: `${colors.textOnPrimary}33`,
+                    },
+                  ]}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel={`Switch theme. Current ${modeLabel}`}
                 >
-                  <Ionicons name={modeIcon} size={16} color="#FFFFFF" />
+                  <Ionicons name={modeIcon} size={16} color={colors.textOnPrimary} />
                 </TouchableOpacity>
               </View>
-              <View style={[styles.modePill, { borderRadius: radius.pill }]}>
-                <Ionicons name={modeIcon} size={13} color="rgba(255,255,255,0.85)" />
-                <Typography variant="caption" color="rgba(255,255,255,0.85)" style={{ fontSize: 11, fontWeight: "700" }}>
+
+              <View
+                style={[
+                  styles.modePill,
+                  {
+                    borderRadius: radius.pill,
+                    borderColor: `${colors.textOnPrimary}33`,
+                    backgroundColor: `${colors.textOnPrimary}33`,
+                  },
+                ]}
+              >
+                <Ionicons name={modeIcon} size={13} color={colors.textOnPrimary} />
+                <Typography variant="caption" color={colors.textOnPrimary} style={{ fontSize: 11, fontWeight: "700" }}>
                   {modeLabel}
                 </Typography>
               </View>
@@ -124,14 +146,14 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 const getItemStyles = () => {
                   if (isDanger) {
                     return {
-                      bg: colors.error + "1a",
+                      bg: colors.errorBg,
                       border: colors.error,
                       shadowColor: colors.error,
                     };
                   }
                   if (isActive) {
                     return {
-                      bg: colors.primary + "24",
+                      bg: colors.badgePrimary,
                       border: colors.primary,
                       shadowColor: colors.primary,
                     };
@@ -139,7 +161,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                   return {
                     bg: colors.surfaceElevated,
                     border: "transparent",
-                    shadowColor: "#000",
+                    shadowColor: colors.shadow,
                   };
                 };
 
@@ -161,18 +183,22 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                         marginBottom: isLastItem ? 0 : spacing.sm,
                         shadowColor: itemStyles.shadowColor,
                         shadowOffset: { width: 0, height: isActive ? 4 : 2 },
-                        shadowOpacity: isActive ? 0.25 : 0.1,
+                        shadowOpacity: isActive ? 0.22 : 0.1,
                         shadowRadius: isActive ? 8 : 4,
-                        elevation: isActive ? 6 : 2,
+                        elevation: isActive ? 5 : 2,
                       },
                     ]}
-                    activeOpacity={0.7}
+                    activeOpacity={0.72}
                   >
-                    <Typography variant="body" color={isDanger ? colors.error : colors.text} style={styles.menuLabel}>
+                    <Typography variant="bodyStrong" color={isDanger ? colors.error : colors.text} style={styles.menuLabel}>
                       {item.label}
                     </Typography>
                     {item.description ? (
-                      <Typography variant="caption" color={isDanger ? colors.errorLight : colors.textMuted} style={{ marginTop: spacing.xs, fontSize: 12 }}>
+                      <Typography
+                        variant="body"
+                        color={isDanger ? colors.errorLight : colors.textMuted}
+                        style={{ marginTop: spacing.xs, fontSize: 12 }}
+                      >
                         {item.description}
                       </Typography>
                     ) : null}
@@ -222,9 +248,7 @@ const styles = StyleSheet.create({
     height: 34,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.24)",
   },
   modePill: {
     marginTop: 10,
@@ -234,9 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
   },
   listScroll: {
     flex: 1,

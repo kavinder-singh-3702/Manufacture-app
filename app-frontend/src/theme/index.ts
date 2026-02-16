@@ -3,6 +3,7 @@ import { lightColors } from "./colors.light";
 import { radius, spacing } from "./spacing";
 import { typography } from "./typography";
 import { gradients, shadows } from "./gradients";
+import { getNativeGradients, ThemeGradientKey } from "./gradients.native";
 
 export type ThemeMode = "system" | "light" | "dark";
 export type ResolvedThemeMode = "light" | "dark";
@@ -14,6 +15,7 @@ const themes = {
     radius,
     typography,
     gradients,
+    nativeGradients: getNativeGradients("light"),
     shadows,
   },
   dark: {
@@ -22,6 +24,7 @@ const themes = {
     radius,
     typography,
     gradients,
+    nativeGradients: getNativeGradients("dark"),
     shadows,
   },
 } as const;
@@ -32,3 +35,4 @@ export const getTheme = (resolvedMode: ResolvedThemeMode) => themes[resolvedMode
 export const theme = getTheme("dark");
 
 export type Theme = ReturnType<typeof getTheme>;
+export type { ThemeGradientKey };

@@ -16,7 +16,9 @@ const ACTIVITY_ACTIONS = Object.freeze({
   ADMIN_COMPANY_HARD_DELETE_REQUESTED: 'admin.company.hard-delete.requested',
   ADMIN_COMPANY_HARD_DELETE_COMPLETED: 'admin.company.hard-delete.completed',
   ADMIN_DOCUMENTS_REQUESTED: 'admin.company.documents.requested',
-  ADMIN_VERIFICATION_DECIDED: 'admin.verification.decided'
+  ADMIN_VERIFICATION_DECIDED: 'admin.verification.decided',
+  ADMIN_SERVICE_REQUEST_WORKFLOW_UPDATED: 'admin.service-request.workflow.updated',
+  ADMIN_SERVICE_REQUEST_CONTENT_UPDATED: 'admin.service-request.content.updated'
 });
 
 const ACTIVITY_CATEGORIES = Object.freeze({

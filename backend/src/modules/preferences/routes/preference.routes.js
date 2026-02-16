@@ -11,6 +11,7 @@ const {
   listUserOffersAdminController,
   listCampaignsAdminController,
   updateCampaignController,
+  duplicateCampaignController,
   listMyOffersController
 } = require('../controllers/personalizedOffer.controller');
 const {
@@ -22,7 +23,8 @@ const {
 const {
   createOfferValidation,
   updateCampaignValidation,
-  listOffersQueryValidation
+  listOffersQueryValidation,
+  campaignIdParamValidation
 } = require('../validators/personalizedOffer.validators');
 
 const router = Router();
@@ -74,6 +76,12 @@ router.patch(
   updateCampaignController
 );
 router.get('/admin/campaigns', authorizeRoles('admin'), validate(listOffersQueryValidation), listCampaignsAdminController);
+router.post(
+  '/admin/campaigns/:campaignId/duplicate',
+  authorizeRoles('admin'),
+  validate(campaignIdParamValidation),
+  duplicateCampaignController
+);
 
 // Personalized offers for current user
 router.get('/my-offers', listMyOffersController);

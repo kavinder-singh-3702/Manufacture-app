@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   changeButton: {
     fontSize: 12,
-    color: '#6C63FF',
+    color: '#19B8E6',
     fontWeight: '600',
   },
 });

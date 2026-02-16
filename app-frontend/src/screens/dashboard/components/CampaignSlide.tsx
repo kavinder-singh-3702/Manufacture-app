@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
 import { PersonalizedOffer } from "../../../services/preference.service";
 import { CampaignContactBar } from "./CampaignContactBar";
+import { resolveCampaignGradient } from "./campaignTheme";
 
 type CampaignSlideProps = {
   campaign: PersonalizedOffer;
@@ -14,18 +15,6 @@ type CampaignSlideProps = {
   messageDisabled?: boolean;
   callDisabled?: boolean;
   compact?: boolean;
-};
-
-const GRADIENTS: Record<string, [string, string]> = {
-  default: ["#2B7FFF", "#6366F1"],
-  warm: ["#F97316", "#EF4444"],
-  premium: ["#0EA5E9", "#2563EB"],
-  emerald: ["#059669", "#16A34A"],
-};
-
-const resolveGradient = (themeKey?: string): [string, string] => {
-  if (!themeKey) return GRADIENTS.default;
-  return GRADIENTS[themeKey] || GRADIENTS.default;
 };
 
 const formatPrice = (price?: number, currency?: string) => {
@@ -44,7 +33,7 @@ export const CampaignSlide = memo(
     callDisabled,
     compact,
   }: CampaignSlideProps) => {
-    const { colors, spacing, radius } = useTheme();
+    const { colors, spacing, radius, nativeGradients } = useTheme();
     const headline = campaign.creative?.headline || campaign.title;
     const subheadline =
       campaign.creative?.subheadline ||
@@ -54,9 +43,13 @@ export const CampaignSlide = memo(
     const ctaLabel =
       campaign.creative?.ctaLabel ||
       (campaign.contentType === "service" ? "Open service request" : "View offer");
-    const gradient = resolveGradient(campaign.creative?.themeKey);
+    const gradient = resolveCampaignGradient(nativeGradients, campaign.creative?.themeKey);
     const newPriceLabel = formatPrice(campaign.newPrice, campaign.currency);
     const oldPriceLabel = formatPrice(campaign.oldPrice, campaign.currency);
+
+    const overlayColor = `${colors.textOnDarkSurface}26`;
+    const softButtonBg = `${colors.textOnDarkSurface}38`;
+    const strongButtonBg = `${colors.accentEmberSoft}EE`;
 
     return (
       <LinearGradient
@@ -69,35 +62,41 @@ export const CampaignSlide = memo(
             borderRadius: radius.lg,
             padding: compact ? spacing.md : spacing.lg,
             minHeight: compact ? 248 : 280,
+            borderColor: `${colors.textOnDarkSurface}22`,
           },
         ]}
       >
-        <View style={styles.overlayGlow} />
+        <View style={[styles.overlayGlow, { backgroundColor: overlayColor }]} />
+
         <View style={styles.headerRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badge}</Text>
+          <View style={[styles.badge, { backgroundColor: softButtonBg }]}> 
+            <Text style={[styles.badgeText, { color: colors.textOnDarkSurface }]}>{badge}</Text>
           </View>
-          <View style={styles.priorityPill}>
-            <Text style={styles.priorityText}>{(campaign.priority || "normal").toUpperCase()}</Text>
+          <View style={[styles.priorityPill, { backgroundColor: `${colors.background}66` }]}>
+            <Text style={[styles.priorityText, { color: colors.textOnDarkSurface }]}>
+              {(campaign.priority || "normal").toUpperCase()}
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, { color: colors.textOnDarkSurface }]} numberOfLines={2}>
           {headline}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={2}>
+        <Text style={[styles.subtitle, { color: `${colors.textOnDarkSurface}E8` }]} numberOfLines={2}>
           {subheadline}
         </Text>
 
         {campaign.contentType === "product" && newPriceLabel ? (
-          <View style={[styles.priceRow, { marginTop: spacing.sm }]}>
-            {oldPriceLabel ? <Text style={styles.oldPrice}>{oldPriceLabel}</Text> : null}
-            <Text style={styles.newPrice}>{newPriceLabel}</Text>
+          <View style={[styles.priceRow, { marginTop: spacing.sm }]}> 
+            {oldPriceLabel ? <Text style={[styles.oldPrice, { color: `${colors.textOnDarkSurface}BE` }]}>{oldPriceLabel}</Text> : null}
+            <Text style={[styles.newPrice, { color: colors.textOnDarkSurface }]}>{newPriceLabel}</Text>
           </View>
         ) : (
-          <View style={[styles.serviceMeta, { marginTop: spacing.sm }]}>
-            <Ionicons name="construct-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.serviceMetaText}>{campaign.serviceType || "service"}</Text>
+          <View style={[styles.serviceMeta, { marginTop: spacing.sm }]}> 
+            <Ionicons name="construct-outline" size={14} color={colors.textOnDarkSurface} />
+            <Text style={[styles.serviceMetaText, { color: colors.textOnDarkSurface }]}> 
+              {campaign.serviceType || "service"}
+            </Text>
           </View>
         )}
 
@@ -109,12 +108,14 @@ export const CampaignSlide = memo(
             {
               marginTop: spacing.md,
               borderRadius: radius.md,
-              minHeight: compact ? 42 : 46,
+              minHeight: compact ? 44 : 46,
+              backgroundColor: strongButtonBg,
+              borderColor: `${colors.background}22`,
             },
           ]}
         >
-          <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
-          <Ionicons name="arrow-forward" size={16} color="#111827" />
+          <Text style={[styles.primaryButtonText, { color: colors.textOnAccent }]}>{ctaLabel}</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.textOnAccent} />
         </TouchableOpacity>
 
         <CampaignContactBar
@@ -133,13 +134,13 @@ const styles = StyleSheet.create({
   card: {
     overflow: "hidden",
     justifyContent: "flex-start",
+    borderWidth: 1,
   },
   overlayGlow: {
     position: "absolute",
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.18)",
     top: -70,
     right: -50,
   },
@@ -148,15 +149,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
   },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
   badgeText: {
-    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.4,
@@ -165,24 +165,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(17,24,39,0.28)",
   },
   priorityText: {
-    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.4,
   },
   title: {
     marginTop: 12,
-    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   subtitle: {
     marginTop: 6,
-    color: "rgba(255,255,255,0.92)",
     fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,
@@ -191,15 +187,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "baseline",
     gap: 10,
+    flexWrap: "wrap",
   },
   oldPrice: {
-    color: "rgba(255,255,255,0.72)",
     textDecorationLine: "line-through",
     fontSize: 14,
     fontWeight: "600",
   },
   newPrice: {
-    color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "900",
     letterSpacing: -0.4,
@@ -210,21 +205,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   serviceMetaText: {
-    color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
     textTransform: "capitalize",
   },
   primaryButton: {
-    backgroundColor: "#FDE047",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 14,
+    borderWidth: 1,
   },
   primaryButtonText: {
-    color: "#111827",
     fontSize: 14,
     fontWeight: "800",
   },

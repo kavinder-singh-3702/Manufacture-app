@@ -43,7 +43,7 @@ export const AdminActionSheet = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable style={[styles.overlay, { backgroundColor: colors.modalBackdrop }]} onPress={onClose}>
         <Pressable
           style={[
             styles.sheet,
@@ -160,7 +160,6 @@ export const AdminActionSheet = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "flex-end",
   },
   sheet: {

@@ -1,6 +1,7 @@
 const {
   getAdminStats,
   getAdminOverview,
+  getAdminUserOverview,
   listAllCompanies,
   listAllUsers,
   setCompanyStatus,
@@ -10,6 +11,16 @@ const {
   listAdminAuditEvents,
   requestDocuments
 } = require('../services/admin.service');
+const {
+  listServiceRequestsAdmin,
+  getServiceRequestAdminById,
+  updateServiceRequestWorkflowAdmin,
+  updateServiceRequestContentAdmin
+} = require('../../services/services/serviceRequest.service');
+const {
+  listConversationsAdmin,
+  listCallLogsAdmin
+} = require('../../chat/services/chat.service');
 const {
   ADMIN_PERMISSIONS,
   assertAdminPermission,
@@ -107,12 +118,195 @@ const listAllUsersController = async (req, res, next) => {
 };
 
 /**
+ * GET /api/admin/users/:userId/overview
+ */
+const getAdminUserOverviewController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_USER_OVERVIEW);
+    const { userId } = req.params;
+    const { limit } = req.query;
+    const overview = await getAdminUserOverview({ userId, limit });
+    return res.json({ overview });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * GET /api/admin/audit-events
  */
 const listAdminAuditEventsController = async (req, res, next) => {
   try {
     assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_AUDIT_EVENTS);
     const result = await listAdminAuditEvents(req.query);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/service-requests
+ */
+const listAdminServiceRequestsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS);
+    const result = await listServiceRequestsAdmin(req.query);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/service-requests/:serviceRequestId
+ */
+const getAdminServiceRequestController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS);
+    const request = await getServiceRequestAdminById(req.params.serviceRequestId);
+    if (!request) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+    return res.json({ request });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/service-requests/:serviceRequestId/workflow
+ */
+const updateAdminServiceRequestWorkflowController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW);
+    const { serviceRequestId } = req.params;
+    const {
+      status,
+      priority,
+      assignedTo,
+      slaDueAt,
+      note,
+      reason,
+      contextCompanyId,
+      expectedUpdatedAt
+    } = req.body;
+
+    validateMutationContext({
+      actorRole: req.user.role,
+      contextCompanyId
+    });
+
+    const request = await updateServiceRequestWorkflowAdmin({
+      serviceRequestId,
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      contextCompanyId,
+      status,
+      priority,
+      assignedTo,
+      slaDueAt,
+      note,
+      reason,
+      expectedUpdatedAt
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_SERVICE_REQUEST_WORKFLOW_UPDATED,
+      label: 'Service workflow updated',
+      description: `Service request ${serviceRequestId} workflow updated`,
+      companyId: request.company?.id,
+      companyName: request.company?.displayName,
+      meta: {
+        serviceRequestId,
+        status,
+        priority,
+        assignedTo,
+        slaDueAt,
+        reason,
+        note
+      }
+    });
+
+    return res.json({ request, message: 'Service request workflow updated' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/service-requests/:serviceRequestId/content
+ */
+const updateAdminServiceRequestContentController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_CONTENT);
+    const { serviceRequestId } = req.params;
+    const { updates, reason, contextCompanyId, expectedUpdatedAt } = req.body;
+
+    validateMutationContext({
+      actorRole: req.user.role,
+      contextCompanyId
+    });
+
+    const request = await updateServiceRequestContentAdmin({
+      serviceRequestId,
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      contextCompanyId,
+      updates,
+      reason,
+      expectedUpdatedAt
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Service request not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_SERVICE_REQUEST_CONTENT_UPDATED,
+      label: 'Service content updated',
+      description: `Service request ${serviceRequestId} content updated`,
+      companyId: request.company?.id,
+      companyName: request.company?.displayName,
+      meta: {
+        serviceRequestId,
+        reason,
+        fields: Object.keys(updates || {})
+      }
+    });
+
+    return res.json({ request, message: 'Service request content updated' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/conversations
+ */
+const listAdminConversationsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CONVERSATIONS);
+    const result = await listConversationsAdmin(req.query);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/call-logs
+ */
+const listAdminCallLogsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CALL_LOGS);
+    const result = await listCallLogsAdmin(req.query);
     return res.json(result);
   } catch (error) {
     return next(error);
@@ -310,9 +504,16 @@ const requestDocumentsController = async (req, res, next) => {
 module.exports = {
   getAdminStatsController,
   getAdminOverviewController,
+  getAdminUserOverviewController,
   listAllCompaniesController,
   listAllUsersController,
   listAdminAuditEventsController,
+  listAdminServiceRequestsController,
+  getAdminServiceRequestController,
+  updateAdminServiceRequestWorkflowController,
+  updateAdminServiceRequestContentController,
+  listAdminConversationsController,
+  listAdminCallLogsController,
   setCompanyStatusController,
   archiveCompanyController,
   deleteCompanyController,

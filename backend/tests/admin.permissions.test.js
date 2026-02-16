@@ -21,6 +21,16 @@ describe('Admin permissions and role hierarchy', () => {
     ).toThrow('You are not allowed to perform this admin action');
   });
 
+  test('admin can mutate service workflow but cannot mutate service content directly', () => {
+    expect(() =>
+      assertAdminPermission({ role: 'admin' }, ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW)
+    ).not.toThrow();
+
+    expect(() =>
+      assertAdminPermission({ role: 'admin' }, ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_CONTENT)
+    ).toThrow('You are not allowed to perform this admin action');
+  });
+
   test('super-admin can perform hard delete permission checks', () => {
     expect(() =>
       assertAdminPermission({ role: 'super-admin' }, ADMIN_PERMISSIONS.HARD_DELETE_COMPANY)

@@ -1,4 +1,4 @@
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, TouchableOpacityProps, View } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, TouchableOpacityProps } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../hooks/useTheme";
 
@@ -11,20 +11,23 @@ type ButtonProps = TouchableOpacityProps & {
 };
 
 export const Button = ({ label, loading, variant = "primary", disabled, style, ...rest }: ButtonProps) => {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, radius, spacing, nativeGradients } = useTheme();
   const isDisabled = disabled || loading;
 
-  // Premium gradient button for primary variant
-  if (variant === "primary") {
+  if (variant === "primary" || variant === "accent") {
+    const gradientColors = variant === "primary" ? nativeGradients.ctaPrimary : nativeGradients.heroCoral;
+    const textColor = variant === "primary" ? colors.textOnPrimary : colors.textOnAccent;
+    const shadowColor = variant === "primary" ? colors.primary : colors.accent;
+
     return (
       <TouchableOpacity
         {...rest}
         style={[{ opacity: isDisabled ? 0.6 : 1 }, style]}
         disabled={isDisabled}
-        activeOpacity={0.8}
+        activeOpacity={0.84}
       >
         <LinearGradient
-          colors={["#6C63FF", "#5248E6"]}
+          colors={gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[
@@ -33,76 +36,27 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
               borderRadius: radius.md,
               paddingVertical: spacing.lg,
               paddingHorizontal: spacing.xl,
-              shadowColor: "#6C63FF",
+              shadowColor,
               shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.4,
+              shadowOpacity: 0.34,
               shadowRadius: 12,
-              elevation: 8,
+              elevation: 7,
             },
           ]}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={textColor} />
           ) : (
-            <Text style={[styles.label, { color: "#FFFFFF" }]}>{label}</Text>
+            <Text style={[styles.label, { color: textColor }]}>{label}</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
     );
   }
 
-  // Accent variant with Salmon gradient
-  if (variant === "accent") {
-    return (
-      <TouchableOpacity
-        {...rest}
-        style={[{ opacity: isDisabled ? 0.6 : 1 }, style]}
-        disabled={isDisabled}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={["#FF8C3C", "#E87A30"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.button,
-            {
-              borderRadius: radius.md,
-              paddingVertical: spacing.lg,
-              paddingHorizontal: spacing.xl,
-              shadowColor: "#FF8C3C",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.4,
-              shadowRadius: 12,
-              elevation: 8,
-            },
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={[styles.label, { color: "#FFFFFF" }]}>{label}</Text>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  }
-
-  // Secondary and Ghost variants
-  const backgroundColor =
-    variant === "secondary"
-      ? "rgba(30, 33, 39, 0.9)"
-      : "transparent";
-
-  const borderColor =
-    variant === "secondary"
-      ? "rgba(108, 99, 255, 0.3)"
-      : "transparent";
-
-  const textColor =
-    variant === "ghost"
-      ? colors.primary
-      : colors.text;
+  const backgroundColor = variant === "secondary" ? colors.buttonSecondary : colors.buttonGhost;
+  const borderColor = variant === "secondary" ? colors.border : "transparent";
+  const textColor = variant === "ghost" ? colors.primary : colors.text;
 
   return (
     <TouchableOpacity
@@ -117,16 +71,16 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
           opacity: isDisabled ? 0.6 : 1,
           paddingVertical: spacing.lg,
           paddingHorizontal: spacing.xl,
-          shadowColor: "#000",
+          shadowColor: colors.shadow,
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: variant === "secondary" ? 0.2 : 0,
+          shadowOpacity: variant === "secondary" ? 0.18 : 0,
           shadowRadius: 8,
           elevation: variant === "secondary" ? 4 : 0,
         },
         style,
       ]}
       disabled={isDisabled}
-      activeOpacity={0.7}
+      activeOpacity={0.72}
     >
       {loading ? (
         <ActivityIndicator color={textColor} />
@@ -141,6 +95,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 44,
   },
   label: {
     fontSize: 16,

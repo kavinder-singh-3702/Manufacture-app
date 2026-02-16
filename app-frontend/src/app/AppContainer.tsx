@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import { SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from "@expo-google-fonts/space-grotesk";
 import { AppProviders } from "../providers/AppProviders";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { useTheme } from "../hooks/useTheme";
@@ -27,21 +29,34 @@ const AppShell = () => {
 };
 
 export const AppContainer = () => {
-  const [showApp, setShowApp] = useState(false);
+  const [splashAnimationDone, setSplashAnimationDone] = useState(false);
+  const [fontsLoaded, fontError] = useFonts({
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+  });
 
   useEffect(() => {
-    // Reveal the native splash as soon as the JS bundle is ready so our custom
-    // animated splash can take over.
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
+  const assetsReady = useMemo(() => fontsLoaded || Boolean(fontError), [fontError, fontsLoaded]);
+  const showApp = splashAnimationDone && assetsReady;
+
   const handleSplashFinished = useCallback(() => {
-    setShowApp(true);
+    setSplashAnimationDone(true);
   }, []);
 
   return (
     <AppProviders>
-      {showApp ? <AppShell /> : <AnimatedSplashScreen onFinish={handleSplashFinished} />}
+      {showApp ? (
+        <AppShell />
+      ) : splashAnimationDone ? (
+        <View style={styles.assetsLoadingFallback}>
+          <ActivityIndicator color="#19B8E6" />
+        </View>
+      ) : (
+        <AnimatedSplashScreen onFinish={handleSplashFinished} />
+      )}
     </AppProviders>
   );
 };
@@ -52,5 +67,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  assetsLoadingFallback: {
+    flex: 1,
+    backgroundColor: "#05070C",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

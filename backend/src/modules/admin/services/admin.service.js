@@ -9,6 +9,8 @@ const { UserPersonalizedOffer } = require('../../../models/userPersonalizedOffer
 const Product = require('../../../models/product.model');
 const ProductVariant = require('../../../models/productVariant.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
+const ChatConversation = require('../../../models/chatConversation.model');
+const CallLog = require('../../../models/callLog.model');
 const ProductQuote = require('../../../models/productQuote.model');
 const Unit = require('../../../models/unit.model');
 const Account = require('../../../models/account.model');
@@ -77,6 +79,26 @@ const shapeCompanySummary = (company) => ({
   createdAt: company.createdAt,
   updatedAt: company.updatedAt
 });
+
+const shapeUserSummary = (user) => {
+  if (!user) return null;
+  return {
+    id: user._id?.toString?.() || user.id,
+    email: user.email,
+    displayName: user.displayName,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role || 'user',
+    status: user.status || 'active',
+    accountType: user.accountType,
+    verificationStatus: user.verificationStatus,
+    lastLoginAt: user.lastLoginAt,
+    activeCompany: user.activeCompany,
+    companies: user.companies,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+};
 
 /**
  * Get admin dashboard statistics
@@ -149,6 +171,13 @@ const getAdminOverview = async () => {
     recentNotifications,
     deliveredNotifications,
     failedNotifications,
+    pendingServices,
+    inProgressServices,
+    overdueServices,
+    unresolvedServices,
+    recentConversations,
+    recentCalls,
+    totalCallDurationSeconds,
     activeCampaigns,
     draftCampaigns,
     expiredCampaigns,
@@ -163,6 +192,26 @@ const getAdminOverview = async () => {
     Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, createdBy: { $exists: true } }),
     Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, status: 'delivered', createdBy: { $exists: true } }),
     Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, status: 'failed', createdBy: { $exists: true } }),
+    ServiceRequest.countDocuments({ status: 'pending', deletedAt: { $exists: false } }),
+    ServiceRequest.countDocuments({
+      status: { $in: ['in_review', 'scheduled', 'in_progress'] },
+      deletedAt: { $exists: false }
+    }),
+    ServiceRequest.countDocuments({
+      status: { $in: ['pending', 'in_review', 'scheduled', 'in_progress'] },
+      slaDueAt: { $lt: now },
+      deletedAt: { $exists: false }
+    }),
+    ServiceRequest.countDocuments({
+      status: { $in: ['pending', 'in_review', 'scheduled', 'in_progress'] },
+      deletedAt: { $exists: false }
+    }),
+    ChatConversation.countDocuments({ updatedAt: { $gte: twentyFourHoursAgo } }),
+    CallLog.countDocuments({ startedAt: { $gte: twentyFourHoursAgo } }),
+    CallLog.aggregate([
+      { $match: { startedAt: { $gte: twentyFourHoursAgo } } },
+      { $group: { _id: null, totalDuration: { $sum: '$durationSeconds' } } }
+    ]).then((rows) => rows[0]?.totalDuration || 0),
     UserPersonalizedOffer.countDocuments({ status: 'active' }),
     UserPersonalizedOffer.countDocuments({ status: 'draft' }),
     UserPersonalizedOffer.countDocuments({ status: 'expired' }),
@@ -189,6 +238,17 @@ const getAdminOverview = async () => {
       expired: expiredCampaigns,
       archived: archivedCampaigns,
       total: activeCampaigns + draftCampaigns + expiredCampaigns + archivedCampaigns
+    },
+    servicesQueue: {
+      pending: pendingServices,
+      inProgress: inProgressServices,
+      overdue: overdueServices,
+      unresolved: unresolvedServices
+    },
+    communications: {
+      conversationsLast24h: recentConversations,
+      callsLast24h: recentCalls,
+      totalCallDurationSeconds
     }
   };
 };
@@ -270,18 +330,7 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, comp
   ]);
 
   const formattedUsers = users.map((user) => ({
-    id: user._id.toString(),
-    email: user.email,
-    displayName: user.displayName,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    role: user.role || 'user',
-    status: user.status || 'active',
-    accountType: user.accountType,
-    verificationStatus: user.verificationStatus,
-    lastLoginAt: user.lastLoginAt,
-    activeCompany: user.activeCompany,
-    createdAt: user.createdAt
+    ...shapeUserSummary(user)
   }));
 
   return {
@@ -291,6 +340,139 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, comp
       limit: safeLimit,
       offset: safeOffset,
       hasMore: safeOffset + users.length < total
+    }
+  };
+};
+
+const getAdminUserOverview = async ({ userId, limit = 6 } = {}) => {
+  const userObjectId = toObjectId(userId);
+  if (!userObjectId) {
+    throw createError(400, 'Invalid userId');
+  }
+
+  const user = await User.findById(userObjectId).select('-password').lean();
+  if (!user) {
+    throw createError(404, 'User not found');
+  }
+
+  const cappedLimit = clamp(parseNumber(limit, 6), 3, 25);
+
+  const [recentActivities, recentServices, campaignSummary, conversations, callLogs] = await Promise.all([
+    Activity.find({ user: userObjectId })
+      .sort({ createdAt: -1 })
+      .limit(cappedLimit)
+      .lean(),
+    ServiceRequest.find({ createdBy: userObjectId, deletedAt: { $exists: false } })
+      .sort({ updatedAt: -1 })
+      .limit(cappedLimit)
+      .select('serviceType title status priority assignedTo company createdAt updatedAt')
+      .populate('assignedTo', 'displayName email role')
+      .populate('company', 'displayName status')
+      .lean(),
+    UserPersonalizedOffer.aggregate([
+      { $match: { user: userObjectId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]),
+    ChatConversation.find({ 'participants.user': userObjectId })
+      .sort({ updatedAt: -1 })
+      .limit(cappedLimit)
+      .lean(),
+    CallLog.find({
+      $or: [{ caller: userObjectId }, { callee: userObjectId }]
+    })
+      .sort({ startedAt: -1 })
+      .limit(cappedLimit)
+      .populate('caller', 'displayName email role')
+      .populate('callee', 'displayName email role')
+      .lean()
+  ]);
+
+  const campaignTotals = campaignSummary.reduce(
+    (acc, row) => {
+      acc.total += row.count;
+      acc.byStatus[row._id || 'unknown'] = row.count;
+      return acc;
+    },
+    { total: 0, byStatus: {} }
+  );
+
+  return {
+    user: shapeUserSummary(user),
+    activity: {
+      recent: recentActivities.map((entry) => ({
+        id: entry._id.toString(),
+        action: entry.action,
+        label: entry.label,
+        description: entry.description,
+        createdAt: entry.createdAt
+      })),
+      total: await Activity.countDocuments({ user: userObjectId })
+    },
+    services: {
+      recent: recentServices.map((item) => ({
+        id: item._id.toString(),
+        serviceType: item.serviceType,
+        title: item.title,
+        status: item.status,
+        priority: item.priority,
+        assignedTo: item.assignedTo
+          ? {
+            id: item.assignedTo._id?.toString?.() || item.assignedTo,
+            displayName: item.assignedTo.displayName,
+            email: item.assignedTo.email,
+            role: item.assignedTo.role
+          }
+          : null,
+        company: item.company
+          ? {
+            id: item.company._id?.toString?.() || item.company,
+            displayName: item.company.displayName,
+            status: item.company.status
+          }
+          : null,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      })),
+      total: await ServiceRequest.countDocuments({ createdBy: userObjectId, deletedAt: { $exists: false } })
+    },
+    campaigns: campaignTotals,
+    communications: {
+      conversations: {
+        total: conversations.length,
+        recent: conversations.map((conversation) => ({
+          id: conversation._id.toString(),
+          lastMessage: conversation.lastMessage,
+          lastMessageAt: conversation.lastMessageAt,
+          updatedAt: conversation.updatedAt
+        }))
+      },
+      calls: {
+        total: await CallLog.countDocuments({
+          $or: [{ caller: userObjectId }, { callee: userObjectId }]
+        }),
+        recent: callLogs.map((log) => ({
+          id: log._id.toString(),
+          startedAt: log.startedAt,
+          endedAt: log.endedAt,
+          durationSeconds: log.durationSeconds,
+          caller: log.caller
+            ? {
+              id: log.caller._id?.toString?.() || log.caller,
+              displayName: log.caller.displayName,
+              email: log.caller.email,
+              role: log.caller.role
+            }
+            : null,
+          callee: log.callee
+            ? {
+              id: log.callee._id?.toString?.() || log.callee,
+              displayName: log.callee.displayName,
+              email: log.callee.email,
+              role: log.callee.role
+            }
+            : null
+        }))
+      }
     }
   };
 };
@@ -569,6 +751,7 @@ module.exports = {
   getAdminOverview,
   listAllCompanies,
   listAllUsers,
+  getAdminUserOverview,
   setCompanyStatus,
   archiveCompany,
   deleteCompany,

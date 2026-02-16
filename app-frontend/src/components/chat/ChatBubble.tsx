@@ -59,7 +59,7 @@ export const ChatBubble = ({ message, isMe }: ChatBubbleProps) => {
       {isMe ? (
         // My message - gradient background
         <LinearGradient
-          colors={["#6C63FF", "#5248E6"]}
+          colors={["#19B8E6", "#148DB2"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[

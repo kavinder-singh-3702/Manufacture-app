@@ -497,7 +497,7 @@ export const AddProductScreen = () => {
 
         {errors.category ? <Text style={[styles.errorText, { color: colors.error, marginBottom: spacing.xs }]}>{errors.category}</Text> : null}
 
-        <Text style={[styles.label, { color: colors.textMuted }]}>Category<Text style={{ color: "#FF6B6B" }}> *</Text></Text>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Category<Text style={{ color: "#FF7B87" }}> *</Text></Text>
         <TouchableOpacity
           onPress={() => setShowCategoryDropdown((prev) => !prev)}
           activeOpacity={0.9}
@@ -636,7 +636,7 @@ export const AddProductScreen = () => {
           />
         </View>
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <Text style={[styles.label, { color: colors.textMuted }]}>Unit<Text style={{ color: "#FF6B6B" }}> *</Text></Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Unit<Text style={{ color: "#FF7B87" }}> *</Text></Text>
           <TouchableOpacity
             onPress={() => setShowUnitDropdown((prev) => !prev)}
             activeOpacity={0.85}

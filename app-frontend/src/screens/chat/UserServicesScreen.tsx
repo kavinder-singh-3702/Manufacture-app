@@ -112,21 +112,21 @@ const SERVICE_OPTIONS: Array<{
     title: "Machine Repair",
     subtitle: "Precision, heavy, packaging & custom lines",
     icon: "🛠️",
-    gradient: ["#6C63FF", "#4AC9FF"],
+    gradient: ["#19B8E6", "#4CCEEF"],
   },
   {
     id: "worker",
     title: "Expert Workforce",
     subtitle: "Screened operators, technicians, supervisors",
     icon: "👷‍♂️",
-    gradient: ["#FF8C3C", "#FFB07A"],
+    gradient: ["#F56E79", "#FFB07A"],
   },
   {
     id: "transport",
     title: "Transport & Fleet",
     subtitle: "Road, rail, air & sea with secured handling",
     icon: "🚚",
-    gradient: ["#4AC9FF", "#6C63FF"],
+    gradient: ["#4CCEEF", "#19B8E6"],
   },
 ];
 
@@ -1043,7 +1043,7 @@ export const UserServicesScreen = () => {
                 Tap “Start request” on a service to open its tailored form. Nothing is preselected by default.
               </Text>
               {errors.serviceType ? (
-                <Text style={[styles.helperError, { color: "#FF6B6B", marginTop: spacing.sm }]}>{errors.serviceType}</Text>
+                <Text style={[styles.helperError, { color: "#FF7B87", marginTop: spacing.sm }]}>{errors.serviceType}</Text>
               ) : null}
             </AnimatedCard>
           ) : (

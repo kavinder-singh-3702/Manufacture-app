@@ -12,56 +12,55 @@ type CardProps = {
 };
 
 export const Card = ({ children, style, variant = "default" }: CardProps) => {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, radius, spacing, nativeGradients } = useTheme();
 
   const getCardStyles = () => {
     switch (variant) {
       case "elevated":
         return {
-          backgroundColor: "rgba(30, 33, 39, 0.95)",
-          borderColor: "rgba(108, 99, 255, 0.2)",
-          shadowColor: "#6C63FF",
-          shadowOpacity: 0.15,
+          backgroundColor: colors.surfaceElevated,
+          borderColor: colors.borderPrimary,
+          shadowColor: colors.primary,
+          shadowOpacity: 0.14,
         };
       case "highlighted":
         return {
-          backgroundColor: "rgba(108, 99, 255, 0.08)",
-          borderColor: "rgba(108, 99, 255, 0.4)",
-          shadowColor: "#6C63FF",
-          shadowOpacity: 0.25,
+          backgroundColor: colors.badgePrimary,
+          borderColor: colors.borderPrimary,
+          shadowColor: colors.primary,
+          shadowOpacity: 0.2,
         };
       case "accent":
         return {
-          backgroundColor: "rgba(255, 140, 60, 0.08)",
-          borderColor: "rgba(255, 140, 60, 0.3)",
-          shadowColor: "#FF8C3C",
-          shadowOpacity: 0.2,
+          backgroundColor: colors.surfaceOverlayAccent,
+          borderColor: colors.borderAccent,
+          shadowColor: colors.accent,
+          shadowOpacity: 0.18,
         };
       default:
         return {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          shadowColor: "#000",
-          shadowOpacity: 0.25,
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.2,
         };
     }
   };
 
   const cardStyles = getCardStyles();
 
-  // Highlighted variant gets a gradient border effect
   if (variant === "highlighted") {
     return (
       <View style={[styles.cardWrapper, style]}>
         <LinearGradient
-          colors={["rgba(108, 99, 255, 0.3)", "rgba(74, 201, 255, 0.15)"]}
+          colors={nativeGradients.accentDiagonal}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[
             styles.card,
             {
               borderRadius: radius.md,
-              padding: 1, // Border width
+              padding: 1,
             },
           ]}
         >
@@ -73,9 +72,8 @@ export const Card = ({ children, style, variant = "default" }: CardProps) => {
               flex: 1,
             }}
           >
-            {/* Inner glow */}
             <LinearGradient
-              colors={["rgba(108, 99, 255, 0.1)", "transparent"]}
+              colors={[colors.surfaceOverlayPrimary, "transparent"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[StyleSheet.absoluteFill, { borderRadius: radius.md - 1 }]}
@@ -110,9 +108,8 @@ export const Card = ({ children, style, variant = "default" }: CardProps) => {
 const styles = StyleSheet.create({
   cardWrapper: {
     borderRadius: 12,
-    shadowColor: "#6C63FF",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.16,
     shadowRadius: 12,
     elevation: 6,
   },

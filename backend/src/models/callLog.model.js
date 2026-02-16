@@ -19,5 +19,7 @@ const callLogSchema = new Schema(
 
 callLogSchema.index({ caller: 1, callee: 1, startedAt: -1 });
 callLogSchema.index({ conversation: 1, startedAt: -1 });
+callLogSchema.index({ createdAt: -1, caller: 1 });
+callLogSchema.index({ createdAt: -1, callee: 1 });
 
 module.exports = mongoose.model('CallLog', callLogSchema);

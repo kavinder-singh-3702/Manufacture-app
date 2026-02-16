@@ -310,8 +310,8 @@ export const VerificationsScreen = () => {
                 },
               ]}
             >
-              <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.actionButtonText}>Approve</Text>
+              <Ionicons name="checkmark" size={18} color={colors.textOnPrimary} style={{ marginRight: 6 }} />
+              <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>Approve</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => openRejectModal(item.id)}
@@ -324,8 +324,8 @@ export const VerificationsScreen = () => {
                 },
               ]}
             >
-              <Ionicons name="close" size={18} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.actionButtonText}>Reject</Text>
+              <Ionicons name="close" size={18} color={colors.textOnPrimary} style={{ marginRight: 6 }} />
+              <Text style={[styles.actionButtonText, { color: colors.textOnPrimary }]}>Reject</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -386,7 +386,7 @@ export const VerificationsScreen = () => {
             fetchVerifications({ reset: true });
           }}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -622,16 +622,16 @@ export const VerificationsScreen = () => {
                     ]}
                   >
                     {actionLoading ? (
-                      <ActivityIndicator color="#fff" />
+                      <ActivityIndicator color={colors.textOnPrimary} />
                     ) : (
                       <>
                         <Ionicons
                           name="checkmark-circle"
                           size={20}
-                          color="#fff"
+                          color={colors.textOnPrimary}
                           style={{ marginRight: 8 }}
                         />
-                        <Text style={styles.modalActionButtonText}>Approve verification</Text>
+                        <Text style={[styles.modalActionButtonText, { color: colors.textOnPrimary }]}>Approve verification</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -649,16 +649,16 @@ export const VerificationsScreen = () => {
                     ]}
                   >
                     {actionLoading ? (
-                      <ActivityIndicator color="#fff" />
+                      <ActivityIndicator color={colors.textOnPrimary} />
                     ) : (
                       <>
                         <Ionicons
                           name="close-circle"
                           size={20}
-                          color="#fff"
+                          color={colors.textOnPrimary}
                           style={{ marginRight: 8 }}
                         />
-                        <Text style={styles.modalActionButtonText}>Reject verification</Text>
+                        <Text style={[styles.modalActionButtonText, { color: colors.textOnPrimary }]}>Reject verification</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -715,7 +715,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryButtonText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -752,7 +751,6 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   actionButtonText: {
-    color: "#fff",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -834,7 +832,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalActionButtonText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "700",
   },

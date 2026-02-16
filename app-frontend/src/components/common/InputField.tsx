@@ -20,7 +20,7 @@ export const InputField = ({
   onBlur,
   ...rest
 }: InputFieldProps) => {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, nativeGradients } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const hasError = Boolean(errorText);
 
@@ -41,14 +41,14 @@ export const InputField = ({
   );
 
   const getBorderColor = () => {
-    if (hasError) return "#FF6B6B";
-    if (isFocused) return "#6C63FF";
+    if (hasError) return colors.error;
+    if (isFocused) return colors.primary;
     return colors.border;
   };
 
   const getGlowColor = () => {
-    if (hasError) return "rgba(255, 107, 107, 0.15)";
-    if (isFocused) return "rgba(108, 99, 255, 0.1)";
+    if (hasError) return colors.errorBg;
+    if (isFocused) return colors.badgePrimary;
     return "transparent";
   };
 
@@ -58,12 +58,12 @@ export const InputField = ({
         style={[
           styles.label,
           {
-            color: isFocused ? "#6C63FF" : colors.textMuted,
+            color: isFocused ? colors.primary : colors.textMuted,
           },
         ]}
       >
         {label}
-        {required ? <Text style={{ color: "#FF6B6B" }}> *</Text> : null}
+        {required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
       <View
         style={[
@@ -82,21 +82,21 @@ export const InputField = ({
             styles.input,
             {
               borderColor: getBorderColor(),
-              backgroundColor: "rgba(22, 24, 29, 0.9)",
+              backgroundColor: colors.surface,
               borderRadius: radius.md,
               padding: spacing.md,
               color: colors.text,
-              shadowColor: isFocused ? "#6C63FF" : "#000",
-              shadowOpacity: isFocused ? 0.25 : 0.1,
+              shadowColor: isFocused ? colors.primary : colors.shadow,
+              shadowOpacity: isFocused ? 0.24 : 0.1,
             },
             style,
           ]}
           placeholderTextColor={colors.textTertiary}
-          selectionColor="#6C63FF"
+          selectionColor={colors.primary}
         />
         {isFocused && (
           <LinearGradient
-            colors={["rgba(108, 99, 255, 0.3)", "rgba(74, 201, 255, 0.15)", "transparent"]}
+            colors={[nativeGradients.ctaPrimary[0], nativeGradients.statusInfo[1], "transparent"]}
             locations={[0, 0.5, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -109,7 +109,7 @@ export const InputField = ({
         <Text style={[styles.helper, { color: colors.textTertiary }]}>{helperText}</Text>
       ) : null}
       {hasError ? (
-        <Text style={[styles.helper, { color: "#FF6B6B" }]}>{errorText}</Text>
+        <Text style={[styles.helper, { color: colors.error }]}>{errorText}</Text>
       ) : null}
     </View>
   );
@@ -130,6 +130,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     fontSize: 16,
     fontWeight: "500",
+    minHeight: 44,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
     elevation: 3,

@@ -1,9 +1,15 @@
 import { memo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
 import { PersonalizedOffer } from "../../../services/preference.service";
 import { CampaignStatusBadge } from "./CampaignStatusBadge";
+import {
+  getCampaignThemeLabel,
+  resolveCampaignGradient,
+  resolveCampaignGradientKey,
+} from "../../dashboard/components/campaignTheme";
 
 type CampaignCardProps = {
   campaign: PersonalizedOffer;
@@ -12,6 +18,7 @@ type CampaignCardProps = {
   onPause?: () => void;
   onArchive?: () => void;
   onDuplicate?: () => void;
+  onEdit?: () => void;
   onPreview?: () => void;
 };
 
@@ -31,10 +38,13 @@ const toDisplayContact = (campaign: PersonalizedOffer) => {
 };
 
 export const CampaignCard = memo(
-  ({ campaign, updating, onPublish, onPause, onArchive, onDuplicate, onPreview }: CampaignCardProps) => {
-    const { colors, spacing, radius } = useTheme();
+  ({ campaign, updating, onPublish, onPause, onArchive, onDuplicate, onEdit, onPreview }: CampaignCardProps) => {
+    const { colors, spacing, radius, nativeGradients } = useTheme();
     const cta = campaign.creative?.ctaLabel || (campaign.contentType === "service" ? "Open service request" : "View offer");
     const status = campaign.status || "draft";
+    const campaignTheme = getCampaignThemeLabel(campaign.creative?.themeKey);
+    const gradientKey = resolveCampaignGradientKey(campaign.creative?.themeKey);
+    const previewGradient = resolveCampaignGradient(nativeGradients, campaign.creative?.themeKey);
 
     return (
       <View
@@ -50,9 +60,20 @@ export const CampaignCard = memo(
       >
         <View style={styles.topRow}>
           <CampaignStatusBadge status={status} />
-          <Text style={[styles.contentType, { color: colors.textMuted }]}>
-            {(campaign.contentType || "product").toUpperCase()}
-          </Text>
+          <View style={styles.topMeta}>
+            <Text style={[styles.contentType, { color: colors.textMuted }]}>
+              {(campaign.contentType || "product").toUpperCase()}
+            </Text>
+            <View style={[styles.themeBadge, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}>
+              <LinearGradient
+                colors={previewGradient}
+                style={styles.themeSwatch}
+              />
+              <Text style={[styles.themeLabel, { color: colors.textSecondary }]}>
+                {campaignTheme}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
@@ -66,6 +87,7 @@ export const CampaignCard = memo(
           <Text style={[styles.metaText, { color: colors.textSecondary }]}>Target: {toDisplayUser(campaign)}</Text>
           <Text style={[styles.metaText, { color: colors.textSecondary }]}>Contact: {toDisplayContact(campaign)}</Text>
         </View>
+        <Text style={[styles.metaText, { color: colors.textSecondary }]}>Theme key: {gradientKey}</Text>
         <Text style={[styles.metaText, { color: colors.textSecondary }]}>CTA: {cta}</Text>
 
         <View style={[styles.actionsRow, { marginTop: spacing.md }]}>
@@ -74,6 +96,7 @@ export const CampaignCard = memo(
           ) : (
             <ActionButton label="Pause" icon="pause-outline" onPress={onPause} colors={colors} />
           )}
+          <ActionButton label="Edit" icon="create-outline" onPress={onEdit} colors={colors} />
           <ActionButton label="Archive" icon="archive-outline" onPress={onArchive} colors={colors} />
           <ActionButton label="Duplicate" icon="copy-outline" onPress={onDuplicate} colors={colors} />
           <ActionButton label="Preview" icon="eye-outline" onPress={onPreview} colors={colors} />
@@ -110,13 +133,39 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
+  },
+  topMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
   contentType: {
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.4,
+  },
+  themeBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    minHeight: 26,
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  themeSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  themeLabel: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   title: {
     fontSize: 16,
@@ -142,7 +191,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     borderWidth: 1,
     borderRadius: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

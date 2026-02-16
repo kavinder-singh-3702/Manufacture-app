@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const ChatConversation = require('../../../models/chatConversation.model');
 const ChatMessage = require('../../../models/chatMessage.model');
 const CallLog = require('../../../models/callLog.model');
+const ServiceRequest = require('../../../models/serviceRequest.model');
 const User = require('../../../models/user.model');
 const { emitToUser } = require('../../../socket');
 
@@ -12,6 +13,41 @@ const ensureObjectId = (value) => {
     throw new Error(`Invalid ObjectId: ${value}`);
   }
   return new mongoose.Types.ObjectId(value);
+};
+
+const parseNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const resolveConversationSort = (value) => {
+  switch (value) {
+    case 'updatedAt:asc':
+      return { updatedAt: 1 };
+    case 'lastMessageAt:asc':
+      return { lastMessageAt: 1 };
+    case 'lastMessageAt:desc':
+      return { lastMessageAt: -1 };
+    case 'updatedAt:desc':
+    default:
+      return { updatedAt: -1 };
+  }
+};
+
+const resolveCallLogSort = (value) => {
+  switch (value) {
+    case 'startedAt:asc':
+      return { startedAt: 1 };
+    case 'duration:asc':
+      return { durationSeconds: 1, startedAt: -1 };
+    case 'duration:desc':
+      return { durationSeconds: -1, startedAt: -1 };
+    case 'startedAt:desc':
+    default:
+      return { startedAt: -1 };
+  }
 };
 
 const getConversationSummaryForUser = async (conversationId, userId) => {
@@ -266,9 +302,293 @@ const createCallLog = async ({ callerId, calleeId, conversationId, startedAt, en
   return log.toObject();
 };
 
+const listConversationsAdmin = async ({
+  search,
+  userId,
+  companyId,
+  limit = 30,
+  offset = 0,
+  sort = 'updatedAt:desc'
+} = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 30), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+  const filter = {};
+
+  let scopedUserIds = null;
+
+  if (search) {
+    const regex = new RegExp(search, 'i');
+    const matchedUsers = await User.find({
+      $or: [
+        { displayName: regex },
+        { email: regex },
+        { phone: regex }
+      ]
+    }).select('_id').lean();
+    scopedUserIds = new Set(matchedUsers.map((entry) => String(entry._id)));
+  }
+
+  if (companyId && isValidObjectId(companyId)) {
+    const companyScopedUsers = await User.find({
+      $or: [{ activeCompany: ensureObjectId(companyId) }, { companies: ensureObjectId(companyId) }]
+    })
+      .select('_id')
+      .lean();
+
+    const companyUserSet = new Set(companyScopedUsers.map((entry) => String(entry._id)));
+    if (scopedUserIds === null) {
+      scopedUserIds = companyUserSet;
+    } else {
+      scopedUserIds = new Set(Array.from(scopedUserIds).filter((id) => companyUserSet.has(id)));
+    }
+  }
+
+  if (userId && isValidObjectId(userId)) {
+    const explicitUserId = String(userId);
+    if (scopedUserIds === null) {
+      scopedUserIds = new Set([explicitUserId]);
+    } else {
+      scopedUserIds = new Set(Array.from(scopedUserIds).filter((id) => id === explicitUserId));
+    }
+  }
+
+  if (scopedUserIds && !scopedUserIds.size) {
+    return {
+      conversations: [],
+      pagination: {
+        total: 0,
+        limit: safeLimit,
+        offset: safeOffset,
+        hasMore: false
+      }
+    };
+  }
+
+  if (scopedUserIds) {
+    filter['participants.user'] = { $in: Array.from(scopedUserIds).map((value) => ensureObjectId(value)) };
+  }
+
+  const [conversations, total] = await Promise.all([
+    ChatConversation.find(filter)
+      .sort(resolveConversationSort(sort))
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .lean(),
+    ChatConversation.countDocuments(filter)
+  ]);
+
+  const participantUserIds = new Set();
+  conversations.forEach((conversation) => {
+    (conversation.participants || []).forEach((participant) => {
+      participantUserIds.add(String(participant.user));
+    });
+  });
+
+  const users = await User.find({ _id: { $in: Array.from(participantUserIds).map((value) => ensureObjectId(value)) } })
+    .select('_id displayName firstName lastName email phone role activeCompany')
+    .lean();
+  const userMap = users.reduce((acc, user) => {
+    acc[String(user._id)] = user;
+    return acc;
+  }, {});
+
+  const userParticipants = users
+    .filter((entry) => entry.role === 'user')
+    .map((entry) => ensureObjectId(entry._id));
+
+  const recentServiceRequests = await ServiceRequest.find({
+    createdBy: { $in: userParticipants },
+    deletedAt: { $exists: false }
+  })
+    .sort({ updatedAt: -1 })
+    .select('_id createdBy title status priority updatedAt')
+    .lean();
+
+  const latestServiceRequestByUser = new Map();
+  recentServiceRequests.forEach((entry) => {
+    const createdBy = String(entry.createdBy);
+    if (!latestServiceRequestByUser.has(createdBy)) {
+      latestServiceRequestByUser.set(createdBy, entry);
+    }
+  });
+
+  const conversationsWithUnread = await Promise.all(
+    conversations.map(async (conversation) => {
+      const adminParticipant =
+        conversation.participants.find((participant) => participant.role === 'admin' || participant.role === 'support') ||
+        conversation.participants[0];
+      const otherParticipant =
+        conversation.participants.find((participant) => String(participant.user) !== String(adminParticipant.user)) ||
+        conversation.participants[0];
+
+      const unreadQuery = {
+        conversation: conversation._id,
+        sender: { $ne: adminParticipant.user }
+      };
+      if (adminParticipant.lastReadAt) {
+        unreadQuery.createdAt = { $gt: adminParticipant.lastReadAt };
+      }
+
+      const unreadCount = await ChatMessage.countDocuments(unreadQuery);
+      const otherUser = userMap[String(otherParticipant.user)];
+      const linkedRequest = latestServiceRequestByUser.get(String(otherParticipant.user));
+
+      return {
+        id: String(conversation._id),
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
+        unreadCount,
+        participantIds: conversation.participants.map((participant) => String(participant.user)),
+        otherParticipant: otherUser
+          ? {
+            id: String(otherUser._id),
+            name:
+              otherUser.displayName ||
+              `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
+              otherUser.email,
+            email: otherUser.email,
+            phone: otherUser.phone,
+            role: otherUser.role,
+            activeCompany: otherUser.activeCompany?.toString?.() || otherUser.activeCompany
+          }
+          : null,
+        linkedServiceRequest: linkedRequest
+          ? {
+            id: String(linkedRequest._id),
+            title: linkedRequest.title,
+            status: linkedRequest.status,
+            priority: linkedRequest.priority,
+            updatedAt: linkedRequest.updatedAt
+          }
+          : null,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt
+      };
+    })
+  );
+
+  return {
+    conversations: conversationsWithUnread,
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + conversations.length < total
+    }
+  };
+};
+
+const listCallLogsAdmin = async ({
+  userId,
+  companyId,
+  from,
+  to,
+  minDuration,
+  maxDuration,
+  limit = 30,
+  offset = 0,
+  sort = 'startedAt:desc'
+} = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 30), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+  const query = {};
+
+  if (userId && isValidObjectId(userId)) {
+    query.$or = [{ caller: ensureObjectId(userId) }, { callee: ensureObjectId(userId) }];
+  }
+
+  if (companyId && isValidObjectId(companyId)) {
+    const companyUserIds = await User.find({
+      $or: [{ activeCompany: ensureObjectId(companyId) }, { companies: ensureObjectId(companyId) }]
+    })
+      .select('_id')
+      .lean();
+
+    const userIds = companyUserIds.map((entry) => entry._id);
+    const companyClause = { $or: [{ caller: { $in: userIds } }, { callee: { $in: userIds } }] };
+    if (query.$and) {
+      query.$and.push(companyClause);
+    } else if (query.$or) {
+      query.$and = [{ $or: query.$or }, companyClause];
+      delete query.$or;
+    } else {
+      query.$or = companyClause.$or;
+    }
+  }
+
+  if (from || to) {
+    query.startedAt = {};
+    if (from) {
+      query.startedAt.$gte = new Date(from);
+    }
+    if (to) {
+      query.startedAt.$lte = new Date(to);
+    }
+  }
+
+  if (minDuration !== undefined || maxDuration !== undefined) {
+    query.durationSeconds = {};
+    if (minDuration !== undefined) {
+      query.durationSeconds.$gte = Number(minDuration);
+    }
+    if (maxDuration !== undefined) {
+      query.durationSeconds.$lte = Number(maxDuration);
+    }
+  }
+
+  const [callLogs, total] = await Promise.all([
+    CallLog.find(query)
+      .sort(resolveCallLogSort(sort))
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .populate('caller', 'displayName email role')
+      .populate('callee', 'displayName email role')
+      .populate('conversation', 'lastMessage lastMessageAt updatedAt')
+      .lean(),
+    CallLog.countDocuments(query)
+  ]);
+
+  return {
+    callLogs: callLogs.map((entry) => ({
+      id: String(entry._id),
+      conversationId: entry.conversation?._id?.toString?.() || entry.conversation?.toString?.() || null,
+      caller: entry.caller
+        ? {
+          id: entry.caller._id?.toString?.() || entry.caller,
+          displayName: entry.caller.displayName,
+          email: entry.caller.email,
+          role: entry.caller.role
+        }
+        : null,
+      callee: entry.callee
+        ? {
+          id: entry.callee._id?.toString?.() || entry.callee,
+          displayName: entry.callee.displayName,
+          email: entry.callee.email,
+          role: entry.callee.role
+        }
+        : null,
+      startedAt: entry.startedAt,
+      endedAt: entry.endedAt,
+      durationSeconds: entry.durationSeconds,
+      notes: entry.notes,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt
+    })),
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + callLogs.length < total
+    }
+  };
+};
+
 module.exports = {
   getOrCreateConversation,
   listConversations,
+  listConversationsAdmin,
+  listCallLogsAdmin,
   getMessages,
   sendMessage,
   markConversationRead,

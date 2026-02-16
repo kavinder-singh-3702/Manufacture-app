@@ -1,7 +1,7 @@
 import { Text, TextProps, StyleProp, TextStyle } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 
-export type TypographyVariant = "heading" | "subheading" | "body" | "caption";
+export type TypographyVariant = "display" | "heading" | "subheading" | "body" | "bodyStrong" | "caption";
 
 type TypographyProps = TextProps & {
   variant?: TypographyVariant;
@@ -17,10 +17,9 @@ export const Typography = ({
   ...rest
 }: TypographyProps) => {
   const { typography, colors } = useTheme();
-  const variantStyle = typography[variant];
+  const variantStyle = typography[variant] ?? typography.body;
 
-  // Safety check: Don't render if children is undefined, null, or empty
-  if (children === undefined || children === null || children === '') {
+  if (children === undefined || children === null || children === "") {
     return null;
   }
 

@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
 import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
@@ -19,13 +20,22 @@ const formatPrice = (amount?: number, currency?: string) => {
 
 export const RecommendedProductsRail = memo(
   ({ recommendations, loading, onOpenProduct, onBrowseAll }: RecommendedProductsRailProps) => {
-    const { colors, spacing, radius } = useTheme();
+    const { colors, spacing, radius, nativeGradients } = useTheme();
     const { width } = useWindowDimensions();
     const { isXCompact, isCompact, clamp } = useResponsiveLayout();
     const cardWidth = clamp(Math.round(width * (isXCompact ? 0.72 : isCompact ? 0.62 : 0.56)), 176, 240);
 
     return (
-      <View style={{ gap: spacing.sm }}>
+      <LinearGradient
+        colors={nativeGradients.recommendationShell}
+        style={{
+          gap: spacing.sm,
+          borderRadius: radius.lg,
+          padding: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+        }}
+      >
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.text, fontSize: isCompact ? 16 : 18 }]}>Recommended for you</Text>
           <TouchableOpacity onPress={onBrowseAll} activeOpacity={0.8}>
@@ -65,6 +75,12 @@ export const RecommendedProductsRail = memo(
                   },
                 ]}
               >
+                <LinearGradient
+                  colors={nativeGradients.recommendationAccent}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cardAccent}
+                />
                 <Text style={[styles.productName, { color: colors.text }]} numberOfLines={2}>
                   {entry.product.name}
                 </Text>
@@ -83,7 +99,7 @@ export const RecommendedProductsRail = memo(
             ))}
           </ScrollView>
         )}
-      </View>
+      </LinearGradient>
     );
   }
 );
@@ -133,6 +149,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 14,
     gap: 8,
+    overflow: "hidden",
+    position: "relative",
+  },
+  cardAccent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
   },
   productName: {
     fontSize: 15,

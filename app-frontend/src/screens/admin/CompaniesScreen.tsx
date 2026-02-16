@@ -407,7 +407,7 @@ export const CompaniesScreen = () => {
             fetchCompanies({ reset: true });
           }}
         >
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -490,7 +490,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryButtonText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "700",
   },

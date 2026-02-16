@@ -38,6 +38,22 @@ const parseDateValue = (value) => {
   return parsed;
 };
 
+const resolveCampaignSort = (sort) => {
+  switch (sort) {
+    case 'createdAt:asc':
+      return { createdAt: 1 };
+    case 'updatedAt:asc':
+      return { updatedAt: 1 };
+    case 'updatedAt:desc':
+      return { updatedAt: -1 };
+    case 'priority:desc':
+      return { priority: -1, updatedAt: -1 };
+    case 'createdAt:desc':
+    default:
+      return { createdAt: -1 };
+  }
+};
+
 const normalizeMap = (value) => {
   if (!value) return {};
   if (value instanceof Map) return Object.fromEntries(value);
@@ -327,6 +343,10 @@ const listCampaignsAdmin = async ({
   userId,
   status,
   contentType,
+  search,
+  sort,
+  from,
+  to,
   includeExpired = true,
   limit = 20,
   offset = 0
@@ -339,6 +359,26 @@ const listCampaignsAdmin = async ({
   if (!includeExpired) {
     applyActiveWindowFilter(query);
   }
+  if (from || to) {
+    query.createdAt = {};
+    if (from) {
+      const fromDate = parseDateValue(from);
+      if (fromDate) query.createdAt.$gte = fromDate;
+    }
+    if (to) {
+      const toDate = parseDateValue(to);
+      if (toDate) query.createdAt.$lte = toDate;
+    }
+  }
+  if (search) {
+    const regex = new RegExp(search, 'i');
+    query.$or = [
+      { title: regex },
+      { message: regex },
+      { 'creative.headline': regex },
+      { 'creative.subheadline': regex }
+    ];
+  }
 
   const cappedLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
   const safeOffset = Math.max(Number(offset) || 0, 0);
@@ -346,7 +386,7 @@ const listCampaignsAdmin = async ({
   const [campaignsRaw, total] = await Promise.all([
     populateOfferQuery(
       UserPersonalizedOffer.find(query)
-        .sort({ createdAt: -1 })
+        .sort(resolveCampaignSort(sort))
         .skip(safeOffset)
         .limit(cappedLimit)
     ),
@@ -394,6 +434,7 @@ const updateCampaignForUser = async ({
   userId,
   campaignId,
   companyId,
+  expectedUpdatedAt,
   contentType,
   serviceType,
   productId,
@@ -420,6 +461,18 @@ const updateCampaignForUser = async ({
 
   const offer = await UserPersonalizedOffer.findOne(query);
   if (!offer) return null;
+
+  if (expectedUpdatedAt) {
+    const expected = new Date(expectedUpdatedAt);
+    if (Number.isNaN(expected.getTime())) {
+      throw new Error('expectedUpdatedAt must be a valid datetime');
+    }
+    if (new Date(offer.updatedAt).getTime() !== expected.getTime()) {
+      const conflictError = new Error('Campaign has changed. Refresh and retry with latest data.');
+      conflictError.status = 409;
+      throw conflictError;
+    }
+  }
 
   const nextContentType = contentType || offer.contentType || 'product';
   const nextServiceType = serviceType || offer.serviceType;
@@ -482,6 +535,47 @@ const updateCampaignForUser = async ({
   return shapeOffer(populated);
 };
 
+const duplicateCampaign = async ({
+  campaignId,
+  companyId,
+  actorId
+}) => {
+  const query = { _id: toObjectId(campaignId) };
+  if (companyId) {
+    query.company = toObjectId(companyId);
+  }
+
+  const source = await UserPersonalizedOffer.findOne(query);
+  if (!source) return null;
+
+  const duplicated = await UserPersonalizedOffer.create({
+    user: source.user,
+    company: source.company,
+    createdBy: toObjectId(actorId) || source.createdBy,
+    contentType: source.contentType,
+    serviceType: source.serviceType,
+    product: source.product,
+    title: `${source.title} (copy)`,
+    message: source.message,
+    creative: source.creative,
+    offerType: source.offerType,
+    oldPrice: source.oldPrice,
+    newPrice: source.newPrice,
+    currency: source.currency,
+    minOrderValue: source.minOrderValue,
+    discountPercent: source.discountPercent,
+    priority: source.priority,
+    startsAt: source.startsAt,
+    expiresAt: source.expiresAt,
+    status: 'draft',
+    contact: source.contact,
+    metadata: source.metadata
+  });
+
+  const populated = await populateOfferQuery(UserPersonalizedOffer.findById(duplicated._id));
+  return shapeOffer(populated);
+};
+
 const expirePastOffers = async () => {
   const now = new Date();
   await UserPersonalizedOffer.updateMany(
@@ -500,6 +594,7 @@ module.exports = {
   listCampaignsAdmin,
   getActiveOffersForUser,
   updateCampaignForUser,
+  duplicateCampaign,
   expirePastOffers,
   shapeOffer
 };

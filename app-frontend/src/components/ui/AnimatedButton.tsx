@@ -1,6 +1,5 @@
 import React, { useRef } from "react";
 import {
-  TouchableOpacity,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -8,7 +7,6 @@ import {
   View,
   Pressable,
   type ViewStyle,
-  type TextStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../hooks/useTheme";
@@ -47,7 +45,7 @@ export const AnimatedButton = ({
   fullWidth = false,
   style,
 }: AnimatedButtonProps) => {
-  const { colors, radius } = useTheme();
+  const { colors, radius, nativeGradients } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -86,44 +84,57 @@ export const AnimatedButton = ({
     ]).start();
   };
 
-  const getGradientColors = (): [string, string] => {
+  const getGradientColors = (): [string, string] | [string, string, string] => {
     switch (variant) {
       case "primary":
-        return ["#6C63FF", "#5248E6"];
+        return nativeGradients.ctaPrimary;
       case "accent":
-        return ["#FF8C3C", "#E87A30"];
+        return nativeGradients.heroCoral;
       case "danger":
-        return ["#FF6B6B", "#EF4444"];
+        return [colors.error, colors.errorStrong];
       default:
-        return ["#6C63FF", "#5248E6"];
+        return nativeGradients.ctaPrimary;
     }
   };
+
+  const getShadowColor = () => {
+    switch (variant) {
+      case "accent":
+        return colors.accent;
+      case "danger":
+        return colors.error;
+      default:
+        return colors.primary;
+    }
+  };
+
+  const contentTextColor =
+    variant === "ghost" || variant === "outline" ? colors.primary : variant === "accent" ? colors.textOnAccent : colors.textOnPrimary;
 
   const renderContent = () => (
     <View style={styles.content}>
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" size="small" />
+        <ActivityIndicator color={contentTextColor} size="small" />
       ) : (
         <>
-          {icon && iconPosition === "left" && <View style={styles.iconLeft}>{icon}</View>}
+          {icon && iconPosition === "left" ? <View style={styles.iconLeft}>{icon}</View> : null}
           <Text
             style={[
               styles.label,
               {
                 fontSize: sizeStyles.fontSize,
-                color: variant === "ghost" || variant === "outline" ? colors.primary : "#FFFFFF",
+                color: contentTextColor,
               },
             ]}
           >
             {label}
           </Text>
-          {icon && iconPosition === "right" && <View style={styles.iconRight}>{icon}</View>}
+          {icon && iconPosition === "right" ? <View style={styles.iconRight}>{icon}</View> : null}
         </>
       )}
     </View>
   );
 
-  // Gradient buttons (primary, accent, danger)
   if (variant === "primary" || variant === "accent" || variant === "danger") {
     return (
       <Pressable
@@ -152,6 +163,8 @@ export const AnimatedButton = ({
                 borderRadius: radius.md,
                 paddingVertical: sizeStyles.paddingVertical,
                 paddingHorizontal: sizeStyles.paddingHorizontal,
+                shadowColor: getShadowColor(),
+                shadowOpacity: 0.28,
               },
             ]}
           >
@@ -162,7 +175,6 @@ export const AnimatedButton = ({
     );
   }
 
-  // Outline button
   if (variant === "outline") {
     return (
       <Pressable
@@ -194,7 +206,6 @@ export const AnimatedButton = ({
     );
   }
 
-  // Secondary and Ghost buttons
   return (
     <Pressable
       onPress={onPress}
@@ -229,9 +240,8 @@ const styles = StyleSheet.create({
   button: {
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#6C63FF",
+    minHeight: 44,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },

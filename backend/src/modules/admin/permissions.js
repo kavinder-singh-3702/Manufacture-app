@@ -6,8 +6,14 @@ const ADMIN_PERMISSIONS = Object.freeze({
   READ_AUDIT_EVENTS: 'admin.read.audit-events',
   READ_USERS: 'admin.read.users',
   READ_COMPANIES: 'admin.read.companies',
+  READ_USER_OVERVIEW: 'admin.read.user-overview',
   READ_VERIFICATIONS: 'admin.read.verifications',
+  READ_SERVICE_REQUESTS: 'admin.read.service-requests',
+  READ_CONVERSATIONS: 'admin.read.conversations',
+  READ_CALL_LOGS: 'admin.read.call-logs',
   MUTATE_COMPANY_STATUS: 'admin.mutate.company-status',
+  MUTATE_SERVICE_REQUEST_WORKFLOW: 'admin.mutate.service-request-workflow',
+  MUTATE_SERVICE_REQUEST_CONTENT: 'admin.mutate.service-request-content',
   REQUEST_COMPANY_DOCUMENTS: 'admin.mutate.request-documents',
   HARD_DELETE_COMPANY: 'admin.mutate.hard-delete-company'
 });
@@ -18,8 +24,13 @@ const PERMISSIONS_BY_ROLE = Object.freeze({
     ADMIN_PERMISSIONS.READ_AUDIT_EVENTS,
     ADMIN_PERMISSIONS.READ_USERS,
     ADMIN_PERMISSIONS.READ_COMPANIES,
+    ADMIN_PERMISSIONS.READ_USER_OVERVIEW,
     ADMIN_PERMISSIONS.READ_VERIFICATIONS,
+    ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS,
+    ADMIN_PERMISSIONS.READ_CONVERSATIONS,
+    ADMIN_PERMISSIONS.READ_CALL_LOGS,
     ADMIN_PERMISSIONS.MUTATE_COMPANY_STATUS,
+    ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW,
     ADMIN_PERMISSIONS.REQUEST_COMPANY_DOCUMENTS
   ]),
   'super-admin': new Set(Object.values(ADMIN_PERMISSIONS))

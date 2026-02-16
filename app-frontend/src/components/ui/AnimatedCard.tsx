@@ -9,10 +9,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../hooks/useTheme";
 
-// ============================================
-// ANIMATED CARD COMPONENT
-// ============================================
-
 interface AnimatedCardProps {
   children: React.ReactNode;
   onPress?: () => void;
@@ -28,7 +24,7 @@ export const AnimatedCard = ({
   variant = "default",
   style,
 }: AnimatedCardProps) => {
-  const { colors, radius, shadows } = useTheme();
+  const { colors, radius, nativeGradients } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -48,7 +44,7 @@ export const AnimatedCard = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [delay]);
+  }, [delay, fadeAnim, translateY]);
 
   const handlePressIn = () => {
     if (!onPress) return;
@@ -69,11 +65,15 @@ export const AnimatedCard = ({
   };
 
   const cardStyle = {
-    ...shadows.medium,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   };
 
   if (variant === "gradient") {
@@ -94,11 +94,17 @@ export const AnimatedCard = ({
           ]}
         >
           <LinearGradient
-            colors={["rgba(108,99,255,0.1)", "rgba(255,140,60,0.05)"]}
+            colors={[colors.surfaceOverlayPrimary, colors.surfaceOverlayAccent]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.card, cardStyle]}
           >
+            <LinearGradient
+              colors={nativeGradients.statusInfo}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             {children}
           </LinearGradient>
         </Animated.View>
@@ -116,7 +122,9 @@ export const AnimatedCard = ({
           transform: [{ translateY }, { scale: scaleAnim }],
         },
         variant === "elevated" && {
-          ...shadows.large,
+          shadowOpacity: 0.28,
+          shadowRadius: 14,
+          elevation: 9,
         },
         style,
       ]}
@@ -140,10 +148,6 @@ export const AnimatedCard = ({
   return content;
 };
 
-// ============================================
-// STAGGERED CARD LIST
-// ============================================
-
 interface StaggeredCardListProps {
   children: React.ReactNode[];
   staggerDelay?: number;
@@ -166,10 +170,6 @@ export const StaggeredCardList = ({
     </View>
   );
 };
-
-// ============================================
-// HOVER SCALE WRAPPER
-// ============================================
 
 interface HoverScaleProps {
   children: React.ReactNode;
@@ -215,10 +215,6 @@ export const HoverScale = ({
   );
 };
 
-// ============================================
-// PULSE ANIMATION WRAPPER
-// ============================================
-
 interface PulseAnimationProps {
   children: React.ReactNode;
   duration?: number;
@@ -249,7 +245,7 @@ export const PulseAnimation = ({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [duration]);
+  }, [duration, pulseAnim]);
 
   return (
     <Animated.View style={[{ transform: [{ scale: pulseAnim }] }, style]}>
@@ -257,10 +253,6 @@ export const PulseAnimation = ({
     </Animated.View>
   );
 };
-
-// ============================================
-// FADE IN VIEW
-// ============================================
 
 interface FadeInViewProps {
   children: React.ReactNode;
@@ -284,7 +276,7 @@ export const FadeInView = ({
       delay,
       useNativeDriver: true,
     }).start();
-  }, [delay, duration]);
+  }, [delay, duration, fadeAnim]);
 
   return (
     <Animated.View style={[{ opacity: fadeAnim }, style]}>
@@ -293,10 +285,6 @@ export const FadeInView = ({
   );
 };
 
-// ============================================
-// SLIDE IN VIEW
-// ============================================
-
 interface SlideInViewProps {
   children: React.ReactNode;
   direction?: "left" | "right" | "up" | "down";
@@ -304,6 +292,20 @@ interface SlideInViewProps {
   duration?: number;
   style?: ViewStyle;
 }
+
+const getInitialOffset = (direction: SlideInViewProps["direction"]) => {
+  switch (direction) {
+    case "left":
+      return -30;
+    case "right":
+      return 30;
+    case "down":
+      return 30;
+    case "up":
+    default:
+      return -30;
+  }
+};
 
 export const SlideInView = ({
   children,
@@ -314,16 +316,6 @@ export const SlideInView = ({
 }: SlideInViewProps) => {
   const translateAnim = useRef(new Animated.Value(getInitialOffset(direction))).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  function getInitialOffset(dir: string): number {
-    switch (dir) {
-      case "left": return -30;
-      case "right": return 30;
-      case "up": return 30;
-      case "down": return -30;
-      default: return 30;
-    }
-  }
 
   useEffect(() => {
     Animated.parallel([
@@ -340,7 +332,7 @@ export const SlideInView = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [delay, duration]);
+  }, [delay, duration, fadeAnim, translateAnim]);
 
   const transform =
     direction === "left" || direction === "right"
@@ -356,7 +348,6 @@ export const SlideInView = ({
 
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
     overflow: "hidden",
   },
   list: {

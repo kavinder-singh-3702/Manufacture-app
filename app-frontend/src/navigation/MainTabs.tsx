@@ -20,8 +20,7 @@ import { Company } from "../types/company";
 
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { StatsScreen } from "../screens/StatsScreen";
-import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
-import { AdminChatScreen } from "../screens/chat";
+import { UserManagementScreen, VerificationsScreen, CompaniesScreen, AdminOpsConsoleScreen } from "../screens/admin";
 import { AdminProductsScreen } from "../screens/cart";
 import { ServicesOverviewScreen } from "../screens/services";
 import { AccountingDashboardScreen } from "../screens/accounting/AccountingDashboardScreen";
@@ -151,7 +150,7 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   [routes.USERS]: UserManagementScreen,
   [routes.VERIFICATIONS]: VerificationsScreen,
   [routes.COMPANIES]: CompaniesScreen,
-  [routes.CHAT]: AdminChatScreen,
+  [routes.CHAT]: AdminOpsConsoleScreen,
 };
 
 export const MainTabs = () => {
@@ -162,7 +161,7 @@ export const MainTabs = () => {
   const [accountsPickerOpen, setAccountsPickerOpen] = useState(false);
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
 
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, nativeGradients } = useTheme();
   const { user, logout, requestLogin } = useAuth();
   const { totalUnread } = useUnreadMessages();
   const { unreadCount: notificationUnreadCount } = useNotifications();
@@ -379,7 +378,7 @@ export const MainTabs = () => {
   return (
     <>
       <LinearGradient
-        colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
+        colors={nativeGradients.canvasSubtle}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
