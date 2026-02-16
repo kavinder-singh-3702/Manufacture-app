@@ -43,12 +43,12 @@ export const FormStepIndicator = ({
                   color: isActive || isCompleted ? colors.text : colors.textMuted,
                 },
               ]}
-              numberOfLines={1}
+              numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}
             >
               {step.title}
             </Text>
             {step.subtitle ? (
-              <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {step.subtitle}
               </Text>
             ) : null}

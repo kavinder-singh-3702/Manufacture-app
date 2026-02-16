@@ -88,7 +88,7 @@ export const AdminListCard = ({
           <View style={styles.titleRow}>
             <Text
               style={[styles.title, { color: colors.text }]}
-              numberOfLines={1}
+              numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}
             >
               {title}
             </Text>
@@ -116,7 +116,7 @@ export const AdminListCard = ({
           {subtitle && (
             <Text
               style={[styles.subtitle, { color: colors.textMuted }]}
-              numberOfLines={1}
+              numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}
             >
               {subtitle}
             </Text>

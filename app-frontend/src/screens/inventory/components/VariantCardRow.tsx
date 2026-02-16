@@ -32,7 +32,7 @@ export const VariantCardRow = ({
     <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface }]}>
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {variantDisplayLabel(variant)}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={2}>

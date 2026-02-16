@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { ResponsiveScreen } from "../../components/layout";
 import { RootStackParamList } from "../../navigation/types";
 import { ThemeMode } from "../../theme";
 
@@ -23,6 +24,7 @@ const MODE_OPTIONS: Array<{
 export const AppearanceScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { mode, resolvedMode, setMode } = useThemeMode();
+  const { isCompact, contentPadding, clamp } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const preview = useMemo(
@@ -36,18 +38,28 @@ export const AppearanceScreen = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+    <ResponsiveScreen scroll contentContainerStyle={{ padding: contentPadding, gap: spacing.md }} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}> 
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.surfaceElevated }]}> 
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: colors.surfaceElevated,
+              width: isCompact ? 34 : 36,
+              height: isCompact ? 34 : 36,
+            },
+          ]}
+        > 
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>Appearance</Text>
+          <Text style={[styles.title, { color: colors.text, fontSize: clamp(18, 16, 18) }]}>Appearance</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Theme mode for the whole app</Text>
         </View>
       </View>
 
-      <View style={{ padding: spacing.lg, gap: spacing.md }}>
+      <View style={{ gap: spacing.md }}>
         {MODE_OPTIONS.map((option) => {
           const isActive = mode === option.id;
 
@@ -98,7 +110,7 @@ export const AppearanceScreen = () => {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </ResponsiveScreen>
   );
 };
 

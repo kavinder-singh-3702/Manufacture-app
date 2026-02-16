@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Alert,
   Animated,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,14 +33,23 @@ import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole } from "../constants/roles";
 import { ComplianceStatus } from "../types/company";
-import { scale, moderateScale, wp } from "../utils/responsive";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import { scale, moderateScale } from "../utils/responsive";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
+import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
 
 // ============================================================
 // TYPES
 // ============================================================
-type CategoryItem = { id: string; title: string; count: number; icon: string; bgColor: string; totalQuantity?: number };
+type CategoryItem = {
+  id: string;
+  title: string;
+  displayTitle: string;
+  count: number;
+  icon: string;
+  bgColor: string;
+  totalQuantity?: number;
+};
 type PromoOffer = {
   id: string;
   title: string;
@@ -92,6 +101,37 @@ const fallbackCategories: ProductCategory[] = CATEGORY_CATALOG.map((item) => ({
   count: 0,
   totalQuantity: 0,
 }));
+
+const CATEGORY_TITLE_BY_ID = new Map(CATEGORY_CATALOG.map((item) => [item.id, item.title]));
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => {
+      if (word.length <= 3 && /^[a-z0-9]+$/i.test(word)) {
+        return word.toUpperCase();
+      }
+      return `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
+    })
+    .join(" ");
+
+const normalizeCategoryTitle = (value?: string) => {
+  const cleaned = (value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "Other";
+  return toTitleCase(cleaned);
+};
+
+const toCategoryDisplayTitle = (title: string) => {
+  const compact = title
+    .replace(/\s+(Manufacturing|Industry|Industries)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return compact || title;
+};
 
 const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
   "food-beverage-manufacturing": { icon: "🍚", bgColor: "#FEF3C7" },
@@ -163,6 +203,8 @@ const AnimatedCounter = ({ value, duration = 1000, style }: { value: number; dur
 // ============================================================
 const AdminDashboardContent = () => {
   const { colors, spacing, radius } = useTheme();
+  const { width } = useWindowDimensions();
+  const { isXCompact, isCompact } = useResponsiveLayout();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -246,6 +288,9 @@ const AdminDashboardContent = () => {
   };
 
   const pendingCount = stats?.verifications.pending ?? 0;
+  const statGap = scale(12);
+  const statsCardWidth = Math.max(140, (width - spacing.lg * 2 - statGap) / 2);
+  const actionCardWidth = isXCompact ? scale(78) : isCompact ? scale(84) : scale(90);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -396,24 +441,32 @@ const AdminDashboardContent = () => {
                 value={stats?.today.newUsers ?? 0}
                 trend={stats?.today.newUsers && stats.today.newUsers > 0 ? "up" : undefined}
                 gradient={["#3B82F6", "#1D4ED8"]}
+                cardWidth={isXCompact ? undefined : statsCardWidth}
+                fullWidth={isXCompact}
               />
               <StatCard
                 icon="document-text"
                 label="New Requests"
                 value={stats?.today.newVerifications ?? 0}
                 gradient={["#8B5CF6", "#6D28D9"]}
+                cardWidth={isXCompact ? undefined : statsCardWidth}
+                fullWidth={isXCompact}
               />
               <StatCard
                 icon="checkmark-circle"
                 label="Approved"
                 value={stats?.verifications.approved ?? 0}
                 gradient={["#10B981", "#059669"]}
+                cardWidth={isXCompact ? undefined : statsCardWidth}
+                fullWidth={isXCompact}
               />
               <StatCard
                 icon="close-circle"
                 label="Rejected"
                 value={stats?.verifications.rejected ?? 0}
                 gradient={["#EF4444", "#DC2626"]}
+                cardWidth={isXCompact ? undefined : statsCardWidth}
+                fullWidth={isXCompact}
               />
             </View>
           </View>
@@ -435,18 +488,21 @@ const AdminDashboardContent = () => {
                 color="#F59E0B"
                 badge={pendingCount}
                 onPress={() => navigateToTab(routes.VERIFICATIONS)}
+                cardWidth={actionCardWidth}
               />
               <ActionCard
                 icon="people"
                 label="Users"
                 color="#3B82F6"
                 onPress={() => navigateToTab(routes.USERS)}
+                cardWidth={actionCardWidth}
               />
               <ActionCard
                 icon="chatbubbles"
                 label="Messages"
                 color="#6C63FF"
                 onPress={() => navigateToTab(routes.CHAT)}
+                cardWidth={actionCardWidth}
               />
             </ScrollView>
           </View>
@@ -503,9 +559,11 @@ type StatCardProps = {
   value: number;
   trend?: "up" | "down";
   gradient: [string, string];
+  cardWidth?: number;
+  fullWidth?: boolean;
 };
 
-const StatCard = ({ icon, label, value, trend, gradient }: StatCardProps) => {
+const StatCard = ({ icon, label, value, trend, gradient, cardWidth, fullWidth }: StatCardProps) => {
   const { colors, radius, spacing } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -518,7 +576,7 @@ const StatCard = ({ icon, label, value, trend, gradient }: StatCardProps) => {
   };
 
   return (
-    <Animated.View style={[styles.statCard, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={[styles.statCard, fullWidth ? { width: "100%" } : cardWidth ? { width: cardWidth } : null, { transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity
         activeOpacity={1}
         onPressIn={handlePressIn}
@@ -550,9 +608,10 @@ type ActionCardProps = {
   color: string;
   badge?: number;
   onPress: () => void;
+  cardWidth?: number;
 };
 
-const ActionCard = ({ icon, label, color, badge, onPress }: ActionCardProps) => {
+const ActionCard = ({ icon, label, color, badge, onPress, cardWidth }: ActionCardProps) => {
   const { colors, radius } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -571,7 +630,11 @@ const ActionCard = ({ icon, label, color, badge, onPress }: ActionCardProps) => 
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
-        style={[styles.actionCard, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border }]}
+        style={[
+          styles.actionCard,
+          cardWidth ? { width: cardWidth } : null,
+          { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border },
+        ]}
       >
         {badge !== undefined && badge > 0 && (
           <View style={[styles.actionBadge, { backgroundColor: "#EF4444" }]}>
@@ -598,7 +661,7 @@ type ManagementCardProps = {
 };
 
 const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPress }: ManagementCardProps) => {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, radius } = useTheme();
 
   return (
     <TouchableOpacity
@@ -610,8 +673,12 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
         <Ionicons name={icon} size={24} color={colors.primary} />
       </View>
       <View style={styles.managementContent}>
-        <Text style={[styles.managementTitle, { color: colors.text }]}>{title}</Text>
-        <Text style={[styles.managementSubtitle, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>
+        <AdaptiveSingleLineText style={[styles.managementTitle, { color: colors.text }]}>
+          {title}
+        </AdaptiveSingleLineText>
+        <AdaptiveSingleLineText style={[styles.managementSubtitle, { color: colors.textMuted }]}>
+          {subtitle}
+        </AdaptiveSingleLineText>
       </View>
       {badge !== undefined && badge > 0 && (
         <View style={[styles.managementBadge, { backgroundColor: badgeColor || colors.primary }]}>
@@ -619,7 +686,9 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
         </View>
       )}
       {value && (
-        <Text style={[styles.managementValue, { color: colors.textSecondary }]}>{value}</Text>
+        <AdaptiveSingleLineText style={[styles.managementValue, { color: colors.textSecondary }]}>
+          {value}
+        </AdaptiveSingleLineText>
       )}
       <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
     </TouchableOpacity>
@@ -631,6 +700,7 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
 // ============================================================
 const UserDashboardContent = () => {
   const { spacing, colors, radius } = useTheme();
+  const { isXCompact, isCompact } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const { user, requestSignup, requestLogin } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -655,6 +725,7 @@ const UserDashboardContent = () => {
     fallbackCategories.map((cat) => ({
       id: cat.id,
       title: cat.title,
+      displayTitle: toCategoryDisplayTitle(cat.title),
       count: cat.count,
       totalQuantity: cat.totalQuantity,
       icon: CATEGORY_META[cat.id]?.icon || "📦",
@@ -672,14 +743,25 @@ const UserDashboardContent = () => {
       const baseMap = new Map<string, CategoryItem>();
       CATEGORY_CATALOG.forEach((cat) => {
         const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
-        baseMap.set(cat.id, { id: cat.id, title: cat.title, count: 0, totalQuantity: 0, icon: meta.icon, bgColor: meta.bgColor });
+        baseMap.set(cat.id, {
+          id: cat.id,
+          title: cat.title,
+          displayTitle: toCategoryDisplayTitle(cat.title),
+          count: 0,
+          totalQuantity: 0,
+          icon: meta.icon,
+          bgColor: meta.bgColor,
+        });
       });
 
       (incoming || []).forEach((cat) => {
         const meta = CATEGORY_META[cat.id] || { icon: "📦", bgColor: "#E5E7EB" };
+        const resolvedTitle =
+          CATEGORY_TITLE_BY_ID.get(cat.id) || normalizeCategoryTitle(cat.title || cat.id);
         baseMap.set(cat.id, {
           id: cat.id,
-          title: cat.title,
+          title: resolvedTitle,
+          displayTitle: toCategoryDisplayTitle(resolvedTitle),
           count: cat.count,
           totalQuantity: cat.totalQuantity,
           icon: meta.icon,
@@ -980,6 +1062,7 @@ const UserDashboardContent = () => {
             ) : (
               <CategoryGrid
                 items={categories}
+                columns={isCompact ? 2 : 3}
                 onCategoryPress={(cat) => {
                   preferenceService.logEvent({ type: "view_category", category: cat.id }).catch(() => {});
                   navigation.navigate("CategoryProducts", { categoryId: cat.id, title: cat.title });
@@ -1101,11 +1184,26 @@ const NoAdHero = ({
   );
 };
 
-const CategoryGrid = ({ items, onCategoryPress }: { items: CategoryItem[]; onCategoryPress?: (category: CategoryItem) => void }) => {
+const CategoryGrid = ({
+  items,
+  columns = 3,
+  onCategoryPress,
+}: {
+  items: CategoryItem[];
+  columns?: number;
+  onCategoryPress?: (category: CategoryItem) => void;
+}) => {
   const { colors, spacing } = useTheme();
+  const { isXCompact, isCompact } = useResponsiveLayout();
+  const effectiveColumns = isCompact ? Math.min(columns, 2) : columns;
+  const circleSize = isXCompact ? scale(62) : isCompact ? scale(68) : scale(80);
+  const iconFontSize = isXCompact ? moderateScale(24) : isCompact ? moderateScale(28) : moderateScale(32);
+  const titleFontSize = isXCompact ? moderateScale(10) : isCompact ? moderateScale(10.5) : moderateScale(12);
+  const titleLineHeight = isXCompact ? moderateScale(13) : isCompact ? moderateScale(14) : moderateScale(16);
+  const titleMinimumScale = isCompact ? 0.52 : 0.62;
 
   const rows = items.reduce<CategoryItem[][]>((acc, item, index) => {
-    if (index % 3 === 0) acc.push([item]);
+    if (index % effectiveColumns === 0) acc.push([item]);
     else acc[acc.length - 1].push(item);
     return acc;
   }, []);
@@ -1115,10 +1213,32 @@ const CategoryGrid = ({ items, onCategoryPress }: { items: CategoryItem[]; onCat
       {rows.map((row, rowIndex) => (
         <View key={`cat-row-${rowIndex}`} style={styles.categoryRow}>
           {row.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.categoryItem} activeOpacity={0.7} onPress={() => onCategoryPress?.(item)}>
-              <View style={styles.categoryCircleOuter}>
-                <View style={[styles.categoryCircleSolid, { backgroundColor: item.bgColor }]}>
-                  <Text style={styles.categoryIcon}>{item.icon}</Text>
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.categoryItem,
+                styles.categoryItemSafe,
+                {
+                  flexBasis: `${100 / effectiveColumns}%`,
+                  maxWidth: `${100 / effectiveColumns}%`,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => onCategoryPress?.(item)}
+            >
+              <View style={[styles.categoryCircleOuter, { marginBottom: isXCompact ? scale(6) : scale(10) }]}>
+                <View
+                  style={[
+                    styles.categoryCircleSolid,
+                    {
+                      width: circleSize,
+                      height: circleSize,
+                      borderRadius: circleSize / 2,
+                      backgroundColor: item.bgColor,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.categoryIcon, { fontSize: iconFontSize }]}>{item.icon}</Text>
                 </View>
                 {item.count > 0 && (
                   <View style={styles.countBadgeSolid}>
@@ -1126,10 +1246,34 @@ const CategoryGrid = ({ items, onCategoryPress }: { items: CategoryItem[]; onCat
                   </View>
                 )}
               </View>
-              <Text style={[styles.categoryTitleCircle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+              <AdaptiveTwoLineText
+                containerStyle={styles.categoryTitleWrap}
+                minimumFontScale={titleMinimumScale}
+                style={[
+                  styles.categoryTitleCircle,
+                  { color: colors.text, fontSize: titleFontSize, lineHeight: titleLineHeight },
+                ]}
+              >
+                {item.displayTitle || item.title}
+              </AdaptiveTwoLineText>
             </TouchableOpacity>
           ))}
-          {row.length < 3 && Array(3 - row.length).fill(null).map((_, i) => <View key={`empty-${i}`} style={styles.categoryItem} />)}
+          {row.length < effectiveColumns &&
+            Array(effectiveColumns - row.length)
+              .fill(null)
+              .map((_, i) => (
+                <View
+                  key={`empty-${i}`}
+                  style={[
+                    styles.categoryItem,
+                    styles.categoryItemSafe,
+                    {
+                      flexBasis: `${100 / effectiveColumns}%`,
+                      maxWidth: `${100 / effectiveColumns}%`,
+                    },
+                  ]}
+                />
+              ))}
         </View>
       ))}
     </View>
@@ -1200,7 +1344,7 @@ const styles = StyleSheet.create({
 
   // Stats Grid
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: scale(12) },
-  statCard: { width: (SCREEN_WIDTH - scale(52)) / 2 },
+  statCard: { width: "48%" },
   statCardInner: { padding: scale(16), borderWidth: 1, flexDirection: "row", alignItems: "center", gap: scale(12) },
   statCardIcon: { width: scale(40), height: scale(40), borderRadius: scale(12), alignItems: "center", justifyContent: "center" },
   statCardContent: { flex: 1 },
@@ -1220,7 +1364,7 @@ const styles = StyleSheet.create({
   // Management Card
   managementCard: { flexDirection: "row", alignItems: "center", padding: scale(16), borderWidth: 1, gap: scale(14) },
   managementIcon: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
-  managementContent: { flex: 1 },
+  managementContent: { flex: 1, minWidth: 0 },
   managementTitle: { fontSize: moderateScale(16), fontWeight: "600" },
   managementSubtitle: { fontSize: moderateScale(13), marginTop: scale(2) },
   managementBadge: { minWidth: scale(24), height: scale(24), borderRadius: scale(12), alignItems: "center", justifyContent: "center", paddingHorizontal: scale(8) },
@@ -1276,12 +1420,14 @@ const styles = StyleSheet.create({
   noAdButtonGhostTextPremium: { fontSize: moderateScale(14), fontWeight: "700", color: "#1F2937" },
 
   // Category Grid
-  categoryRow: { flexDirection: "row", justifyContent: "space-between" },
-  categoryItem: { flex: 1, alignItems: "center", paddingHorizontal: scale(4) },
+  categoryRow: { flexDirection: "row", justifyContent: "flex-start", flexWrap: "wrap" },
+  categoryItem: { alignItems: "center", paddingHorizontal: scale(4), minWidth: 0, marginBottom: scale(8) },
+  categoryItemSafe: { flexShrink: 1 },
   categoryCircleOuter: { position: "relative", marginBottom: scale(10) },
   categoryCircleSolid: { width: scale(80), height: scale(80), borderRadius: scale(40), alignItems: "center", justifyContent: "center" },
   categoryIcon: { fontSize: moderateScale(32) },
   countBadgeSolid: { position: "absolute", top: scale(-4), right: scale(-4), backgroundColor: "#6366F1", paddingHorizontal: scale(8), paddingVertical: scale(4), borderRadius: scale(12), zIndex: 1 },
   countBadgeTextSolid: { color: "#FFFFFF", fontSize: moderateScale(10), fontWeight: "700" },
-  categoryTitleCircle: { fontSize: moderateScale(12), fontWeight: "600", textAlign: "center", lineHeight: moderateScale(16), maxWidth: scale(90) },
+  categoryTitleWrap: { width: "100%", minWidth: 0, alignItems: "center", paddingHorizontal: scale(2) },
+  categoryTitleCircle: { fontSize: moderateScale(12), fontWeight: "600", textAlign: "center", lineHeight: moderateScale(16), width: "100%" },
 });

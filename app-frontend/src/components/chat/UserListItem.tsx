@@ -62,7 +62,7 @@ export const UserListItem = ({ user, onPress }: UserListItemProps) => {
         {/* User info */}
         <View style={styles.userInfo}>
           <View style={styles.nameRow}>
-            <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               {user.displayName}
             </Text>
             {/* Unread badge */}
@@ -74,11 +74,11 @@ export const UserListItem = ({ user, onPress }: UserListItemProps) => {
               </View>
             )}
           </View>
-          <Text style={[styles.userEmail, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.userEmail, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {user.email}
           </Text>
           {user.companyName && (
-            <Text style={[styles.companyName, { color: colors.textSecondary }]} numberOfLines={1}>
+            <Text style={[styles.companyName, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               {user.companyName}
             </Text>
           )}

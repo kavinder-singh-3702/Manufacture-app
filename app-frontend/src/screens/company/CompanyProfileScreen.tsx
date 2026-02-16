@@ -3,18 +3,20 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { ResponsiveScreen } from "../../components/layout/ResponsiveScreen";
+import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../../components/text/AdaptiveTwoLineText";
 import { RootStackParamList } from "../../navigation/types";
 import { companyService } from "../../services/company.service";
 import { ApiError } from "../../services/http";
@@ -26,6 +28,7 @@ import { CompanyEditorSection, CompanyProfileFormState } from "./components/type
 import { CompanyProfileTab, CompanyProfileTabs } from "./components/CompanyProfileTabs";
 import { CompanyComplianceSection } from "./components/CompanyComplianceSection";
 import { CompanyProductsSection } from "./components/CompanyProductsSection";
+import { useCompanyProfileLayout } from "./components/companyProfile.layout";
 
 type CompanyProfileRoute = RouteProp<RootStackParamList, "CompanyProfile">;
 
@@ -72,11 +75,12 @@ const cleanObject = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
 
 export const CompanyProfileScreen = () => {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { isCompact } = useResponsiveLayout();
+  const layout = useCompanyProfileLayout();
+  const styles = useMemo(() => createStyles(colors, layout), [colors, layout]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<CompanyProfileRoute>();
   const { user, refreshUser } = useAuth();
-  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState<CompanyProfileTab>("overview");
   const [productsTotal, setProductsTotal] = useState(0);
@@ -237,23 +241,33 @@ export const CompanyProfileScreen = () => {
   };
 
   const renderTopBanner = () => (
-    <View style={styles.bannerStack}>
-      {(error || logoError) && (
-        <View style={[styles.alertBanner, { borderColor: colors.error + "55", backgroundColor: colors.error + "14" }]}>
-          <Ionicons name="alert-circle" size={16} color={colors.error} />
-          <Text style={[styles.alertText, { color: colors.error }]} numberOfLines={2}>
-            {error || logoError}
-          </Text>
-          <TouchableOpacity onPress={() => { setError(null); setLogoError(null); }}>
-            <Ionicons name="close" size={16} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {banner && (
+    <View style={[styles.bannerStack, { paddingHorizontal: layout.edgePadding }]}> 
+      {(error || logoError) ? (
         <View
           style={[
             styles.alertBanner,
+            isCompact && styles.alertBannerCompact,
+            { borderColor: colors.error + "55", backgroundColor: colors.error + "14" },
+          ]}
+        >
+          <Ionicons name="alert-circle" size={16} color={colors.error} />
+          <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.alertText, { color: colors.error }]}>
+            {error || logoError}
+          </AdaptiveTwoLineText>
+          <TouchableOpacity onPress={() => {
+            setError(null);
+            setLogoError(null);
+          }}>
+            <Ionicons name="close" size={16} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {banner ? (
+        <View
+          style={[
+            styles.alertBanner,
+            isCompact && styles.alertBannerCompact,
             {
               borderColor: banner.type === "success" ? colors.success + "55" : colors.error + "55",
               backgroundColor: banner.type === "success" ? colors.success + "14" : colors.error + "14",
@@ -265,27 +279,34 @@ export const CompanyProfileScreen = () => {
             size={16}
             color={banner.type === "success" ? colors.success : colors.error}
           />
-          <Text
+          <AdaptiveTwoLineText
+            minimumFontScale={0.72}
             style={[
               styles.alertText,
-              {
-                color: banner.type === "success" ? colors.success : colors.error,
-              },
+              { color: banner.type === "success" ? colors.success : colors.error },
             ]}
-            numberOfLines={2}
           >
             {banner.message}
-          </Text>
+          </AdaptiveTwoLineText>
           <TouchableOpacity onPress={() => setBanner(null)}>
-            <Ionicons name="close" size={16} color={banner.type === "success" ? colors.success : colors.error} />
+            <Ionicons
+              name="close"
+              size={16}
+              color={banner.type === "success" ? colors.success : colors.error}
+            />
           </TouchableOpacity>
         </View>
-      )}
+      ) : null}
     </View>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}> 
+    <ResponsiveScreen
+      scroll={false}
+      paddingHorizontal={0}
+      safeAreaEdges={["top", "left", "right", "bottom"]}
+      style={styles.container}
+    >
       <LinearGradient
         colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
         start={{ x: 0, y: 0 }}
@@ -293,16 +314,39 @@ export const CompanyProfileScreen = () => {
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}> 
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: colors.border,
+            backgroundColor: colors.surface,
+            minHeight: layout.headerHeight,
+            paddingHorizontal: layout.edgePadding,
+          },
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}
+          style={[
+            styles.backButton,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceElevated,
+              width: layout.iconButtonSize,
+              height: layout.iconButtonSize,
+              borderRadius: layout.compact ? 10 : 12,
+            },
+          ]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
+          <Ionicons name="arrow-back" size={layout.compact ? 18 : 20} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTextWrap}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Company Profile</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>Overview, products and compliance</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.headerTitle, { color: colors.text, fontSize: layout.titleSize }]}>
+            Company Profile
+          </AdaptiveSingleLineText>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.headerSubtitle, { color: colors.textMuted, fontSize: layout.subtitleSize }]}>
+            Overview, products and compliance
+          </AdaptiveSingleLineText>
         </View>
       </View>
 
@@ -311,25 +355,36 @@ export const CompanyProfileScreen = () => {
       {loading ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loaderText, { color: colors.textMuted }]}>Loading company...</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.loaderText, { color: colors.textMuted }]}> 
+            Loading company...
+          </AdaptiveSingleLineText>
         </View>
       ) : !targetCompanyId ? (
         <View style={styles.loaderWrap}>
-          <Ionicons name="business-outline" size={48} color={colors.textMuted} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No active company</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Select or create a company to continue.</Text>
+          <Ionicons name="business-outline" size={44} color={colors.textMuted} />
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.emptyTitle, { color: colors.text }]}>No active company</AdaptiveSingleLineText>
+          <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+            Select or create a company to continue.
+          </AdaptiveTwoLineText>
           {!isReadOnly ? (
             <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.primaryButton,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: layout.compact ? 10 : 12,
+                  minHeight: layout.ctaHeight,
+                },
+              ]}
               onPress={() => navigation.navigate("CompanyCreate")}
             >
-              <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>Create Company</Text>
+              <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>Create Company</AdaptiveSingleLineText>
             </TouchableOpacity>
           ) : null}
         </View>
       ) : company ? (
         <View style={styles.contentWrap}>
-          <View style={styles.tabsWrap}>
+          <View style={[styles.tabsWrap, { paddingHorizontal: layout.edgePadding }]}> 
             <CompanyProfileTabs
               activeTab={activeTab}
               onChange={setActiveTab}
@@ -338,7 +393,7 @@ export const CompanyProfileScreen = () => {
           </View>
 
           {activeTab === "products" ? (
-            <View style={styles.productsWrap}>
+            <View style={[styles.productsWrap, { paddingHorizontal: layout.edgePadding }]}> 
               <CompanyProductsSection
                 companyId={company.id}
                 isReadOnly={isReadOnly}
@@ -352,9 +407,14 @@ export const CompanyProfileScreen = () => {
               style={styles.scrollView}
               contentContainerStyle={[
                 styles.scrollContent,
-                { paddingBottom: insets.bottom + 24 },
+                {
+                  paddingHorizontal: layout.edgePadding,
+                  paddingBottom: 24,
+                  gap: layout.sectionGap,
+                },
               ]}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               <CompanyHero
                 company={company}
@@ -364,29 +424,64 @@ export const CompanyProfileScreen = () => {
               />
 
               {isReadOnly ? (
-                <View style={[styles.readOnlyBanner, { borderColor: colors.info + "55", backgroundColor: colors.info + "14" }]}>
+                <View
+                  style={[
+                    styles.readOnlyBanner,
+                    {
+                      borderColor: colors.info + "55",
+                      backgroundColor: colors.info + "14",
+                      borderRadius: layout.compact ? 10 : 12,
+                      minHeight: layout.ctaHeight,
+                    },
+                  ]}
+                >
                   <Ionicons name="eye-outline" size={18} color={colors.info} />
-                  <Text style={[styles.readOnlyText, { color: colors.info }]}>Admin mode: this company profile is read-only.</Text>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.readOnlyText, { color: colors.info }]}>
+                    Admin mode: this company profile is read-only.
+                  </AdaptiveTwoLineText>
                 </View>
               ) : null}
 
               {activeTab === "overview" ? (
                 <>
                   {needsVerification && canEdit ? (
-                    <View style={[styles.verifyCard, { borderColor: colors.warning + "55", backgroundColor: colors.warning + "12" }]}>
-                      <View style={styles.verifyHeader}>
+                    <View
+                      style={[
+                        styles.verifyCard,
+                        {
+                          borderColor: colors.warning + "55",
+                          backgroundColor: colors.warning + "12",
+                          borderRadius: layout.compact ? 12 : 14,
+                          padding: layout.cardPadding,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.verifyHeader, isCompact && styles.verifyHeaderCompact]}>
                         <Ionicons name="shield-checkmark-outline" size={18} color={colors.warning} />
                         <View style={styles.verifyTextWrap}>
-                          <Text style={[styles.verifyTitle, { color: colors.text }]}>Verification pending</Text>
-                          <Text style={[styles.verifySubtitle, { color: colors.textMuted }]}>Submit company documents to boost trust signals.</Text>
+                          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.verifyTitle, { color: colors.text }]}> 
+                            Verification pending
+                          </AdaptiveSingleLineText>
+                          <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.verifySubtitle, { color: colors.textMuted }]}>
+                            Submit company documents to boost trust signals.
+                          </AdaptiveTwoLineText>
                         </View>
                       </View>
                       <TouchableOpacity
-                        style={[styles.verifyButton, { backgroundColor: colors.warning }]}
+                        style={[
+                          styles.verifyButton,
+                          {
+                            backgroundColor: colors.warning,
+                            borderRadius: layout.compact ? 10 : 12,
+                            minHeight: layout.ctaHeight,
+                          },
+                        ]}
                         onPress={openVerification}
                         activeOpacity={0.9}
                       >
-                        <Text style={[styles.verifyButtonText, { color: colors.textOnPrimary }]}>Open Verification</Text>
+                        <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.verifyButtonText, { color: colors.textOnPrimary }]}>
+                          Open Verification
+                        </AdaptiveSingleLineText>
                         <Ionicons name="arrow-forward" size={16} color={colors.textOnPrimary} />
                       </TouchableOpacity>
                     </View>
@@ -422,28 +517,26 @@ export const CompanyProfileScreen = () => {
           saving={saving}
         />
       ) : null}
-    </View>
+    </ResponsiveScreen>
   );
 };
 
-const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
+const createStyles = (
+  colors: ReturnType<typeof useTheme>["colors"],
+  layout: ReturnType<typeof useCompanyProfileLayout>
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
     header: {
-      minHeight: 62,
       borderBottomWidth: 1,
-      paddingHorizontal: 16,
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
     },
     backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
       borderWidth: 1,
       alignItems: "center",
       justifyContent: "center",
@@ -451,19 +544,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
     headerTextWrap: {
       flex: 1,
       minWidth: 0,
+      gap: 2,
     },
     headerTitle: {
-      fontSize: 18,
       fontWeight: "800",
       letterSpacing: -0.3,
+      minWidth: 0,
+      flexShrink: 1,
     },
     headerSubtitle: {
-      marginTop: 2,
-      fontSize: 12,
       fontWeight: "600",
+      minWidth: 0,
+      flexShrink: 1,
     },
     bannerStack: {
-      paddingHorizontal: 16,
       paddingTop: 10,
       gap: 8,
     },
@@ -475,11 +569,17 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      minWidth: 0,
+    },
+    alertBannerCompact: {
+      alignItems: "flex-start",
     },
     alertText: {
       flex: 1,
       fontSize: 12,
-      fontWeight: "600",
+      fontWeight: "700",
+      minWidth: 0,
+      flexShrink: 1,
     },
     loaderWrap: {
       flex: 1,
@@ -491,98 +591,109 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
     loaderText: {
       fontSize: 14,
       fontWeight: "600",
+      minWidth: 0,
+      flexShrink: 1,
     },
     emptyTitle: {
-      fontSize: 18,
+      fontSize: layout.compact ? 16 : 18,
       fontWeight: "800",
       marginTop: 4,
+      minWidth: 0,
+      flexShrink: 1,
     },
     emptySubtitle: {
-      fontSize: 13,
-      fontWeight: "500",
+      fontSize: layout.compact ? 12 : 13,
+      fontWeight: "600",
       textAlign: "center",
+      minWidth: 0,
+      flexShrink: 1,
     },
     primaryButton: {
       marginTop: 10,
-      minHeight: 42,
-      borderRadius: 12,
       paddingHorizontal: 18,
       alignItems: "center",
       justifyContent: "center",
     },
     primaryButtonText: {
-      fontSize: 14,
+      fontSize: layout.compact ? 13 : 14,
       fontWeight: "800",
+      minWidth: 0,
+      flexShrink: 1,
     },
     contentWrap: {
       flex: 1,
     },
     tabsWrap: {
-      paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 8,
     },
     productsWrap: {
       flex: 1,
-      paddingHorizontal: 16,
       paddingBottom: 8,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: 16,
       paddingTop: 4,
       gap: 12,
     },
     readOnlyBanner: {
-      minHeight: 44,
-      borderRadius: 12,
       borderWidth: 1,
       paddingHorizontal: 12,
       paddingVertical: 10,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      minWidth: 0,
     },
     readOnlyText: {
       flex: 1,
-      fontSize: 12,
+      fontSize: layout.compact ? 11 : 12,
       fontWeight: "700",
+      minWidth: 0,
+      flexShrink: 1,
     },
     verifyCard: {
       borderWidth: 1,
-      borderRadius: 14,
-      padding: 12,
       gap: 10,
     },
     verifyHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      minWidth: 0,
+    },
+    verifyHeaderCompact: {
+      alignItems: "flex-start",
     },
     verifyTextWrap: {
       flex: 1,
       gap: 2,
+      minWidth: 0,
     },
     verifyTitle: {
-      fontSize: 14,
+      fontSize: layout.compact ? 13 : 14,
       fontWeight: "800",
+      minWidth: 0,
+      flexShrink: 1,
     },
     verifySubtitle: {
-      fontSize: 12,
-      fontWeight: "500",
+      fontSize: layout.compact ? 11 : 12,
+      fontWeight: "600",
+      minWidth: 0,
+      flexShrink: 1,
     },
     verifyButton: {
-      minHeight: 40,
-      borderRadius: 10,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
     },
     verifyButtonText: {
-      fontSize: 13,
+      fontSize: layout.compact ? 12 : 13,
       fontWeight: "800",
+      minWidth: 0,
+      flexShrink: 1,
     },
   });

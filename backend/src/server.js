@@ -4,6 +4,7 @@ const config = require('./config/env');
 const { connectDatabase, disconnectDatabase } = require('./config/database');
 const createLogger = require('./utils/logger');
 const { initSocket } = require('./socket');
+const { startNotificationDispatcher, stopNotificationDispatcher } = require('./modules/notifications/services/notificationDispatcher.service');
 
 const logger = createLogger('server');
 let server;
@@ -13,6 +14,7 @@ const start = async () => {
     await connectDatabase(config.mongoUri);
     server = http.createServer(app);
     initSocket(server);
+    startNotificationDispatcher();
     server.listen(config.port, () => {
       logger.info(`Server running on port ${config.port}`);
     });
@@ -27,6 +29,7 @@ const shutdown = async (signal) => {
   if (server) {
     server.close();
   }
+  stopNotificationDispatcher();
   await disconnectDatabase();
   process.exit(0);
 };

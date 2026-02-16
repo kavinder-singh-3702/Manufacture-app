@@ -1,7 +1,17 @@
-import { Modal, View, TouchableWithoutFeedback, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import {
+  Modal,
+  View,
+  TouchableWithoutFeedback,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { Typography } from "../common/Typography";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 
 type MenuItem = {
   label: string;
@@ -21,6 +31,10 @@ type SidebarMenuProps = {
 
 export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, menuItems }: SidebarMenuProps) => {
   const { spacing, radius, colors } = useTheme();
+  const { resolvedMode, toggleMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const modeLabel = isDark ? "Dark mode" : "Light mode";
+  const modeIcon = isDark ? "moon" : "sunny";
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -67,79 +81,105 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFill, { borderRadius: radius.md }]}
               />
-              <Typography variant="subheading" color="#FFFFFF" style={styles.headerTitle}>
-                {headerTitle}
-              </Typography>
-              {headerSubtitle ? (
-                <Typography variant="body" color="rgba(255,255,255,0.8)" style={{ marginTop: spacing.xs, fontSize: 13 }}>
-                  {headerSubtitle}
-                </Typography>
-              ) : null}
-            </LinearGradient>
-
-            {menuItems.map((item, index) => {
-              const isDanger = item.tone === "danger";
-              const isActive = item.isActive || false;
-              const isLastItem = index === menuItems.length - 1;
-
-              const getItemStyles = () => {
-                if (isDanger) {
-                  return {
-                    bg: colors.error + "1a",
-                    border: colors.error,
-                    shadowColor: colors.error,
-                  };
-                }
-                if (isActive) {
-                  return {
-                    bg: colors.primary + "24",
-                    border: colors.primary,
-                    shadowColor: colors.primary,
-                  };
-                }
-                return {
-                  bg: colors.surfaceElevated,
-                  border: "transparent",
-                  shadowColor: "#000",
-                };
-              };
-
-              const itemStyles = getItemStyles();
-
-              return (
-                <TouchableOpacity
-                  key={item.label}
-                  onPress={item.onPress}
-                  style={[
-                    styles.menuItem,
-                    {
-                      backgroundColor: itemStyles.bg,
-                      borderLeftWidth: 3,
-                      borderLeftColor: itemStyles.border,
-                      borderRadius: radius.md,
-                      paddingVertical: spacing.md,
-                      paddingHorizontal: spacing.md,
-                      marginBottom: isLastItem ? 0 : spacing.sm,
-                      shadowColor: itemStyles.shadowColor,
-                      shadowOffset: { width: 0, height: isActive ? 4 : 2 },
-                      shadowOpacity: isActive ? 0.25 : 0.1,
-                      shadowRadius: isActive ? 8 : 4,
-                      elevation: isActive ? 6 : 2,
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Typography variant="body" color={isDanger ? colors.error : colors.text} style={styles.menuLabel}>
-                    {item.label}
+              <View style={styles.headerTopRow}>
+                <View style={{ flex: 1 }}>
+                  <Typography variant="subheading" color="#FFFFFF" style={styles.headerTitle}>
+                    {headerTitle}
                   </Typography>
-                  {item.description ? (
-                    <Typography variant="caption" color={isDanger ? colors.errorLight : colors.textMuted} style={{ marginTop: spacing.xs, fontSize: 12 }}>
-                      {item.description}
+                  {headerSubtitle ? (
+                    <Typography variant="body" color="rgba(255,255,255,0.8)" style={{ marginTop: spacing.xs, fontSize: 13 }}>
+                      {headerSubtitle}
                     </Typography>
                   ) : null}
+                </View>
+                <TouchableOpacity
+                  onPress={toggleMode}
+                  style={[styles.themeToggleBtn, { borderRadius: radius.pill }]}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Switch theme. Current ${modeLabel}`}
+                >
+                  <Ionicons name={modeIcon} size={16} color="#FFFFFF" />
                 </TouchableOpacity>
-              );
-            })}
+              </View>
+              <View style={[styles.modePill, { borderRadius: radius.pill }]}>
+                <Ionicons name={modeIcon} size={13} color="rgba(255,255,255,0.85)" />
+                <Typography variant="caption" color="rgba(255,255,255,0.85)" style={{ fontSize: 11, fontWeight: "700" }}>
+                  {modeLabel}
+                </Typography>
+              </View>
+            </LinearGradient>
+
+            <ScrollView
+              style={styles.listScroll}
+              contentContainerStyle={{ paddingBottom: spacing.sm }}
+              showsVerticalScrollIndicator
+              bounces
+            >
+              {menuItems.map((item, index) => {
+                const isDanger = item.tone === "danger";
+                const isActive = item.isActive || false;
+                const isLastItem = index === menuItems.length - 1;
+
+                const getItemStyles = () => {
+                  if (isDanger) {
+                    return {
+                      bg: colors.error + "1a",
+                      border: colors.error,
+                      shadowColor: colors.error,
+                    };
+                  }
+                  if (isActive) {
+                    return {
+                      bg: colors.primary + "24",
+                      border: colors.primary,
+                      shadowColor: colors.primary,
+                    };
+                  }
+                  return {
+                    bg: colors.surfaceElevated,
+                    border: "transparent",
+                    shadowColor: "#000",
+                  };
+                };
+
+                const itemStyles = getItemStyles();
+
+                return (
+                  <TouchableOpacity
+                    key={item.label}
+                    onPress={item.onPress}
+                    style={[
+                      styles.menuItem,
+                      {
+                        backgroundColor: itemStyles.bg,
+                        borderLeftWidth: 3,
+                        borderLeftColor: itemStyles.border,
+                        borderRadius: radius.md,
+                        paddingVertical: spacing.md,
+                        paddingHorizontal: spacing.md,
+                        marginBottom: isLastItem ? 0 : spacing.sm,
+                        shadowColor: itemStyles.shadowColor,
+                        shadowOffset: { width: 0, height: isActive ? 4 : 2 },
+                        shadowOpacity: isActive ? 0.25 : 0.1,
+                        shadowRadius: isActive ? 8 : 4,
+                        elevation: isActive ? 6 : 2,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Typography variant="body" color={isDanger ? colors.error : colors.text} style={styles.menuLabel}>
+                      {item.label}
+                    </Typography>
+                    {item.description ? (
+                      <Typography variant="caption" color={isDanger ? colors.errorLight : colors.textMuted} style={{ marginTop: spacing.xs, fontSize: 12 }}>
+                        {item.description}
+                      </Typography>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </LinearGradient>
         </SafeAreaView>
       </View>
@@ -171,6 +211,35 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  themeToggleBtn: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+  },
+  modePill: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    minHeight: 24,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  listScroll: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,

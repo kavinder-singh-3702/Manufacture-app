@@ -4,7 +4,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../hooks/useTheme";
+import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useAuth } from "../hooks/useAuth";
 import { AppRole } from "../constants/roles";
 import { productService, type Product, type ProductStats } from "../services/product.service";
@@ -25,6 +25,9 @@ import { QuickAdjustStockSheet } from "./inventory/components/QuickAdjustStockSh
 import { ProductVariant } from "../services/productVariant.service";
 import { VariantChoiceSelection, VariantChoiceSheet } from "./inventory/components/VariantChoiceSheet";
 import { hasVariants } from "./inventory/components/variantDomain";
+import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
+import { useInventoryDashboardLayout } from "./inventory/components/inventoryDashboard.layout";
 import Svg, { Circle } from "react-native-svg";
 
 const formatINR = (value: number) => {
@@ -46,6 +49,8 @@ type AlertMode = "low_stock" | "out_of_stock";
 
 export const StatsScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { isXCompact, isCompact, contentPadding } = useResponsiveLayout();
+  const layout = useInventoryDashboardLayout();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, requestLogin } = useAuth();
@@ -250,6 +255,9 @@ export const StatsScreen = () => {
     warm: colors.surfaceOverlayAccent,
   }), [colors.surfaceOverlayAccent, colors.surfaceOverlayPrimary, colors.surfaceOverlaySecondary]);
 
+  const cardPadding = layout.cardPadding;
+  const topHorizontalPadding = isXCompact ? contentPadding : spacing.lg;
+
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Background */}
@@ -281,20 +289,53 @@ export const StatsScreen = () => {
       />
 
       {/* Sticky top bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + spacing.md, paddingHorizontal: spacing.lg }]}>
-        <Text style={[styles.topTitle, { color: colors.text }]}>Inventory</Text>
+      <View
+        style={[
+          styles.topBar,
+          {
+            minHeight: layout.headerHeight,
+            paddingTop: insets.top + spacing.sm,
+            paddingBottom: spacing.sm,
+            paddingHorizontal: topHorizontalPadding,
+          },
+        ]}
+      >
+        <AdaptiveSingleLineText
+          allowOverflowScroll={false}
+          style={[styles.topTitle, { color: colors.text, fontSize: layout.titleSize }]}
+        >
+          Inventory
+        </AdaptiveSingleLineText>
         <View style={styles.topActions}>
           <TouchableOpacity
             onPress={openMyProductsSearch}
             activeOpacity={0.8}
-            style={[styles.topIconButton, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}
+            style={[
+              styles.topIconButton,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                width: layout.iconButtonSize,
+                height: layout.iconButtonSize,
+                borderRadius: layout.compact ? 10 : 12,
+              },
+            ]}
           >
             <Ionicons name="search" size={18} color={colors.text} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate("AddProduct")}
             activeOpacity={0.85}
-            style={[styles.topIconButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+            style={[
+              styles.topIconButton,
+              {
+                backgroundColor: colors.primary,
+                borderColor: colors.primary,
+                width: layout.iconButtonSize,
+                height: layout.iconButtonSize,
+                borderRadius: layout.compact ? 10 : 12,
+              },
+            ]}
           >
             <Ionicons name="add" size={20} color={colors.textOnPrimary} />
           </TouchableOpacity>
@@ -303,51 +344,75 @@ export const StatsScreen = () => {
 
       {/* Guest / company gating */}
       {isGuest ? (
-        <View style={[styles.gateWrap, { paddingHorizontal: spacing.lg }]}>
-          <LightCard tone="soft" style={{ padding: spacing.lg }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={[styles.gateWrap, { paddingHorizontal: topHorizontalPadding }]}>
+          <LightCard tone="soft" style={{ padding: cardPadding }}>
+            <View style={[styles.gateRow, isCompact && styles.gateRowStack]}>
               <View style={[styles.gateIcon, { backgroundColor: "rgba(108,99,255,0.12)", borderColor: "rgba(108,99,255,0.20)", borderRadius: radius.lg }]}>
                 <Ionicons name="lock-closed" size={18} color={colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.gateTitle, { color: colors.textOnLightSurface }]}>Sign in to manage inventory</Text>
-                <Text style={[styles.gateSubtitle, { color: colors.subtextOnLightSurface }]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.gateTitle, { color: colors.textOnLightSurface }]}>
+                  Sign in to manage inventory
+                </AdaptiveSingleLineText>
+                <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.gateSubtitle, { color: colors.subtextOnLightSurface }]}>
                   Track stock, fix alerts, and adjust quantities in seconds.
-                </Text>
+                </AdaptiveTwoLineText>
               </View>
             </View>
 
             <TouchableOpacity
               onPress={requestLogin}
               activeOpacity={0.9}
-              style={[styles.primaryCta, { backgroundColor: colors.primary, borderRadius: radius.lg, marginTop: spacing.md }]}
+              style={[
+                styles.primaryCta,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.lg,
+                  marginTop: spacing.md,
+                  minHeight: layout.ctaHeight,
+                },
+              ]}
             >
               <Ionicons name="log-in-outline" size={18} color={colors.textOnPrimary} />
-              <Text style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>Login</Text>
+              <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>
+                Login
+              </AdaptiveSingleLineText>
             </TouchableOpacity>
           </LightCard>
         </View>
       ) : !hasCompany ? (
-        <View style={[styles.gateWrap, { paddingHorizontal: spacing.lg }]}>
-          <LightCard tone="soft" style={{ padding: spacing.lg }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={[styles.gateWrap, { paddingHorizontal: topHorizontalPadding }]}>
+          <LightCard tone="soft" style={{ padding: cardPadding }}>
+            <View style={[styles.gateRow, isCompact && styles.gateRowStack]}>
               <View style={[styles.gateIcon, { backgroundColor: "rgba(255,140,60,0.14)", borderColor: "rgba(255,140,60,0.22)", borderRadius: radius.lg }]}>
                 <Ionicons name="business" size={18} color={colors.accent} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.gateTitle, { color: colors.textOnLightSurface }]}>Select a company to continue</Text>
-                <Text style={[styles.gateSubtitle, { color: colors.subtextOnLightSurface }]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.gateTitle, { color: colors.textOnLightSurface }]}>
+                  Select a company to continue
+                </AdaptiveSingleLineText>
+                <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.gateSubtitle, { color: colors.subtextOnLightSurface }]}>
                   Inventory data is company-specific. Create a company profile to begin.
-                </Text>
+                </AdaptiveTwoLineText>
               </View>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate("CompanyCreate")}
               activeOpacity={0.9}
-              style={[styles.primaryCta, { backgroundColor: colors.primary, borderRadius: radius.lg, marginTop: spacing.md }]}
+              style={[
+                styles.primaryCta,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.lg,
+                  marginTop: spacing.md,
+                  minHeight: layout.ctaHeight,
+                },
+              ]}
             >
               <Ionicons name="add-circle-outline" size={18} color={colors.textOnPrimary} />
-              <Text style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>Create Company</Text>
+              <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>
+                Create Company
+              </AdaptiveSingleLineText>
             </TouchableOpacity>
           </LightCard>
         </View>
@@ -358,40 +423,52 @@ export const StatsScreen = () => {
         loading && !stats && !refreshing ? (
           <View style={[styles.centered, { paddingTop: spacing.xxl }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading inventory…</Text>
+            <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.loadingText, { color: colors.textMuted }]}>
+              Loading inventory…
+            </AdaptiveSingleLineText>
           </View>
         ) : (
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
               paddingTop: spacing.lg,
-              paddingHorizontal: spacing.lg,
+              paddingHorizontal: topHorizontalPadding,
               paddingBottom: spacing.xxl + insets.bottom,
             }}
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           >
             {/* Today’s priorities */}
-            <LightCard style={{ padding: spacing.lg }}>
-              <Text style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>Today’s priorities</Text>
-              <Text style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
+            <LightCard style={{ padding: cardPadding }}>
+              <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>
+                Today’s priorities
+              </AdaptiveSingleLineText>
+              <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
                 Fix stock alerts first. Then keep catalog clean.
-              </Text>
+              </AdaptiveTwoLineText>
 
-              <View style={[styles.prioritiesRow, { marginTop: spacing.md }]}>
-                <View style={styles.healthBlock}>
+              <View style={[styles.prioritiesRow, isCompact && styles.prioritiesRowStack, { marginTop: spacing.md }]}>
+                <View style={[styles.healthBlock, isCompact && styles.healthBlockStack]}>
                   <View style={styles.ringWrap}>
                     <RingGauge value={healthPct} size={72} strokeWidth={7} color={healthColor} />
                     <View style={styles.ringCenter}>
-                      <Text style={[styles.ringValue, { color: colors.textOnLightSurface }]}>{healthPct}%</Text>
-                      <Text style={[styles.ringLabel, { color: colors.subtextOnLightSurface }]}>Health</Text>
+                      <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.ringValue, { color: colors.textOnLightSurface }]}>
+                        {healthPct}%
+                      </AdaptiveSingleLineText>
+                      <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.ringLabel, { color: colors.subtextOnLightSurface }]}>
+                        Health
+                      </AdaptiveSingleLineText>
                     </View>
                   </View>
-                  <Text style={[styles.healthTitle, { color: colors.textOnLightSurface }]}>Inventory health</Text>
-                  <Text style={[styles.healthHint, { color: colors.subtextOnLightSurface }]}>In-stock coverage</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.healthTitle, { color: colors.textOnLightSurface }]}>
+                    Inventory health
+                  </AdaptiveSingleLineText>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.healthHint, { color: colors.subtextOnLightSurface }]}>
+                    In-stock coverage
+                  </AdaptiveSingleLineText>
                 </View>
 
-                <View style={styles.counterCol}>
+                <View style={[styles.counterCol, isCompact && styles.counterColStack]}>
                   <CounterButton
                     label="Stockouts"
                     value={outCount}
@@ -409,48 +486,80 @@ export const StatsScreen = () => {
                 </View>
               </View>
 
-              <View style={[styles.ctaRow, { marginTop: spacing.md }]}>
+              <View style={[styles.ctaRow, isCompact && styles.ctaRowStack, { marginTop: spacing.md }]}>
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={() => navigation.navigate("MyProducts")}
-                  style={[styles.secondaryCta, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft }]}
+                  style={[
+                    styles.secondaryCta,
+                    {
+                      borderRadius: radius.lg,
+                      borderColor: colors.border,
+                      backgroundColor: colors.surfaceLightSoft,
+                      minHeight: layout.ctaHeight,
+                    },
+                  ]}
                 >
                   <Ionicons name="list" size={18} color={colors.textOnLightSurface} />
-                  <Text style={[styles.secondaryCtaText, { color: colors.textOnLightSurface }]}>View all products</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.secondaryCtaText, { color: colors.textOnLightSurface }]}>
+                    View all products
+                  </AdaptiveSingleLineText>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.9}
                   onPress={() => navigation.navigate("AddProduct")}
-                  style={[styles.primaryCta, { backgroundColor: colors.primary, borderRadius: radius.lg }]}
+                  style={[
+                    styles.primaryCta,
+                    { backgroundColor: colors.primary, borderRadius: radius.lg, minHeight: layout.ctaHeight },
+                  ]}
                 >
                   <Ionicons name="add" size={18} color={colors.textOnPrimary} />
-                  <Text style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>Add product</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.primaryCtaText, { color: colors.textOnPrimary }]}>
+                    Add product
+                  </AdaptiveSingleLineText>
                 </TouchableOpacity>
               </View>
             </LightCard>
 
             {/* Error banner */}
             {error ? (
-              <LightCard tone="soft" style={{ marginTop: spacing.md, padding: spacing.md }}>
+            <LightCard tone="soft" style={{ marginTop: spacing.md, padding: cardPadding }}>
                 <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
                   <Ionicons name="information-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.errorText, { color: colors.textOnLightSurface, flex: 1 }]}>{error}</Text>
+                  <AdaptiveTwoLineText
+                    minimumFontScale={0.72}
+                    style={[styles.errorText, { color: colors.textOnLightSurface, flex: 1 }]}
+                  >
+                    {error}
+                  </AdaptiveTwoLineText>
                   <TouchableOpacity onPress={fetchAll} activeOpacity={0.85}>
-                    <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+                    <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.retryText, { color: colors.primary }]}>
+                      Retry
+                    </AdaptiveSingleLineText>
                   </TouchableOpacity>
                 </View>
               </LightCard>
             ) : null}
 
             {/* Alerts queue */}
-            <LightCard style={{ marginTop: spacing.md, padding: spacing.lg }}>
-              <View style={styles.cardHeaderRow}>
+            <LightCard style={{ marginTop: spacing.md, padding: cardPadding }}>
+              <View style={[styles.cardHeaderRow, isCompact && styles.cardHeaderRowStack]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>Alerts queue</Text>
-                  <Text style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>Restock the few items that drive most issues.</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>
+                    Alerts queue
+                  </AdaptiveSingleLineText>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
+                    Restock the few items that drive most issues.
+                  </AdaptiveTwoLineText>
                 </View>
-                <View style={[styles.segment, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft }]}>
+                <View
+                  style={[
+                    styles.segment,
+                    isCompact && styles.segmentStack,
+                    { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft },
+                  ]}
+                >
                   <SegmentOption
                     active={alertMode === "low_stock"}
                     label="Low stock"
@@ -469,11 +578,13 @@ export const StatsScreen = () => {
                   <View style={[styles.emptyIconWrap, { backgroundColor: "rgba(74,222,128,0.16)", borderRadius: radius.lg }]}>
                     <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.emptyTitle, { color: colors.textOnLightSurface }]}>All good</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.subtextOnLightSurface }]}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.emptyTitle, { color: colors.textOnLightSurface }]}>
+                      All good
+                    </AdaptiveSingleLineText>
+                    <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptySubtitle, { color: colors.subtextOnLightSurface }]}>
                       No {alertMode === "low_stock" ? "low stock" : "stockout"} alerts right now.
-                    </Text>
+                    </AdaptiveTwoLineText>
                   </View>
                 </View>
               ) : (
@@ -493,18 +604,28 @@ export const StatsScreen = () => {
                           idx === alertItems.length - 1 && { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
                         ]}
                       >
-                        <TouchableOpacity activeOpacity={0.85} onPress={() => openEditProduct(p._id)} style={styles.alertRow}>
-                          <View style={{ flex: 1, gap: 6 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                              <Text style={[styles.alertName, { color: colors.textOnLightSurface }]} numberOfLines={1}>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() => openEditProduct(p._id)}
+                          style={[styles.alertRow, isCompact && styles.listRowStack]}
+                        >
+                          <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
+                              <AdaptiveSingleLineText
+                                minimumFontScale={0.72}
+                                style={[styles.alertName, { color: colors.textOnLightSurface, flex: 1 }]}
+                              >
                                 {p.name}
-                              </Text>
+                              </AdaptiveSingleLineText>
                               <StockStatusBadge status={status} size="sm" />
                             </View>
                             {p.sku ? (
-                              <Text style={[styles.alertSku, { color: colors.subtextOnLightSurface }]} numberOfLines={1}>
+                              <AdaptiveSingleLineText
+                                minimumFontScale={0.72}
+                                style={[styles.alertSku, { color: colors.subtextOnLightSurface }]}
+                              >
                                 SKU: {p.sku}
-                              </Text>
+                              </AdaptiveSingleLineText>
                             ) : null}
 
                             <View style={styles.metricsRow}>
@@ -519,6 +640,7 @@ export const StatsScreen = () => {
                             onPress={() => openAdjustSheet(p, computeSuggestedRestock(p))}
                             style={[
                               styles.addStockButton,
+                              isCompact && styles.rowActionButtonCompact,
                               {
                                 backgroundColor: "rgba(108,99,255,0.10)",
                                 borderColor: "rgba(108,99,255,0.22)",
@@ -527,7 +649,9 @@ export const StatsScreen = () => {
                             ]}
                           >
                             <Ionicons name="add" size={16} color={colors.primary} />
-                            <Text style={[styles.addStockText, { color: colors.primary }]}>Add stock</Text>
+                            <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.addStockText, { color: colors.primary }]}>
+                              Add stock
+                            </AdaptiveSingleLineText>
                           </TouchableOpacity>
                         </TouchableOpacity>
                       </View>
@@ -539,12 +663,18 @@ export const StatsScreen = () => {
                     activeOpacity={0.9}
                     style={[
                       styles.viewAllRow,
-                      { marginTop: spacing.md, borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft },
+                      {
+                        marginTop: spacing.md,
+                        borderRadius: radius.lg,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surfaceLightSoft,
+                        minHeight: layout.ctaHeight,
+                      },
                     ]}
                   >
-                    <Text style={[styles.viewAllText, { color: colors.textOnLightSurface }]}>
+                    <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.viewAllText, { color: colors.textOnLightSurface }]}>
                       View all {alertMode === "low_stock" ? "low stock" : "stockout"} items
-                    </Text>
+                    </AdaptiveSingleLineText>
                     <Ionicons name="chevron-forward" size={18} color={colors.subtextOnLightSurface} />
                   </TouchableOpacity>
                 </View>
@@ -552,33 +682,42 @@ export const StatsScreen = () => {
             </LightCard>
 
             {/* KPI overview */}
-            <LightCard style={{ marginTop: spacing.md, padding: spacing.lg }}>
-              <View style={styles.cardHeaderRow}>
+            <LightCard style={{ marginTop: spacing.md, padding: cardPadding }}>
+              <View style={[styles.cardHeaderRow, isCompact && styles.cardHeaderRowStack]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>Inventory overview</Text>
-                  <Text style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>A compact snapshot for daily ops.</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>
+                    Inventory overview
+                  </AdaptiveSingleLineText>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
+                    A compact snapshot for daily ops.
+                  </AdaptiveTwoLineText>
                 </View>
               </View>
 
-              <View style={[styles.kpiGrid, { marginTop: spacing.md }]}>
-                <KPIBlock title="Total SKUs" value={totalItems.toLocaleString("en-IN")} icon="cube" />
-                <KPIBlock title="Total units" value={totalQty.toLocaleString("en-IN")} icon="layers" />
-                <KPIBlock title="Stock value" value={formatINR(totalValue)} icon="cash" />
+              <View style={[styles.kpiGrid, isCompact && styles.kpiGridStack, { marginTop: spacing.md }]}>
+                <KPIBlock title="Total SKUs" value={totalItems.toLocaleString("en-IN")} icon="cube" singleColumn={isCompact} />
+                <KPIBlock title="Total units" value={totalQty.toLocaleString("en-IN")} icon="layers" singleColumn={isCompact} />
+                <KPIBlock title="Stock value" value={formatINR(totalValue)} icon="cash" singleColumn={isCompact} />
                 <KPIBlock
                   title="At-risk SKUs"
                   value={`${(lowCount + outCount).toLocaleString("en-IN")} (${totalItems ? Math.round(((lowCount + outCount) / totalItems) * 100) : 0}%)`}
                   icon="flame"
                   tone="warning"
+                  singleColumn={isCompact}
                 />
               </View>
             </LightCard>
 
             {/* Category hotspots */}
-            <LightCard style={{ marginTop: spacing.md, padding: spacing.lg }}>
-              <View style={styles.cardHeaderRow}>
+            <LightCard style={{ marginTop: spacing.md, padding: cardPadding }}>
+              <View style={[styles.cardHeaderRow, isCompact && styles.cardHeaderRowStack]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>Category hotspots</Text>
-                  <Text style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>Where most of your on-hand quantity sits.</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>
+                    Category hotspots
+                  </AdaptiveSingleLineText>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
+                    Where most of your on-hand quantity sits.
+                  </AdaptiveTwoLineText>
                 </View>
               </View>
 
@@ -594,9 +733,9 @@ export const StatsScreen = () => {
                     return (
                       <View style={[styles.emptyInline, { borderRadius: radius.lg, borderColor: colors.border }]}>
                         <Ionicons name="stats-chart" size={16} color={colors.subtextOnLightSurface} />
-                        <Text style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
+                        <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
                           Add products and stock to unlock category insights.
-                        </Text>
+                        </AdaptiveTwoLineText>
                       </View>
                     );
                   }
@@ -619,19 +758,23 @@ export const StatsScreen = () => {
               ) : (
                 <View style={[styles.emptyInline, { borderRadius: radius.lg, borderColor: colors.border }]}>
                   <Ionicons name="stats-chart" size={16} color={colors.subtextOnLightSurface} />
-                  <Text style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
                     No category data yet.
-                  </Text>
+                  </AdaptiveTwoLineText>
                 </View>
               )}
             </LightCard>
 
             {/* Recent products */}
-            <LightCard style={{ marginTop: spacing.md, padding: spacing.lg }}>
-              <View style={styles.cardHeaderRow}>
+            <LightCard style={{ marginTop: spacing.md, padding: cardPadding }}>
+              <View style={[styles.cardHeaderRow, isCompact && styles.cardHeaderRowStack]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>Recent products</Text>
-                  <Text style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>Fast adjustments without digging through the catalog.</Text>
+                  <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.cardTitle, { color: colors.textOnLightSurface }]}>
+                    Recent products
+                  </AdaptiveSingleLineText>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.cardSubtitle, { color: colors.subtextOnLightSurface }]}>
+                    Fast adjustments without digging through the catalog.
+                  </AdaptiveTwoLineText>
                 </View>
               </View>
 
@@ -651,15 +794,22 @@ export const StatsScreen = () => {
                           idx === recentProducts.length - 1 && { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
                         ]}
                       >
-                        <TouchableOpacity activeOpacity={0.85} onPress={() => openEditProduct(p._id)} style={styles.recentRow}>
-                          <View style={{ flex: 1, gap: 6 }}>
-                            <Text style={[styles.recentName, { color: colors.textOnLightSurface }]} numberOfLines={1}>
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() => openEditProduct(p._id)}
+                          style={[styles.recentRow, isCompact && styles.listRowStack]}
+                        >
+                          <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
+                            <AdaptiveSingleLineText
+                              minimumFontScale={0.72}
+                              style={[styles.recentName, { color: colors.textOnLightSurface }]}
+                            >
                               {p.name}
-                            </Text>
-                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                              <Text style={[styles.recentMeta, { color: colors.subtextOnLightSurface }]}>
+                            </AdaptiveSingleLineText>
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
+                              <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.recentMeta, { color: colors.subtextOnLightSurface }]}>
                                 {onHand.toLocaleString("en-IN")} units
-                              </Text>
+                              </AdaptiveSingleLineText>
                               <StockStatusBadge status={status} size="sm" />
                             </View>
                           </View>
@@ -669,11 +819,14 @@ export const StatsScreen = () => {
                             onPress={() => openAdjustSheet(p, 1)}
                             style={[
                               styles.adjustButton,
+                              isCompact && styles.rowActionButtonCompact,
                               { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft },
                             ]}
                           >
                             <Ionicons name="swap-vertical" size={16} color={colors.subtextOnLightSurface} />
-                            <Text style={[styles.adjustText, { color: colors.textOnLightSurface }]}>Adjust</Text>
+                            <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.adjustText, { color: colors.textOnLightSurface }]}>
+                              Adjust
+                            </AdaptiveSingleLineText>
                           </TouchableOpacity>
                         </TouchableOpacity>
                       </View>
@@ -685,19 +838,27 @@ export const StatsScreen = () => {
                     activeOpacity={0.9}
                     style={[
                       styles.viewAllRow,
-                      { marginTop: spacing.md, borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft },
+                      {
+                        marginTop: spacing.md,
+                        borderRadius: radius.lg,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surfaceLightSoft,
+                        minHeight: layout.ctaHeight,
+                      },
                     ]}
                   >
-                    <Text style={[styles.viewAllText, { color: colors.textOnLightSurface }]}>View all products</Text>
+                    <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.viewAllText, { color: colors.textOnLightSurface }]}>
+                      View all products
+                    </AdaptiveSingleLineText>
                     <Ionicons name="chevron-forward" size={18} color={colors.subtextOnLightSurface} />
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={[styles.emptyInline, { borderRadius: radius.lg, borderColor: colors.border }]}>
                   <Ionicons name="cube-outline" size={16} color={colors.subtextOnLightSurface} />
-                  <Text style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
+                  <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptyInlineText, { color: colors.subtextOnLightSurface }]}>
                     No recent products found.
-                  </Text>
+                  </AdaptiveTwoLineText>
                 </View>
               )}
             </LightCard>
@@ -745,6 +906,7 @@ const CounterButton = ({
   onPress: () => void;
 }) => {
   const { colors, radius } = useTheme();
+  const layout = useInventoryDashboardLayout();
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -758,12 +920,16 @@ const CounterButton = ({
         },
       ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
         <Ionicons name={icon} size={16} color={color} />
         <Ionicons name="chevron-forward" size={16} color={colors.subtextOnLightSurface} />
       </View>
-      <Text style={[styles.counterValue, { color }]}>{Number(value || 0).toLocaleString("en-IN")}</Text>
-      <Text style={[styles.counterLabel, { color: colors.subtextOnLightSurface }]}>{label}</Text>
+      <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.counterValue, { color, fontSize: layout.compact ? 16 : 18 }]}>
+        {Number(value || 0).toLocaleString("en-IN")}
+      </AdaptiveSingleLineText>
+      <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.counterLabel, { color: colors.subtextOnLightSurface }]}>
+        {label}
+      </AdaptiveSingleLineText>
     </TouchableOpacity>
   );
 };
@@ -809,6 +975,7 @@ const RingGauge = ({
 
 const SegmentOption = ({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) => {
   const { colors, radius } = useTheme();
+  const layout = useInventoryDashboardLayout();
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -819,22 +986,39 @@ const SegmentOption = ({ active, label, onPress }: { active: boolean; label: str
           backgroundColor: active ? colors.surface : "transparent",
           borderRadius: radius.pill,
           borderColor: active ? colors.border : "transparent",
+          minHeight: layout.chipHeight,
+          paddingHorizontal: layout.compact ? 10 : 12,
         },
       ]}
     >
-      <Text style={[styles.segmentText, { color: active ? colors.textOnLightSurface : colors.subtextOnLightSurface }]}>{label}</Text>
+      <AdaptiveSingleLineText
+        allowOverflowScroll={false}
+        minimumFontScale={0.74}
+        style={[styles.segmentText, { color: active ? colors.textOnLightSurface : colors.subtextOnLightSurface }]}
+      >
+        {label}
+      </AdaptiveSingleLineText>
     </TouchableOpacity>
   );
 };
 
 const Metric = ({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) => {
   const { colors, radius } = useTheme();
+  const layout = useInventoryDashboardLayout();
   return (
     <View style={[styles.metric, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surfaceLightSoft }]}>
-      <Text style={[styles.metricLabel, { color: colors.subtextOnLightSurface }]}>{label}</Text>
-      <Text style={[styles.metricValue, { color: highlight ? colors.primary : colors.textOnLightSurface }]}>
+      <AdaptiveSingleLineText
+        allowOverflowScroll={false}
+        style={[styles.metricLabel, { color: colors.subtextOnLightSurface, fontSize: layout.compact ? 9 : 10 }]}
+      >
+        {label}
+      </AdaptiveSingleLineText>
+      <AdaptiveSingleLineText
+        allowOverflowScroll={false}
+        style={[styles.metricValue, { color: highlight ? colors.primary : colors.textOnLightSurface, fontSize: layout.compact ? 12 : 13 }]}
+      >
         {Number(value || 0).toLocaleString("en-IN")}
-      </Text>
+      </AdaptiveSingleLineText>
     </View>
   );
 };
@@ -844,11 +1028,13 @@ const KPIBlock = ({
   value,
   icon,
   tone,
+  singleColumn,
 }: {
   title: string;
   value: string;
   icon: keyof typeof Ionicons.glyphMap;
   tone?: "warning";
+  singleColumn?: boolean;
 }) => {
   const { colors, radius } = useTheme();
   const accent = tone === "warning" ? (colors.warningStrong || colors.warning) : colors.primary;
@@ -856,6 +1042,7 @@ const KPIBlock = ({
     <View
       style={[
         styles.kpiCell,
+        singleColumn ? styles.kpiCellSingle : null,
         {
           borderRadius: radius.lg,
           borderColor: colors.border,
@@ -869,16 +1056,22 @@ const KPIBlock = ({
       ]}
     >
       <View style={styles.kpiTop}>
-        <Text style={[styles.kpiTitle, { color: colors.subtextOnLightSurface }]} numberOfLines={1}>
+        <AdaptiveSingleLineText
+          minimumFontScale={0.72}
+          style={[styles.kpiTitle, { color: colors.subtextOnLightSurface }]}
+        >
           {title}
-        </Text>
+        </AdaptiveSingleLineText>
         <View style={[styles.kpiIcon, { backgroundColor: `${accent}12`, borderColor: `${accent}22`, borderRadius: radius.lg }]}>
           <Ionicons name={icon} size={16} color={accent} />
         </View>
       </View>
-      <Text style={[styles.kpiValue, { color: colors.textOnLightSurface }]} numberOfLines={1}>
+      <AdaptiveSingleLineText
+        minimumFontScale={0.68}
+        style={[styles.kpiValue, { color: colors.textOnLightSurface }]}
+      >
         {value}
-      </Text>
+      </AdaptiveSingleLineText>
     </View>
   );
 };
@@ -888,86 +1081,98 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 12,
+    gap: 10,
   },
-  topTitle: { fontSize: 22, fontWeight: "900", letterSpacing: -0.3 },
+  topTitle: { fontSize: 22, fontWeight: "900", letterSpacing: -0.3, minWidth: 0, flexShrink: 1 },
   topActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   topIconButton: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1 },
 
   gateWrap: { paddingTop: 14 },
+  gateRow: { flexDirection: "row", alignItems: "center", gap: 12, minWidth: 0 },
+  gateRowStack: { alignItems: "flex-start" },
   gateIcon: { width: 40, height: 40, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  gateTitle: { fontSize: 16, fontWeight: "900" },
-  gateSubtitle: { marginTop: 3, fontSize: 12, fontWeight: "700", lineHeight: 16 },
+  gateTitle: { fontSize: 16, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  gateSubtitle: { marginTop: 3, fontSize: 12, fontWeight: "700", lineHeight: 16, minWidth: 0, flexShrink: 1 },
 
   centered: { alignItems: "center", justifyContent: "center" },
-  loadingText: { marginTop: 10, fontSize: 13, fontWeight: "700" },
+  loadingText: { marginTop: 10, fontSize: 13, fontWeight: "700", minWidth: 0, flexShrink: 1 },
 
-  cardTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2 },
-  cardSubtitle: { marginTop: 4, fontSize: 12, fontWeight: "700" },
+  cardTitle: { fontSize: 16, fontWeight: "900", letterSpacing: -0.2, minWidth: 0, flexShrink: 1 },
+  cardSubtitle: { marginTop: 4, fontSize: 12, fontWeight: "700", minWidth: 0, flexShrink: 1 },
   cardHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  cardHeaderRowStack: { flexDirection: "column", alignItems: "flex-start" },
 
   prioritiesRow: { flexDirection: "row", gap: 14 },
-  healthBlock: { width: 140 },
+  prioritiesRowStack: { flexDirection: "column" },
+  healthBlock: { flexBasis: "40%", minWidth: 110, maxWidth: 164 },
+  healthBlockStack: { width: "100%", flexDirection: "row", alignItems: "center", gap: 12 },
   ringWrap: { width: 72, height: 72, alignItems: "center", justifyContent: "center" },
   ringCenter: { position: "absolute", alignItems: "center", justifyContent: "center" },
-  ringValue: { fontSize: 14, fontWeight: "900" },
-  ringLabel: { marginTop: 1, fontSize: 10, fontWeight: "800" },
-  healthTitle: { marginTop: 10, fontSize: 13, fontWeight: "900" },
-  healthHint: { marginTop: 2, fontSize: 11, fontWeight: "700" },
+  ringValue: { fontSize: 14, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  ringLabel: { marginTop: 1, fontSize: 10, fontWeight: "800", minWidth: 0, flexShrink: 1 },
+  healthTitle: { marginTop: 10, fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  healthHint: { marginTop: 2, fontSize: 11, fontWeight: "700", minWidth: 0, flexShrink: 1 },
 
   counterCol: { flex: 1, gap: 10 },
-  counterCard: { padding: 12, borderWidth: 1 },
-  counterValue: { marginTop: 10, fontSize: 18, fontWeight: "900" },
-  counterLabel: { marginTop: 2, fontSize: 12, fontWeight: "800" },
+  counterColStack: { width: "100%" },
+  counterCard: { padding: 12, borderWidth: 1, minWidth: 0 },
+  counterValue: { marginTop: 10, fontSize: 18, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  counterLabel: { marginTop: 2, fontSize: 12, fontWeight: "800", minWidth: 0, flexShrink: 1 },
 
   ctaRow: { flexDirection: "row", gap: 10 },
-  primaryCta: { flex: 1, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  primaryCtaText: { fontSize: 13, fontWeight: "900" },
-  secondaryCta: { flex: 1, height: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1 },
-  secondaryCtaText: { fontSize: 13, fontWeight: "900" },
+  ctaRowStack: { flexDirection: "column" },
+  primaryCta: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  primaryCtaText: { fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  secondaryCta: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1 },
+  secondaryCtaText: { fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
-  errorText: { fontSize: 12, fontWeight: "800" },
-  retryText: { fontSize: 12, fontWeight: "900" },
+  errorText: { fontSize: 12, fontWeight: "800", minWidth: 0, flexShrink: 1 },
+  retryText: { fontSize: 12, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
   segment: { flexDirection: "row", padding: 6, borderWidth: 1 },
-  segmentOption: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1 },
-  segmentText: { fontSize: 11, fontWeight: "900" },
+  segmentStack: { marginTop: 10, alignSelf: "flex-start" },
+  segmentOption: { paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, minWidth: 0, flexShrink: 1, justifyContent: "center" },
+  segmentText: { fontSize: 11, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
   emptyAlerts: { marginTop: 14, padding: 14, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   emptyIconWrap: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { fontSize: 13, fontWeight: "900" },
-  emptySubtitle: { marginTop: 2, fontSize: 12, fontWeight: "700" },
+  emptyTitle: { fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  emptySubtitle: { marginTop: 2, fontSize: 12, fontWeight: "700", minWidth: 0, flexShrink: 1 },
 
   alertRowWrap: { borderBottomWidth: 1, paddingBottom: 14, marginBottom: 14 },
   alertRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  listRowStack: { flexDirection: "column", alignItems: "stretch" },
   alertName: { fontSize: 13, fontWeight: "900" },
   alertSku: { fontSize: 11, fontWeight: "700" },
 
   metricsRow: { flexDirection: "row", gap: 10, marginTop: 6 },
   metric: { flex: 1, padding: 10, borderWidth: 1 },
-  metricLabel: { fontSize: 10, fontWeight: "900" },
-  metricValue: { marginTop: 3, fontSize: 13, fontWeight: "900" },
+  metricLabel: { fontSize: 10, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  metricValue: { marginTop: 3, fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
-  addStockButton: { height: 40, paddingHorizontal: 12, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  addStockText: { fontSize: 12, fontWeight: "900" },
+  addStockButton: { minHeight: 40, paddingHorizontal: 12, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  rowActionButtonCompact: { alignSelf: "flex-start", marginTop: 6 },
+  addStockText: { fontSize: 12, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
-  viewAllRow: { height: 46, borderWidth: 1, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  viewAllText: { fontSize: 12, fontWeight: "900" },
+  viewAllRow: { minHeight: 46, borderWidth: 1, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  viewAllText: { fontSize: 12, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 
   kpiGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  kpiGridStack: { gap: 10 },
   kpiCell: { width: "48%", padding: 12, borderWidth: 1 },
+  kpiCellSingle: { width: "100%" },
   kpiTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   kpiTitle: { fontSize: 11, fontWeight: "900", flex: 1 },
   kpiIcon: { width: 32, height: 32, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   kpiValue: { marginTop: 10, fontSize: 14, fontWeight: "900" },
 
   emptyInline: { marginTop: 14, padding: 14, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 10 },
-  emptyInlineText: { fontSize: 12, fontWeight: "800", flex: 1 },
+  emptyInlineText: { fontSize: 12, fontWeight: "800", flex: 1, minWidth: 0, flexShrink: 1 },
 
   recentRowWrap: { borderBottomWidth: 1, paddingBottom: 14, marginBottom: 14 },
   recentRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  recentName: { fontSize: 13, fontWeight: "900" },
-  recentMeta: { fontSize: 11, fontWeight: "800" },
-  adjustButton: { height: 40, paddingHorizontal: 12, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  adjustText: { fontSize: 12, fontWeight: "900" },
+  recentName: { fontSize: 13, fontWeight: "900", minWidth: 0, flexShrink: 1 },
+  recentMeta: { fontSize: 11, fontWeight: "800", minWidth: 0, flexShrink: 1 },
+  adjustButton: { minHeight: 40, paddingHorizontal: 12, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  adjustText: { fontSize: 12, fontWeight: "900", minWidth: 0, flexShrink: 1 },
 });

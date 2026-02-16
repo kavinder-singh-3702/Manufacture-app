@@ -7,19 +7,18 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { PieChart } from 'react-native-gifted-charts';
 import { useTheme } from '../../hooks/useTheme';
+import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { tallyService, TallyStats } from '../../services/tally.service';
-
-const { width } = Dimensions.get('window');
 
 export const TallyStatsScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { isXCompact, isCompact, contentPadding, clamp } = useResponsiveLayout();
   const navigation = useNavigation();
 
   const [loading, setLoading] = useState(true);
@@ -74,15 +73,15 @@ export const TallyStatsScreen = () => {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: contentPadding, paddingBottom: spacing.xxl }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {/* Header */}
         <View style={[styles.header, { marginBottom: spacing.lg }]}>
-          <Text style={[styles.title, { color: colors.text }]}>📊 Tally Stats</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.title, { color: colors.text, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>📊 Tally Stats</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary, fontSize: isCompact ? 13 : 14 }]}>
             Accounting Overview & Quick Entry
           </Text>
         </View>
@@ -123,6 +122,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.statCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.success + '15',
                   borderColor: colors.success + '40',
                   borderRadius: radius.lg,
@@ -141,6 +141,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.statCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.error + '15',
                   borderColor: colors.error + '40',
                   borderRadius: radius.lg,
@@ -159,6 +160,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.statCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.primary + '15',
                   borderColor: colors.primary + '40',
                   borderRadius: radius.lg,
@@ -177,6 +179,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.statCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.warning + '15',
                   borderColor: colors.warning + '40',
                   borderRadius: radius.lg,
@@ -226,14 +229,14 @@ export const TallyStatsScreen = () => {
                   },
                 ]}
                 donut
-                radius={80}
-                innerRadius={50}
+                radius={isXCompact ? 72 : 80}
+                innerRadius={isXCompact ? 44 : 50}
                 centerLabelComponent={() => (
                   <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
+                    <Text style={{ fontSize: isCompact ? 16 : 18, fontWeight: '800', color: colors.text }}>
                       ₹{((stats.totalSales - stats.totalPurchases) / 1000).toFixed(0)}K
                     </Text>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textMuted }}>Profit</Text>
+                    <Text style={{ fontSize: isCompact ? 11 : 12, fontWeight: '600', color: colors.textMuted }}>Profit</Text>
                   </View>
                 )}
               />
@@ -264,6 +267,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.actionCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
@@ -288,6 +292,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.actionCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
@@ -312,6 +317,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.actionCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
@@ -336,6 +342,7 @@ export const TallyStatsScreen = () => {
               style={[
                 styles.actionCard,
                 {
+                  width: isXCompact ? '100%' : '48%',
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
                   borderRadius: radius.lg,
@@ -441,7 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
   },
   header: {},
   title: {
@@ -495,7 +502,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    width: '48%',
     padding: 16,
     borderWidth: 1,
   },
@@ -519,7 +525,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionCard: {
-    width: '48%',
     padding: 16,
     borderWidth: 1,
     alignItems: 'center',

@@ -102,6 +102,21 @@ export type UserPreferences = {
   timezone?: string;
   theme?: "system" | "light" | "dark";
   communications?: UserCommunicationsPreferences;
+  notifications?: {
+    masterEnabled?: boolean;
+    inAppEnabled?: boolean;
+    pushEnabled?: boolean;
+    emailEnabled?: boolean;
+    smsEnabled?: boolean;
+    quietHours?: {
+      enabled?: boolean;
+      start?: string;
+      end?: string;
+      timezone?: string;
+    };
+    topicOverrides?: Record<string, Partial<Record<"inApp" | "push" | "email" | "sms", boolean>>>;
+    priorityOverrides?: Record<string, Partial<Record<"inApp" | "push" | "email" | "sms", boolean>>>;
+  };
 };
 
 export type UpdateUserPayload = Partial<Pick<AuthUser, "firstName" | "lastName" | "displayName" | "phone" | "bio" | "companyAbout" | "avatarUrl">> & {

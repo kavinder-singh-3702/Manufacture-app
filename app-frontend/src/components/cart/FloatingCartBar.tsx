@@ -3,7 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated } from "react-native
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useNavigationState } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "../../hooks/useCart";
+import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { RootStackParamList } from "../../navigation/types";
 
 /**
@@ -15,6 +18,9 @@ import { RootStackParamList } from "../../navigation/types";
 export const FloatingCartBar = () => {
   const { items, totalItems } = useCart();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors, radius } = useTheme();
+  const { isCompact } = useResponsiveLayout();
+  const insets = useSafeAreaInsets();
 
   // Check if we're currently on the cart screen
   const navigationState = useNavigationState((state) => state);
@@ -62,6 +68,7 @@ export const FloatingCartBar = () => {
       style={[
         styles.container,
         {
+          bottom: (isCompact ? 78 : 88) + insets.bottom,
           transform: [{ translateY: slideAnim }],
         },
       ]}
@@ -72,14 +79,21 @@ export const FloatingCartBar = () => {
         style={styles.touchable}
       >
         <LinearGradient
-          colors={["#10B981", "#059669"]}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={styles.gradient}
+          style={[
+            styles.gradient,
+            {
+              borderRadius: radius.pill,
+              paddingVertical: isCompact ? 10 : 12,
+              paddingHorizontal: isCompact ? 16 : 20,
+            },
+          ]}
         >
-          <Text style={styles.cartText}>View Cart</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{totalItems}</Text>
+          <Text style={[styles.cartText, { color: colors.textOnPrimary, fontSize: isCompact ? 13 : 15 }]}>View Cart</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.countText, { color: colors.primary }]}>{totalItems}</Text>
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -97,11 +111,11 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   touchable: {
-    borderRadius: 25,
+    borderRadius: 999,
     overflow: "hidden",
-    shadowColor: "#059669",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },
@@ -110,11 +124,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 25,
+    borderRadius: 999,
     gap: 10,
   },
   cartText: {
-    color: "#fff",
     fontSize: 15,
     fontWeight: "700",
   },

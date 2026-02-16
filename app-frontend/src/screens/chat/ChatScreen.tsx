@@ -205,7 +205,7 @@ export const ChatScreen = () => {
           <View>
             <Text style={[styles.headerTitle, { color: colors.text }]}>{recipientName}</Text>
             {userPhone && (
-              <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {userPhone}
               </Text>
             )}

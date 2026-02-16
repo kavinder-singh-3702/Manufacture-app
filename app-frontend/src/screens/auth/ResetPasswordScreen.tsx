@@ -10,6 +10,8 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { ResponsiveScreen } from "../../components/layout";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
@@ -28,6 +30,7 @@ export const ResetPasswordScreen = ({
 }: ResetPasswordScreenProps) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { setUser } = useAuth();
@@ -82,17 +85,34 @@ export const ResetPasswordScreen = ({
   };
 
   return (
-    <View style={styles.slide}>
-      <View style={styles.card}>
+    <ResponsiveScreen
+      scroll
+      keyboardAware
+      safeAreaEdges={["left", "right", "bottom"]}
+      paddingHorizontal={contentPadding}
+      contentContainerStyle={{ paddingTop: isCompact ? 12 : 20 }}
+    >
+      <View style={styles.slide}>
+        <View style={[styles.card, { paddingHorizontal: isXCompact ? 18 : isCompact ? 22 : 28 }]}>
         <View style={[styles.blob, styles.blobAmber]} />
         <View style={[styles.blob, styles.blobCyan]} />
 
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity
+          style={[
+            styles.backButton,
+            {
+              width: isCompact ? 42 : 46,
+              height: isCompact ? 42 : 46,
+              borderRadius: isCompact ? 21 : 23,
+            },
+          ]}
+          onPress={onBack}
+        >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
         <View style={styles.headerBlock}>
-          <Text style={styles.heading}>Reset Password</Text>
+          <Text style={[styles.heading, { fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>Reset Password</Text>
           <Text style={styles.subheading}>
             Paste the reset token you received and choose a new password to get back in.
           </Text>
@@ -147,8 +167,9 @@ export const ResetPasswordScreen = ({
             <Text style={styles.helperText}>Back to login</Text>
           </TouchableOpacity>
         </View>
+        </View>
       </View>
-    </View>
+    </ResponsiveScreen>
   );
 };
 
@@ -172,18 +193,18 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     borderRadius: 340,
   },
   blobAmber: {
-    width: 360,
-    height: 360,
-    backgroundColor: isDark ? colors.badgeWarning : "#FEF3C7",
-    top: -100,
-    left: -140,
-  },
-  blobCyan: {
     width: 300,
     height: 300,
+    backgroundColor: isDark ? colors.badgeWarning : "#FEF3C7",
+    top: -80,
+    left: -120,
+  },
+  blobCyan: {
+    width: 220,
+    height: 220,
     backgroundColor: isDark ? colors.badgeInfo : "#ECFEFF",
-    bottom: -120,
-    right: -120,
+    bottom: -80,
+    right: -90,
   },
   backButton: {
     width: 46,

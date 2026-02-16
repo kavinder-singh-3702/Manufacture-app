@@ -104,7 +104,7 @@ const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: Product
 
         {/* Category tag */}
         <View style={styles.tagPill}>
-          <Text style={styles.tagText} numberOfLines={1}>
+          <Text style={styles.tagText} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {bestFor || "PRODUCT"}
           </Text>
         </View>
@@ -124,7 +124,7 @@ const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: Product
           {product.name}
         </Text>
 
-        <Text style={styles.cardSubtitle} numberOfLines={1}>
+        <Text style={styles.cardSubtitle} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
           {companyName}
         </Text>
 
@@ -349,7 +349,7 @@ export const AdminProductsScreen = () => {
               activeOpacity={0.85}
               style={[styles.chip, isActive && styles.chipActive]}
             >
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]} numberOfLines={1}>
+              <Text style={[styles.chipText, isActive && styles.chipTextActive]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {cat.title}
               </Text>
               {typeof cat.count === "number" && (

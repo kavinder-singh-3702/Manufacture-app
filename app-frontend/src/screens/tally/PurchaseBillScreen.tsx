@@ -369,11 +369,11 @@ export const PurchaseBillScreen = () => {
                 onPress={() => openProductPicker(index)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600' }} numberOfLines={1}>
+                  <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600' }} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                     {item.productName || 'Select product'}
                   </Text>
                   {item.variantLabel ? (
-                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 3 }} numberOfLines={1}>
+                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 3 }} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                       Variant: {item.variantLabel}
                     </Text>
                   ) : null}
@@ -592,14 +592,14 @@ export const PurchaseBillScreen = () => {
                     style={[styles.productRow, { borderBottomColor: colors.border }]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1}>
+                      <Text style={[styles.productName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                         {p.name}
                       </Text>
-                      <Text style={[styles.productMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                      <Text style={[styles.productMeta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                         {p.category?.replace(/-/g, " ")}  ·  {p.price?.amount ? `₹${p.price.amount.toLocaleString("en-IN")}` : "No price"}
                       </Text>
                       {Number(p.variantSummary?.totalVariants || 0) > 0 ? (
-                        <Text style={[styles.productMeta, { color: colors.primary }]} numberOfLines={1}>
+                        <Text style={[styles.productMeta, { color: colors.primary }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                           {p.variantSummary?.totalVariants} variants available
                         </Text>
                       ) : null}

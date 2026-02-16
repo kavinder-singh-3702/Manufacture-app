@@ -11,6 +11,7 @@ export type RootStackParamList = {
   Help: undefined;
   Profile: undefined;
   Appearance: undefined;
+  NotificationPreferences: undefined;
   Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   CompanyCreate: undefined;
@@ -27,6 +28,7 @@ export type RootStackParamList = {
   QuoteCenter: { initialTab?: "asked" | "received" | "incoming" } | undefined;
   UserPreferences: { userId: string; displayName?: string };
   CampaignStudio: undefined;
+  NotificationStudio: undefined;
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };

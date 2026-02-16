@@ -66,7 +66,7 @@ export const ProfileSummaryCard = ({
           <Text style={[styles.fullName, { color: colors.text }]} numberOfLines={2}>
             {fullName}
           </Text>
-          <Text style={[styles.email, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.email, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {email || "No email"}
           </Text>
           <View style={styles.metaRow}>

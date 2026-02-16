@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { ResponsiveScreen } from "../../components/layout";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
@@ -23,6 +25,7 @@ type ForgotPasswordScreenProps = {
 export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswordScreenProps) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
@@ -82,17 +85,34 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   };
 
   return (
-    <View style={styles.slide}>
-      <View style={styles.card}>
+    <ResponsiveScreen
+      scroll
+      keyboardAware
+      safeAreaEdges={["left", "right", "bottom"]}
+      paddingHorizontal={contentPadding}
+      contentContainerStyle={{ paddingTop: isCompact ? 12 : 20 }}
+    >
+      <View style={styles.slide}>
+        <View style={[styles.card, { paddingHorizontal: isXCompact ? 18 : isCompact ? 22 : 28 }]}>
         <View style={[styles.blob, styles.blobIndigo]} />
         <View style={[styles.blob, styles.blobMint]} />
 
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity
+          style={[
+            styles.backButton,
+            {
+              width: isCompact ? 42 : 46,
+              height: isCompact ? 42 : 46,
+              borderRadius: isCompact ? 21 : 23,
+            },
+          ]}
+          onPress={onBack}
+        >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
         <View style={styles.headerBlock}>
-          <Text style={styles.heading}>Forgot Password?</Text>
+          <Text style={[styles.heading, { fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>Forgot Password?</Text>
           <Text style={styles.subheading}>
             We will send a reset code to your email or phone. In dev builds you will see the code
             here directly.
@@ -159,8 +179,9 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
         <TouchableOpacity onPress={() => onReset(devToken ?? undefined)} style={styles.helperLink}>
           <Text style={styles.helperText}>Already have a token? Reset now</Text>
         </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </ResponsiveScreen>
   );
 };
 
@@ -184,18 +205,18 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     borderRadius: 300,
   },
   blobIndigo: {
-    width: 420,
-    height: 420,
+    width: 320,
+    height: 320,
     backgroundColor: isDark ? colors.badgePrimary : "#EEF2FF",
-    top: -120,
-    right: -140,
+    top: -80,
+    right: -120,
   },
   blobMint: {
-    width: 280,
-    height: 280,
+    width: 220,
+    height: 220,
     backgroundColor: isDark ? colors.badgeSuccess : "#E0F7EF",
-    bottom: -80,
-    left: -100,
+    bottom: -60,
+    left: -90,
   },
   backButton: {
     width: 46,

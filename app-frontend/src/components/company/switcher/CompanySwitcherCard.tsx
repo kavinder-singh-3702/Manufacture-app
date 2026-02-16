@@ -102,10 +102,10 @@ export const CompanySwitcherCard = ({ onActiveCompanyResolved, onSwitched, onAdd
       >
         <CompanyAvatar company={company} size={44} />
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <Text style={[styles.companyName, { color: colors.text }]} numberOfLines={1}>
+          <Text style={[styles.companyName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {company.displayName}
           </Text>
-          <Text style={[styles.companyMeta, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.companyMeta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {company.type ?? "normal"} • {company.complianceStatus ?? "pending"}
           </Text>
         </View>

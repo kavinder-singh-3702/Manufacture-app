@@ -182,6 +182,28 @@ export const ProfileScreen = () => {
       onPress: () => navigation.navigate("Appearance"),
     },
     {
+      key: "notifications",
+      label: "Notifications",
+      icon: "notifications-outline" as const,
+      onPress: () => navigation.navigate("Notifications"),
+    },
+    {
+      key: "notification-preferences",
+      label: "Notification Settings",
+      icon: "options-outline" as const,
+      onPress: () => navigation.navigate("NotificationPreferences"),
+    },
+    ...(user?.role === "admin"
+      ? [
+          {
+            key: "notification-studio",
+            label: "Notification Studio",
+            icon: "megaphone-outline" as const,
+            onPress: () => navigation.navigate("NotificationStudio"),
+          },
+        ]
+      : []),
+    {
       key: "my-quotes",
       label: "My Quotes",
       icon: "receipt-outline" as const,

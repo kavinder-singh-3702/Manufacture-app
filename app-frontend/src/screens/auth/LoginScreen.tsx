@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 
 type CredentialMode = "email" | "phone";
@@ -28,6 +29,7 @@ type LoginScreenProps = {
 export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) => {
   const { login } = useAuth();
   const { colors } = useTheme();
+  const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -153,11 +155,20 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
     >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: contentPadding }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            {
+              paddingHorizontal: isXCompact ? 16 : isCompact ? 20 : 28,
+              paddingTop: isCompact ? 22 : 32,
+              paddingBottom: isCompact ? 28 : 40,
+            },
+          ]}
+        >
           <LinearGradient
             colors={[colors.primary + "2e", colors.primary + "0d", "transparent"]}
             style={[styles.blob, styles.blobPrimary]}
@@ -167,7 +178,19 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
             style={[styles.blob, styles.blobSecondary]}
           />
 
-          <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.overlayLight, borderColor: colors.border }]} onPress={onBack}>
+          <TouchableOpacity
+            style={[
+              styles.backButton,
+              {
+                backgroundColor: colors.overlayLight,
+                borderColor: colors.border,
+                width: isCompact ? 42 : 48,
+                height: isCompact ? 42 : 48,
+                borderRadius: isCompact ? 21 : 24,
+              },
+            ]}
+            onPress={onBack}
+          >
             <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
           </TouchableOpacity>
 
@@ -186,8 +209,12 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
           >
             <BrandLockup showSubtitle style={styles.brandStrip} textColor={colors.textOnDarkSurface} subtitleColor={colors.subtextOnDarkSurface} />
             <View style={styles.headerBlock}>
-              <Text style={[styles.heading, { color: colors.textOnDarkSurface }]}>Welcome Back!</Text>
-              <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>Enter your email or mobile number to continue</Text>
+              <Text style={[styles.heading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
+                Welcome Back!
+              </Text>
+              <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>
+                Enter your email or mobile number to continue
+              </Text>
             </View>
             {renderIdentifierToggle()}
           </Animated.View>
@@ -291,13 +318,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 18,
   },
   card: {
     flex: 1,
     width: "100%",
     backgroundColor: "transparent",
     borderRadius: 0,
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     paddingTop: 32,
     paddingBottom: 40,
     position: "relative",
@@ -337,6 +365,7 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     marginBottom: 16,
+    minWidth: 0,
   },
   heading: {
     fontSize: 28,
@@ -345,6 +374,8 @@ const styles = StyleSheet.create({
   subheading: {
     fontSize: 14,
     marginTop: 4,
+    lineHeight: 20,
+    flexShrink: 1,
   },
   toggleWrap: {
     flexDirection: "row",

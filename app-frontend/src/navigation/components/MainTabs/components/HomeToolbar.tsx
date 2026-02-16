@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FC } from "react";
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { AdaptiveSingleLineText } from "../../../../components/text/AdaptiveSingleLineText";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useThemeMode } from "../../../../hooks/useThemeMode";
@@ -45,8 +46,13 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   const theme = useTheme();
   const { colors } = theme;
   const { resolvedMode } = useThemeMode();
-  const tokens = getNavigationTokens(theme, resolvedMode);
+  const { width, fontScale } = useWindowDimensions();
+  const tokens = getNavigationTokens(theme, resolvedMode, {
+    viewportWidth: width,
+    fontScale,
+  });
   const { user } = useAuth();
+  const avatarSize = tokens.topBar.density === "xCompact" ? 36 : tokens.topBar.density === "compact" ? 38 : 40;
 
   const buildInitials = () => {
     const segments = [user?.firstName, user?.lastName].filter(Boolean);
@@ -90,7 +96,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
               height: tokens.topBar.iconButtonSize,
               borderColor: tokens.colors.topBarIconBorder,
               backgroundColor: tokens.colors.topBarIconBackground,
-              borderRadius: 14,
+              borderRadius: tokens.topBar.iconButtonSize / 2.75,
             },
           ]}
           accessibilityRole="button"
@@ -100,8 +106,8 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         </Pressable>
 
         <View style={styles.headingWrap}>
-          <Text
-            numberOfLines={1}
+          <AdaptiveSingleLineText
+            minimumFontScale={0.74}
             style={[
               styles.title,
               {
@@ -111,10 +117,10 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             ]}
           >
             {title}
-          </Text>
+          </AdaptiveSingleLineText>
           {subtitle ? (
-            <Text
-              numberOfLines={1}
+            <AdaptiveSingleLineText
+              minimumFontScale={0.74}
               style={[
                 styles.subtitle,
                 {
@@ -124,7 +130,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
               ]}
             >
               {subtitle}
-            </Text>
+            </AdaptiveSingleLineText>
           ) : null}
         </View>
 
@@ -134,13 +140,13 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             style={[
               styles.iconButton,
               {
-                width: tokens.topBar.iconButtonSize,
-                height: tokens.topBar.iconButtonSize,
-                borderColor: tokens.colors.topBarIconBorder,
-                backgroundColor: tokens.colors.topBarIconBackground,
-                borderRadius: 14,
-              },
-            ]}
+              width: tokens.topBar.iconButtonSize,
+              height: tokens.topBar.iconButtonSize,
+              borderColor: tokens.colors.topBarIconBorder,
+              backgroundColor: tokens.colors.topBarIconBackground,
+              borderRadius: tokens.topBar.iconButtonSize / 2.75,
+            },
+          ]}
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
@@ -159,14 +165,14 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             onPress={onAvatarPress}
             onLongPress={onAvatarLongPress}
             delayLongPress={300}
-            style={styles.avatarButton}
+            style={[styles.avatarButton, { marginLeft: tokens.topBar.density === "xCompact" ? 6 : 8 }]}
             accessibilityRole="button"
             accessibilityLabel="Profile"
           >
             {activeCompany ? (
-              <CompanyAvatar company={activeCompany} size={40} style={{ borderWidth: 2, borderColor: colors.border }} />
+              <CompanyAvatar company={activeCompany} size={avatarSize} style={{ borderWidth: 2, borderColor: colors.border }} />
             ) : (
-              <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ width: 40, height: 40, borderRadius: 20 }} />
+              <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
             )}
           </TouchableOpacity>
         </View>
@@ -203,7 +209,7 @@ const styles = StyleSheet.create({
   headingWrap: {
     flex: 1,
     minWidth: 0,
-    marginHorizontal: 10,
+    marginHorizontal: 8,
   },
   title: {
     fontWeight: "800",

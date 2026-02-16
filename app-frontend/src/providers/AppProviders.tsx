@@ -5,6 +5,7 @@ import { AuthProvider } from "./AuthProvider";
 import { CartProvider } from "./CartProvider";
 import { UnreadMessagesProvider } from "./UnreadMessagesProvider";
 import { NotificationsProvider } from "./NotificationsProvider";
+import { PushNotificationsProvider } from "./PushNotificationsProvider";
 import { ToastProvider } from "../components/ui/Toast";
 
 type AppProvidersProps = {
@@ -18,9 +19,11 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
         <ThemeProvider>
           <CartProvider>
             <UnreadMessagesProvider>
-              <NotificationsProvider>
-                <ToastProvider>{children}</ToastProvider>
-              </NotificationsProvider>
+              <PushNotificationsProvider>
+                <NotificationsProvider>
+                  <ToastProvider>{children}</ToastProvider>
+                </NotificationsProvider>
+              </PushNotificationsProvider>
             </UnreadMessagesProvider>
           </CartProvider>
         </ThemeProvider>

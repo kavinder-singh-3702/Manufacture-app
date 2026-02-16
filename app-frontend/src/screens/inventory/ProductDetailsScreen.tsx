@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,9 +23,9 @@ import { quoteService } from "../../services/quote.service";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { QuoteRequestFormSubmit, QuoteRequestSheet } from "../quotes/components/QuoteRequestSheet";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const getRating = (product: Product): number | null => {
   const attrs = product.attributes as Record<string, unknown> | undefined;
@@ -65,6 +65,8 @@ const parseApiErrorMessage = (error: any): string => {
 
 export const ProductDetailsScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { width } = useWindowDimensions();
+  const { isXCompact, isCompact, contentPadding, clamp } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ScreenRoute>();
   const { productId, product: passedProduct } = route.params;
@@ -203,7 +205,10 @@ export const ProductDetailsScreen = () => {
   );
 
   const sellerName = product?.company?.displayName || "Seller";
-  const heroWidth = Math.max(280, SCREEN_WIDTH - spacing.lg * 2 - 2);
+  const horizontalPadding = isXCompact ? contentPadding : spacing.lg;
+  const heroWidth = clamp(width - horizontalPadding * 2 - 2, 250, 520);
+  const heroHeight = clamp(isXCompact ? 250 : 320, 240, 360);
+  const variantCardWidth = clamp(isXCompact ? width * 0.55 : isCompact ? width * 0.48 : width * 0.42, 138, 220);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
@@ -211,7 +216,7 @@ export const ProductDetailsScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1}>Product</Text>
+        <Text style={[styles.topTitle, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>Product</Text>
         <View style={styles.topActions}>
           <TouchableOpacity onPress={() => navigation.navigate("ProductSearch")} hitSlop={8}>
             <Ionicons name="search-outline" size={20} color={colors.text} />
@@ -238,7 +243,8 @@ export const ProductDetailsScreen = () => {
         <>
           <ScrollView
             contentContainerStyle={{
-              padding: spacing.lg,
+              paddingHorizontal: horizontalPadding,
+              paddingTop: spacing.lg,
               gap: spacing.md,
               paddingBottom: 130,
             }}
@@ -261,11 +267,11 @@ export const ProductDetailsScreen = () => {
                     <Image
                       key={`${image.url}-${index}`}
                       source={{ uri: image.url }}
-                      style={[styles.heroImage, { width: heroWidth }]}
+                      style={[styles.heroImage, { width: heroWidth, height: heroHeight }]}
                       resizeMode="contain"
                     />
                   ) : (
-                    <View key={`placeholder-${index}`} style={[styles.heroPlaceholder, { width: heroWidth }]}>
+                    <View key={`placeholder-${index}`} style={[styles.heroPlaceholder, { width: heroWidth, height: heroHeight }]}>
                       <Ionicons name="image-outline" size={42} color={colors.textMuted} />
                     </View>
                   )
@@ -344,6 +350,7 @@ export const ProductDetailsScreen = () => {
                             borderRadius: radius.md,
                             borderColor: active ? colors.primary : colors.border,
                             backgroundColor: active ? colors.primary + "14" : colors.surface,
+                            width: variantCardWidth,
                           },
                         ]}
                       >
@@ -396,7 +403,17 @@ export const ProductDetailsScreen = () => {
             ) : null}
           </ScrollView>
 
-          <View style={[styles.bottomBar, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: spacing.lg }]}> 
+          <View
+            style={[
+              styles.bottomBar,
+              {
+                borderTopColor: colors.border,
+                backgroundColor: colors.surface,
+                paddingHorizontal: horizontalPadding,
+                paddingBottom: isXCompact ? 14 : 18,
+              },
+            ]}
+          > 
             {canManageVariants ? (
               <TouchableOpacity
                 onPress={openManageVariants}
@@ -478,6 +495,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     fontSize: 16,
     fontWeight: "800",
+    minWidth: 0,
   },
   topActions: {
     flexDirection: "row",
@@ -599,13 +617,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "900",
+    minWidth: 0,
   },
   sectionCount: {
     fontSize: 11,
     fontWeight: "700",
   },
   variantCard: {
-    width: 160,
     borderWidth: 1,
     padding: 10,
     gap: 6,
@@ -632,12 +650,14 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 12,
     fontWeight: "700",
+    flexShrink: 1,
   },
   detailValue: {
     fontSize: 12,
     fontWeight: "700",
     flex: 1,
     textAlign: "right",
+    minWidth: 0,
   },
   description: {
     fontSize: 13,
@@ -656,6 +676,7 @@ const styles = StyleSheet.create({
   bottomRow: {
     flexDirection: "row",
     gap: 10,
+    flexWrap: "wrap",
   },
   bottomColumn: {
     gap: 10,

@@ -14,10 +14,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { accountingService, DashboardData } from "../../services/accounting.service";
 import { tallyService, type Voucher } from "../../services/tally.service";
 import type { RootStackParamList } from "../../navigation/types";
 import { DateRangePicker, type DateRange } from "../../components/accounting/DateRangePicker";
+import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -79,6 +81,7 @@ const getStatusTone = (status?: string) => {
 
 export const AccountingDashboardScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { isXCompact, contentPadding } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
 
@@ -153,6 +156,9 @@ export const AccountingDashboardScreen = () => {
     };
   }, [dashboard?.payables, dashboard?.receivables]);
 
+  const cardPadding = isXCompact ? spacing.sm + 2 : spacing.md;
+  const gridGap = isXCompact ? 10 : 12;
+
   if (loading) {
     return (
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -173,16 +179,18 @@ export const AccountingDashboardScreen = () => {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl + insets.bottom }}
+        contentContainerStyle={{ padding: contentPadding, paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Header */}
         <View style={{ marginBottom: spacing.lg }}>
-          <Text style={[styles.title, { color: colors.text }]}>Accounting</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <AdaptiveSingleLineText style={[styles.title, isXCompact && styles.titleCompact, { color: colors.text }]}>
+            Accounting
+          </AdaptiveSingleLineText>
+          <AdaptiveSingleLineText style={[styles.subtitle, { color: colors.textSecondary }]}>
             {periodLabel}
-          </Text>
+          </AdaptiveSingleLineText>
         </View>
 
         {/* Error Banner */}
@@ -215,54 +223,68 @@ export const AccountingDashboardScreen = () => {
 
         {/* KPI Grid */}
         <SectionHeader title="Overview" subtitle="Key financial metrics" />
-        <View style={[styles.grid, { marginBottom: spacing.lg }]}>
+        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
           <MetricCard
             label="Sales"
             value={formatMoneyCompact(dashboard?.sales || 0)}
             iconName="trending-up-outline"
             accent={colors.success}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <MetricCard
             label="Purchases"
             value={formatMoneyCompact(dashboard?.purchases || 0)}
             iconName="cart-outline"
             accent={colors.primary}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <MetricCard
             label="Gross Profit"
             value={formatMoneyCompact(dashboard?.grossProfit || 0)}
             iconName="stats-chart-outline"
             accent={(dashboard?.grossProfit || 0) >= 0 ? colors.success : colors.error}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <MetricCard
             label="Cash Balance"
             value={formatMoneyCompact(dashboard?.cashBalance || 0)}
             iconName="cash-outline"
             accent={colors.accentWarm}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <MetricCard
             label="Receivables"
             value={formatMoneyCompact(dashboard?.receivables || 0)}
             iconName="arrow-down-circle-outline"
             accent={colors.warning}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <MetricCard
             label="Payables"
             value={formatMoneyCompact(dashboard?.payables || 0)}
             iconName="arrow-up-circle-outline"
             accent={colors.error}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
         </View>
 
         {/* Quick Entry */}
         <SectionHeader title="Quick Entry" subtitle="Create transactions fast" />
-        <View style={[styles.grid, { marginBottom: spacing.lg }]}>
+        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
           <ActionCard
             label="Sales Invoice"
             subtitle="Record a sale"
             iconName="document-text-outline"
             accent={colors.success}
             onPress={() => navigation.navigate("SalesInvoice")}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <ActionCard
             label="Purchase Bill"
@@ -270,6 +292,8 @@ export const AccountingDashboardScreen = () => {
             iconName="bag-handle-outline"
             accent={colors.primary}
             onPress={() => navigation.navigate("PurchaseBill")}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <ActionCard
             label="Receipt"
@@ -277,6 +301,8 @@ export const AccountingDashboardScreen = () => {
             iconName="download-outline"
             accent={colors.success}
             onPress={() => navigation.navigate("ReceiptPayment", { type: "receipt" })}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <ActionCard
             label="Payment"
@@ -284,6 +310,8 @@ export const AccountingDashboardScreen = () => {
             iconName="send-outline"
             accent={colors.error}
             onPress={() => navigation.navigate("ReceiptPayment", { type: "payment" })}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
         </View>
 
@@ -321,13 +349,15 @@ export const AccountingDashboardScreen = () => {
 
         {/* Reports */}
         <SectionHeader title="Reports" subtitle="Detailed accounting views" />
-        <View style={[styles.grid, { marginBottom: spacing.lg }]}>
+        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
           <ActionCard
             label="Profit & Loss"
             subtitle="Income vs expense"
             iconName="pie-chart-outline"
             accent={colors.success}
             onPress={() => navigation.navigate("ProfitLoss")}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <ActionCard
             label="GST Summary"
@@ -335,6 +365,8 @@ export const AccountingDashboardScreen = () => {
             iconName="receipt-outline"
             accent={colors.primary}
             onPress={() => navigation.navigate("GSTSummary")}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
           <ActionCard
             label="Outstanding"
@@ -342,6 +374,8 @@ export const AccountingDashboardScreen = () => {
             iconName="people-outline"
             accent={colors.warning}
             onPress={() => navigation.navigate("PartyOutstanding")}
+            singleColumn={isXCompact}
+            cardPadding={cardPadding}
           />
         </View>
 
@@ -424,10 +458,13 @@ export const AccountingDashboardScreen = () => {
                   },
                 ]}
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.snapshotName, { color: colors.text }]} numberOfLines={1}>
+                <View style={styles.flexShrink}>
+                  <AdaptiveSingleLineText
+                    minimumFontScale={0.72}
+                    style={[styles.snapshotName, { color: colors.text }]}
+                  >
                     {p.name}
-                  </Text>
+                  </AdaptiveSingleLineText>
                   <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
                     On hand: {p.availableQuantity}  Min: {p.minStockQuantity}
                   </Text>
@@ -472,10 +509,13 @@ export const AccountingDashboardScreen = () => {
                   <View style={[styles.rankBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
                     <Text style={[styles.rankText, { color: colors.primary }]}>{idx + 1}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.snapshotName, { color: colors.text }]} numberOfLines={1}>
+                  <View style={styles.flexShrink}>
+                    <AdaptiveSingleLineText
+                      minimumFontScale={0.72}
+                      style={[styles.snapshotName, { color: colors.text }]}
+                    >
                       {displayName}
-                    </Text>
+                    </AdaptiveSingleLineText>
                     <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
                       Qty: {Number(item.qtyOut || 0).toFixed(2)}
                     </Text>
@@ -525,15 +565,19 @@ const MetricCard = ({
   value,
   iconName,
   accent,
+  singleColumn,
+  cardPadding,
 }: {
   label: string;
   value: string;
   iconName: keyof typeof Ionicons.glyphMap;
   accent: string;
+  singleColumn?: boolean;
+  cardPadding: number;
 }) => {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, radius } = useTheme();
   return (
-    <View style={{ width: "48%" }}>
+    <View style={{ width: singleColumn ? "100%" : "48%" }}>
       <View
         style={[
           styles.metricCard,
@@ -541,7 +585,7 @@ const MetricCard = ({
             backgroundColor: colors.surfaceElevated,
             borderColor: accent + "35",
             borderRadius: radius.lg,
-            padding: spacing.md,
+            padding: cardPadding,
             shadowColor: accent,
           },
         ]}
@@ -550,13 +594,13 @@ const MetricCard = ({
           <View style={[styles.metricIcon, { backgroundColor: accent + "18", borderColor: accent + "30" }]}>
             <Ionicons name={iconName} size={18} color={accent} />
           </View>
-          <Text style={[styles.metricLabel, { color: colors.textSecondary }]} numberOfLines={1}>
+          <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.metricLabel, { color: colors.textSecondary }]}>
             {label}
-          </Text>
+          </AdaptiveSingleLineText>
         </View>
-        <Text style={[styles.metricValue, { color: colors.text }]} numberOfLines={1}>
+        <AdaptiveSingleLineText minimumFontScale={0.68} style={[styles.metricValue, { color: colors.text }]}>
           {value}
-        </Text>
+        </AdaptiveSingleLineText>
       </View>
     </View>
   );
@@ -568,16 +612,20 @@ const ActionCard = ({
   iconName,
   accent,
   onPress,
+  singleColumn,
+  cardPadding,
 }: {
   label: string;
   subtitle: string;
   iconName: keyof typeof Ionicons.glyphMap;
   accent: string;
   onPress: () => void;
+  singleColumn?: boolean;
+  cardPadding: number;
 }) => {
   const { colors, spacing, radius } = useTheme();
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ width: "48%" }}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ width: singleColumn ? "100%" : "48%" }}>
       <View
         style={[
           styles.actionCard,
@@ -585,19 +633,19 @@ const ActionCard = ({
             backgroundColor: colors.surface,
             borderColor: colors.border,
             borderRadius: radius.lg,
-            padding: spacing.md,
+            padding: cardPadding,
           },
         ]}
       >
         <View style={[styles.actionIcon, { backgroundColor: accent + "18", borderColor: accent + "35" }]}>
           <Ionicons name={iconName} size={20} color={accent} />
         </View>
-        <Text style={[styles.actionTitle, { color: colors.text }]} numberOfLines={1}>
+        <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.actionTitle, { color: colors.text }]}>
           {label}
-        </Text>
-        <Text style={[styles.actionSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+        </AdaptiveSingleLineText>
+        <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.actionSubtitle, { color: colors.textMuted }]}>
           {subtitle}
-        </Text>
+        </AdaptiveSingleLineText>
       </View>
     </TouchableOpacity>
   );
@@ -627,21 +675,21 @@ const VoucherRow = ({ voucher, isLast }: { voucher: Voucher; isLast: boolean }) 
         },
       ]}
     >
-      <View style={{ flex: 1 }}>
+      <View style={styles.flexShrink}>
         <View style={styles.voucherTopRow}>
-          <Text style={[styles.voucherType, { color: colors.text }]} numberOfLines={1}>
+          <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.voucherType, { color: colors.text }]}>
             {topLine}
-          </Text>
+          </AdaptiveSingleLineText>
           {voucherNumber ? (
-            <Text style={[styles.voucherNumber, { color: colors.textMuted }]} numberOfLines={1}>
+            <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.voucherNumber, { color: colors.textMuted }]}>
               {voucherNumber}
-            </Text>
+            </AdaptiveSingleLineText>
           ) : null}
         </View>
         {partyName ? (
-          <Text style={[styles.voucherParty, { color: colors.textSecondary }]} numberOfLines={1}>
+          <AdaptiveSingleLineText minimumFontScale={0.72} style={[styles.voucherParty, { color: colors.textSecondary }]}>
             {partyName}
-          </Text>
+          </AdaptiveSingleLineText>
         ) : null}
         <Text style={[styles.voucherDate, { color: colors.textMuted }]}>
           {new Date(voucher.date).toLocaleDateString("en-IN")}
@@ -691,6 +739,7 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, fontWeight: "600" },
 
   title: { fontSize: 30, fontWeight: "900", letterSpacing: -0.6 },
+  titleCompact: { fontSize: 24 },
   subtitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
 
   errorBanner: {
@@ -744,7 +793,7 @@ const styles = StyleSheet.create({
 
   voucherRow: { flexDirection: "row", alignItems: "center" },
   voucherTopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  voucherType: { fontSize: 14, fontWeight: "800", maxWidth: 160 },
+  voucherType: { fontSize: 14, fontWeight: "800", maxWidth: 170, flex: 1 },
   voucherNumber: { fontSize: 12, fontWeight: "700" },
   voucherParty: { fontSize: 12, fontWeight: "700", marginTop: 4 },
   voucherDate: { fontSize: 11, fontWeight: "600", marginTop: 4 },
@@ -771,6 +820,7 @@ const styles = StyleSheet.create({
   snapshotName: { fontSize: 13, fontWeight: "700" },
   snapshotMeta: { fontSize: 11, fontWeight: "600", marginTop: 4 },
   snapshotValue: { fontSize: 13, fontWeight: "900" },
+  flexShrink: { flex: 1, minWidth: 0, flexShrink: 1 },
 
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   cashFlowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },

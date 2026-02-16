@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
 import { productService, Product, ProductCategory } from "../../services/product.service";
@@ -21,6 +22,8 @@ import { RootStackParamList } from "../../navigation/types";
 import { preferenceService } from "../../services/preference.service";
 import { useToast } from "../../components/ui/Toast";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../../components/text/AdaptiveTwoLineText";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { useCart } from "../../hooks/useCart";
 import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
@@ -42,6 +45,7 @@ export const ProductSearchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ProductSearchRoute>();
   const { colors, spacing, radius } = useTheme();
+  const { width, isXCompact, isCompact, contentPadding, clamp } = useResponsiveLayout();
   const { success: toastSuccess, error: toastError } = useToast();
   const { user, requestLogin } = useAuth();
   const { addToCart } = useCart();
@@ -283,6 +287,12 @@ export const ProductSearchScreen = () => {
     if (seedProducts.length) return seedProducts;
     return results.slice(0, 6);
   }, [results, seedProducts]);
+  const railCardWidth = clamp(isXCompact ? 164 : isCompact ? 178 : 190, 156, 210);
+  const recentChipMaxWidth = clamp(
+    Math.floor(width * (isXCompact ? 0.56 : isCompact ? 0.46 : 0.38)),
+    132,
+    220
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -293,14 +303,14 @@ export const ProductSearchScreen = () => {
       />
 
       <View
-        style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }]}
+        style={[styles.header, { paddingHorizontal: contentPadding, paddingTop: spacing.md, paddingBottom: spacing.sm }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Search products</Text>
-          <View style={{ width: 60 }} />
+          <AdaptiveSingleLineText style={[styles.headerTitle, { color: colors.text }]}>Search products</AdaptiveSingleLineText>
+          <View style={{ width: isXCompact ? 52 : 60 }} />
         </View>
 
         <View
@@ -354,10 +364,12 @@ export const ProductSearchScreen = () => {
                   <View style={[styles.suggestionIcon, { backgroundColor: colors.primary + "12" }]}>
                     <Text style={{ fontSize: 14 }}>🔎</Text>
                   </View>
-                  <Text style={[styles.suggestionText, { color: colors.text }]} numberOfLines={1}>
+                  <AdaptiveSingleLineText style={[styles.suggestionText, { color: colors.text }]}>
                     {sug.label}
-                  </Text>
-                  <Text style={[styles.suggestionType, { color: colors.textMuted }]}>{sug.type}</Text>
+                  </AdaptiveSingleLineText>
+                  <AdaptiveSingleLineText style={[styles.suggestionType, { color: colors.textMuted }]}>
+                    {sug.type}
+                  </AdaptiveSingleLineText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -368,7 +380,7 @@ export const ProductSearchScreen = () => {
       {!submittedQuery && query.trim().length === 0 ? (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}
+          contentContainerStyle={{ paddingHorizontal: contentPadding, paddingBottom: spacing.xl }}
           keyboardShouldPersistTaps="handled"
         >
           {recentSearches.length > 0 && (
@@ -393,9 +405,12 @@ export const ProductSearchScreen = () => {
                     ]}
                     onPress={() => handleSuggestionPress({ label: term, type: "name" })}
                   >
-                    <Text style={[styles.recentChipText, { color: colors.text }]} numberOfLines={1}>
+                    <AdaptiveSingleLineText
+                      containerStyle={{ maxWidth: recentChipMaxWidth }}
+                      style={[styles.recentChipText, { color: colors.text }]}
+                    >
                       {term}
-                    </Text>
+                    </AdaptiveSingleLineText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -415,14 +430,14 @@ export const ProductSearchScreen = () => {
                       key={item._id}
                       style={[
                         styles.horizontalCard,
-                        { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg },
+                        { width: railCardWidth, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg },
                       ]}
                       onPress={() => navigation.navigate("ProductDetails", { productId: item._id })}
                     >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.hCardName, { color: colors.text }]} numberOfLines={2}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <AdaptiveTwoLineText style={[styles.hCardName, { color: colors.text }]}>
                           {item.name}
-                        </Text>
+                        </AdaptiveTwoLineText>
                         <Text style={[styles.hCardMeta, { color: colors.textMuted }]}>
                           {item.availableQuantity} {item.unit || item.price?.unit || "units"}
                         </Text>
@@ -458,7 +473,7 @@ export const ProductSearchScreen = () => {
       ) : null}
 
       {!submittedQuery && query.trim().length > 0 && topChips.length > 0 && (
-        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+        <View style={{ paddingHorizontal: contentPadding, paddingBottom: spacing.sm }}>
           <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Quick picks</Text>
           <View style={styles.chipRow}>
             {topChips.map((cat) => (
@@ -479,8 +494,12 @@ export const ProductSearchScreen = () => {
                   })
                 }
               >
-                <Text style={[styles.chipText, { color: colors.text }]}>{cat.title}</Text>
-                <Text style={[styles.chipCount, { color: colors.textMuted }]}>{cat.count}</Text>
+                <AdaptiveSingleLineText style={[styles.chipText, { color: colors.text }]}>
+                  {cat.title}
+                </AdaptiveSingleLineText>
+                <AdaptiveSingleLineText style={[styles.chipCount, { color: colors.textMuted }]}>
+                  {cat.count}
+                </AdaptiveSingleLineText>
               </TouchableOpacity>
             ))}
           </View>
@@ -492,7 +511,7 @@ export const ProductSearchScreen = () => {
           data={results}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}
+          contentContainerStyle={{ paddingHorizontal: contentPadding, paddingBottom: spacing.xl }}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListHeaderComponent={
             submittedQuery ? (
@@ -610,14 +629,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    minWidth: 0,
+    flexShrink: 1,
   },
   chipText: {
     fontSize: 13,
     fontWeight: "700",
+    minWidth: 0,
+    flexShrink: 1,
   },
   chipCount: {
     fontSize: 12,
     fontWeight: "600",
+    minWidth: 0,
+    flexShrink: 1,
   },
   suggestionList: {
     marginTop: 4,
@@ -630,6 +655,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     gap: 10,
+    minWidth: 0,
   },
   suggestionIcon: {
     width: 36,
@@ -642,11 +668,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "700",
+    minWidth: 0,
+    flexShrink: 1,
   },
   suggestionType: {
     fontSize: 12,
     fontWeight: "600",
     textTransform: "capitalize",
+    minWidth: 0,
+    flexShrink: 1,
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -671,11 +701,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   recentChipText: {
     fontSize: 13,
     fontWeight: "700",
-    maxWidth: 140,
+    minWidth: 0,
+    flexShrink: 1,
   },
   horizontalCard: {
     width: 190,

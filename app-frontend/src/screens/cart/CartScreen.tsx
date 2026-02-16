@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,8 +16,7 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 import { useCart } from "../../hooks/useCart";
 import { CartItem } from "../../providers/CartProvider";
 import { preferenceService } from "../../services/preference.service";
-
-const { width } = Dimensions.get("window");
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 
 const useCartPalette = () => {
   const { colors } = useTheme();
@@ -57,6 +55,7 @@ type CartItemCardProps = {
 
 const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemCardProps) => {
   const COLORS = useCartPalette();
+  const { isCompact, isXCompact } = useResponsiveLayout();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { item, variant, quantity, lineKey } = cartItem;
 
@@ -122,7 +121,7 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
           {/* Product Details */}
           <View style={styles.productDetails}>
             <View style={styles.productHeader}>
-              <Text style={styles.productName} numberOfLines={1}>
+              <Text style={styles.productName} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {item.name}
               </Text>
               <TouchableOpacity
@@ -154,7 +153,7 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
               <View style={styles.quantityWrapper}>
                 <TouchableOpacity
                   onPress={handleDecrement}
-                  style={styles.qtyBtn}
+                  style={[styles.qtyBtn, isCompact ? { width: 34, height: 34 } : null]}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.qtyBtnText}>−</Text>
@@ -164,7 +163,7 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
                 </View>
                 <TouchableOpacity
                   onPress={handleIncrement}
-                  style={[styles.qtyBtn, styles.qtyBtnActive]}
+                  style={[styles.qtyBtn, styles.qtyBtnActive, isCompact ? { width: 34, height: 34 } : null]}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.qtyBtnText, styles.qtyBtnTextActive]}>+</Text>
@@ -172,7 +171,7 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
               </View>
 
               {/* Price Display */}
-              <View style={styles.priceDisplay}>
+              <View style={[styles.priceDisplay, isXCompact ? { alignItems: "flex-start" } : null]}>
                 <Text style={styles.unitPriceText}>
                   {currency} {unitPrice.toFixed(2)} × {quantity}
                 </Text>
@@ -196,6 +195,7 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
 // ============================================================
 const EmptyCart = () => {
   const COLORS = useCartPalette();
+  const { isCompact } = useResponsiveLayout();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const navigation = useNavigation();
 
@@ -221,7 +221,7 @@ const EmptyCart = () => {
       </View>
 
       <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptySubtitle, isCompact ? { fontSize: 14, lineHeight: 20 } : null]}>
         Discover our premium products and start building your order
       </Text>
 
@@ -249,6 +249,7 @@ const EmptyCart = () => {
 // ============================================================
 export const CartScreen = () => {
   const COLORS = useCartPalette();
+  const { isCompact, isXCompact, contentPadding } = useResponsiveLayout();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, refreshCartItems } = useCart();
   const [refreshing, setRefreshing] = useState(false);
@@ -349,7 +350,7 @@ export const CartScreen = () => {
       </View>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: contentPadding }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
@@ -360,7 +361,9 @@ export const CartScreen = () => {
 
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>My Cart</Text>
+            <Text style={[styles.headerTitle, isCompact ? { fontSize: 20 } : null]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
+              My Cart
+            </Text>
             {refreshing && (
               <ActivityIndicator size="small" color={COLORS.accent} style={{ marginLeft: 8 }} />
             )}
@@ -374,7 +377,7 @@ export const CartScreen = () => {
 
         {items.length > 0 ? (
           <TouchableOpacity onPress={handleClearCart} style={styles.clearButton} activeOpacity={0.7}>
-            <Text style={styles.clearButtonText}>Clear</Text>
+            <Text style={[styles.clearButtonText, isCompact ? { fontSize: 12 } : null]}>Clear</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 50 }} />
@@ -390,7 +393,7 @@ export const CartScreen = () => {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           extraData={items}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { padding: contentPadding, paddingBottom: isXCompact ? 270 : 280 }]}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
@@ -401,7 +404,13 @@ export const CartScreen = () => {
         <View style={styles.summaryWrapper}>
           <LinearGradient
             colors={["rgba(10, 10, 15, 0.95)", "rgba(10, 10, 15, 1)"]}
-            style={styles.summaryGradient}
+            style={[
+              styles.summaryGradient,
+              {
+                paddingHorizontal: isCompact ? 16 : 20,
+                paddingTop: isCompact ? 16 : 20,
+              },
+            ]}
           >
             {/* Summary Header */}
             <View style={styles.summaryHeader}>
@@ -423,8 +432,8 @@ export const CartScreen = () => {
               </View>
               <View style={styles.divider} />
               <View style={styles.summaryRow}>
-                <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalAmount}>INR {totalValue.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>Total</Text>
+                <Text style={[styles.totalAmount, isCompact ? { fontSize: 21 } : null]}>INR {totalValue.toFixed(2)}</Text>
               </View>
             </View>
 
@@ -516,6 +525,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   headerCenter: {
     flex: 1,
     alignItems: "center",
+    minWidth: 0,
   },
   headerTitleRow: {
     flexDirection: "row",
@@ -590,17 +600,21 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   },
   productDetails: {
     flex: 1,
+    minWidth: 0,
   },
   productHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    minWidth: 0,
   },
   productName: {
     fontSize: 16,
     fontWeight: "700",
     color: COLORS.text,
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     marginRight: 8,
   },
   removeBtn: {
@@ -620,6 +634,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   productMeta: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 8,
   },
@@ -650,7 +665,9 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap",
     marginTop: 14,
+    rowGap: 10,
   },
   quantityWrapper: {
     flexDirection: "row",
@@ -688,6 +705,8 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   },
   priceDisplay: {
     alignItems: "flex-end",
+    minWidth: 0,
+    flexShrink: 1,
   },
   unitPriceText: {
     fontSize: 11,

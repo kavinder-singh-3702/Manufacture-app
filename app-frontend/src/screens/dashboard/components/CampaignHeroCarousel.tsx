@@ -1,10 +1,9 @@
 import { useMemo, useRef, useState } from "react";
-import { View, FlatList, StyleSheet, Dimensions, Text, ActivityIndicator } from "react-native";
+import { View, FlatList, StyleSheet, Text, ActivityIndicator, useWindowDimensions } from "react-native";
 import { useTheme } from "../../../hooks/useTheme";
+import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
 import { PersonalizedOffer } from "../../../services/preference.service";
 import { CampaignSlide } from "./CampaignSlide";
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 type CampaignHeroCarouselProps = {
   campaigns: PersonalizedOffer[];
@@ -28,16 +27,24 @@ export const CampaignHeroCarousel = ({
   canCall,
 }: CampaignHeroCarouselProps) => {
   const { spacing, colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const { isXCompact, isCompact, clamp } = useResponsiveLayout();
   const [activeIndex, setActiveIndex] = useState(0);
   const seenImpressions = useRef(new Set<string>());
 
-  const cardWidth = useMemo(() => SCREEN_WIDTH - spacing.lg * 2, [spacing.lg]);
+  const horizontalPadding = isXCompact ? spacing.md : spacing.lg;
+  const cardWidth = useMemo(
+    () => clamp(width - horizontalPadding * 2, 260, 540),
+    [clamp, horizontalPadding, width]
+  );
 
   if (loading) {
     return (
       <View style={[styles.loaderContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={[styles.loaderText, { color: colors.textMuted }]}>Loading campaigns...</Text>
+        <Text style={[styles.loaderText, { color: colors.textMuted, fontSize: isCompact ? 12 : 13 }]}>
+          Loading campaigns...
+        </Text>
       </View>
     );
   }
@@ -76,6 +83,7 @@ export const CampaignHeroCarousel = ({
               onCallPress={() => onCallPress?.(item)}
               messageDisabled={canMessage ? !canMessage(item) : false}
               callDisabled={canCall ? !canCall(item) : false}
+              compact={isCompact}
             />
           </View>
         )}

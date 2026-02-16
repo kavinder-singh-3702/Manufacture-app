@@ -100,7 +100,7 @@ export const CompanyVerificationWidget: React.FC<Props> = ({ companyId }) => {
         <CompanyAvatar company={company} size={60} />
 
         <View style={styles.info}>
-          <Text style={styles.companyName} numberOfLines={1}>
+          <Text style={styles.companyName} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {company.displayName}
           </Text>
           <Text style={styles.title}>{statusInfo.title}</Text>

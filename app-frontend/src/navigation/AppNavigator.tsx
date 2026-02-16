@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { DefaultTheme, NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
+import { useEffect, useMemo } from "react";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { enableScreens } from "react-native-screens";
 import { AuthScreen } from "../screens/auth/AuthScreen";
@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import { FullScreenLoader } from "./components/FullScreenLoader";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
 import { AppearanceScreen } from "../screens/settings/AppearanceScreen";
+import { NotificationPreferencesScreen } from "../screens/settings/NotificationPreferencesScreen";
 import { MainTabs } from "./MainTabs";
 import { useTheme } from "../hooks/useTheme";
 import { RootStackParamList } from "./types";
@@ -29,6 +30,7 @@ import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
+import { NotificationStudioScreen } from "../screens/admin/NotificationStudioScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
 import { QuoteCenterScreen } from "../screens/quotes";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
@@ -39,6 +41,7 @@ import { SalesInvoiceScreen } from "../screens/tally/SalesInvoiceScreen";
 import { PurchaseBillScreen } from "../screens/tally/PurchaseBillScreen";
 import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
 import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
+import { rootNavigationRef } from "./navigationRef";
 
 enableScreens(true);
 
@@ -58,7 +61,6 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 export const AppNavigator = () => {
   const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect } = useAuth();
   const { colors } = useTheme();
-  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   const navigationTheme = useMemo(
     () => ({
@@ -80,9 +82,11 @@ export const AppNavigator = () => {
     if (!pendingVerificationRedirect || !user) return;
 
     const timer = setTimeout(() => {
-      navigationRef.current?.navigate("CompanyVerification", {
-        companyId: pendingVerificationRedirect,
-      });
+      if (rootNavigationRef.isReady()) {
+        rootNavigationRef.navigate("CompanyVerification", {
+          companyId: pendingVerificationRedirect,
+        });
+      }
       clearPendingVerificationRedirect();
     }, 100);
 
@@ -94,7 +98,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+    <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
           // Not authenticated: Show login/signup screens
@@ -116,6 +120,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="Appearance"
               component={AppearanceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="NotificationPreferences"
+              component={NotificationPreferencesScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
@@ -211,6 +220,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="CampaignStudio"
               component={CampaignStudioScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="NotificationStudio"
+              component={NotificationStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

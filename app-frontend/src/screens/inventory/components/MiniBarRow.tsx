@@ -26,7 +26,7 @@ export const MiniBarRow = ({
   return (
     <View style={styles.row}>
       <View style={styles.topLine}>
-        <Text style={[styles.label, { color: colors.textOnLightSurface }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: colors.textOnLightSurface }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
           {label}
         </Text>
         <Text style={[styles.value, { color: colors.textOnLightSurface }]}>

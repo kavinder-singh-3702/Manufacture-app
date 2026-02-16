@@ -18,6 +18,7 @@ import { authService } from "../../services/auth.service";
 import { useAuth } from "../../hooks/useAuth";
 import { tokenStorage } from "../../services/tokenStorage";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 
 type SignupScreenProps = {
@@ -84,6 +85,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
   const [categorySearch, setCategorySearch] = useState("");
   const { colors } = useTheme();
+  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
   const headerIntro = useRef(new Animated.Value(0)).current;
   const formIntro = useRef(new Animated.Value(0)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
@@ -431,7 +433,16 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       style={styles.slide}
       keyboardVerticalOffset={32}
     >
-      <View style={styles.card}>
+      <View
+        style={[
+          styles.card,
+          {
+            paddingHorizontal: isXCompact ? 16 : isCompact ? 20 : 28,
+            paddingTop: isCompact ? 22 : 32,
+            paddingBottom: isCompact ? 28 : 40,
+          },
+        ]}
+      >
         <LinearGradient
           colors={[colors.primary + "2e", colors.primary + "0d", "transparent"]}
           style={[styles.blob, styles.pinkBlobLarge]}
@@ -442,7 +453,16 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         />
 
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.overlayLight, borderColor: colors.border }]}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: colors.overlayLight,
+              borderColor: colors.border,
+              width: isCompact ? 40 : 42,
+              height: isCompact ? 40 : 42,
+              borderRadius: isCompact ? 20 : 21,
+            },
+          ]}
           onPress={handleBack}
         >
           <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
@@ -478,7 +498,9 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
               Step {stepIndex + 1} of {steps.length}
             </Text>
           </LinearGradient>
-          <Text style={[styles.heading, { color: colors.textOnDarkSurface }]}>{stepTitles[step]}</Text>
+          <Text style={[styles.heading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
+            {stepTitles[step]}
+          </Text>
           <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>{stepDescriptions[step]}</Text>
 
           {status ? <Text style={[styles.statusText, { color: colors.success }]}>{status}</Text> : null}

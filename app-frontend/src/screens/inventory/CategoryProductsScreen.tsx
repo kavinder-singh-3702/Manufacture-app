@@ -18,12 +18,14 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navig
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole } from "../../constants/roles";
 import { productService, Product } from "../../services/product.service";
 import { preferenceService } from "../../services/preference.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
+import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
@@ -67,6 +69,7 @@ export const CategoryProductsScreen = () => {
   const COLORS = useCategoryProductsPalette();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { resolvedMode } = useThemeMode();
+  const { isCompact, contentPadding } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "CategoryProducts">>();
   const { categoryId, title, subCategory: initialSubCategory } = route.params;
@@ -249,14 +252,29 @@ export const CategoryProductsScreen = () => {
       <SafeAreaView style={styles.container} edges={["top"]}>
         <StatusBar barStyle={resolvedMode === "dark" ? "light-content" : "dark-content"} backgroundColor={COLORS.headerBg} />
         {/* Amazon-style Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingHorizontal: contentPadding,
+              paddingVertical: isCompact ? 10 : 14,
+              gap: isCompact ? 8 : 12,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[
+              styles.backButton,
+              isCompact && styles.backButtonCompact,
+            ]}
+          >
             <Text style={styles.backButtonIcon}>←</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>{categoryLabel}</Text>
+            <AdaptiveSingleLineText style={styles.headerTitle}>{categoryLabel}</AdaptiveSingleLineText>
           </View>
-          <View style={{ width: 40 }} />
+          <View style={{ width: isCompact ? 34 : 40 }} />
         </View>
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={COLORS.accent} />
@@ -271,30 +289,51 @@ export const CategoryProductsScreen = () => {
       <StatusBar barStyle={resolvedMode === "dark" ? "light-content" : "dark-content"} backgroundColor={COLORS.headerBg} />
 
       {/* Amazon-style Dark Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingHorizontal: contentPadding,
+            paddingVertical: isCompact ? 10 : 14,
+            gap: isCompact ? 8 : 12,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[
+            styles.backButton,
+            isCompact && styles.backButtonCompact,
+          ]}
+        >
           <Text style={styles.backButtonIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{categoryLabel}</Text>
+          <AdaptiveSingleLineText style={styles.headerTitle}>{categoryLabel}</AdaptiveSingleLineText>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: isCompact ? 34 : 40 }} />
       </View>
 
       {/* Results & Sort Bar */}
-      <View style={styles.resultsBar}>
-        <Text style={styles.resultsText}>{totalProductsLabel}</Text>
-        <View style={styles.sortFilterRow}>
+      <View
+        style={[
+          styles.resultsBar,
+          isCompact && styles.resultsBarCompact,
+          { paddingHorizontal: contentPadding, paddingVertical: isCompact ? 10 : 12 },
+        ]}
+      >
+        <AdaptiveSingleLineText style={styles.resultsText}>{totalProductsLabel}</AdaptiveSingleLineText>
+        <View style={[styles.sortFilterRow, isCompact && styles.sortFilterRowCompact]}>
           <TouchableOpacity
             onPress={() => setFilterModalVisible(true)}
-            style={styles.sortButton}
+            style={[styles.sortButton, isCompact && styles.sortButtonCompact]}
           >
-            <Text style={styles.sortButtonText}>Sort & Filter</Text>
+            <AdaptiveSingleLineText style={styles.sortButtonText}>Sort & Filter</AdaptiveSingleLineText>
             <Text style={styles.sortButtonIcon}>▼</Text>
           </TouchableOpacity>
           {(appliedSort !== "none" || appliedMinPrice || appliedMaxPrice) && (
-            <TouchableOpacity onPress={resetFilters} style={styles.clearFiltersButton}>
-              <Text style={styles.clearFiltersText}>Clear</Text>
+            <TouchableOpacity onPress={resetFilters} style={[styles.clearFiltersButton, isCompact && styles.clearFiltersButtonCompact]}>
+              <AdaptiveSingleLineText style={styles.clearFiltersText}>Clear</AdaptiveSingleLineText>
             </TouchableOpacity>
           )}
         </View>
@@ -305,7 +344,7 @@ export const CategoryProductsScreen = () => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipScroll}
+          contentContainerStyle={[styles.chipScroll, { paddingHorizontal: contentPadding }]}
         >
           {subCategories.map((sub) => {
             const isActive = activeSubCategory === sub;
@@ -313,11 +352,11 @@ export const CategoryProductsScreen = () => {
               <TouchableOpacity
                 key={sub}
                 onPress={() => setActiveSubCategory(sub)}
-                style={[styles.chip, isActive && styles.chipActive]}
+                style={[styles.chip, isCompact && styles.chipCompact, isActive && styles.chipActive]}
               >
-                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                <AdaptiveSingleLineText style={[styles.chipText, isActive && styles.chipTextActive]}>
                   {sub}
-                </Text>
+                </AdaptiveSingleLineText>
               </TouchableOpacity>
             );
           })}
@@ -529,12 +568,18 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
   },
   headerCenter: {
     flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: COLORS.headerText,
     letterSpacing: 0.3,
+  },
+  backButtonCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
   },
   // Results Bar
   resultsBar: {
@@ -547,6 +592,11 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  resultsBarCompact: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 10,
+  },
   resultsText: {
     fontSize: 13,
     color: COLORS.textSecondary,
@@ -556,6 +606,12 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    minWidth: 0,
+    flexWrap: "wrap",
+  },
+  sortFilterRowCompact: {
+    width: "100%",
+    justifyContent: "flex-start",
   },
   sortButton: {
     flexDirection: "row",
@@ -567,11 +623,19 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.accent + "40",
+    minWidth: 0,
+    flexShrink: 1,
+  },
+  sortButtonCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
   sortButtonText: {
     fontSize: 13,
     color: COLORS.accent,
     fontWeight: "600",
+    minWidth: 0,
+    flexShrink: 1,
   },
   sortButtonIcon: {
     fontSize: 10,
@@ -584,6 +648,10 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.error + "40",
+  },
+  clearFiltersButtonCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
   clearFiltersText: {
     fontSize: 12,
@@ -611,6 +679,10 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
+  chipCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   chipActive: {
     backgroundColor: COLORS.accentGlow,
     borderColor: COLORS.accent,
@@ -619,6 +691,8 @@ const createStyles = (COLORS: ReturnType<typeof useCategoryProductsPalette>) =>
     fontSize: 13,
     color: COLORS.textSecondary,
     fontWeight: "500",
+    minWidth: 0,
+    flexShrink: 1,
   },
   chipTextActive: {
     color: COLORS.accent,

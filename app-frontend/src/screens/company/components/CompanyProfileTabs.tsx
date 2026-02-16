@@ -1,5 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useTheme } from "../../../hooks/useTheme";
+import { AdaptiveSingleLineText } from "../../../components/text/AdaptiveSingleLineText";
+import { useCompanyProfileLayout } from "./companyProfile.layout";
 
 export type CompanyProfileTab = "overview" | "products" | "compliance";
 
@@ -17,9 +19,21 @@ const tabs: Array<{ key: CompanyProfileTab; label: string }> = [
 
 export const CompanyProfileTabs = ({ activeTab, onChange, productCount = 0 }: CompanyProfileTabsProps) => {
   const { colors } = useTheme();
+  const layout = useCompanyProfileLayout();
 
   return (
-    <View style={[styles.container, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+          borderRadius: layout.compact ? 12 : 14,
+          padding: layout.xCompact ? 3 : 4,
+          gap: layout.xCompact ? 3 : 4,
+        },
+      ]}
+    >
       {tabs.map((tab) => {
         const isActive = tab.key === activeTab;
         const showCount = tab.key === "products";
@@ -33,13 +47,45 @@ export const CompanyProfileTabs = ({ activeTab, onChange, productCount = 0 }: Co
               {
                 backgroundColor: isActive ? colors.primary + "18" : "transparent",
                 borderColor: isActive ? colors.primary + "55" : "transparent",
+                minHeight: layout.chipHeight + 8,
+                borderRadius: layout.compact ? 9 : 10,
+                paddingHorizontal: layout.xCompact ? 5 : 8,
+                gap: layout.xCompact ? 4 : 6,
               },
             ]}
           >
-            <Text style={[styles.tabLabel, { color: isActive ? colors.primary : colors.textMuted }]}>{tab.label}</Text>
+            <AdaptiveSingleLineText
+              allowOverflowScroll={false}
+              minimumFontScale={0.72}
+              style={[
+                styles.tabLabel,
+                {
+                  color: isActive ? colors.primary : colors.textMuted,
+                  fontSize: layout.xCompact ? 11 : 12,
+                },
+              ]}
+            >
+              {tab.label}
+            </AdaptiveSingleLineText>
             {showCount ? (
-              <View style={[styles.countPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}>
-                <Text style={[styles.countText, { color: colors.text }]}>{productCount}</Text>
+              <View
+                style={[
+                  styles.countPill,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surfaceElevated,
+                    minHeight: layout.xCompact ? 16 : 18,
+                    paddingHorizontal: layout.xCompact ? 4 : 5,
+                  },
+                ]}
+              >
+                <AdaptiveSingleLineText
+                  allowOverflowScroll={false}
+                  minimumFontScale={0.72}
+                  style={[styles.countText, { color: colors.text, fontSize: layout.xCompact ? 9 : 10 }]}
+                >
+                  {productCount}
+                </AdaptiveSingleLineText>
               </View>
             ) : null}
           </TouchableOpacity>
@@ -59,17 +105,18 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    minHeight: 38,
-    borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 6,
+    minWidth: 0,
+    flexShrink: 1,
   },
   tabLabel: {
     fontSize: 12,
     fontWeight: "700",
+    minWidth: 0,
+    flexShrink: 1,
   },
   countPill: {
     minWidth: 20,
@@ -83,5 +130,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 10,
     fontWeight: "700",
+    minWidth: 0,
+    flexShrink: 1,
   },
 });

@@ -1,7 +1,8 @@
 import { memo } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
+import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
 import { HomeFeedRecommendation } from "../../../services/preference.service";
 
 type RecommendedProductsRailProps = {
@@ -19,11 +20,14 @@ const formatPrice = (amount?: number, currency?: string) => {
 export const RecommendedProductsRail = memo(
   ({ recommendations, loading, onOpenProduct, onBrowseAll }: RecommendedProductsRailProps) => {
     const { colors, spacing, radius } = useTheme();
+    const { width } = useWindowDimensions();
+    const { isXCompact, isCompact, clamp } = useResponsiveLayout();
+    const cardWidth = clamp(Math.round(width * (isXCompact ? 0.72 : isCompact ? 0.62 : 0.56)), 176, 240);
 
     return (
       <View style={{ gap: spacing.sm }}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.text }]}>Recommended for you</Text>
+          <Text style={[styles.title, { color: colors.text, fontSize: isCompact ? 16 : 18 }]}>Recommended for you</Text>
           <TouchableOpacity onPress={onBrowseAll} activeOpacity={0.8}>
             <Text style={[styles.viewAll, { color: colors.primary }]}>View all</Text>
           </TouchableOpacity>
@@ -54,6 +58,7 @@ export const RecommendedProductsRail = memo(
                 style={[
                   styles.card,
                   {
+                    width: cardWidth,
                     borderColor: colors.border,
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
@@ -125,7 +130,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   card: {
-    width: 220,
     borderWidth: 1,
     padding: 14,
     gap: 8,

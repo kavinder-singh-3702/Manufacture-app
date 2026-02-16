@@ -139,7 +139,7 @@ export const ProfileHero = ({
             </LinearGradient>
             <View style={styles.verifiedBannerText}>
               <Text style={[styles.verifiedLabel, { color: colors.success }]}>VERIFIED BUSINESS</Text>
-              <Text style={[styles.verifiedCompanyName, { color: colors.text }]} numberOfLines={1}>
+              <Text style={[styles.verifiedCompanyName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {companyName}
               </Text>
             </View>

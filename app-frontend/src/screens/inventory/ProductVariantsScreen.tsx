@@ -151,10 +151,10 @@ export const ProductVariantsScreen = () => {
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             Variants
           </Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {productName || "Product"} • {variants.length} total • {totalInStock} in stock
             {syncing ? " • syncing..." : ""}
           </Text>

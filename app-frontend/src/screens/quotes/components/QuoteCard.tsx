@@ -118,7 +118,7 @@ export const QuoteCard = ({
           {timeline.map((item, index) => (
             <View key={`${item.timestamp}-${index}`} style={styles.timelineRow}>
               <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-              <Text style={[styles.timelineText, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.timelineText, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {toTimelineLabel(item.action)} • {formatDate(item.timestamp)}
               </Text>
             </View>

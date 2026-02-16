@@ -29,10 +29,10 @@ export const ProfileTopBar = ({
       </TouchableOpacity>
 
       <View style={styles.titleWrap}>
-        <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>
+        <Text numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.title, { color: colors.text }]}>
           {title}
         </Text>
-        <Text numberOfLines={1} style={[styles.subtitle, { color: colors.textMuted }]}>
+        <Text numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.subtitle, { color: colors.textMuted }]}>
           {subtitle}
         </Text>
       </View>

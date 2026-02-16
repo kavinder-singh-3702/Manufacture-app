@@ -35,7 +35,7 @@ export const RecentRequestRow = ({
 
       <View style={styles.content}>
         <View style={styles.top}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {request.title || service.title}
           </Text>
           <Text style={[styles.date, { color: colors.textMuted }]}>{formatDate(request.createdAt)}</Text>

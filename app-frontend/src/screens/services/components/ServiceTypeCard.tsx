@@ -50,7 +50,7 @@ export const ServiceTypeCard = ({
         </View>
       </View>
 
-      <Text style={[styles.hint, { color: colors.textSecondary }]} numberOfLines={1}>
+      <Text style={[styles.hint, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
         {service.quickHint}
       </Text>
 

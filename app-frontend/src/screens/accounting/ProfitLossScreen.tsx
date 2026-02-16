@@ -278,7 +278,7 @@ export const ProfitLossScreen = () => {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                     {item.accountName}
                   </Text>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
@@ -330,7 +330,7 @@ export const ProfitLossScreen = () => {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                     {item.accountName}
                   </Text>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>

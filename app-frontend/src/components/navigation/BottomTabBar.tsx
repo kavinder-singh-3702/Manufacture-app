@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { RouteName } from "../../navigation/routes";
+import { AdaptiveSingleLineText } from "../text/AdaptiveSingleLineText";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -37,7 +38,6 @@ export const BottomTabBar: FC<BottomTabBarProps> = ({
   const imageSize = isXCompact ? 22 : isCompact ? 24 : 26;
   const labelFontSize = isXCompact ? 9.5 : isCompact ? 10.5 : 13;
   const labelLineHeight = isXCompact ? 11 : isCompact ? 12 : 15;
-  const labelLines = isCompact || isXCompact ? 2 : 1;
   const containerVerticalPadding = isXCompact ? 5 : isCompact ? 7 : 10;
 
   return (
@@ -85,10 +85,10 @@ export const BottomTabBar: FC<BottomTabBarProps> = ({
                 }}
               />
             )}
-            <Text
-              numberOfLines={labelLines}
-              ellipsizeMode={labelLines === 1 ? "tail" : "clip"}
-              allowFontScaling={false}
+            <AdaptiveSingleLineText
+              minimumFontScale={0.68}
+              allowOverflowScroll={isCompact || isXCompact}
+              containerStyle={styles.labelContainer}
               style={[
                 styles.label,
                 {
@@ -100,7 +100,7 @@ export const BottomTabBar: FC<BottomTabBarProps> = ({
               ]}
             >
               {tab.label}
-            </Text>
+            </AdaptiveSingleLineText>
           </TouchableOpacity>
         );
       })}
@@ -126,6 +126,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",
+    width: "100%",
+  },
+  labelContainer: {
     width: "100%",
   }
 });

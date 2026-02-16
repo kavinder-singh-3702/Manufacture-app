@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -17,9 +16,13 @@ import { AmazonStyleProductCard } from "../../../components/product/AmazonStyleP
 import { useToast } from "../../../components/ui/Toast";
 import { useAuth } from "../../../hooks/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
+import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
 import { RootStackParamList } from "../../../navigation/types";
 import { Product, productService } from "../../../services/product.service";
 import { callProductSeller, startProductConversation } from "../../product/utils/productContact";
+import { AdaptiveSingleLineText } from "../../../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../../../components/text/AdaptiveTwoLineText";
+import { useCompanyProfileLayout } from "./companyProfile.layout";
 
 type ProductStatusFilter = "active" | "draft" | "inactive" | "all";
 type ProductVisibilityFilter = "public" | "private" | "all";
@@ -55,7 +58,9 @@ export const CompanyProductsSection = ({
   onRefreshCompany,
 }: CompanyProductsSectionProps) => {
   const { colors, spacing, radius } = useTheme();
-  const styles = useMemo(() => createStyles(colors, spacing, radius), [colors, spacing, radius]);
+  const { isCompact, isXCompact } = useResponsiveLayout();
+  const layout = useCompanyProfileLayout();
+  const styles = useMemo(() => createStyles(colors, spacing, radius, layout), [colors, spacing, radius, layout]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isFocused = useIsFocused();
   const { user, requestLogin } = useAuth();
@@ -186,14 +191,26 @@ export const CompanyProductsSection = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Added Products</Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+      <View style={[styles.sectionHeader, isCompact && styles.sectionHeaderCompact]}>
+        <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.sectionTitle, { color: colors.text }]}>
+          Added Products
+        </AdaptiveSingleLineText>
+        <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
           {pagination.total} listed
-        </Text>
+        </AdaptiveSingleLineText>
       </View>
 
-      <View style={[styles.searchRow, { borderColor: colors.border, backgroundColor: colors.surface }]}> 
+      <View
+        style={[
+          styles.searchRow,
+          {
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+            minHeight: layout.ctaHeight,
+            paddingHorizontal: isXCompact ? 10 : spacing.md,
+          },
+        ]}
+      >
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           value={searchInput}
@@ -213,7 +230,9 @@ export const CompanyProductsSection = ({
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Status</Text>
+        <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.filterLabel, { color: colors.textMuted }]}>
+          Status
+        </AdaptiveSingleLineText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {STATUS_FILTERS.map((filter) => {
             const isActive = statusFilter === filter.key;
@@ -227,10 +246,18 @@ export const CompanyProductsSection = ({
                   {
                     borderColor: isActive ? colors.primary : colors.border,
                     backgroundColor: isActive ? colors.primary + "18" : colors.surface,
+                    minHeight: layout.chipHeight,
+                    paddingHorizontal: isXCompact ? 10 : 12,
                   },
                 ]}
               >
-                <Text style={[styles.filterChipText, { color: isActive ? colors.primary : colors.text }]}>{filter.label}</Text>
+                <AdaptiveSingleLineText
+                  allowOverflowScroll={false}
+                  minimumFontScale={0.74}
+                  style={[styles.filterChipText, { color: isActive ? colors.primary : colors.text }]}
+                >
+                  {filter.label}
+                </AdaptiveSingleLineText>
               </TouchableOpacity>
             );
           })}
@@ -238,7 +265,9 @@ export const CompanyProductsSection = ({
       </View>
 
       <View style={styles.filterGroup}>
-        <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Visibility</Text>
+        <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.filterLabel, { color: colors.textMuted }]}>
+          Visibility
+        </AdaptiveSingleLineText>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {VISIBILITY_FILTERS.map((filter) => {
             const isActive = visibilityFilter === filter.key;
@@ -252,10 +281,18 @@ export const CompanyProductsSection = ({
                   {
                     borderColor: isActive ? colors.primary : colors.border,
                     backgroundColor: isActive ? colors.primary + "18" : colors.surface,
+                    minHeight: layout.chipHeight,
+                    paddingHorizontal: isXCompact ? 10 : 12,
                   },
                 ]}
               >
-                <Text style={[styles.filterChipText, { color: isActive ? colors.primary : colors.text }]}>{filter.label}</Text>
+                <AdaptiveSingleLineText
+                  allowOverflowScroll={false}
+                  minimumFontScale={0.74}
+                  style={[styles.filterChipText, { color: isActive ? colors.primary : colors.text }]}
+                >
+                  {filter.label}
+                </AdaptiveSingleLineText>
               </TouchableOpacity>
             );
           })}
@@ -266,26 +303,44 @@ export const CompanyProductsSection = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={onAddProduct}
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
+          style={[styles.addButton, { backgroundColor: colors.primary, minHeight: layout.ctaHeight }]}
         >
           <Ionicons name="add-circle-outline" size={18} color={colors.textOnPrimary} />
-          <Text style={[styles.addButtonText, { color: colors.textOnPrimary }]}>Add Product</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.addButtonText, { color: colors.textOnPrimary }]}>
+            Add Product
+          </AdaptiveSingleLineText>
         </TouchableOpacity>
       ) : (
-        <View style={[styles.readOnlyHint, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}> 
+        <View
+          style={[
+            styles.readOnlyHint,
+            isCompact && styles.readOnlyHintCompact,
+            { borderColor: colors.border, backgroundColor: colors.surfaceElevated, minHeight: layout.chipHeight + 6 },
+          ]}
+        >
           <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
-          <Text style={[styles.readOnlyHintText, { color: colors.textMuted }]}>Read-only company product view</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.readOnlyHintText, { color: colors.textMuted }]}>
+            Read-only company product view
+          </AdaptiveSingleLineText>
         </View>
       )}
 
       {error ? (
-        <View style={[styles.errorBanner, { borderColor: colors.error + "55", backgroundColor: colors.error + "14" }]}>
+        <View
+          style={[
+            styles.errorBanner,
+            isCompact && styles.errorBannerCompact,
+            { borderColor: colors.error + "55", backgroundColor: colors.error + "14" },
+          ]}
+        >
           <Ionicons name="alert-circle" size={16} color={colors.error} />
-          <Text style={[styles.errorText, { color: colors.error }]} numberOfLines={2}>
+          <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.errorText, { color: colors.error }]}>
             {error}
-          </Text>
+          </AdaptiveTwoLineText>
           <TouchableOpacity onPress={() => fetchProducts(0, false)}>
-            <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+            <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.retryText, { color: colors.primary }]}>
+              Retry
+            </AdaptiveSingleLineText>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -293,13 +348,19 @@ export const CompanyProductsSection = ({
       {loading && !products.length ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loaderText, { color: colors.textMuted }]}>Loading products...</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.loaderText, { color: colors.textMuted }]}>
+            Loading products...
+          </AdaptiveSingleLineText>
         </View>
       ) : products.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Ionicons name="cube-outline" size={48} color={colors.textMuted} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No products found</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Try changing filters or add a new product.</Text>
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.emptyTitle, { color: colors.text }]}>
+            No products found
+          </AdaptiveSingleLineText>
+          <AdaptiveTwoLineText minimumFontScale={0.72} style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+            Try changing filters or add a new product.
+          </AdaptiveTwoLineText>
         </View>
       ) : (
         <FlatList
@@ -338,7 +399,8 @@ export const CompanyProductsSection = ({
 const createStyles = (
   colors: ReturnType<typeof useTheme>["colors"],
   spacing: ReturnType<typeof useTheme>["spacing"],
-  radius: ReturnType<typeof useTheme>["radius"]
+  radius: ReturnType<typeof useTheme>["radius"],
+  layout: ReturnType<typeof useCompanyProfileLayout>
 ) =>
   StyleSheet.create({
     container: {
@@ -350,29 +412,41 @@ const createStyles = (
       alignItems: "baseline",
       justifyContent: "space-between",
       marginTop: 2,
+      minWidth: 0,
+      gap: 8,
+    },
+    sectionHeaderCompact: {
+      flexDirection: "column",
+      alignItems: "flex-start",
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: layout.compact ? 15 : 16,
       fontWeight: "800",
       letterSpacing: -0.2,
+      minWidth: 0,
+      flexShrink: 1,
     },
     sectionSubtitle: {
-      fontSize: 12,
+      fontSize: layout.compact ? 11 : 12,
       fontWeight: "600",
+      minWidth: 0,
+      flexShrink: 1,
     },
     searchRow: {
-      minHeight: 46,
+      minHeight: layout.ctaHeight,
       borderWidth: 1,
       borderRadius: radius.lg,
       paddingHorizontal: spacing.md,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      minWidth: 0,
     },
     searchInput: {
       flex: 1,
       fontSize: 14,
       fontWeight: "600",
+      minWidth: 0,
     },
     filterGroup: {
       gap: 6,
@@ -385,20 +459,25 @@ const createStyles = (
     },
     filterRow: {
       gap: 8,
+      minWidth: 0,
     },
     filterChip: {
       borderWidth: 1,
       borderRadius: 999,
-      minHeight: 34,
+      minHeight: layout.chipHeight,
       paddingHorizontal: 12,
       justifyContent: "center",
+      minWidth: 0,
+      maxWidth: 180,
     },
     filterChipText: {
-      fontSize: 12,
+      fontSize: layout.compact ? 11 : 12,
       fontWeight: "700",
+      minWidth: 0,
+      flexShrink: 1,
     },
     addButton: {
-      minHeight: 42,
+      minHeight: layout.ctaHeight,
       borderRadius: radius.lg,
       flexDirection: "row",
       alignItems: "center",
@@ -418,10 +497,16 @@ const createStyles = (
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
+      minWidth: 0,
+    },
+    readOnlyHintCompact: {
+      justifyContent: "flex-start",
     },
     readOnlyHintText: {
-      fontSize: 12,
+      fontSize: layout.compact ? 11 : 12,
       fontWeight: "700",
+      minWidth: 0,
+      flexShrink: 1,
     },
     errorBanner: {
       borderWidth: 1,
@@ -431,11 +516,17 @@ const createStyles = (
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      minWidth: 0,
+    },
+    errorBannerCompact: {
+      alignItems: "flex-start",
     },
     errorText: {
       flex: 1,
-      fontSize: 12,
+      fontSize: layout.compact ? 11 : 12,
       fontWeight: "600",
+      minWidth: 0,
+      flexShrink: 1,
     },
     retryText: {
       fontSize: 12,

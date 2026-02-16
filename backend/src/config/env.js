@@ -29,7 +29,14 @@ const config = {
   smtpPass: process.env.SMTP_PASS,
   emailFrom: process.env.EMAIL_FROM || 'Manufacture App <noreply@manufacture-app.com>',
   appName: process.env.APP_NAME || 'Manufacture App',
-  appUrl: process.env.APP_URL || 'http://localhost:3000'
+  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  notificationsPushEnabled: process.env.NOTIFICATIONS_PUSH_ENABLED !== 'false',
+  notificationsDispatcherEnabled: process.env.NOTIFICATIONS_DISPATCHER_ENABLED !== 'false',
+  notificationsDispatchIntervalMs: Number(process.env.NOTIFICATIONS_DISPATCH_INTERVAL_MS || 10000),
+  notificationsDispatchBatchSize: Number(process.env.NOTIFICATIONS_DISPATCH_BATCH_SIZE || 30),
+  notificationRetryBaseMs: Number(process.env.NOTIFICATION_RETRY_BASE_MS || 30000),
+  notificationRetryMaxMs: Number(process.env.NOTIFICATION_RETRY_MAX_MS || 30 * 60 * 1000),
+  expoPushAccessToken: process.env.EXPO_PUSH_ACCESS_TOKEN
 };
 
 module.exports = Object.freeze(config);

@@ -283,6 +283,15 @@ export const MainTabs = () => {
     stackNavigation.navigate("Appearance");
   }, [stackNavigation]);
 
+  const handleNotificationStudio = useCallback(() => {
+    setSidebarVisible(false);
+    if (isAdmin) {
+      stackNavigation.navigate("NotificationStudio");
+      return;
+    }
+    stackNavigation.navigate("NotificationPreferences");
+  }, [isAdmin, stackNavigation]);
+
   const handleHelp = useCallback(() => {
     setSidebarVisible(false);
     stackNavigation.navigate("Help");
@@ -309,6 +318,14 @@ export const MainTabs = () => {
     if (isAdmin) return;
     stackNavigation.navigate("Profile");
   }, [isAdmin, isAuthenticated, requestLogin, stackNavigation]);
+
+  const handleOpenNotifications = useCallback(() => {
+    if (!isAuthenticated) {
+      requestLogin();
+      return;
+    }
+    stackNavigation.navigate("Notifications");
+  }, [isAuthenticated, requestLogin, stackNavigation]);
 
   const navigationItems = useMemo(
     () =>
@@ -341,11 +358,16 @@ export const MainTabs = () => {
       ...(hasServicesTab ? [] : [{ label: "Help", description: "Services and support", onPress: handleHelp }]),
       profileOrLoginItem,
       { label: "Preferences", description: "Theme, notifications, and more", onPress: handlePreferences },
+      {
+        label: isAdmin ? "Notification Studio" : "Notification Settings",
+        description: isAdmin ? "Dispatch and track notifications" : "Manage push and quiet hours",
+        onPress: handleNotificationStudio,
+      },
       ...(isAuthenticated
         ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
         : []),
     ];
-  }, [handleHelp, handleLogout, handlePreferences, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
+  }, [handleHelp, handleLogout, handleNotificationStudio, handlePreferences, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
 
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
 
@@ -380,7 +402,7 @@ export const MainTabs = () => {
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onSearchPress={handleSearchPress}
-          onNotificationsPress={() => stackNavigation.navigate("Notifications")}
+          onNotificationsPress={handleOpenNotifications}
           notificationCount={notificationUnreadCount}
           activeCompany={activeCompany}
           onAvatarLongPress={handleOpenCompanySwitcher}

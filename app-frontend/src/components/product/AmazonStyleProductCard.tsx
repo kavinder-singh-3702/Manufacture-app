@@ -10,6 +10,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Product } from "../../services/product.service";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { AdaptiveSingleLineText } from "../text/AdaptiveSingleLineText";
 
 type AmazonStyleProductCardProps = {
   product: Product;
@@ -93,6 +95,7 @@ export const AmazonStyleProductCard = memo(
   }: AmazonStyleProductCardProps) => {
     const { colors, radius, spacing } = useTheme();
     const { resolvedMode } = useThemeMode();
+    const { isCompact, isXCompact, clamp } = useResponsiveLayout();
 
     const palette = useMemo(
       () => ({
@@ -111,7 +114,16 @@ export const AmazonStyleProductCard = memo(
       [colors, resolvedMode]
     );
 
-    const styles = useMemo(() => createStyles(colors, palette, radius, spacing), [colors, palette, radius, spacing]);
+    const imageSize = clamp(isXCompact ? 84 : isCompact ? 96 : 116, 82, 124);
+    const styles = useMemo(
+      () =>
+        createStyles(colors, palette, radius, spacing, {
+          imageSize,
+          compact: isCompact,
+          xCompact: isXCompact,
+        }),
+      [colors, imageSize, isCompact, isXCompact, palette, radius, spacing]
+    );
 
     const primaryImage = product.images?.[0]?.url;
     const price = Number(product.price?.amount || 0);
@@ -151,14 +163,14 @@ export const AmazonStyleProductCard = memo(
           </View>
 
           <View style={styles.content}>
-            <Text numberOfLines={2} style={styles.title}>
+            <AdaptiveSingleLineText minimumFontScale={0.72} style={styles.title}>
               {product.name}
-            </Text>
+            </AdaptiveSingleLineText>
 
             <View style={styles.sellerRow}>
-              <Text style={styles.sellerText} numberOfLines={1}>
+              <AdaptiveSingleLineText minimumFontScale={0.72} style={styles.sellerText}>
                 {seller}
-              </Text>
+              </AdaptiveSingleLineText>
               {isVerified ? (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -243,7 +255,19 @@ export const AmazonStyleProductCard = memo(
   }
 );
 
-const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Record<string, string>, radius: ReturnType<typeof useTheme>["radius"], spacing: ReturnType<typeof useTheme>["spacing"]) =>
+type CardLayout = {
+  imageSize: number;
+  compact: boolean;
+  xCompact: boolean;
+};
+
+const createStyles = (
+  colors: ReturnType<typeof useTheme>["colors"],
+  palette: Record<string, string>,
+  radius: ReturnType<typeof useTheme>["radius"],
+  spacing: ReturnType<typeof useTheme>["spacing"],
+  layout: CardLayout
+) =>
   StyleSheet.create({
     card: {
       backgroundColor: palette.cardBg,
@@ -254,11 +278,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
     },
     row: {
       flexDirection: "row",
-      gap: spacing.md,
+      gap: spacing.sm,
     },
     imageContainer: {
-      width: 116,
-      height: 116,
+      width: layout.imageSize,
+      height: layout.imageSize,
       borderRadius: radius.md,
       backgroundColor: palette.imageBg,
       alignItems: "center",
@@ -281,13 +305,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
     },
     content: {
       flex: 1,
-      minHeight: 116,
+      minHeight: layout.imageSize,
+      minWidth: 0,
     },
     title: {
-      fontSize: 15,
+      fontSize: layout.xCompact ? 13 : layout.compact ? 14 : 15,
       fontWeight: "800",
       color: palette.title,
-      lineHeight: 20,
+      lineHeight: layout.xCompact ? 18 : 20,
     },
     sellerRow: {
       marginTop: 6,
@@ -300,6 +325,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
       fontWeight: "700",
       color: palette.text,
       flex: 1,
+      minWidth: 0,
     },
     verifiedBadge: {
       flexDirection: "row",
@@ -339,7 +365,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
     },
     price: {
       color: palette.price,
-      fontSize: 18,
+      fontSize: layout.compact ? 16 : 18,
       fontWeight: "900",
     },
     comparePrice: {
@@ -352,6 +378,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
       marginTop: 8,
       flexDirection: "row",
       alignItems: "center",
+      flexWrap: "wrap",
       gap: 8,
     },
     stockBadge: {
@@ -381,6 +408,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      flexWrap: layout.xCompact ? "wrap" : "nowrap",
     },
     secondaryAction: {
       flex: 1,
@@ -397,11 +425,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
     },
     secondaryActionText: {
       color: colors.primary,
-      fontSize: 12,
+      fontSize: layout.xCompact ? 11 : 12,
       fontWeight: "800",
     },
     primaryAction: {
-      flex: 1.2,
+      flex: layout.xCompact ? 1 : 1.2,
+      minHeight: 42,
       borderRadius: radius.md,
       backgroundColor: colors.primary,
       paddingVertical: 10,
@@ -414,7 +443,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], palette: Re
     },
     primaryActionText: {
       color: colors.textOnPrimary,
-      fontSize: 12,
+      fontSize: layout.xCompact ? 11 : 12,
       fontWeight: "900",
       letterSpacing: 0.2,
     },

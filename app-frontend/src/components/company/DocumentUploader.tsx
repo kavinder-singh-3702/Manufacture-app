@@ -177,7 +177,7 @@ export const DocumentUploader: React.FC<Props> = ({
         {pickedDocument ? (
           <View style={styles.uploadedContent}>
             <Text style={styles.checkmark}>✓</Text>
-            <Text style={styles.uploadButtonTextSuccess} numberOfLines={1}>
+            <Text style={styles.uploadButtonTextSuccess} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               {pickedDocument.fileName}
             </Text>
           </View>

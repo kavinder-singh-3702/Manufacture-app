@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { StyleProp, StyleSheet, TextInput, TouchableOpacity, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, TextInput, TouchableOpacity, ViewStyle, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useThemeMode } from "../../../../hooks/useThemeMode";
@@ -23,7 +23,11 @@ export const SearchBar: FC<SearchBarProps> = ({
   const theme = useTheme();
   const { colors, radius } = theme;
   const { resolvedMode } = useThemeMode();
-  const tokens = getNavigationTokens(theme, resolvedMode);
+  const { width, fontScale } = useWindowDimensions();
+  const tokens = getNavigationTokens(theme, resolvedMode, {
+    viewportWidth: width,
+    fontScale,
+  });
   const isTriggerMode = Boolean(onPress);
 
   return (
@@ -46,7 +50,7 @@ export const SearchBar: FC<SearchBarProps> = ({
     >
       <Ionicons
         name="search-outline"
-        size={20}
+        size={tokens.topBar.density === "xCompact" ? 18 : 20}
         color={tokens.colors.searchPlaceholder}
         style={styles.leadingIcon}
       />
@@ -55,7 +59,13 @@ export const SearchBar: FC<SearchBarProps> = ({
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={tokens.colors.searchPlaceholder}
-        style={[styles.input, { color: tokens.colors.searchText }]}
+        style={[
+          styles.input,
+          {
+            color: tokens.colors.searchText,
+            fontSize: tokens.topBar.searchFontSize,
+          },
+        ]}
         autoCorrect={false}
         returnKeyType="search"
         editable={!isTriggerMode}
@@ -66,7 +76,7 @@ export const SearchBar: FC<SearchBarProps> = ({
       />
       <Ionicons
         name={isTriggerMode ? "arrow-forward-circle-outline" : "search"}
-        size={20}
+        size={tokens.topBar.density === "xCompact" ? 18 : 20}
         color={colors.primary}
       />
     </TouchableOpacity>

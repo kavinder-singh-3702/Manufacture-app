@@ -1,24 +1,45 @@
 const mongoose = require('mongoose');
 const Notification = require('../models/notification.model');
+const User = require('../models/user.model');
+const UserDevice = require('../models/userDevice.model');
 const {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_PRIORITIES,
   NOTIFICATION_LIFECYCLE_STATUSES,
   NOTIFICATION_DELIVERY_STATUSES,
-  NOTIFICATION_AUDIENCE
+  NOTIFICATION_AUDIENCE,
+  PRIORITY_DEFAULT_CHANNELS,
+  NOTIFICATION_ACTION_TYPES
 } = require('../constants/notification');
 const { emitToUser, emitToUsers } = require('../socket');
 
-/**
- * Notification Service
- * Handles creating and managing in-app notifications
- */
-
 const CHANNEL_OPTIONS = Object.values(NOTIFICATION_CHANNELS);
+const PRIORITY_OPTIONS = Object.values(NOTIFICATION_PRIORITIES);
 
-/**
- * Check if a string is a valid MongoDB ObjectId
- */
+const DEFAULT_DELIVERY_POLICY = {
+  respectQuietHours: true,
+  allowPush: true,
+  allowInApp: true,
+  maxRetries: 4,
+  allowCriticalOverride: true,
+};
+
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  masterEnabled: true,
+  inAppEnabled: true,
+  pushEnabled: true,
+  emailEnabled: false,
+  smsEnabled: false,
+  quietHours: {
+    enabled: false,
+    start: '22:00',
+    end: '08:00',
+    timezone: 'UTC',
+  },
+  topicOverrides: {},
+  priorityOverrides: {},
+};
+
 const isValidObjectId = (id) => {
   if (!id) return false;
   try {
@@ -28,24 +49,184 @@ const isValidObjectId = (id) => {
   }
 };
 
-const normalizeChannels = (channels = [NOTIFICATION_CHANNELS.IN_APP]) => {
-  const normalized = Array.isArray(channels) ? channels : [channels];
-  const filtered = normalized.filter((channel) => CHANNEL_OPTIONS.includes(channel));
+const toPlainObject = (value) => {
+  if (!value) return {};
+  if (value instanceof Map) return Object.fromEntries(value.entries());
+  if (typeof value.toObject === 'function') return value.toObject();
+  if (typeof value === 'object') return value;
+  return {};
+};
+
+const normalizeChannels = ({ channels, priority = NOTIFICATION_PRIORITIES.NORMAL }) => {
+  const fallback = PRIORITY_DEFAULT_CHANNELS[priority] || PRIORITY_DEFAULT_CHANNELS[NOTIFICATION_PRIORITIES.NORMAL];
+  const normalizedInput = Array.isArray(channels)
+    ? channels
+    : channels
+      ? [channels]
+      : fallback;
+  const filtered = normalizedInput.filter((channel) => CHANNEL_OPTIONS.includes(channel));
   return [...new Set(filtered.length ? filtered : [NOTIFICATION_CHANNELS.IN_APP])];
 };
 
-const buildDeliveries = (channels) => {
+const normalizePriority = (priority) =>
+  PRIORITY_OPTIONS.includes(priority) ? priority : NOTIFICATION_PRIORITIES.NORMAL;
+
+const normalizeAction = (action = {}) => {
+  const plain = toPlainObject(action);
+  const type = Object.values(NOTIFICATION_ACTION_TYPES).includes(plain.type)
+    ? plain.type
+    : NOTIFICATION_ACTION_TYPES.NONE;
+
+  return {
+    type,
+    label: plain.label,
+    routeName: plain.routeName,
+    routeParams: toPlainObject(plain.routeParams),
+    url: plain.url,
+    phone: plain.phone,
+  };
+};
+
+const normalizeDeliveryPolicy = (policy = {}) => ({
+  ...DEFAULT_DELIVERY_POLICY,
+  ...toPlainObject(policy),
+});
+
+const normalizeNotificationPreferences = (prefs = {}) => {
+  const plain = toPlainObject(prefs);
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...plain,
+    quietHours: {
+      ...DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
+      ...toPlainObject(plain.quietHours),
+    },
+    topicOverrides: toPlainObject(plain.topicOverrides),
+    priorityOverrides: toPlainObject(plain.priorityOverrides),
+  };
+};
+
+const computeLifecycleStatus = (deliveries = [], scheduledAt) => {
+  if (!deliveries.length) return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
+
+  if (scheduledAt && new Date(scheduledAt) > new Date()) {
+    return NOTIFICATION_LIFECYCLE_STATUSES.QUEUED;
+  }
+
+  const statuses = deliveries.map((item) => item.status);
+  if (statuses.every((status) => status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED)) {
+    return NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
+  }
+  if (
+    statuses.every(
+      (status) =>
+        status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ||
+        status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED
+    )
+  ) {
+    return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
+  }
+  const hasQueuedOrSending = statuses.some((status) =>
+    status === NOTIFICATION_DELIVERY_STATUSES.QUEUED || status === NOTIFICATION_DELIVERY_STATUSES.SENDING
+  );
+  const hasDelivered = statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED);
+  const hasFailed = statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.FAILED);
+
+  if (hasQueuedOrSending) return NOTIFICATION_LIFECYCLE_STATUSES.DISPATCHING;
+  if (hasDelivered && hasFailed) return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
+  if (hasDelivered) return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
+  if (hasFailed) return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
+  return NOTIFICATION_LIFECYCLE_STATUSES.QUEUED;
+};
+
+const buildDeliveries = ({ channels, scheduledAt, deliveryPolicy }) => {
   const now = new Date();
+  const runNow = !scheduledAt || new Date(scheduledAt) <= now;
+
   return channels.map((channel) => {
-    const immediate = channel === NOTIFICATION_CHANNELS.IN_APP;
+    if (channel === NOTIFICATION_CHANNELS.IN_APP) {
+      if (deliveryPolicy.allowInApp === false) {
+        return {
+          channel,
+          status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+          requestedAt: now,
+          sentAt: now,
+          deliveredAt: now,
+          meta: { reason: 'in_app_disabled' },
+        };
+      }
+
+      if (runNow) {
+        return {
+          channel,
+          status: NOTIFICATION_DELIVERY_STATUSES.DELIVERED,
+          requestedAt: now,
+          sentAt: now,
+          deliveredAt: now,
+          attemptCount: 1,
+        };
+      }
+
+      return {
+        channel,
+        status: NOTIFICATION_DELIVERY_STATUSES.QUEUED,
+        requestedAt: now,
+      };
+    }
+
     return {
       channel,
-      status: immediate ? NOTIFICATION_DELIVERY_STATUSES.DELIVERED : NOTIFICATION_DELIVERY_STATUSES.QUEUED,
+      status: NOTIFICATION_DELIVERY_STATUSES.QUEUED,
       requestedAt: now,
-      sentAt: immediate ? now : undefined,
-      deliveredAt: immediate ? now : undefined
     };
   });
+};
+
+const formatNotification = (notification) => ({
+  id: String(notification._id),
+  title: notification.title,
+  body: notification.body,
+  eventKey: notification.eventKey,
+  topic: notification.topic,
+  priority: notification.priority,
+  data: toPlainObject(notification.data),
+  action: normalizeAction(notification.action),
+  channels: Array.isArray(notification.channels) ? notification.channels : [],
+  requiresAck: Boolean(notification.requiresAck),
+  ackAt: notification.ackAt || null,
+  status: notification.readAt ? 'read' : 'unread',
+  lifecycleStatus: notification.status || null,
+  readAt: notification.readAt || null,
+  archivedAt: notification.archivedAt || null,
+  createdAt: notification.createdAt,
+  deliveries: Array.isArray(notification.deliveries)
+    ? notification.deliveries.map((delivery) => ({
+        channel: delivery.channel,
+        status: delivery.status,
+        requestedAt: delivery.requestedAt,
+        sentAt: delivery.sentAt,
+        deliveredAt: delivery.deliveredAt,
+        failureAt: delivery.failureAt,
+        errorCode: delivery.errorCode,
+        errorMessage: delivery.errorMessage,
+      }))
+    : [],
+});
+
+const emitNotification = (userId, notification) => {
+  if (!userId || !notification) return;
+  emitToUser(userId, 'notification:new', formatNotification(notification));
+};
+
+const emitNotificationsBulk = (userIds, notifications) => {
+  if (!Array.isArray(userIds) || !Array.isArray(notifications)) return;
+  const payloadByUser = notifications.reduce((acc, notification) => {
+    const userId = notification.user?.toString();
+    if (!userId) return acc;
+    acc[userId] = formatNotification(notification);
+    return acc;
+  }, {});
+  emitToUsers(userIds, 'notification:new', payloadByUser);
 };
 
 const buildNotificationData = ({
@@ -66,13 +247,21 @@ const buildNotificationData = ({
   expiresAt,
   recipients,
   metadata,
-  createdBy
+  createdBy,
+  action,
+  isSilent,
+  requiresAck,
+  deliveryPolicy,
 }) => {
-  const resolvedChannels = normalizeChannels(channels);
-  const deliveries = buildDeliveries(resolvedChannels);
-  const allDelivered = deliveries.every(
-    (delivery) => delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
-  );
+  const normalizedPriority = normalizePriority(priority);
+  const normalizedDeliveryPolicy = normalizeDeliveryPolicy(deliveryPolicy);
+  const resolvedChannels = normalizeChannels({ channels, priority: normalizedPriority });
+  const deliveries = buildDeliveries({
+    channels: resolvedChannels,
+    scheduledAt,
+    deliveryPolicy: normalizedDeliveryPolicy,
+  });
+
   const notificationData = {
     audience,
     user: userId,
@@ -82,20 +271,26 @@ const buildNotificationData = ({
     body,
     data,
     channels: resolvedChannels,
-    priority,
-    status: allDelivered
-      ? NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED
-      : NOTIFICATION_LIFECYCLE_STATUSES.QUEUED,
+    priority: normalizedPriority,
+    status: computeLifecycleStatus(deliveries, scheduledAt),
     deliveries,
-    sentAt: allDelivered ? new Date() : undefined,
-    deliveredAt: allDelivered ? new Date() : undefined,
+    sentAt: deliveries.some((d) => d.channel === NOTIFICATION_CHANNELS.IN_APP && d.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED)
+      ? new Date()
+      : undefined,
+    deliveredAt: deliveries.some((d) => d.channel === NOTIFICATION_CHANNELS.IN_APP && d.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED)
+      ? new Date()
+      : undefined,
     templateKey,
     deduplicationKey,
     scheduledAt,
     expiresAt,
     recipients,
     metadata,
-    createdBy
+    createdBy,
+    action: normalizeAction(action),
+    isSilent: Boolean(isSilent),
+    requiresAck: Boolean(requiresAck),
+    deliveryPolicy: normalizedDeliveryPolicy,
   };
 
   if (isValidObjectId(companyId)) {
@@ -109,50 +304,6 @@ const buildNotificationData = ({
   return notificationData;
 };
 
-const formatNotification = (notification) => ({
-  id: notification._id.toString(),
-  title: notification.title,
-  body: notification.body,
-  eventKey: notification.eventKey,
-  topic: notification.topic,
-  priority: notification.priority,
-  data: notification.data,
-  status: notification.readAt ? 'read' : 'unread',
-  readAt: notification.readAt,
-  createdAt: notification.createdAt
-});
-
-const emitNotification = (userId, notification) => {
-  if (!userId || !notification) return;
-  emitToUser(userId, 'notification:new', formatNotification(notification));
-};
-
-const emitNotificationsBulk = (userIds, notifications) => {
-  if (!Array.isArray(userIds) || !Array.isArray(notifications)) return;
-  const payloadByUser = notifications.reduce((acc, notification) => {
-    const userId = notification.user?.toString();
-    if (!userId) return acc;
-    acc[userId] = formatNotification(notification);
-    return acc;
-  }, {});
-  emitToUsers(userIds, 'notification:new', payloadByUser);
-};
-
-/**
- * Create a notification for a user
- * @param {Object} options - Notification options
- * @param {string} options.userId - Target user ID
- * @param {string} options.title - Notification title
- * @param {string} options.body - Notification body/message
- * @param {string} options.eventKey - Event identifier (e.g., 'company.verification.request')
- * @param {string} options.topic - Topic/category (e.g., 'compliance', 'system')
- * @param {string} options.priority - Priority level (low, normal, high, critical)
- * @param {string} options.actorId - User ID who triggered this notification
- * @param {string} options.companyId - Associated company ID (optional)
- * @param {Object} options.data - Additional data payload
- * @param {Array} options.channels - Delivery channels (default: in_app)
- * @returns {Promise<Object>} - Created notification
- */
 const createNotification = async ({
   userId,
   title,
@@ -163,14 +314,18 @@ const createNotification = async ({
   actorId,
   companyId,
   data = {},
-  channels = [NOTIFICATION_CHANNELS.IN_APP],
+  channels,
   templateKey,
   deduplicationKey,
   scheduledAt,
   expiresAt,
   recipients,
   metadata,
-  createdBy
+  createdBy,
+  action,
+  isSilent,
+  requiresAck,
+  deliveryPolicy,
 }) => {
   try {
     const notificationData = buildNotificationData({
@@ -191,24 +346,29 @@ const createNotification = async ({
       expiresAt,
       recipients,
       metadata,
-      createdBy
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
     });
 
     const notification = await Notification.create(notificationData);
 
-    emitNotification(userId, notification);
-    console.log(`[NotificationService] Created notification for user ${userId}: ${title}`);
+    const inAppDelivery = notification.deliveries.find((item) => item.channel === NOTIFICATION_CHANNELS.IN_APP);
+    if (inAppDelivery?.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED && userId) {
+      emitNotification(userId, notification);
+    }
 
     return {
       success: true,
       notificationId: notification._id.toString(),
-      notification
+      notification,
     };
   } catch (error) {
-    console.error('[NotificationService] Failed to create notification:', error.message);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -223,16 +383,20 @@ const createNotificationsForUsers = async ({
   actorId,
   companyId,
   data = {},
-  channels = [NOTIFICATION_CHANNELS.IN_APP],
+  channels,
   templateKey,
   deduplicationKey,
   scheduledAt,
   expiresAt,
   recipients,
   metadata,
-  createdBy
+  createdBy,
+  action,
+  isSilent,
+  requiresAck,
+  deliveryPolicy,
 }) => {
-  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  const uniqueUserIds = [...new Set((userIds || []).filter(Boolean))];
   if (!uniqueUserIds.length) {
     return { success: false, error: 'No recipients provided' };
   }
@@ -256,24 +420,39 @@ const createNotificationsForUsers = async ({
       expiresAt,
       recipients,
       metadata,
-      createdBy
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
     })
   );
 
   try {
     const notifications = await Notification.insertMany(notificationsData, { ordered: false });
-    emitNotificationsBulk(uniqueUserIds, notifications);
+
+    const immediate = notifications.filter((item) =>
+      item.deliveries.some(
+        (delivery) =>
+          delivery.channel === NOTIFICATION_CHANNELS.IN_APP &&
+          delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
+      )
+    );
+
+    emitNotificationsBulk(
+      immediate.map((item) => String(item.user)),
+      immediate
+    );
 
     return {
       success: true,
       notificationIds: notifications.map((notification) => notification._id.toString()),
-      count: notifications.length
+      count: notifications.length,
     };
   } catch (error) {
-    console.error('[NotificationService] Failed to create bulk notifications:', error.message);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -297,9 +476,14 @@ const dispatchNotification = async ({
   expiresAt,
   recipients,
   metadata,
-  createdBy
+  createdBy,
+  action,
+  isSilent,
+  requiresAck,
+  deliveryPolicy,
 }) => {
   const targets = [...new Set([userId, ...userIds].filter(Boolean))];
+
   if (audience === NOTIFICATION_AUDIENCE.USER) {
     if (targets.length === 1) {
       return createNotification({
@@ -319,9 +503,14 @@ const dispatchNotification = async ({
         expiresAt,
         recipients,
         metadata,
-        createdBy
+        createdBy,
+        action,
+        isSilent,
+        requiresAck,
+        deliveryPolicy,
       });
     }
+
     return createNotificationsForUsers({
       userIds: targets,
       title,
@@ -339,7 +528,11 @@ const dispatchNotification = async ({
       expiresAt,
       recipients,
       metadata,
-      createdBy
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
     });
   }
 
@@ -361,7 +554,11 @@ const dispatchNotification = async ({
       expiresAt,
       recipients,
       metadata,
-      createdBy
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
     });
   }
 
@@ -384,7 +581,11 @@ const dispatchNotification = async ({
       expiresAt,
       recipients,
       metadata,
-      createdBy
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
     });
 
     const notification = await Notification.create(notificationData);
@@ -392,33 +593,22 @@ const dispatchNotification = async ({
     return {
       success: true,
       notificationId: notification._id.toString(),
-      notification
+      notification,
     };
   } catch (error) {
-    console.error('[NotificationService] Failed to dispatch notification:', error.message);
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 };
 
-/**
- * Create a document request notification for company owner
- * @param {Object} options - Notification options
- * @param {string} options.userId - Owner's user ID
- * @param {string} options.companyId - Company ID
- * @param {string} options.companyName - Company display name
- * @param {string} options.actorId - Admin user ID who sent the request
- * @param {string} options.customMessage - Optional custom message
- * @returns {Promise<Object>} - Created notification result
- */
 const createDocumentRequestNotification = async ({
   userId,
   companyId,
   companyName,
   actorId,
-  customMessage
+  customMessage,
 }) => {
   const title = 'Document Verification Required';
   const body = customMessage
@@ -439,24 +629,27 @@ const createDocumentRequestNotification = async ({
       companyName,
       customMessage,
       action: 'submit_documents',
-      actionUrl: `/company/${companyId}/verification`
+      actionUrl: `/company/${companyId}/verification`,
     },
-    channels: [NOTIFICATION_CHANNELS.IN_APP],
-    createdBy: actorId
+    action: {
+      type: NOTIFICATION_ACTION_TYPES.ROUTE,
+      label: 'Submit documents',
+      routeName: 'CompanyVerification',
+      routeParams: { companyId },
+    },
+    channels: [NOTIFICATION_CHANNELS.IN_APP, NOTIFICATION_CHANNELS.PUSH],
+    createdBy: actorId,
   });
 };
 
-/**
- * Get notifications for a user
- * @param {string} userId - User ID
- * @param {Object} options - Query options
- * @param {string} options.status - Filter by read/unread status
- * @param {number} options.limit - Max results
- * @param {number} options.offset - Skip results
- * @returns {Promise<Object>} - Notifications list with pagination
- */
-const getUserNotifications = async (userId, { status, limit = 20, offset = 0 } = {}) => {
+const buildUserFilter = ({ userId, status, topic, priority, from, to, search, archived }) => {
   const filter = { user: userId };
+
+  if (archived === true || archived === 'true') {
+    filter.archivedAt = { $ne: null };
+  } else {
+    filter.archivedAt = null;
+  }
 
   if (status === 'unread') {
     filter.readAt = null;
@@ -464,72 +657,304 @@ const getUserNotifications = async (userId, { status, limit = 20, offset = 0 } =
     filter.readAt = { $ne: null };
   }
 
+  if (topic) filter.topic = topic;
+  if (priority && PRIORITY_OPTIONS.includes(priority)) filter.priority = priority;
+
+  if (from || to) {
+    filter.createdAt = {};
+    if (from) filter.createdAt.$gte = new Date(from);
+    if (to) filter.createdAt.$lte = new Date(to);
+  }
+
+  if (search) {
+    const regex = new RegExp(String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    filter.$or = [
+      { title: regex },
+      { body: regex },
+      { eventKey: regex },
+      { topic: regex },
+    ];
+  }
+
+  return filter;
+};
+
+const getUserNotifications = async (userId, options = {}) => {
+  const limit = Math.min(Math.max(parseInt(options.limit, 10) || 20, 1), 100);
+  const offset = Math.max(parseInt(options.offset, 10) || 0, 0);
+
+  const filter = buildUserFilter({ userId, ...options });
+
   const [notifications, total] = await Promise.all([
     Notification.find(filter)
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit)
       .lean(),
-    Notification.countDocuments(filter)
+    Notification.countDocuments(filter),
   ]);
 
-  const formatted = notifications.map((notification) => formatNotification(notification));
-
   return {
-    notifications: formatted,
+    notifications: notifications.map((notification) => formatNotification(notification)),
     pagination: {
       total,
       limit,
       offset,
-      hasMore: offset + notifications.length < total
-    }
+      hasMore: offset + notifications.length < total,
+    },
   };
 };
 
-/**
- * Mark a notification as read
- * @param {string} notificationId - Notification ID
- * @param {string} userId - User ID (for verification)
- * @returns {Promise<Object>} - Update result
- */
 const markAsRead = async (notificationId, userId) => {
-  const result = await Notification.findOneAndUpdate(
+  const notification = await Notification.findOneAndUpdate(
     { _id: notificationId, user: userId },
     { readAt: new Date() },
     { new: true }
-  );
+  ).lean();
 
-  if (!result) {
+  if (!notification) {
     return { success: false, error: 'Notification not found' };
   }
 
-  return { success: true, notification: result };
+  return { success: true, notification: formatNotification(notification) };
 };
 
-/**
- * Mark all notifications as read for a user
- * @param {string} userId - User ID
- * @returns {Promise<Object>} - Update result
- */
 const markAllAsRead = async (userId) => {
   const result = await Notification.updateMany(
-    { user: userId, readAt: null },
+    { user: userId, readAt: null, archivedAt: null },
     { readAt: new Date() }
   );
 
   return {
     success: true,
-    modifiedCount: result.modifiedCount
+    modifiedCount: result.modifiedCount,
   };
 };
 
-/**
- * Get unread notification count for a user
- * @param {string} userId - User ID
- * @returns {Promise<number>} - Unread count
- */
+const archiveNotification = async (notificationId, userId) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: notificationId, user: userId },
+    { archivedAt: new Date() },
+    { new: true }
+  ).lean();
+
+  if (!notification) {
+    return { success: false, error: 'Notification not found' };
+  }
+
+  return { success: true, notification: formatNotification(notification) };
+};
+
+const unarchiveNotification = async (notificationId, userId) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: notificationId, user: userId },
+    { archivedAt: null },
+    { new: true }
+  ).lean();
+
+  if (!notification) {
+    return { success: false, error: 'Notification not found' };
+  }
+
+  return { success: true, notification: formatNotification(notification) };
+};
+
+const acknowledgeNotification = async (notificationId, userId) => {
+  const notification = await Notification.findOneAndUpdate(
+    { _id: notificationId, user: userId },
+    { ackAt: new Date() },
+    { new: true }
+  ).lean();
+
+  if (!notification) {
+    return { success: false, error: 'Notification not found' };
+  }
+
+  return { success: true, notification: formatNotification(notification) };
+};
+
 const getUnreadCount = async (userId) => {
-  return Notification.countDocuments({ user: userId, readAt: null });
+  return Notification.countDocuments({ user: userId, readAt: null, archivedAt: null });
+};
+
+const registerUserDevice = async (userId, payload) => {
+  const now = new Date();
+
+  const update = {
+    user: userId,
+    platform: payload.platform,
+    pushProvider: payload.pushProvider || 'expo',
+    pushToken: payload.pushToken,
+    appVersion: payload.appVersion,
+    buildNumber: payload.buildNumber,
+    deviceModel: payload.deviceModel,
+    osVersion: payload.osVersion,
+    locale: payload.locale,
+    timezone: payload.timezone,
+    metadata: payload.metadata,
+    isActive: true,
+    lastSeenAt: now,
+    lastErrorAt: undefined,
+    lastErrorMessage: undefined,
+  };
+
+  const device = await UserDevice.findOneAndUpdate(
+    { pushToken: payload.pushToken },
+    { $set: update },
+    { upsert: true, new: true }
+  ).lean();
+
+  return { success: true, device };
+};
+
+const unregisterUserDevice = async (userId, pushToken) => {
+  const result = await UserDevice.findOneAndUpdate(
+    { user: userId, pushToken },
+    { $set: { isActive: false, lastSeenAt: new Date() } },
+    { new: true }
+  ).lean();
+
+  if (!result) {
+    return { success: false, error: 'Device not found' };
+  }
+
+  return { success: true, device: result };
+};
+
+const getUserNotificationPreferences = async (userId) => {
+  const user = await User.findById(userId).select('preferences.notifications').lean();
+  return normalizeNotificationPreferences(user?.preferences?.notifications);
+};
+
+const updateUserNotificationPreferences = async (userId, patch) => {
+  const user = await User.findById(userId);
+  if (!user) return null;
+
+  const existing = normalizeNotificationPreferences(user.preferences?.notifications);
+  const incoming = toPlainObject(patch);
+
+  user.preferences = {
+    ...toPlainObject(user.preferences),
+    notifications: {
+      ...existing,
+      ...incoming,
+      quietHours: {
+        ...existing.quietHours,
+        ...toPlainObject(incoming.quietHours),
+      },
+      topicOverrides: {
+        ...toPlainObject(existing.topicOverrides),
+        ...toPlainObject(incoming.topicOverrides),
+      },
+      priorityOverrides: {
+        ...toPlainObject(existing.priorityOverrides),
+        ...toPlainObject(incoming.priorityOverrides),
+      },
+    },
+  };
+
+  await user.save();
+
+  return normalizeNotificationPreferences(user.preferences?.notifications);
+};
+
+const listAdminNotifications = async (adminId, filters = {}) => {
+  const limit = Math.min(Math.max(parseInt(filters.limit, 10) || 20, 1), 100);
+  const offset = Math.max(parseInt(filters.offset, 10) || 0, 0);
+
+  const query = { createdBy: adminId };
+
+  if (filters.userId && isValidObjectId(filters.userId)) query.user = filters.userId;
+  if (filters.topic) query.topic = filters.topic;
+  if (filters.priority && PRIORITY_OPTIONS.includes(filters.priority)) query.priority = filters.priority;
+  if (filters.eventKey) query.eventKey = filters.eventKey;
+  if (filters.status) query.status = filters.status;
+
+  if (filters.search) {
+    const regex = new RegExp(String(filters.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    query.$or = [{ title: regex }, { body: regex }, { eventKey: regex }, { topic: regex }];
+  }
+
+  const [items, total] = await Promise.all([
+    Notification.find(query)
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean(),
+    Notification.countDocuments(query),
+  ]);
+
+  return {
+    notifications: items.map((item) => formatNotification(item)),
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    },
+  };
+};
+
+const getAdminNotificationById = async (notificationId, adminId) => {
+  const notification = await Notification.findOne({ _id: notificationId, createdBy: adminId }).lean();
+  if (!notification) return null;
+  return formatNotification(notification);
+};
+
+const cancelAdminNotification = async (notificationId, adminId) => {
+  const notification = await Notification.findOne({ _id: notificationId, createdBy: adminId });
+  if (!notification) return null;
+
+  notification.status = NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
+  notification.deliveries = notification.deliveries.map((delivery) => ({
+    ...delivery.toObject(),
+    status: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
+      ? delivery.status
+      : NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+    failureAt: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.failureAt : new Date(),
+    errorCode: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.errorCode : 'cancelled_by_admin',
+    errorMessage: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.errorMessage : 'Cancelled by admin',
+  }));
+
+  await notification.save();
+  return formatNotification(notification.toObject());
+};
+
+const resendAdminNotification = async (notificationId, adminId) => {
+  const original = await Notification.findOne({ _id: notificationId, createdBy: adminId }).lean();
+  if (!original) return null;
+
+  const result = await dispatchNotification({
+    audience: original.audience,
+    userId: original.user ? String(original.user) : undefined,
+    userIds: original.user ? [String(original.user)] : undefined,
+    companyId: original.company ? String(original.company) : undefined,
+    title: original.title,
+    body: original.body,
+    eventKey: original.eventKey,
+    topic: original.topic,
+    priority: original.priority,
+    actorId: adminId,
+    data: toPlainObject(original.data),
+    channels: Array.isArray(original.channels) ? original.channels : undefined,
+    templateKey: original.templateKey,
+    deduplicationKey: undefined,
+    scheduledAt: undefined,
+    expiresAt: original.expiresAt,
+    recipients: original.recipients,
+    metadata: toPlainObject(original.metadata),
+    createdBy: adminId,
+    action: normalizeAction(original.action),
+    isSilent: original.isSilent,
+    requiresAck: original.requiresAck,
+    deliveryPolicy: toPlainObject(original.deliveryPolicy),
+  });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, notification: formatNotification(result.notification) };
 };
 
 module.exports = {
@@ -540,5 +965,17 @@ module.exports = {
   getUserNotifications,
   markAsRead,
   markAllAsRead,
-  getUnreadCount
+  archiveNotification,
+  unarchiveNotification,
+  acknowledgeNotification,
+  getUnreadCount,
+  registerUserDevice,
+  unregisterUserDevice,
+  getUserNotificationPreferences,
+  updateUserNotificationPreferences,
+  listAdminNotifications,
+  getAdminNotificationById,
+  cancelAdminNotification,
+  resendAdminNotification,
+  formatNotification,
 };

@@ -167,7 +167,7 @@ export const UserPreferenceScreen = () => {
         <View style={{ gap: spacing.sm }}>
           {items.map((item) => (
             <View key={item.label} style={[styles.row, { justifyContent: "space-between" }]}>
-              <Text style={[styles.rowLabel, { color: colors.text }]} numberOfLines={1}>
+              <Text style={[styles.rowLabel, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {item.label}
               </Text>
               <Text style={[styles.rowValue, { color: colors.primary }]}>

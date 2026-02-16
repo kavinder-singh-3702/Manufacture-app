@@ -143,7 +143,7 @@ export const TransactionListScreen = () => {
         {partyName ? (
           <View style={styles.voucherRow}>
             <Text style={[styles.voucherLabel, { color: colors.textSecondary }]}>Party:</Text>
-            <Text style={[styles.voucherValue, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.voucherValue, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               {partyName}
             </Text>
           </View>

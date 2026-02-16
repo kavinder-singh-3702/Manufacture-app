@@ -3,6 +3,7 @@ import { FC } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
+import { AdaptiveSingleLineText } from "../../../../components/text/AdaptiveSingleLineText";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useThemeMode } from "../../../../hooks/useThemeMode";
 import { RouteName } from "../../../routes";
@@ -141,10 +142,10 @@ export const FooterRail: FC<FooterRailProps> = ({
                   </View>
                 ) : null}
               </View>
-              <Text
-                numberOfLines={tokens.footer.labelMaxLines}
-                ellipsizeMode={tokens.footer.labelMaxLines === 1 ? "tail" : "clip"}
-                allowFontScaling={false}
+              <AdaptiveSingleLineText
+                minimumFontScale={0.68}
+                allowOverflowScroll={isCompact}
+                containerStyle={styles.labelContainer}
                 style={[
                   styles.label,
                   {
@@ -157,7 +158,7 @@ export const FooterRail: FC<FooterRailProps> = ({
                 ]}
               >
                 {label}
-              </Text>
+              </AdaptiveSingleLineText>
             </TouchableOpacity>
           );
         })}
@@ -214,6 +215,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 0.15,
     textAlign: "center",
+    width: "100%",
+  },
+  labelContainer: {
     width: "100%",
   },
 });

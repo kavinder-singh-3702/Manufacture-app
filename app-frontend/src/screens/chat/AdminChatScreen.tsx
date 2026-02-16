@@ -155,11 +155,11 @@ export const AdminChatScreen = () => {
       >
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               {displayName}
             </Text>
             {phone ? (
-              <Text style={[styles.subtext, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.subtext, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                 {phone}
               </Text>
             ) : null}
@@ -169,7 +169,7 @@ export const AdminChatScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.metaRow}>
-          <Text style={[styles.lastMessage, { color: colors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.lastMessage, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
             {item.lastMessage || "Start the conversation"}
           </Text>
           {item.unreadCount > 0 && (

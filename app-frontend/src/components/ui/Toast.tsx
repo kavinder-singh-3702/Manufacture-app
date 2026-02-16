@@ -11,13 +11,11 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
   TouchableOpacity,
+  useWindowDimensions,
 } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 import { useTheme } from "../../hooks/useTheme";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // ============================================
 // TOAST TYPES
@@ -116,7 +114,8 @@ interface ToastItemProps {
 
 const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const { colors, radius } = useTheme();
-  const translateX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const { width } = useWindowDimensions();
+  const translateX = useRef(new Animated.Value(width)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const progressWidth = useRef(new Animated.Value(1)).current;
 
@@ -135,6 +134,10 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
 
   const toastColors = getColors();
   const duration = toast.duration || 4000;
+
+  useEffect(() => {
+    translateX.setValue(width);
+  }, [translateX, width]);
 
   useEffect(() => {
     // Entrance animation
@@ -169,7 +172,7 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const handleRemove = () => {
     Animated.parallel([
       Animated.timing(translateX, {
-        toValue: SCREEN_WIDTH,
+        toValue: width,
         duration: 200,
         useNativeDriver: true,
       }),

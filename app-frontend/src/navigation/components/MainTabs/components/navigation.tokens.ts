@@ -11,12 +11,14 @@ type NavigationTokens = {
     lg: number;
   };
   topBar: {
+    density: FooterDensity;
     compactMinHeight: number;
     twoRowMinHeight: number;
     iconButtonSize: number;
     searchHeight: number;
     titleSize: number;
     subtitleSize: number;
+    searchFontSize: number;
   };
   footer: {
     density: FooterDensity;
@@ -134,14 +136,39 @@ export const getNavigationTokens = (
       md: spacing.md,
       lg: spacing.lg,
     },
-    topBar: {
-      compactMinHeight: 64,
-      twoRowMinHeight: 122,
-      iconButtonSize: 44,
-      searchHeight: 48,
-      titleSize: 20,
-      subtitleSize: 12,
-    },
+    topBar:
+      footerDensity === "xCompact"
+        ? {
+            density: "xCompact",
+            compactMinHeight: 58,
+            twoRowMinHeight: 102,
+            iconButtonSize: 38,
+            searchHeight: 42,
+            titleSize: 17,
+            subtitleSize: 10.5,
+            searchFontSize: 13,
+          }
+        : footerDensity === "compact"
+          ? {
+              density: "compact",
+              compactMinHeight: 62,
+              twoRowMinHeight: 112,
+              iconButtonSize: 41,
+              searchHeight: 45,
+              titleSize: 18.5,
+              subtitleSize: 11,
+              searchFontSize: 14,
+            }
+          : {
+              density: "regular",
+              compactMinHeight: 64,
+              twoRowMinHeight: 122,
+              iconButtonSize: 44,
+              searchHeight: 48,
+              titleSize: 20,
+              subtitleSize: 12,
+              searchFontSize: 15,
+            },
     footer: footerByDensity[footerDensity],
     colors: {
       topBarBackground: isDark ? colors.backgroundSecondary : colors.surface,

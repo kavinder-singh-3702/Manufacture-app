@@ -319,7 +319,7 @@ export const PartyOutstandingScreen = () => {
                 ]}
               >
                 <View style={styles.partyHeader}>
-                  <Text style={[styles.partyName, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.partyName, { color: colors.text }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
                     {party.partyName}
                   </Text>
                   <Text style={[styles.partyTotal, { color: colors.primary }]}>

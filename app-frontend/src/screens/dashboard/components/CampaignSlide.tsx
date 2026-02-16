@@ -13,6 +13,7 @@ type CampaignSlideProps = {
   onCallPress?: () => void;
   messageDisabled?: boolean;
   callDisabled?: boolean;
+  compact?: boolean;
 };
 
 const GRADIENTS: Record<string, [string, string]> = {
@@ -41,6 +42,7 @@ export const CampaignSlide = memo(
     onCallPress,
     messageDisabled,
     callDisabled,
+    compact,
   }: CampaignSlideProps) => {
     const { colors, spacing, radius } = useTheme();
     const headline = campaign.creative?.headline || campaign.title;
@@ -61,7 +63,14 @@ export const CampaignSlide = memo(
         colors={gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.card, { borderRadius: radius.lg, padding: spacing.lg }]}
+        style={[
+          styles.card,
+          {
+            borderRadius: radius.lg,
+            padding: compact ? spacing.md : spacing.lg,
+            minHeight: compact ? 248 : 280,
+          },
+        ]}
       >
         <View style={styles.overlayGlow} />
         <View style={styles.headerRow}>
@@ -95,7 +104,14 @@ export const CampaignSlide = memo(
         <TouchableOpacity
           activeOpacity={0.86}
           onPress={onPrimaryPress}
-          style={[styles.primaryButton, { marginTop: spacing.md, borderRadius: radius.md }]}
+          style={[
+            styles.primaryButton,
+            {
+              marginTop: spacing.md,
+              borderRadius: radius.md,
+              minHeight: compact ? 42 : 46,
+            },
+          ]}
         >
           <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
           <Ionicons name="arrow-forward" size={16} color="#111827" />
@@ -106,6 +122,7 @@ export const CampaignSlide = memo(
           onCall={onCallPress}
           messageDisabled={messageDisabled}
           callDisabled={callDisabled}
+          compact={compact}
         />
       </LinearGradient>
     );
@@ -114,7 +131,6 @@ export const CampaignSlide = memo(
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 280,
     overflow: "hidden",
     justifyContent: "flex-start",
   },
@@ -160,16 +176,16 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 12,
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   subtitle: {
     marginTop: 6,
     color: "rgba(255,255,255,0.92)",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
-    lineHeight: 20,
+    lineHeight: 18,
   },
   priceRow: {
     flexDirection: "row",
@@ -184,7 +200,7 @@ const styles = StyleSheet.create({
   },
   newPrice: {
     color: "#FFFFFF",
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "900",
     letterSpacing: -0.4,
   },
@@ -200,7 +216,6 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   primaryButton: {
-    minHeight: 46,
     backgroundColor: "#FDE047",
     flexDirection: "row",
     alignItems: "center",

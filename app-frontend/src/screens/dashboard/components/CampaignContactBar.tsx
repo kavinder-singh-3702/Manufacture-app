@@ -8,14 +8,15 @@ type CampaignContactBarProps = {
   onCall?: () => void;
   messageDisabled?: boolean;
   callDisabled?: boolean;
+  compact?: boolean;
 };
 
 export const CampaignContactBar = memo(
-  ({ onMessage, onCall, messageDisabled, callDisabled }: CampaignContactBarProps) => {
+  ({ onMessage, onCall, messageDisabled, callDisabled, compact }: CampaignContactBarProps) => {
     const { colors, radius, spacing } = useTheme();
 
     return (
-      <View style={[styles.container, { marginTop: spacing.md }]}>
+      <View style={[styles.container, { marginTop: spacing.md, gap: compact ? 8 : 10 }]}>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onMessage}
@@ -27,11 +28,12 @@ export const CampaignContactBar = memo(
               backgroundColor: colors.surface + "B3",
               borderColor: colors.border,
               opacity: messageDisabled ? 0.55 : 1,
+              minHeight: compact ? 42 : 44,
             },
           ]}
         >
           <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.text} />
-          <Text style={[styles.actionLabel, { color: colors.text }]}>Message</Text>
+          <Text style={[styles.actionLabel, { color: colors.text, fontSize: compact ? 13 : 14 }]}>Message</Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.85}
@@ -44,11 +46,12 @@ export const CampaignContactBar = memo(
               backgroundColor: colors.surface + "B3",
               borderColor: colors.border,
               opacity: callDisabled ? 0.55 : 1,
+              minHeight: compact ? 42 : 44,
             },
           ]}
         >
           <Ionicons name="call-outline" size={16} color={colors.text} />
-          <Text style={[styles.actionLabel, { color: colors.text }]}>Call</Text>
+          <Text style={[styles.actionLabel, { color: colors.text, fontSize: compact ? 13 : 14 }]}>Call</Text>
         </TouchableOpacity>
       </View>
     );
@@ -59,6 +62,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     gap: 10,
+    flexWrap: "wrap",
   },
   actionButton: {
     flex: 1,

@@ -40,6 +40,48 @@ const COMMUNICATION_PREFS_SCHEMA = new Schema(
   { _id: false }
 );
 
+const NOTIFICATION_CHANNEL_OVERRIDE_SCHEMA = new Schema(
+  {
+    inApp: { type: Boolean },
+    push: { type: Boolean },
+    email: { type: Boolean },
+    sms: { type: Boolean },
+  },
+  { _id: false }
+);
+
+const QUIET_HOURS_SCHEMA = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    start: { type: String, trim: true, default: "22:00" },
+    end: { type: String, trim: true, default: "08:00" },
+    timezone: { type: String, trim: true, default: "UTC" },
+  },
+  { _id: false }
+);
+
+const NOTIFICATION_PREFS_SCHEMA = new Schema(
+  {
+    masterEnabled: { type: Boolean, default: true },
+    inAppEnabled: { type: Boolean, default: true },
+    pushEnabled: { type: Boolean, default: true },
+    emailEnabled: { type: Boolean, default: false },
+    smsEnabled: { type: Boolean, default: false },
+    quietHours: { type: QUIET_HOURS_SCHEMA, default: () => ({}) },
+    topicOverrides: {
+      type: Map,
+      of: NOTIFICATION_CHANNEL_OVERRIDE_SCHEMA,
+      default: () => ({}),
+    },
+    priorityOverrides: {
+      type: Map,
+      of: NOTIFICATION_CHANNEL_OVERRIDE_SCHEMA,
+      default: () => ({}),
+    },
+  },
+  { _id: false }
+);
+
 const PREFERENCES_SCHEMA = new Schema(
   {
     locale: { type: String, default: "en" }, // Preferred translation locale for the UI.
@@ -53,6 +95,10 @@ const PREFERENCES_SCHEMA = new Schema(
       type: COMMUNICATION_PREFS_SCHEMA,
       default: () => ({}),
     }, // Granular notification delivery configuration.
+    notifications: {
+      type: NOTIFICATION_PREFS_SCHEMA,
+      default: () => ({}),
+    }, // Advanced notification routing preferences.
   },
   { _id: false }
 );

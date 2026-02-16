@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { useTheme } from "../../../hooks/useTheme";
+import { AdaptiveSingleLineText } from "../../../components/text/AdaptiveSingleLineText";
+import { AdaptiveTwoLineText } from "../../../components/text/AdaptiveTwoLineText";
 import { ComplianceStatus } from "../../../types/company";
+import { useCompanyProfileLayout } from "./companyProfile.layout";
 
 type CompanyComplianceSectionProps = {
   complianceStatus: ComplianceStatus;
@@ -44,6 +47,7 @@ export const CompanyComplianceSection = ({
   onOpenVerification,
 }: CompanyComplianceSectionProps) => {
   const { colors } = useTheme();
+  const layout = useCompanyProfileLayout();
   const meta = getStatusMeta(complianceStatus);
 
   const toneColor =
@@ -56,33 +60,89 @@ export const CompanyComplianceSection = ({
           : colors.info;
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.panel, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-        <View style={styles.header}>
-          <View style={[styles.iconWrap, { backgroundColor: toneColor + "18", borderColor: toneColor + "50" }]}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={toneColor} />
+    <View style={[styles.container, { gap: layout.sectionGap }]}> 
+      <View
+        style={[
+          styles.panel,
+          {
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+            borderRadius: layout.compact ? 14 : 16,
+            padding: layout.cardPadding,
+            gap: layout.compact ? 10 : 12,
+          },
+        ]}
+      >
+        <View style={[styles.header, layout.compact && styles.headerCompact]}>
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor: toneColor + "18",
+                borderColor: toneColor + "50",
+                width: layout.compact ? 34 : 38,
+                height: layout.compact ? 34 : 38,
+                borderRadius: layout.compact ? 10 : 12,
+              },
+            ]}
+          >
+            <Ionicons name="shield-checkmark-outline" size={layout.compact ? 18 : 20} color={toneColor} />
           </View>
           <View style={styles.headerText}>
-            <Text style={[styles.title, { color: colors.text }]}>Verification Status</Text>
-            <Text style={[styles.description, { color: colors.textMuted }]}>{meta.description}</Text>
+            <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.title, { color: colors.text, fontSize: layout.compact ? 15 : 16 }]}>
+              Verification Status
+            </AdaptiveSingleLineText>
+            <AdaptiveTwoLineText
+              minimumFontScale={0.72}
+              style={[styles.description, { color: colors.textMuted, fontSize: layout.compact ? 12 : 13 }]}
+            >
+              {meta.description}
+            </AdaptiveTwoLineText>
           </View>
         </View>
 
-        <View style={[styles.statusBadge, { borderColor: toneColor + "60", backgroundColor: toneColor + "18" }]}>
-          <Text style={[styles.statusLabel, { color: toneColor }]}>{meta.label}</Text>
+        <View
+          style={[
+            styles.statusBadge,
+            {
+              borderColor: toneColor + "60",
+              backgroundColor: toneColor + "18",
+              minHeight: layout.chipHeight,
+              paddingHorizontal: layout.compact ? 10 : 12,
+            },
+          ]}
+        >
+          <AdaptiveSingleLineText allowOverflowScroll={false} style={[styles.statusLabel, { color: toneColor, fontSize: layout.compact ? 11 : 12 }]}>
+            {meta.label}
+          </AdaptiveSingleLineText>
         </View>
 
         {isReadOnly ? (
-          <Text style={[styles.readOnlyText, { color: colors.textMuted }]}>
+          <AdaptiveTwoLineText
+            minimumFontScale={0.72}
+            style={[styles.readOnlyText, { color: colors.textMuted, fontSize: layout.compact ? 11 : 12 }]}
+          >
             Admin read-only mode: verification actions are disabled in this view.
-          </Text>
+          </AdaptiveTwoLineText>
         ) : complianceStatus === "approved" ? null : (
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={onOpenVerification}
-            style={[styles.cta, { backgroundColor: colors.primary }]}
+            style={[
+              styles.cta,
+              {
+                backgroundColor: colors.primary,
+                minHeight: layout.ctaHeight,
+                borderRadius: layout.compact ? 10 : 12,
+              },
+            ]}
           >
-            <Text style={[styles.ctaText, { color: colors.textOnPrimary }]}>Open Verification</Text>
+            <AdaptiveSingleLineText
+              allowOverflowScroll={false}
+              style={[styles.ctaText, { color: colors.textOnPrimary, fontSize: layout.compact ? 13 : 14 }]}
+            >
+              Open Verification
+            </AdaptiveSingleLineText>
             <Ionicons name="arrow-forward" size={16} color={colors.textOnPrimary} />
           </TouchableOpacity>
         )}
@@ -97,19 +157,18 @@ const styles = StyleSheet.create({
   },
   panel: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
     gap: 12,
   },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
+    minWidth: 0,
+  },
+  headerCompact: {
+    alignItems: "center",
   },
   iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -117,43 +176,47 @@ const styles = StyleSheet.create({
   headerText: {
     flex: 1,
     gap: 4,
+    minWidth: 0,
   },
   title: {
-    fontSize: 16,
     fontWeight: "800",
+    minWidth: 0,
+    flexShrink: 1,
   },
   description: {
-    fontSize: 13,
     fontWeight: "500",
     lineHeight: 18,
+    minWidth: 0,
+    flexShrink: 1,
   },
   statusBadge: {
     alignSelf: "flex-start",
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    justifyContent: "center",
+    minWidth: 0,
   },
   statusLabel: {
-    fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
+    minWidth: 0,
+    flexShrink: 1,
   },
   readOnlyText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
+    minWidth: 0,
+    flexShrink: 1,
   },
   cta: {
     marginTop: 2,
-    borderRadius: 12,
-    minHeight: 42,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
   ctaText: {
-    fontSize: 14,
     fontWeight: "800",
+    minWidth: 0,
+    flexShrink: 1,
   },
 });
