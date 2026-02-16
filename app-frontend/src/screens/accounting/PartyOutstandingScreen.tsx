@@ -9,13 +9,23 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
 import { accountingService, PartyOutstandingData } from "../../services/accounting.service";
+import { CompanyRequiredCard } from "../../components/company";
+import { RootStackParamList } from "../../navigation/types";
 
 type PartyType = "customer" | "supplier";
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const PartyOutstandingScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { user, requestLogin } = useAuth();
+  const navigation = useNavigation<Nav>();
+  const isGuest = !user || user.role === "guest";
+  const hasCompany = Boolean(user?.activeCompany);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<PartyOutstandingData | null>(null);
@@ -23,6 +33,14 @@ export const PartyOutstandingScreen = () => {
   const [partyType, setPartyType] = useState<PartyType>("customer");
 
   const fetchData = useCallback(async () => {
+    if (isGuest || !hasCompany) {
+      setError(null);
+      setData(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const result = await accountingService.getPartyOutstanding({
@@ -37,7 +55,7 @@ export const PartyOutstandingScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [partyType]);
+  }, [hasCompany, isGuest, partyType]);
 
   useEffect(() => {
     fetchData();
@@ -52,6 +70,44 @@ export const PartyOutstandingScreen = () => {
     setPartyType(type);
     setLoading(true);
   };
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate("CompanyContextPicker", {
+      redirectTo: { kind: "stack", screen: "PartyOutstanding" },
+      source: "Party Outstanding",
+    });
+  }, [navigation]);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg }}>
+          <CompanyRequiredCard
+            title="Login to continue"
+            description="Sign in to access receivables and payables aging reports."
+            primaryLabel="Login"
+            onPrimaryPress={requestLogin}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg }}>
+          <CompanyRequiredCard
+            description="Party outstanding reports are available only with an active company context."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate("CompanyCreate", { redirectTo: { kind: "stack", screen: "PartyOutstanding" } })
+            }
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

@@ -9,10 +9,19 @@ const {
   listVariantLogs
 } = require('../services/productVariant.service');
 
+const ACTIVE_COMPANY_REQUIRED_CODE = 'ACTIVE_COMPANY_REQUIRED';
+
+const resolveScopeCompanyId = (scope, user) => {
+  if (scope === 'company' && !user?.activeCompany) {
+    throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
+  }
+  return scope === 'company' ? user?.activeCompany : scope === 'marketplace' ? undefined : user?.activeCompany;
+};
+
 const listProductVariantsController = async (req, res, next) => {
   try {
     const { scope } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const companyId = resolveScopeCompanyId(scope, req.user);
     const { productId } = req.params;
     const { limit, offset, status } = req.query;
 
@@ -30,7 +39,7 @@ const listProductVariantsController = async (req, res, next) => {
 const getProductVariantController = async (req, res, next) => {
   try {
     const { scope } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const companyId = resolveScopeCompanyId(scope, req.user);
     const { productId, variantId } = req.params;
 
     const variant = await getVariantById(productId, variantId, companyId);

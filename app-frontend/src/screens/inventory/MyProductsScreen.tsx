@@ -21,6 +21,7 @@ import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
+import { CompanyRequiredCard } from "../../components/company";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { ProductVariant } from "../../services/productVariant.service";
 import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
@@ -36,6 +37,7 @@ export const MyProductsScreen = () => {
   const isFocused = useIsFocused();
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
+  const hasCompany = Boolean(user?.activeCompany);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,16 @@ export const MyProductsScreen = () => {
 
   const fetchProducts = useCallback(
     async (offset = 0, append = false) => {
+      if (!hasCompany) {
+        setProducts([]);
+        setPagination({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
+        setError(null);
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+        return;
+      }
+
       try {
         setError(null);
         if (append) {
@@ -102,7 +114,7 @@ export const MyProductsScreen = () => {
         setLoadingMore(false);
       }
     },
-    [PAGE_SIZE, query, refreshing, statusFilter]
+    [PAGE_SIZE, hasCompany, query, refreshing, statusFilter]
   );
 
   useFocusEffect(
@@ -210,6 +222,12 @@ export const MyProductsScreen = () => {
   );
 
   const headerCount = pagination.total || products.length;
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate("CompanyContextPicker", {
+      redirectTo: { kind: "stack", screen: "MyProducts" },
+      source: "My Products",
+    });
+  }, [navigation]);
 
   return (
     <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -230,7 +248,14 @@ export const MyProductsScreen = () => {
         </View>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate("AddProduct")}
+          onPress={() =>
+            hasCompany
+              ? navigation.navigate("AddProduct")
+              : navigation.navigate("CompanyContextPicker", {
+                  redirectTo: { kind: "stack", screen: "AddProduct" },
+                  source: "Add Product",
+                })
+          }
         >
           <Ionicons name="add" size={20} color={colors.textOnPrimary} />
         </TouchableOpacity>
@@ -289,7 +314,17 @@ export const MyProductsScreen = () => {
         </ScrollView>
       </View>
 
-      {error ? (
+      {!hasCompany ? (
+        <View style={{ padding: spacing.md }}>
+          <CompanyRequiredCard
+            description="Product management needs an active company. Choose or create one to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate("CompanyCreate", { redirectTo: { kind: "stack", screen: "MyProducts" } })
+            }
+          />
+        </View>
+      ) : error ? (
         <View style={[styles.errorBanner, { margin: spacing.md, borderRadius: radius.lg, borderColor: colors.error + "35", backgroundColor: colors.error + "12" }]}>
           <Ionicons name="alert-circle" size={18} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.text, flex: 1 }]} numberOfLines={2}>
@@ -302,12 +337,12 @@ export const MyProductsScreen = () => {
       ) : null}
 
       {/* Product list */}
-      {loading && !products.length && !refreshing ? (
+      {hasCompany && loading && !products.length && !refreshing ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading products…</Text>
         </View>
-      ) : products.length === 0 ? (
+      ) : hasCompany && products.length === 0 ? (
         <View style={[styles.emptyState, { paddingTop: 80 }]}>
           <Ionicons name="cube-outline" size={52} color={colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No products found</Text>
@@ -323,7 +358,7 @@ export const MyProductsScreen = () => {
             <Text style={styles.emptyButtonText}>Add Product</Text>
           </TouchableOpacity>
         </View>
-      ) : (
+      ) : hasCompany ? (
         <FlatList
           data={products}
           renderItem={renderProduct}
@@ -342,7 +377,7 @@ export const MyProductsScreen = () => {
           }
           showsVerticalScrollIndicator={false}
         />
-      )}
+      ) : null}
 
       <QuickAdjustStockSheet
         visible={adjustSheet.open}

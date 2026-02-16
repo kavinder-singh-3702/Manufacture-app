@@ -14,6 +14,8 @@ const {
 } = require('../services/product.service');
 const { isAdminRole } = require('../../../utils/roles');
 
+const ACTIVE_COMPANY_REQUIRED_CODE = 'ACTIVE_COMPANY_REQUIRED';
+
 const normalizeCreatorRole = (role) => {
   const value = typeof role === 'string' ? role.toLowerCase() : undefined;
   return value === 'admin' || value === 'user' ? value : undefined;
@@ -25,8 +27,12 @@ const parseBooleanQuery = (value) => {
   return value.toLowerCase() === 'true';
 };
 
-const resolveScopeCompanyId = (scope, user) =>
-  scope === 'company' ? user?.activeCompany : scope === 'marketplace' ? undefined : user?.activeCompany;
+const resolveScopeCompanyId = (scope, user) => {
+  if (scope === 'company' && !user?.activeCompany) {
+    throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
+  }
+  return scope === 'company' ? user?.activeCompany : scope === 'marketplace' ? undefined : user?.activeCompany;
+};
 
 const resolveRequestedCompanyId = (req, fallbackCompanyId) => {
   const requestedCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : '';
@@ -43,7 +49,7 @@ const resolveRequestedCompanyId = (req, fallbackCompanyId) => {
 const getCategoryStatsController = async (req, res, next) => {
   try {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const companyId = resolveScopeCompanyId(scope, req.user);
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
     const createdByRole = normalizedRole;
 
@@ -115,7 +121,7 @@ const listProductsController = async (req, res, next) => {
 const getProductController = async (req, res, next) => {
   try {
     const { scope, includeVariantSummary } = req.query;
-    const companyId = scope === 'company' ? req.user?.activeCompany : scope === 'marketplace' ? undefined : req.user?.activeCompany;
+    const companyId = resolveScopeCompanyId(scope, req.user);
     const product = await getProductById(req.params.productId, companyId, {
       includeVariantSummary: parseBooleanQuery(includeVariantSummary)
     });

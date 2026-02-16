@@ -15,9 +15,12 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { useAuth } from "../../hooks/useAuth";
 import { accountingService, DashboardData } from "../../services/accounting.service";
 import { tallyService, type Voucher } from "../../services/tally.service";
+import { CompanyRequiredCard } from "../../components/company";
 import type { RootStackParamList } from "../../navigation/types";
+import { routes } from "../../navigation/routes";
 import { DateRangePicker, type DateRange } from "../../components/accounting/DateRangePicker";
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 
@@ -82,8 +85,11 @@ const getStatusTone = (status?: string) => {
 export const AccountingDashboardScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { isXCompact, contentPadding } = useResponsiveLayout();
+  const { user, requestLogin } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
+  const isGuest = !user || user.role === "guest";
+  const hasCompany = Boolean(user?.activeCompany);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,6 +102,15 @@ export const AccountingDashboardScreen = () => {
   const periodLabel = useMemo(() => formatPeriodLabel(dateRange), [dateRange]);
 
   const fetchAll = useCallback(async () => {
+    if (isGuest || !hasCompany) {
+      setDashboard(null);
+      setRecentVouchers([]);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const [dashboardResult, vouchersResult] = await Promise.all([
@@ -123,7 +138,7 @@ export const AccountingDashboardScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [dateRange]);
+  }, [dateRange, hasCompany, isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,12 +148,12 @@ export const AccountingDashboardScreen = () => {
 
   useEffect(() => {
     // If date range changes while screen is visible, refresh.
-    if (!loading) {
+    if (!loading && !isGuest && hasCompany) {
       setLoading(true);
       fetchAll();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange.from, dateRange.to]);
+  }, [dateRange.from, dateRange.to, hasCompany, isGuest]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -158,6 +173,42 @@ export const AccountingDashboardScreen = () => {
 
   const cardPadding = isXCompact ? spacing.sm + 2 : spacing.md;
   const gridGap = isXCompact ? 10 : 12;
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate("CompanyContextPicker", {
+      redirectTo: { kind: "main", screen: routes.ACCOUNTING },
+      source: "Accounting",
+    });
+  }, [navigation]);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, padding: contentPadding, justifyContent: "center" }}>
+          <CompanyRequiredCard
+            title="Login to continue"
+            description="Sign in to access accounting dashboards and company ledgers."
+            primaryLabel="Login"
+            onPrimaryPress={requestLogin}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, padding: contentPadding, justifyContent: "center" }}>
+          <CompanyRequiredCard
+            description="Accounting books are maintained per company. Choose an active company to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() => navigation.navigate("CompanyCreate", { redirectTo: { kind: "main", screen: routes.ACCOUNTING } })}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

@@ -14,7 +14,8 @@ jest.mock('../src/modules/product/services/product.service', () => ({
 
 const {
   listProductsController,
-  getProductsByCategoryController
+  getProductsByCategoryController,
+  getProductController
 } = require('../src/modules/product/controllers/product.controller');
 const productService = require('../src/modules/product/services/product.service');
 
@@ -41,6 +42,23 @@ describe('Product controller companyId filter rules', () => {
     expect(next).toHaveBeenCalledTimes(1);
     const error = next.mock.calls[0][0];
     expect(error.statusCode || error.status).toBe(403);
+    expect(productService.getAllProducts).not.toHaveBeenCalled();
+  });
+
+  test('requires active company when scope=company on list endpoint', async () => {
+    const req = {
+      query: { scope: 'company', includeVariantSummary: 'true' },
+      user: { id: 'user1', role: 'user', activeCompany: null }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await listProductsController(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const error = next.mock.calls[0][0];
+    expect(error.statusCode || error.status).toBe(400);
+    expect(error.code).toBe('ACTIVE_COMPANY_REQUIRED');
     expect(productService.getAllProducts).not.toHaveBeenCalled();
   });
 
@@ -114,5 +132,23 @@ describe('Product controller companyId filter rules', () => {
     );
     expect(res.json).toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
+  });
+
+  test('requires active company when scope=company on get endpoint', async () => {
+    const req = {
+      params: { productId: 'product1' },
+      query: { scope: 'company', includeVariantSummary: 'true' },
+      user: undefined
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductController(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const error = next.mock.calls[0][0];
+    expect(error.statusCode || error.status).toBe(400);
+    expect(error.code).toBe('ACTIVE_COMPANY_REQUIRED');
+    expect(productService.getProductById).not.toHaveBeenCalled();
   });
 });

@@ -11,15 +11,24 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PieChart } from 'react-native-gifted-charts';
 import { useTheme } from '../../hooks/useTheme';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
+import { useAuth } from '../../hooks/useAuth';
 import { tallyService, TallyStats } from '../../services/tally.service';
+import { CompanyRequiredCard } from '../../components/company';
+import { RootStackParamList } from '../../navigation/types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const TallyStatsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { isXCompact, isCompact, contentPadding, clamp } = useResponsiveLayout();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
+  const { user, requestLogin } = useAuth();
+  const isGuest = !user || user.role === 'guest';
+  const hasCompany = Boolean(user?.activeCompany);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -27,6 +36,14 @@ export const TallyStatsScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
+    if (isGuest || !hasCompany) {
+      setError(null);
+      setStats(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const data = await tallyService.getStats();
@@ -38,7 +55,7 @@ export const TallyStatsScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [hasCompany, isGuest]);
 
   useEffect(() => {
     loadStats();
@@ -48,6 +65,44 @@ export const TallyStatsScreen = () => {
     setRefreshing(true);
     loadStats();
   };
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate('CompanyContextPicker', {
+      redirectTo: { kind: 'stack', screen: 'TallyStats' },
+      source: 'Tally Stats',
+    });
+  }, [navigation]);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: 'center', padding: contentPadding }}>
+          <CompanyRequiredCard
+            title="Login to continue"
+            description="Sign in to access tally dashboards and quick accounting entry."
+            primaryLabel="Login"
+            onPrimaryPress={requestLogin}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: 'center', padding: contentPadding }}>
+          <CompanyRequiredCard
+            description="Tally operations need an active company. Choose or create one to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate('CompanyCreate', { redirectTo: { kind: 'stack', screen: 'TallyStats' } })
+            }
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

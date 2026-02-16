@@ -9,13 +9,24 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BarChart } from "react-native-gifted-charts";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
 import { accountingService, GSTSummaryData } from "../../services/accounting.service";
+import { CompanyRequiredCard } from "../../components/company";
+import { RootStackParamList } from "../../navigation/types";
 import { DateRangePicker, DateRange } from "../../components/accounting/DateRangePicker";
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const GSTSummaryScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { user, requestLogin } = useAuth();
+  const navigation = useNavigation<Nav>();
+  const isGuest = !user || user.role === "guest";
+  const hasCompany = Boolean(user?.activeCompany);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<GSTSummaryData | null>(null);
@@ -26,6 +37,14 @@ export const GSTSummaryScreen = () => {
   });
 
   const fetchData = useCallback(async () => {
+    if (isGuest || !hasCompany) {
+      setError(null);
+      setData(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const result = await accountingService.getGSTSummary(dateRange);
@@ -37,7 +56,7 @@ export const GSTSummaryScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [dateRange]);
+  }, [dateRange, hasCompany, isGuest]);
 
   useEffect(() => {
     fetchData();
@@ -52,6 +71,44 @@ export const GSTSummaryScreen = () => {
     setDateRange(newRange);
     setLoading(true);
   };
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate("CompanyContextPicker", {
+      redirectTo: { kind: "stack", screen: "GSTSummary" },
+      source: "GST Summary",
+    });
+  }, [navigation]);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg }}>
+          <CompanyRequiredCard
+            title="Login to continue"
+            description="Sign in to view GST reports for your business."
+            primaryLabel="Login"
+            onPrimaryPress={requestLogin}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg }}>
+          <CompanyRequiredCard
+            description="GST summary is tied to your active company ledger. Choose or create a company to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate("CompanyCreate", { redirectTo: { kind: "stack", screen: "GSTSummary" } })
+            }
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

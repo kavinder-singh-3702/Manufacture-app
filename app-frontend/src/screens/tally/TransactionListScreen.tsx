@@ -10,12 +10,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import { tallyService, Voucher, VoucherType, VoucherStatus } from '../../services/tally.service';
+import { CompanyRequiredCard } from '../../components/company';
+import { RootStackParamList } from '../../navigation/types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const TransactionListScreen = () => {
   const { colors, spacing, radius } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
+  const { user, requestLogin } = useAuth();
+  const isGuest = !user || user.role === 'guest';
+  const hasCompany = Boolean(user?.activeCompany);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -25,6 +34,14 @@ export const TransactionListScreen = () => {
   const [selectedStatus, setSelectedStatus] = useState<VoucherStatus | 'all'>('all');
 
   const loadVouchers = useCallback(async () => {
+    if (isGuest || !hasCompany) {
+      setError(null);
+      setVouchers([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const params: any = { limit: 50 };
@@ -40,7 +57,7 @@ export const TransactionListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedType, selectedStatus]);
+  }, [hasCompany, isGuest, selectedType, selectedStatus]);
 
   useEffect(() => {
     loadVouchers();
@@ -50,6 +67,44 @@ export const TransactionListScreen = () => {
     setRefreshing(true);
     loadVouchers();
   };
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate('CompanyContextPicker', {
+      redirectTo: { kind: 'stack', screen: 'TransactionList' },
+      source: 'Transactions',
+    });
+  }, [navigation]);
+
+  if (isGuest) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: 'center', padding: spacing.lg }}>
+          <CompanyRequiredCard
+            title="Login to continue"
+            description="Sign in to view your company transaction history."
+            primaryLabel="Login"
+            onPrimaryPress={requestLogin}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: 'center', padding: spacing.lg }}>
+          <CompanyRequiredCard
+            description="Transactions are maintained per company. Choose or create a company to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate('CompanyCreate', { redirectTo: { kind: 'stack', screen: 'TransactionList' } })
+            }
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const getVoucherIcon = (type: VoucherType) => {
     switch (type) {

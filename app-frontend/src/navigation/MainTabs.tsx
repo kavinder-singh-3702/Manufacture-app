@@ -245,6 +245,17 @@ export const MainTabs = () => {
     (route: RouteName) => {
       if (!isAdmin && route === routes.ACCOUNTING) {
         setSidebarVisible(false);
+        if (!isAuthenticated) {
+          requestLogin();
+          return;
+        }
+        if (!activeCompany?.id) {
+          stackNavigation.navigate("CompanyContextPicker", {
+            redirectTo: { kind: "main", screen: routes.ACCOUNTING },
+            source: "Accounting",
+          });
+          return;
+        }
         setAccountsPickerOpen(true);
         return;
       }

@@ -11,6 +11,10 @@ const errorHandler = (err, req, res, next) => {
     message: err.message || 'Internal server error'
   };
 
+  if (typeof err.code === 'string' && err.code.trim()) {
+    response.code = err.code;
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     response.stack = err.stack;
   }

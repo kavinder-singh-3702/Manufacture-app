@@ -2,20 +2,21 @@ import { useState } from "react";
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
 import { companyService } from "../../services/company.service";
 import { BUSINESS_ACCOUNT_TYPES, BusinessAccountType } from "../../constants/business";
 import { ApiError } from "../../services/http";
 import { RootStackParamList } from "../../navigation/types";
-import { routes } from "../../navigation/routes";
 import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../../components/common/Button";
 import { userService } from "../../services/user.service";
+import { redirectAfterCompanyResolved } from "../../navigation/companyContextNavigation";
 
 export const CompanyCreateScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, "CompanyCreate">>();
   const { refreshUser } = useAuth();
   const [form, setForm] = useState({
     displayName: "",
@@ -102,7 +103,7 @@ export const CompanyCreateScreen = () => {
         await companyService.switchActive(createdCompany.id).catch(() => null);
       }
       await refreshUser().catch(() => null);
-      navigation.navigate("Main", { screen: routes.DASHBOARD as never });
+      redirectAfterCompanyResolved(navigation, route.params?.redirectTo, "replace");
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to create company.";
       setError(message);

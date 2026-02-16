@@ -19,6 +19,7 @@ import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
+import { CompanyRequiredCard } from "../../components/company";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 export const FilteredProductsScreen = () => {
@@ -28,6 +29,7 @@ export const FilteredProductsScreen = () => {
   const { filter, title } = route.params;
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
+  const hasCompany = Boolean(user?.activeCompany);
 
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,14 @@ export const FilteredProductsScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
+    if (!hasCompany) {
+      setItems([]);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       setError(null);
       const response = await productService.getAll({
@@ -50,7 +60,7 @@ export const FilteredProductsScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filter]);
+  }, [filter, hasCompany]);
 
   // Refresh list whenever screen comes into focus (e.g., after deleting a product)
   useFocusEffect(
@@ -63,6 +73,13 @@ export const FilteredProductsScreen = () => {
     setRefreshing(true);
     fetchItems();
   }, [fetchItems]);
+
+  const handleChooseCompany = useCallback(() => {
+    navigation.navigate("CompanyContextPicker", {
+      redirectTo: { kind: "stack", screen: "FilteredProducts", params: { filter, title } },
+      source: "Inventory",
+    });
+  }, [filter, navigation, title]);
 
   const handleEditItem = useCallback(
     (productId: string) => {
@@ -109,6 +126,24 @@ export const FilteredProductsScreen = () => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading products...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasCompany) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.md }}>
+          <CompanyRequiredCard
+            description="Inventory status views require an active company. Choose or create one to continue."
+            onPrimaryPress={handleChooseCompany}
+            onSecondaryPress={() =>
+              navigation.navigate("CompanyCreate", {
+                redirectTo: { kind: "stack", screen: "FilteredProducts", params: { filter, title } },
+              })
+            }
+          />
         </View>
       </SafeAreaView>
     );

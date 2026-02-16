@@ -15,6 +15,7 @@ import { CompanyVerificationScreen } from "../screens/verification/CompanyVerifi
 import { VerificationSubmitScreen } from "../screens/verification/VerificationSubmitScreen";
 import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
+import { CompanyContextPickerScreen } from "../screens/company/CompanyContextPickerScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import {
   AddProductScreen,
@@ -45,6 +46,7 @@ import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
 import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
 import { withAdminGuard } from "./components/AdminOnlyScreen";
+import { withCompanyContextGuard } from "./components/CompanyContextGuard";
 
 enableScreens(true);
 
@@ -54,6 +56,12 @@ const GuardedUserActivityScreen = withAdminGuard(UserActivityScreen);
 const GuardedCampaignStudioScreen = withAdminGuard(CampaignStudioScreen);
 const GuardedNotificationStudioScreen = withAdminGuard(NotificationStudioScreen);
 const GuardedAdminUserDetailScreen = withAdminGuard(AdminUserDetailScreen);
+const GuardedAddProductScreen = withCompanyContextGuard(AddProductScreen, { sourceLabel: "Add Product" });
+const GuardedEditProductScreen = withCompanyContextGuard(EditProductScreen, { sourceLabel: "Edit Product" });
+const GuardedProductVariantsScreen = withCompanyContextGuard(ProductVariantsScreen, { sourceLabel: "Product Variants" });
+const GuardedSalesInvoiceScreen = withCompanyContextGuard(SalesInvoiceScreen, { sourceLabel: "Sales Invoice" });
+const GuardedPurchaseBillScreen = withCompanyContextGuard(PurchaseBillScreen, { sourceLabel: "Purchase Bill" });
+const GuardedReceiptPaymentScreen = withCompanyContextGuard(ReceiptPaymentScreen, { sourceLabel: "Receipt / Payment" });
 
 /**
  * AppNavigator - Main navigation container
@@ -151,6 +159,11 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
+              name="CompanyContextPicker"
+              component={CompanyContextPickerScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
               name="CompanyVerification"
               component={CompanyVerificationScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
@@ -167,7 +180,7 @@ export const AppNavigator = () => {
             />
             <RootStack.Screen
               name="AddProduct"
-              component={AddProductScreen}
+              component={GuardedAddProductScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
@@ -177,7 +190,7 @@ export const AppNavigator = () => {
             />
             <RootStack.Screen
               name="EditProduct"
-              component={EditProductScreen}
+              component={GuardedEditProductScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen
@@ -202,7 +215,7 @@ export const AppNavigator = () => {
             />
             <RootStack.Screen
               name="ProductVariants"
-              component={ProductVariantsScreen}
+              component={GuardedProductVariantsScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
@@ -272,17 +285,17 @@ export const AppNavigator = () => {
             />
             <RootStack.Screen
               name="SalesInvoice"
-              component={SalesInvoiceScreen}
+              component={GuardedSalesInvoiceScreen}
               options={{ presentation: "modal", animation: "slide_from_right", title: "Sales Invoice" }}
             />
             <RootStack.Screen
               name="PurchaseBill"
-              component={PurchaseBillScreen}
+              component={GuardedPurchaseBillScreen}
               options={{ presentation: "modal", animation: "slide_from_right", title: "Purchase Bill" }}
             />
             <RootStack.Screen
               name="ReceiptPayment"
-              component={ReceiptPaymentScreen}
+              component={GuardedReceiptPaymentScreen}
               options={{ presentation: "modal", animation: "slide_from_right", title: "Receipt/Payment" }}
             />
             <RootStack.Screen

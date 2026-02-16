@@ -2,6 +2,32 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 import { RouteName, routes } from "./routes";
 import { ServiceType } from "../services/serviceRequest.service";
 
+export type CompanyContextStackScreen =
+  | "AddProduct"
+  | "EditProduct"
+  | "ProductVariants"
+  | "SalesInvoice"
+  | "PurchaseBill"
+  | "ReceiptPayment"
+  | "TransactionList"
+  | "TallyStats"
+  | "ProfitLoss"
+  | "GSTSummary"
+  | "PartyOutstanding"
+  | "MyProducts"
+  | "FilteredProducts";
+
+export type CompanyContextRedirectTarget =
+  | {
+      kind: "main";
+      screen: RouteName;
+    }
+  | {
+      kind: "stack";
+      screen: CompanyContextStackScreen;
+      params?: Record<string, unknown>;
+    };
+
 /**
  * Root stack - single navigation structure for all users
  */
@@ -14,7 +40,8 @@ export type RootStackParamList = {
   NotificationPreferences: undefined;
   Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
-  CompanyCreate: undefined;
+  CompanyCreate: { redirectTo?: CompanyContextRedirectTarget } | undefined;
+  CompanyContextPicker: { redirectTo?: CompanyContextRedirectTarget; source?: string } | undefined;
   CompanyVerification: { companyId: string };
   VerificationSubmit: { companyId: string };
   Notifications: undefined;

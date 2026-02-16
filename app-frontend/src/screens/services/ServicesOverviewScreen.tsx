@@ -48,11 +48,10 @@ export const ServicesOverviewScreen = () => {
   const [supportLoading, setSupportLoading] = useState(false);
 
   const isGuest = !user || user.role === "guest";
-  const hasCompany = Boolean(user?.activeCompany);
 
   const loadRequests = useCallback(
     async (opts?: { refreshing?: boolean; forceLimit?: number }) => {
-      if (isGuest || !hasCompany) {
+      if (isGuest) {
         setRequests([]);
         setError(null);
         setLoading(false);
@@ -80,7 +79,7 @@ export const ServicesOverviewScreen = () => {
         setRefreshing(false);
       }
     },
-    [hasCompany, isGuest, showAllRequests]
+    [isGuest, showAllRequests]
   );
 
   useFocusEffect(
@@ -143,23 +142,6 @@ export const ServicesOverviewScreen = () => {
             onPress={requestLogin}
           >
             <Text style={[styles.inlineButtonText, { color: colors.textOnPrimary }]}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (!hasCompany) {
-      return (
-        <View style={[styles.emptyCard, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
-          <Ionicons name="business-outline" size={20} color={colors.accent} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Select a company to continue</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Service requests are mapped to your active company account.</Text>
-          <TouchableOpacity
-            style={[styles.inlineButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("CompanyCreate")}
-          >
-            <Text style={[styles.inlineButtonText, { color: colors.textOnPrimary }]}>Create Company</Text>
           </TouchableOpacity>
         </View>
       );
