@@ -1,15 +1,88 @@
+const createError = require('http-errors');
+const mongoose = require('mongoose');
 const User = require('../../../models/user.model');
 const Company = require('../../../models/company.model');
 const CompanyVerificationRequest = require('../../../models/companyVerificationRequest.model');
+const Activity = require('../../../models/activity.model');
+const Notification = require('../../../models/notification.model');
+const { UserPersonalizedOffer } = require('../../../models/userPersonalizedOffer.model');
+const Product = require('../../../models/product.model');
+const ProductVariant = require('../../../models/productVariant.model');
+const ServiceRequest = require('../../../models/serviceRequest.model');
+const ProductQuote = require('../../../models/productQuote.model');
+const Unit = require('../../../models/unit.model');
+const Account = require('../../../models/account.model');
+const AccountingVoucherLog = require('../../../models/accountingVoucherLog.model');
+const StockMove = require('../../../models/stockMove.model');
+const InventoryBalance = require('../../../models/inventoryBalance.model');
+const LedgerPosting = require('../../../models/ledgerPosting.model');
+const AccountingBill = require('../../../models/accountingBill.model');
+const Party = require('../../../models/party.model');
+const AccountingVoucher = require('../../../models/accountingVoucher.model');
+const AccountingSequence = require('../../../models/accountingSequence.model');
 const { sendDocumentRequestEmail } = require('../../../services/email.service');
 const { createDocumentRequestNotification } = require('../../../services/notification.service');
+
+const HARD_DELETE_JOB_STORE = new Map();
+
+const toObjectId = (value) => {
+  if (!value) return undefined;
+  if (value instanceof mongoose.Types.ObjectId) return value;
+  if (mongoose.Types.ObjectId.isValid(value)) return new mongoose.Types.ObjectId(value);
+  return undefined;
+};
+
+const parseNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const resolveSort = (sortValue, fallback = { createdAt: -1 }) => {
+  switch (sortValue) {
+    case 'createdAt:asc':
+      return { createdAt: 1 };
+    case 'createdAt:desc':
+      return { createdAt: -1 };
+    case 'updatedAt:asc':
+      return { updatedAt: 1 };
+    case 'updatedAt:desc':
+      return { updatedAt: -1 };
+    default:
+      return fallback;
+  }
+};
+
+const shapeCompanySummary = (company) => ({
+  id: company._id.toString(),
+  displayName: company.displayName,
+  legalName: company.legalName,
+  type: company.type,
+  status: company.status || 'pending-verification',
+  complianceStatus: company.complianceStatus,
+  categories: company.categories || [],
+  logoUrl: company.logoUrl,
+  owner: company.owner
+    ? {
+      id: company.owner._id?.toString(),
+      displayName: company.owner.displayName,
+      email: company.owner.email
+    }
+    : null,
+  documentsRequestedAt: company.documentsRequestedAt,
+  archivedAt: company.archivedAt,
+  archivedBy: company.archivedBy,
+  deactivatedReason: company.deactivatedReason,
+  createdAt: company.createdAt,
+  updatedAt: company.updatedAt
+});
 
 /**
  * Get admin dashboard statistics
  * Returns counts for users, companies, and verification requests
  */
 const getAdminStats = async () => {
-  // Run all queries in parallel for better performance
   const [
     totalUsers,
     activeUsers,
@@ -19,29 +92,15 @@ const getAdminStats = async () => {
     approvedVerifications,
     rejectedVerifications
   ] = await Promise.all([
-    // Total users count
     User.countDocuments({}),
-
-    // Active users count (status = 'active')
     User.countDocuments({ status: 'active' }),
-
-    // Total companies count
     Company.countDocuments({}),
-
-    // Active companies count (status = 'active')
     Company.countDocuments({ status: 'active' }),
-
-    // Pending verification requests count
     CompanyVerificationRequest.countDocuments({ status: 'pending' }),
-
-    // Approved verification requests count
     CompanyVerificationRequest.countDocuments({ status: 'approved' }),
-
-    // Rejected verification requests count
     CompanyVerificationRequest.countDocuments({ status: 'rejected' })
   ]);
 
-  // Calculate today's activity (verifications submitted/decided today)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -76,71 +135,71 @@ const getAdminStats = async () => {
   };
 };
 
-/**
- * List all companies (admin only)
- * Returns all companies with owner info, sorted by creation date
- */
-const listAllCompanies = async ({ status, search, limit = 50, offset = 0 } = {}) => {
-  // Build query filter
-  const filter = {};
+const getAdminOverview = async () => {
+  const stats = await getAdminStats();
 
-  if (status) {
-    filter.status = status;
-  }
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000);
 
-  if (search) {
-    // Search by company name (case-insensitive)
-    filter.displayName = { $regex: search, $options: 'i' };
-  }
-
-  // Fetch companies with owner info
-  const companies = await Company.find(filter)
-    .populate('owner', 'displayName email')
-    .sort({ createdAt: -1 })
-    .skip(offset)
-    .limit(limit)
-    .lean();
-
-  // Get total count for pagination
-  const total = await Company.countDocuments(filter);
-
-  // Transform to response format
-  const formattedCompanies = companies.map(company => ({
-    id: company._id.toString(),
-    displayName: company.displayName,
-    legalName: company.legalName,
-    type: company.type,
-    status: company.status || 'pending-verification',
-    complianceStatus: company.complianceStatus,
-    categories: company.categories || [],
-    logoUrl: company.logoUrl,
-    owner: company.owner ? {
-      id: company.owner._id?.toString(),
-      displayName: company.owner.displayName,
-      email: company.owner.email
-    } : null,
-    documentsRequestedAt: company.documentsRequestedAt,
-    createdAt: company.createdAt,
-    updatedAt: company.updatedAt
-  }));
+  const [
+    pendingLt24h,
+    pending24To72h,
+    pendingGt72h,
+    recentNotifications,
+    deliveredNotifications,
+    failedNotifications,
+    activeCampaigns,
+    draftCampaigns,
+    expiredCampaigns,
+    archivedCampaigns
+  ] = await Promise.all([
+    CompanyVerificationRequest.countDocuments({ status: 'pending', createdAt: { $gte: twentyFourHoursAgo } }),
+    CompanyVerificationRequest.countDocuments({
+      status: 'pending',
+      createdAt: { $lt: twentyFourHoursAgo, $gte: seventyTwoHoursAgo }
+    }),
+    CompanyVerificationRequest.countDocuments({ status: 'pending', createdAt: { $lt: seventyTwoHoursAgo } }),
+    Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, createdBy: { $exists: true } }),
+    Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, status: 'delivered', createdBy: { $exists: true } }),
+    Notification.countDocuments({ createdAt: { $gte: twentyFourHoursAgo }, status: 'failed', createdBy: { $exists: true } }),
+    UserPersonalizedOffer.countDocuments({ status: 'active' }),
+    UserPersonalizedOffer.countDocuments({ status: 'draft' }),
+    UserPersonalizedOffer.countDocuments({ status: 'expired' }),
+    UserPersonalizedOffer.countDocuments({ status: 'archived' })
+  ]);
 
   return {
-    companies: formattedCompanies,
-    pagination: {
-      total,
-      limit,
-      offset,
-      hasMore: offset + companies.length < total
+    stats,
+    verificationAging: {
+      lt24h: pendingLt24h,
+      from24hTo72h: pending24To72h,
+      gt72h: pendingGt72h
+    },
+    notificationDispatchHealth: {
+      last24h: recentNotifications,
+      delivered: deliveredNotifications,
+      failed: failedNotifications,
+      successRate:
+        recentNotifications > 0 ? Number(((deliveredNotifications / recentNotifications) * 100).toFixed(2)) : 0
+    },
+    campaigns: {
+      active: activeCampaigns,
+      draft: draftCampaigns,
+      expired: expiredCampaigns,
+      archived: archivedCampaigns,
+      total: activeCampaigns + draftCampaigns + expiredCampaigns + archivedCampaigns
     }
   };
 };
 
 /**
- * List all users (admin only)
- * Returns all users, sorted by creation date
+ * List all companies (admin/super-admin)
  */
-const listAllUsers = async ({ status, search, limit = 50, offset = 0 } = {}) => {
-  // Build query filter
+const listAllCompanies = async ({ status, search, limit = 50, offset = 0, sort } = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+
   const filter = {};
 
   if (status) {
@@ -148,26 +207,69 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0 } = {}) => 
   }
 
   if (search) {
-    // Search by name or email (case-insensitive)
     filter.$or = [
       { displayName: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } }
+      { legalName: { $regex: search, $options: 'i' } }
     ];
   }
 
-  // Fetch users
-  const users = await User.find(filter)
-    .select('-password')
-    .sort({ createdAt: -1 })
-    .skip(offset)
-    .limit(limit)
-    .lean();
+  const [companies, total] = await Promise.all([
+    Company.find(filter)
+      .populate('owner', 'displayName email')
+      .sort(resolveSort(sort, { createdAt: -1 }))
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .lean(),
+    Company.countDocuments(filter)
+  ]);
 
-  // Get total count for pagination
-  const total = await User.countDocuments(filter);
+  return {
+    companies: companies.map(shapeCompanySummary),
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + companies.length < total
+    }
+  };
+};
 
-  // Transform to response format
-  const formattedUsers = users.map(user => ({
+/**
+ * List all users (admin/super-admin)
+ */
+const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, companyId } = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (companyId) {
+    filter.companies = toObjectId(companyId);
+  }
+
+  if (search) {
+    filter.$or = [
+      { displayName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(filter)
+      .select('-password')
+      .sort(resolveSort(sort, { createdAt: -1 }))
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .lean(),
+    User.countDocuments(filter)
+  ]);
+
+  const formattedUsers = users.map((user) => ({
     id: user._id.toString(),
     email: user.email,
     displayName: user.displayName,
@@ -178,6 +280,7 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0 } = {}) => 
     accountType: user.accountType,
     verificationStatus: user.verificationStatus,
     lastLoginAt: user.lastLoginAt,
+    activeCompany: user.activeCompany,
     createdAt: user.createdAt
   }));
 
@@ -185,72 +288,234 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0 } = {}) => 
     users: formattedUsers,
     pagination: {
       total,
-      limit,
-      offset,
-      hasMore: offset + users.length < total
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + users.length < total
+    }
+  };
+};
+
+const findCompanyOrThrow = async (companyId) => {
+  const company = await Company.findById(companyId).populate('owner', 'displayName email');
+  if (!company) {
+    throw createError(404, 'Company not found');
+  }
+  return company;
+};
+
+const setCompanyStatus = async ({ companyId, actorId, status, reason }) => {
+  const company = await findCompanyOrThrow(companyId);
+
+  company.status = status;
+  company.updatedBy = actorId;
+
+  if (['archived', 'inactive', 'suspended'].includes(status)) {
+    company.archivedAt = company.archivedAt || new Date();
+    company.archivedBy = actorId;
+    company.deactivatedReason = reason?.trim() || company.deactivatedReason;
+  }
+
+  if (status === 'active' || status === 'pending-verification') {
+    company.archivedAt = undefined;
+    company.archivedBy = undefined;
+    company.deactivatedReason = undefined;
+  }
+
+  await company.save();
+
+  return {
+    success: true,
+    message: `Company status updated to ${status}`,
+    company: shapeCompanySummary(company)
+  };
+};
+
+const archiveCompany = async ({ companyId, actorId, reason }) =>
+  setCompanyStatus({ companyId, actorId, status: 'archived', reason });
+
+const deleteCompany = async ({ companyId, actorId, reason }) => {
+  const archived = await archiveCompany({ companyId, actorId, reason });
+  return {
+    ...archived,
+    deprecated: true,
+    message: 'Hard delete is deprecated on this endpoint. Company archived instead.'
+  };
+};
+
+const cleanupCompanyDataHardDelete = async ({ companyId }) => {
+  const companyObjectId = toObjectId(companyId);
+  if (!companyObjectId) {
+    throw createError(400, 'Invalid company id for hard delete');
+  }
+
+  await Promise.all([
+    CompanyVerificationRequest.deleteMany({ company: companyObjectId }),
+    Product.deleteMany({ company: companyObjectId }),
+    ProductVariant.deleteMany({ company: companyObjectId }),
+    ServiceRequest.deleteMany({ company: companyObjectId }),
+    ProductQuote.deleteMany({ $or: [{ buyerCompany: companyObjectId }, { sellerCompany: companyObjectId }] }),
+    Unit.deleteMany({ company: companyObjectId }),
+    Account.deleteMany({ company: companyObjectId }),
+    AccountingVoucherLog.deleteMany({ company: companyObjectId }),
+    StockMove.deleteMany({ company: companyObjectId }),
+    InventoryBalance.deleteMany({ company: companyObjectId }),
+    LedgerPosting.deleteMany({ company: companyObjectId }),
+    AccountingBill.deleteMany({ company: companyObjectId }),
+    Party.deleteMany({ company: companyObjectId }),
+    AccountingVoucher.deleteMany({ company: companyObjectId }),
+    AccountingSequence.deleteMany({ company: companyObjectId }),
+    UserPersonalizedOffer.deleteMany({ company: companyObjectId }),
+    Notification.deleteMany({ company: companyObjectId }),
+    Activity.updateMany(
+      { company: companyObjectId },
+      { $unset: { company: '' }, $set: { companyName: '[hard-deleted]' } }
+    ),
+    User.updateMany(
+      { activeCompany: companyObjectId },
+      { $set: { activeCompany: null } }
+    ),
+    User.updateMany(
+      { companies: companyObjectId },
+      { $pull: { companies: companyObjectId } }
+    )
+  ]);
+
+  await Company.findByIdAndDelete(companyObjectId);
+};
+
+const hardDeleteCompany = async ({ companyId, actorId, reason }) => {
+  const company = await findCompanyOrThrow(companyId);
+  const companyObjectId = company._id.toString();
+  const jobId = new mongoose.Types.ObjectId().toString();
+
+  HARD_DELETE_JOB_STORE.set(jobId, {
+    id: jobId,
+    companyId: companyObjectId,
+    actorId,
+    reason,
+    status: 'queued',
+    queuedAt: new Date().toISOString()
+  });
+
+  setImmediate(async () => {
+    try {
+      HARD_DELETE_JOB_STORE.set(jobId, {
+        ...HARD_DELETE_JOB_STORE.get(jobId),
+        status: 'running',
+        startedAt: new Date().toISOString()
+      });
+
+      await cleanupCompanyDataHardDelete({ companyId: companyObjectId });
+
+      HARD_DELETE_JOB_STORE.set(jobId, {
+        ...HARD_DELETE_JOB_STORE.get(jobId),
+        status: 'completed',
+        finishedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      HARD_DELETE_JOB_STORE.set(jobId, {
+        ...HARD_DELETE_JOB_STORE.get(jobId),
+        status: 'failed',
+        error: error.message,
+        finishedAt: new Date().toISOString()
+      });
+    }
+  });
+
+  return {
+    success: true,
+    message: `Hard delete job queued for company "${company.displayName}"`,
+    job: HARD_DELETE_JOB_STORE.get(jobId)
+  };
+};
+
+const listAdminAuditEvents = async ({ userId, companyId, action, from, to, limit = 50, offset = 0 } = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+
+  const query = {
+    $or: [{ category: 'admin' }, { action: /^admin\./ }]
+  };
+
+  if (userId) {
+    query.user = toObjectId(userId);
+  }
+  if (companyId) {
+    query.company = toObjectId(companyId);
+  }
+  if (action) {
+    query.action = action;
+  }
+  if (from || to) {
+    query.createdAt = {};
+    if (from) query.createdAt.$gte = new Date(from);
+    if (to) query.createdAt.$lte = new Date(to);
+  }
+
+  const [events, total] = await Promise.all([
+    Activity.find(query)
+      .sort({ createdAt: -1 })
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .populate('user', 'displayName email role')
+      .populate('company', 'displayName status')
+      .lean(),
+    Activity.countDocuments(query)
+  ]);
+
+  return {
+    events: events.map((event) => ({
+      id: event._id.toString(),
+      action: event.action,
+      category: event.category,
+      label: event.label,
+      description: event.description,
+      actor: event.user
+        ? {
+          id: event.user._id?.toString?.() || event.user,
+          displayName: event.user.displayName,
+          email: event.user.email,
+          role: event.user.role
+        }
+        : null,
+      company: event.company
+        ? {
+          id: event.company._id?.toString?.() || event.company,
+          displayName: event.company.displayName,
+          status: event.company.status
+        }
+        : null,
+      companyName: event.companyName,
+      meta: event.meta instanceof Map ? Object.fromEntries(event.meta) : event.meta || {},
+      ip: event.ip,
+      userAgent: event.userAgent,
+      createdAt: event.createdAt
+    })),
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + events.length < total
     }
   };
 };
 
 /**
- * Delete a company (admin only)
- * Removes the company and its associated verification requests
- */
-const deleteCompany = async (companyId) => {
-  // Find the company first to ensure it exists
-  const company = await Company.findById(companyId);
-
-  if (!company) {
-    const error = new Error('Company not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  // Delete associated verification requests
-  await CompanyVerificationRequest.deleteMany({ company: companyId });
-
-  // Delete the company
-  await Company.findByIdAndDelete(companyId);
-
-  return {
-    success: true,
-    message: `Company "${company.displayName}" has been deleted`,
-    deletedCompanyId: companyId
-  };
-};
-
-/**
  * Request documents from a company for verification (admin only)
- * Sends email and/or notification to the company owner
- * @param {string} companyId - Company ID to request documents from
- * @param {string} adminId - Admin user ID making the request
- * @param {Object} options - Request options
- * @param {string} options.message - Optional custom message
- * @param {boolean} options.sendEmail - Whether to send email (default: true)
- * @param {boolean} options.sendNotification - Whether to send notification (default: true)
  */
-const requestDocuments = async (companyId, adminId, { message, sendEmail = true, sendNotification = true } = {}) => {
-  // Find the company with owner details
-  const company = await Company.findById(companyId).populate('owner', 'displayName email');
+const requestDocuments = async (
+  companyId,
+  adminId,
+  { message, sendEmail = true, sendNotification = true } = {}
+) => {
+  const company = await findCompanyOrThrow(companyId);
 
-  if (!company) {
-    const error = new Error('Company not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  // Check if company is in pending status
   if (company.status !== 'pending-verification') {
-    const error = new Error('Company is not in pending verification status');
-    error.statusCode = 400;
-    throw error;
+    throw createError(400, 'Company is not in pending verification status');
   }
 
-  // Check if company has an owner
   if (!company.owner) {
-    const error = new Error('Company does not have an owner assigned');
-    error.statusCode = 400;
-    throw error;
+    throw createError(400, 'Company does not have an owner assigned');
   }
 
   const owner = company.owner;
@@ -261,7 +526,6 @@ const requestDocuments = async (companyId, adminId, { message, sendEmail = true,
     notificationSent: false
   };
 
-  // Send email if requested
   if (sendEmail && owner.email) {
     const emailResult = await sendDocumentRequestEmail({
       ownerEmail: owner.email,
@@ -275,7 +539,6 @@ const requestDocuments = async (companyId, adminId, { message, sendEmail = true,
     }
   }
 
-  // Send in-app notification if requested
   if (sendNotification) {
     const notificationResult = await createDocumentRequestNotification({
       userId: owner._id.toString(),
@@ -290,25 +553,26 @@ const requestDocuments = async (companyId, adminId, { message, sendEmail = true,
     }
   }
 
-  // Check if at least one method succeeded
   if (!results.emailSent && !results.notificationSent) {
-    const error = new Error('Failed to send both email and notification');
-    error.statusCode = 500;
-    throw error;
+    throw createError(500, 'Failed to send both email and notification');
   }
 
-  // Update company to mark documents as requested
-  await Company.findByIdAndUpdate(companyId, {
-    documentsRequestedAt: new Date()
-  });
+  company.documentsRequestedAt = new Date();
+  company.updatedBy = adminId;
+  await company.save();
 
   return results;
 };
 
 module.exports = {
   getAdminStats,
+  getAdminOverview,
   listAllCompanies,
   listAllUsers,
+  setCompanyStatus,
+  archiveCompany,
   deleteCompany,
+  hardDeleteCompany,
+  listAdminAuditEvents,
   requestDocuments
 };

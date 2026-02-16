@@ -45,6 +45,9 @@ export type AdminCompany = {
     email: string;
   } | null;
   documentsRequestedAt?: string;
+  archivedAt?: string;
+  archivedBy?: string;
+  deactivatedReason?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -76,6 +79,52 @@ export type Pagination = {
   hasMore: boolean;
 };
 
+export type AdminOverview = {
+  stats: AdminStats;
+  verificationAging: {
+    lt24h: number;
+    from24hTo72h: number;
+    gt72h: number;
+  };
+  notificationDispatchHealth: {
+    last24h: number;
+    delivered: number;
+    failed: number;
+    successRate: number;
+  };
+  campaigns: {
+    active: number;
+    draft: number;
+    expired: number;
+    archived: number;
+    total: number;
+  };
+};
+
+export type AdminAuditEvent = {
+  id: string;
+  action: string;
+  category?: string;
+  label?: string;
+  description?: string;
+  actor?: {
+    id: string;
+    displayName?: string;
+    email?: string;
+    role?: string;
+  } | null;
+  company?: {
+    id: string;
+    displayName?: string;
+    status?: string;
+  } | null;
+  companyName?: string;
+  meta?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+  createdAt: string;
+};
+
 // ============================================================
 // ADMIN SERVICE
 // ============================================================
@@ -94,6 +143,11 @@ class AdminService {
     return response.stats;
   }
 
+  async getOverview(): Promise<AdminOverview> {
+    const response = await apiClient.get<{ overview: AdminOverview }>("/admin/overview");
+    return response.overview;
+  }
+
   /**
    * List all companies (admin only)
    * @param params - Optional filter params (status, search, limit, offset)
@@ -104,6 +158,7 @@ class AdminService {
     search?: string;
     limit?: number;
     offset?: number;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc";
   }): Promise<{ companies: AdminCompany[]; pagination: Pagination }> {
     const response = await apiClient.get<{
       companies: AdminCompany[];
@@ -122,6 +177,8 @@ class AdminService {
     search?: string;
     limit?: number;
     offset?: number;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc";
+    companyId?: string;
   }): Promise<{ users: AdminUser[]; pagination: Pagination }> {
     const response = await apiClient.get<{
       users: AdminUser[];
@@ -135,17 +192,49 @@ class AdminService {
    * @param companyId - The ID of the company to delete
    * @returns Success message and deleted company ID
    */
-  async deleteCompany(companyId: string): Promise<{
+  async deleteCompany(companyId: string, payload?: { reason?: string; contextCompanyId?: string }): Promise<{
     success: boolean;
     message: string;
-    deletedCompanyId: string;
+    deprecated?: boolean;
+    company?: AdminCompany;
   }> {
     const response = await apiClient.delete<{
       success: boolean;
       message: string;
-      deletedCompanyId: string;
-    }>(`/admin/companies/${companyId}`);
+      deprecated?: boolean;
+      company?: AdminCompany;
+    }>(`/admin/companies/${companyId}`, { data: payload ?? {} } as any);
     return response;
+  }
+
+  async archiveCompany(
+    companyId: string,
+    payload?: { reason?: string; contextCompanyId?: string }
+  ): Promise<{ success: boolean; message: string; company: AdminCompany }> {
+    return apiClient.post<{ success: boolean; message: string; company: AdminCompany }>(
+      `/admin/companies/${companyId}/archive`,
+      payload ?? {}
+    );
+  }
+
+  async setCompanyStatus(
+    companyId: string,
+    payload: { status: string; reason?: string; contextCompanyId?: string }
+  ): Promise<{ success: boolean; message: string; company: AdminCompany }> {
+    return apiClient.patch<{ success: boolean; message: string; company: AdminCompany }>(
+      `/admin/companies/${companyId}/status`,
+      payload
+    );
+  }
+
+  async hardDeleteCompany(
+    companyId: string,
+    payload: { reason: string; contextCompanyId?: string }
+  ): Promise<{ success: boolean; message: string; job: { id: string; status: string } }> {
+    return apiClient.post<{ success: boolean; message: string; job: { id: string; status: string } }>(
+      `/admin/companies/${companyId}/hard-delete`,
+      payload
+    );
   }
 
   /**
@@ -158,10 +247,11 @@ class AdminService {
   async requestDocuments(
     companyId: string,
     payload?: {
-      message?: string;
-      sendEmail?: boolean;
-      sendNotification?: boolean;
-    }
+        message?: string;
+        sendEmail?: boolean;
+        sendNotification?: boolean;
+        contextCompanyId?: string;
+      }
   ): Promise<{
     success: boolean;
     message: string;
@@ -185,6 +275,18 @@ class AdminService {
       params,
     });
     return response.summary;
+  }
+
+  async listAuditEvents(params?: {
+    userId?: string;
+    companyId?: string;
+    action?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ events: AdminAuditEvent[]; pagination: Pagination }> {
+    return apiClient.get<{ events: AdminAuditEvent[]; pagination: Pagination }>("/admin/audit-events", { params });
   }
 }
 

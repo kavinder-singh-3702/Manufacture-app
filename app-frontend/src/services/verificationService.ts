@@ -59,17 +59,25 @@ class VerificationService {
   //Admin: List all verification requests
   // Backend returns { requests: [...] } so we need to extract the array
 
-  async listVerificationRequests(
-    status?: "pending" | "approved" | "rejected"
-  ): Promise<VerificationRequest[]> {
-    const params = status ? { status } : {};
-    // Backend wraps the array in { requests: [...] }
-    const response = await apiClient.get<{ requests: VerificationRequest[] }>(
-      "/verification-requests",
-      { params }
-    );
-    // Return the requests array, or empty array if undefined
-    return response.requests || [];
+  async listVerificationRequests(params?: {
+    status?: "pending" | "approved" | "rejected";
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc";
+    companyId?: string;
+  }): Promise<{
+    requests: VerificationRequest[];
+    pagination?: { total: number; limit: number; offset: number; hasMore: boolean };
+  }> {
+    const response = await apiClient.get<{
+      requests: VerificationRequest[];
+      pagination?: { total: number; limit: number; offset: number; hasMore: boolean };
+    }>("/verification-requests", { params });
+    return {
+      requests: response.requests || [],
+      pagination: response.pagination,
+    };
   }
 
   //Admin: Approve or reject a verification request

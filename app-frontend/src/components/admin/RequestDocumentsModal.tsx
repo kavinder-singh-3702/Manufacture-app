@@ -66,7 +66,10 @@ export const RequestDocumentsModal = ({
   // SUBMIT REQUEST
   // ------------------------------------------------------------
   const handleSubmit = async () => {
-    if (!company) return;
+    if (!company) {
+      setError("Select a company before sending the request.");
+      return;
+    }
 
     // Validate at least one notification method is selected
     if (!sendEmail && !sendNotification) {
@@ -82,6 +85,7 @@ export const RequestDocumentsModal = ({
         message: message.trim() || undefined,
         sendEmail,
         sendNotification,
+        contextCompanyId: company.id,
       });
 
       // Success - close modal and notify parent
@@ -98,8 +102,6 @@ export const RequestDocumentsModal = ({
   // ------------------------------------------------------------
   // RENDER
   // ------------------------------------------------------------
-  if (!company) return null;
-
   return (
     <Modal
       visible={visible}
@@ -140,15 +142,21 @@ export const RequestDocumentsModal = ({
                 { color: colors.textSecondary, marginTop: spacing.xs },
               ]}
             >
-              Send a request to{" "}
-              <Text style={{ fontWeight: "600", color: colors.text }}>
-                {company.displayName}
-              </Text>{" "}
-              to submit their verification documents
+              {company ? (
+                <>
+                  Send a request to{" "}
+                  <Text style={{ fontWeight: "600", color: colors.text }}>
+                    {company.displayName}
+                  </Text>{" "}
+                  to submit their verification documents
+                </>
+              ) : (
+                "No company selected. Close this sheet and try again."
+              )}
             </Text>
 
             {/* ========== OWNER INFO ========== */}
-            {company.owner && (
+            {company?.owner && (
               <View
                 style={[
                   styles.ownerCard,
@@ -198,7 +206,7 @@ export const RequestDocumentsModal = ({
                   Send Email
                 </Text>
                 <Text style={[styles.switchDesc, { color: colors.textMuted }]}>
-                  Email will be sent to {company.owner?.email || "owner"}
+                  Email will be sent to {company?.owner?.email || "owner"}
                 </Text>
               </View>
               <Switch
@@ -206,6 +214,7 @@ export const RequestDocumentsModal = ({
                 onValueChange={setSendEmail}
                 trackColor={{ false: colors.border, true: colors.primary + "80" }}
                 thumbColor={sendEmail ? colors.primary : colors.textMuted}
+                disabled={!company}
               />
             </View>
 
@@ -233,6 +242,7 @@ export const RequestDocumentsModal = ({
                 onValueChange={setSendNotification}
                 trackColor={{ false: colors.border, true: colors.primary + "80" }}
                 thumbColor={sendNotification ? colors.primary : colors.textMuted}
+                disabled={!company}
               />
             </View>
 
@@ -265,6 +275,7 @@ export const RequestDocumentsModal = ({
               numberOfLines={4}
               textAlignVertical="top"
               maxLength={500}
+              editable={!loading && !!company}
             />
             <Text
               style={[
@@ -329,7 +340,7 @@ export const RequestDocumentsModal = ({
                   },
                 ]}
                 onPress={handleSubmit}
-                disabled={loading}
+                disabled={loading || !company}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -424,10 +435,12 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
   },
   button: {
     alignItems: "center",
     justifyContent: "center",
+    minWidth: 130,
   },
   cancelButton: {
     borderWidth: 1,

@@ -1,17 +1,18 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
   RefreshControl,
   Text,
   TouchableOpacity,
   Alert,
+  FlatList,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useAuth } from "../../hooks/useAuth";
 import { adminService, AdminCompany } from "../../services/admin.service";
 import { RequestDocumentsModal } from "../../components/admin/RequestDocumentsModal";
 import {
@@ -22,113 +23,108 @@ import {
   AdminActionSheet,
 } from "../../components/admin";
 import { RootStackParamList } from "../../navigation/types";
+import { isAdminRole } from "../../constants/roles";
 
-type FilterStatus = "all" | "active" | "pending-verification" | "inactive";
+type FilterStatus = "all" | "active" | "pending-verification" | "inactive" | "archived";
+
+const PAGE_SIZE = 30;
 
 export const CompaniesScreen = () => {
   const { colors, spacing } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isSuperAdmin = user?.role === "super-admin";
 
-  // State
-  const [allCompanies, setAllCompanies] = useState<AdminCompany[]>([]);
+  const [companies, setCompanies] = useState<AdminCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [totalCount, setTotalCount] = useState(0);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
+  const [mutatingCompanyId, setMutatingCompanyId] = useState<string | null>(null);
+
+  const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(null);
+  const [requestDocsCompany, setRequestDocsCompany] = useState<AdminCompany | null>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const [requestDocsModalVisible, setRequestDocsModalVisible] = useState(false);
 
-  // Action sheet state
-  const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(
-    null
+  const fetchCompanies = useCallback(
+    async ({
+      reset = true,
+      explicitSearch,
+      offset,
+    }: {
+      reset?: boolean;
+      explicitSearch?: string;
+      offset?: number;
+    } = {}) => {
+      const query = (explicitSearch ?? searchQuery).trim();
+      const nextOffset = reset ? 0 : offset ?? 0;
+
+      try {
+        setError(null);
+        if (reset) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
+
+        const response = await adminService.listCompanies({
+          status: activeFilter === "all" ? undefined : activeFilter,
+          search: query || undefined,
+          limit: pagination.limit,
+          offset: nextOffset,
+          sort: "updatedAt:desc",
+        });
+
+        setCompanies((previous) => (reset ? response.companies : [...previous, ...response.companies]));
+        setPagination(response.pagination);
+      } catch (err: any) {
+        console.error("Failed to fetch companies:", err);
+        setError(err.message || "Failed to load companies");
+        if (reset) {
+          setCompanies([]);
+          setPagination((prev) => ({ ...prev, offset: 0, hasMore: false, total: 0 }));
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    [activeFilter, pagination.limit, searchQuery]
   );
-  const [actionSheetVisible, setActionSheetVisible] = useState(false);
 
-  // Filtered companies
-  const filteredCompanies = useMemo(() => {
-    let result = allCompanies;
-
-    if (activeFilter !== "all") {
-      result = result.filter((c) => c.status === activeFilter);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.displayName.toLowerCase().includes(query) ||
-          c.owner?.displayName?.toLowerCase().includes(query) ||
-          c.owner?.email?.toLowerCase().includes(query)
-      );
-    }
-
-    return result;
-  }, [allCompanies, activeFilter, searchQuery]);
-
-  // Filter tabs config
-  const filterTabs = useMemo(() => {
-    const counts = {
-      all: allCompanies.length,
-      active: allCompanies.filter((c) => c.status === "active").length,
-      "pending-verification": allCompanies.filter(
-        (c) => c.status === "pending-verification"
-      ).length,
-      inactive: allCompanies.filter((c) => c.status === "inactive").length,
-    };
-    return [
-      { key: "all" as FilterStatus, label: "All", count: counts.all },
-      { key: "active" as FilterStatus, label: "Active", count: counts.active },
-      {
-        key: "pending-verification" as FilterStatus,
-        label: "Pending",
-        count: counts["pending-verification"],
-      },
-      {
-        key: "inactive" as FilterStatus,
-        label: "Inactive",
-        count: counts.inactive,
-      },
-    ];
-  }, [allCompanies]);
-
-  // Fetch companies
-  const fetchCompanies = useCallback(async () => {
-    try {
-      setError(null);
-      const data = await adminService.listCompanies();
-      setAllCompanies(data.companies);
-      setTotalCount(data.pagination.total);
-    } catch (err: any) {
-      console.error("Failed to fetch companies:", err);
-      setError(err.message || "Failed to load companies");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  // Refetch companies whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchCompanies();
-    }, [])
+      fetchCompanies({ reset: true });
+    }, [fetchCompanies])
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCompanies({ reset: true, explicitSearch: searchQuery });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeFilter, fetchCompanies]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchCompanies();
+    fetchCompanies({ reset: true });
   }, [fetchCompanies]);
 
-  // Status helpers
   const getStatusType = (status: string) => {
     switch (status) {
       case "active":
         return "success" as const;
       case "pending-verification":
         return "warning" as const;
+      case "archived":
       case "inactive":
+      case "suspended":
         return "error" as const;
       default:
         return "neutral" as const;
@@ -136,10 +132,13 @@ export const CompaniesScreen = () => {
   };
 
   const getStatusLabel = (status: string) => {
-    return status === "pending-verification" ? "Pending" : status;
+    if (status === "pending-verification") return "Pending review";
+    if (status === "archived") return "Archived";
+    return status;
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -148,80 +147,123 @@ export const CompaniesScreen = () => {
     });
   };
 
-  // Action handlers
-  const handleCompanyPress = (company: AdminCompany) => {
+  const openActionSheet = (company: AdminCompany) => {
     setSelectedCompany(company);
     setActionSheetVisible(true);
   };
 
-  const handleRequestDocuments = () => {
+  const closeActionSheet = useCallback(() => {
     setActionSheetVisible(false);
-    if (selectedCompany && !selectedCompany.documentsRequestedAt) {
-      setRequestDocsModalVisible(true);
-    }
-  };
+    setSelectedCompany(null);
+  }, []);
 
-  const handleRequestDocsSuccess = () => {
-    if (selectedCompany) {
-      setAllCompanies((prev) =>
-        prev.map((c) =>
-          c.id === selectedCompany.id
-            ? { ...c, documentsRequestedAt: new Date().toISOString() }
-            : c
-        )
-      );
-    }
-    Alert.alert(
-      "Request Sent",
-      "Document request has been sent successfully.",
-      [{ text: "OK" }]
-    );
-  };
+  const closeRequestDocsModal = useCallback(() => {
+    setRequestDocsModalVisible(false);
+    setRequestDocsCompany(null);
+  }, []);
 
-  const handleDeleteCompany = () => {
+  const updateCompanyInList = useCallback((companyId: string, patch: Partial<AdminCompany>) => {
+    setCompanies((previous) => previous.map((item) => (item.id === companyId ? { ...item, ...patch } : item)));
+  }, []);
+
+  const handleRequestDocuments = useCallback(() => {
+    if (!selectedCompany || selectedCompany.documentsRequestedAt) return;
+    setRequestDocsCompany(selectedCompany);
+    setActionSheetVisible(false);
+    setSelectedCompany(null);
+    setTimeout(() => setRequestDocsModalVisible(true), 80);
+  }, [selectedCompany]);
+
+  const handleRequestDocsSuccess = useCallback(() => {
+    if (requestDocsCompany) {
+      updateCompanyInList(requestDocsCompany.id, { documentsRequestedAt: new Date().toISOString() });
+    }
+    Alert.alert("Request sent", "Document request was sent to the company owner.");
+    closeRequestDocsModal();
+  }, [closeRequestDocsModal, requestDocsCompany, updateCompanyInList]);
+
+  const handleArchiveCompany = useCallback(() => {
     if (!selectedCompany) return;
 
-    setActionSheetVisible(false);
-
     Alert.alert(
-      "Delete Company",
-      `Are you sure you want to delete "${selectedCompany.displayName}"?\n\nThis action cannot be undone.`,
+      "Archive company",
+      `Archive "${selectedCompany.displayName}"? This keeps data for audit and can be reversed later.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: "Archive",
           style: "destructive",
           onPress: async () => {
             try {
-              setDeletingId(selectedCompany.id);
-              await adminService.deleteCompany(selectedCompany.id);
-              setAllCompanies((prev) =>
-                prev.filter((c) => c.id !== selectedCompany.id)
-              );
-              setTotalCount((prev) => prev - 1);
-              Alert.alert(
-                "Success",
-                `"${selectedCompany.displayName}" has been deleted.`
-              );
+              setMutatingCompanyId(selectedCompany.id);
+              await adminService.archiveCompany(selectedCompany.id, {
+                contextCompanyId: selectedCompany.id,
+                reason: "Archived from mobile admin console",
+              });
+              updateCompanyInList(selectedCompany.id, {
+                status: "archived",
+                archivedAt: new Date().toISOString(),
+              });
+              Alert.alert("Archived", `"${selectedCompany.displayName}" is now archived.`);
             } catch (err: any) {
-              console.error("Failed to delete company:", err);
-              Alert.alert("Error", err.message || "Failed to delete company");
+              console.error("Failed to archive company:", err);
+              Alert.alert("Error", err.message || "Failed to archive company");
             } finally {
-              setDeletingId(null);
+              setMutatingCompanyId(null);
               setSelectedCompany(null);
             }
           },
         },
       ]
     );
-  };
+  }, [selectedCompany, updateCompanyInList]);
 
-  // Build action sheet actions
-  const getActions = () => {
-    const actions = [
+  const handleHardDeleteCompany = useCallback(() => {
+    if (!selectedCompany) return;
+
+    Alert.alert(
+      "Hard delete company",
+      `Permanently remove "${selectedCompany.displayName}" and queue cleanup? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Hard delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setMutatingCompanyId(selectedCompany.id);
+              const response = await adminService.hardDeleteCompany(selectedCompany.id, {
+                reason: "Hard delete requested from mobile super-admin console",
+                contextCompanyId: selectedCompany.id,
+              });
+              setCompanies((previous) => previous.filter((item) => item.id !== selectedCompany.id));
+              setPagination((previous) => ({ ...previous, total: Math.max(0, previous.total - 1) }));
+              Alert.alert("Job queued", response.message || "Hard-delete cleanup was queued.");
+            } catch (err: any) {
+              console.error("Failed to hard delete company:", err);
+              Alert.alert("Error", err.message || "Failed to hard delete company");
+            } finally {
+              setMutatingCompanyId(null);
+              setSelectedCompany(null);
+            }
+          },
+        },
+      ]
+    );
+  }, [selectedCompany]);
+
+  const actions = useMemo(() => {
+    const list: Array<{
+      label: string;
+      icon: any;
+      onPress: () => void;
+      destructive?: boolean;
+      disabled?: boolean;
+      closeOnPress?: boolean;
+    }> = [
       {
-        label: "View Full Profile",
-        icon: "business-outline" as const,
+        label: "Open company profile",
+        icon: "business-outline",
         onPress: () => {
           if (!selectedCompany) return;
           setActionSheetVisible(false);
@@ -229,70 +271,140 @@ export const CompaniesScreen = () => {
         },
       },
       {
-        label: "Quick Info",
-        icon: "information-circle-outline" as const,
+        label: "Quick summary",
+        icon: "information-circle-outline",
         onPress: () => {
           if (!selectedCompany) return;
           setActionSheetVisible(false);
           Alert.alert(
             selectedCompany.displayName,
-            `Status: ${getStatusLabel(selectedCompany.status)}\n` +
-            `Type: ${selectedCompany.type}\n` +
-            `Owner: ${selectedCompany.owner?.displayName || "N/A"}\n` +
-            `Email: ${selectedCompany.owner?.email || "N/A"}\n` +
-            `Created: ${formatDate(selectedCompany.createdAt)}`,
-            [{ text: "OK" }]
+            `Status: ${getStatusLabel(selectedCompany.status)}\nType: ${selectedCompany.type}\nOwner: ${
+              selectedCompany.owner?.displayName || "N/A"
+            }\nEmail: ${selectedCompany.owner?.email || "N/A"}\nCreated: ${formatDate(selectedCompany.createdAt)}`,
+            [{ text: "Close" }]
           );
         },
       },
     ];
 
-    if (
-      selectedCompany?.status === "pending-verification" &&
-      selectedCompany?.owner
-    ) {
-      actions.push({
-        label: selectedCompany.documentsRequestedAt
-          ? "Documents Requested"
-          : "Request Documents",
-        icon: "document-text-outline" as const,
+    if (selectedCompany?.status === "pending-verification" && selectedCompany?.owner) {
+      list.push({
+        label: selectedCompany.documentsRequestedAt ? "Documents already requested" : "Request documents",
+        icon: "document-text-outline",
         onPress: handleRequestDocuments,
         disabled: !!selectedCompany.documentsRequestedAt,
-      } as any);
+        closeOnPress: false,
+      });
     }
 
-    actions.push({
-      label: "Delete Company",
-      icon: "trash-outline" as const,
-      onPress: handleDeleteCompany,
+    list.push({
+      label: "Archive company",
+      icon: "archive-outline",
+      onPress: handleArchiveCompany,
       destructive: true,
-    } as any);
+    });
 
-    return actions;
-  };
+    if (isSuperAdmin) {
+      list.push({
+        label: "Hard delete (super-admin)",
+        icon: "trash-outline",
+        onPress: handleHardDeleteCompany,
+        destructive: true,
+      });
+    }
 
-  // Loading state
+    return list;
+  }, [
+    formatDate,
+    getStatusLabel,
+    handleArchiveCompany,
+    handleHardDeleteCompany,
+    handleRequestDocuments,
+    isSuperAdmin,
+    navigation,
+    selectedCompany,
+  ]);
+
+  const filterTabs = useMemo(
+    () => [
+      { key: "all" as FilterStatus, label: "All" },
+      { key: "active" as FilterStatus, label: "Active" },
+      { key: "pending-verification" as FilterStatus, label: "Pending" },
+      { key: "inactive" as FilterStatus, label: "Inactive" },
+      { key: "archived" as FilterStatus, label: "Archived" },
+    ],
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: AdminCompany }) => (
+      <AdminListCard
+        key={item.id}
+        title={item.displayName}
+        subtitle={item.owner ? `Owner: ${item.owner.displayName}` : item.type}
+        avatarText={item.displayName.charAt(0).toUpperCase()}
+        avatarColor={
+          item.status === "active"
+            ? colors.success
+            : item.status === "pending-verification"
+            ? colors.warning
+            : colors.textMuted
+        }
+        status={{
+          label: getStatusLabel(item.status),
+          type: getStatusType(item.status),
+        }}
+        meta={`Created ${formatDate(item.createdAt)}`}
+        onPress={() => openActionSheet(item)}
+        style={{ opacity: mutatingCompanyId === item.id ? 0.5 : 1 }}
+      />
+    ),
+    [colors.success, colors.textMuted, colors.warning, formatDate, mutatingCompanyId]
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+        <AdminHeader
+          title="Companies"
+          subtitle={
+            isAdminRole(user?.role)
+              ? "Moderate company lifecycle, verification, and compliance."
+              : "Manage all companies"
+          }
+          count={pagination.total}
+        />
+
+        <AdminSearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search company name or owner..."
+        />
+
+        <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+      </View>
+    ),
+    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md, user?.role]
+  );
+
   if (loading && !refreshing) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Loading companies...
-        </Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading companies...</Text>
       </View>
     );
   }
 
-  // Error state
-  if (error && !loading) {
+  if (error && !companies.length && !loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
         <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: colors.primary }]}
           onPress={() => {
             setLoading(true);
-            fetchCompanies();
+            fetchCompanies({ reset: true });
           }}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -302,103 +414,50 @@ export const CompaniesScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { padding: spacing.lg }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <AdminHeader
-          title="Companies"
-          subtitle="Manage all companies"
-          count={totalCount}
-        />
-
-        {/* Search */}
-        <AdminSearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search companies or owners..."
-        />
-
-        {/* Filter Tabs */}
-        <AdminFilterTabs
-          tabs={filterTabs}
-          activeTab={activeFilter}
-          onTabChange={setActiveFilter}
-        />
-
-        {/* Empty State */}
-        {filteredCompanies.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              {searchQuery
-                ? "No companies match your search"
-                : "No companies found"}
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <FlatList
+        data={companies}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View style={[styles.emptyState, { paddingHorizontal: spacing.lg }]}> 
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}> 
+              {searchQuery.trim()
+                ? "No companies match your current filters"
+                : "No companies available for this filter"}
             </Text>
           </View>
-        ) : (
-          /* Company List */
-          <View style={styles.list}>
-            {filteredCompanies.map((company) => (
-              <AdminListCard
-                key={company.id}
-                title={company.displayName}
-                subtitle={
-                  company.owner
-                    ? `Owner: ${company.owner.displayName}`
-                    : company.type
-                }
-                avatarText={company.displayName.charAt(0).toUpperCase()}
-                avatarColor={
-                  company.status === "active"
-                    ? colors.success
-                    : company.status === "pending-verification"
-                    ? colors.warning
-                    : colors.textMuted
-                }
-                status={{
-                  label: getStatusLabel(company.status),
-                  type: getStatusType(company.status),
-                }}
-                meta={`Created ${formatDate(company.createdAt)}`}
-                onPress={() => handleCompanyPress(company)}
-                style={{
-                  opacity: deletingId === company.id ? 0.5 : 1,
-                }}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Action Sheet */}
-      <AdminActionSheet
-        visible={actionSheetVisible}
-        onClose={() => {
-          setActionSheetVisible(false);
-          setSelectedCompany(null);
+        }
+        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (loadingMore || !pagination.hasMore) return;
+          fetchCompanies({ reset: false, offset: pagination.offset + pagination.limit });
         }}
-        title={selectedCompany?.displayName}
-        subtitle={selectedCompany?.owner?.email}
-        actions={getActions()}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       />
 
-      {/* Request Documents Modal */}
+      <AdminActionSheet
+        visible={actionSheetVisible}
+        onClose={closeActionSheet}
+        title={selectedCompany?.displayName}
+        subtitle={selectedCompany?.owner?.email}
+        actions={actions}
+      />
+
       <RequestDocumentsModal
         visible={requestDocsModalVisible}
-        company={selectedCompany}
-        onClose={() => {
-          setRequestDocsModalVisible(false);
-          setSelectedCompany(null);
-        }}
+        company={requestDocsCompany}
+        onClose={closeRequestDocsModal}
         onSuccess={handleRequestDocsSuccess}
       />
     </View>
@@ -409,9 +468,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    flexGrow: 1,
-  },
   centered: {
     flex: 1,
     justifyContent: "center",
@@ -420,32 +476,37 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "600",
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
     marginBottom: 16,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   retryButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
   },
-  list: {
-    gap: 16,
+  footerLoader: {
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

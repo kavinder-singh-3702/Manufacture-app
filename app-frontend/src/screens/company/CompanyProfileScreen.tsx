@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useAuth } from "../../hooks/useAuth";
+import { isAdminRole } from "../../constants/roles";
 import { useTheme } from "../../hooks/useTheme";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { ResponsiveScreen } from "../../components/layout/ResponsiveScreen";
@@ -96,7 +97,7 @@ export const CompanyProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const targetCompanyId = route.params?.companyId ?? user?.activeCompany ?? null;
-  const isReadOnly = user?.role === "admin";
+  const isReadOnly = isAdminRole(user?.role);
   const canEdit = !isReadOnly;
 
   const loadCompany = useCallback(async () => {

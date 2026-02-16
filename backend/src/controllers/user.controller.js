@@ -14,32 +14,8 @@ const sanitizeUser = (user) => {
   };
 };
 
-const TEST_ADMIN_OBJECT_ID = '000000000000000000000001';
-
 const getCurrentUser = async (req, res, next) => {
   try {
-    // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
-    if (req.user.id === TEST_ADMIN_OBJECT_ID) {
-      return res.json({
-        user: {
-          id: TEST_ADMIN_OBJECT_ID,
-          _id: TEST_ADMIN_OBJECT_ID,
-          email: 'admin@example.com',
-          phone: '+15551234567',
-          firstName: 'Jane',
-          lastName: 'Admin',
-          displayName: 'Jane Admin',
-          role: 'admin',
-          status: 'active',
-          accountType: 'manufacturer',
-          verificationStatus: 'verified',
-          activeCompany: null,
-          companies: [],
-        }
-      });
-    }
-    // ============ END TEST ADMIN BYPASS ============
-
     const user = await User.findById(req.user.id);
 
     if (!user) {

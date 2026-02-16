@@ -124,6 +124,9 @@ const companySchema = new Schema(
       enum: COMPANY_STATUS,
       default: "pending-verification",
     }, // Operational state toggled by admins/moderators.
+    archivedAt: Date, // Timestamp when company was archived/deactivated by admin.
+    archivedBy: { type: Schema.Types.ObjectId, ref: 'User' }, // Admin/super-admin who archived the company.
+    deactivatedReason: { type: String, trim: true, maxlength: 500 }, // Optional admin reason for archival/deactivation.
     documentsRequestedAt: Date, // Timestamp when admin requested verification documents
     lastActivityAt: Date, // Recently tracked company-level activity to sort switcher lists.
     metadata: {

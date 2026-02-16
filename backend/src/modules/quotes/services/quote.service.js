@@ -11,6 +11,7 @@ const {
   SELLER_ADMIN_ACTION_STATUSES
 } = require('../../../constants/quote');
 const { DEFAULT_CURRENCY } = require('../../../constants/product');
+const { isAdminRole } = require('../../../utils/roles');
 
 const RESPONDED_STATUSES = ['quoted', 'accepted', 'rejected', 'expired'];
 
@@ -51,7 +52,7 @@ const applyQuotePopulation = (query) =>
 
 const canAccessQuote = (quote, user) => {
   if (!quote || !user) return false;
-  if (user.role === 'admin') return true;
+  if (isAdminRole(user.role)) return true;
   const userId = String(user.id || user._id || '');
   if (!userId) return false;
   return String(quote.buyer) === userId || String(quote.seller) === userId;
@@ -300,7 +301,7 @@ const respondToQuote = async (quoteId, payload, user) => {
   if (!quote) return null;
 
   const isSeller = String(quote.seller) === String(user.id);
-  if (!isSeller && user.role !== 'admin') {
+  if (!isSeller && !isAdminRole(user.role)) {
     throw createError(403, 'Only the seller can respond to this quote');
   }
 
@@ -370,7 +371,7 @@ const updateQuoteStatus = async (quoteId, payload, user) => {
       throw createError(403, 'Only the buyer can perform this action');
     }
   } else if (SELLER_ADMIN_ACTION_STATUSES.includes(nextStatus)) {
-    if (!isSeller && user.role !== 'admin') {
+    if (!isSeller && !isAdminRole(user.role)) {
       throw createError(403, 'Only the seller or admin can expire this quote');
     }
   } else {

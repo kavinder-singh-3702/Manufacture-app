@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
+import { isAdminRole } from "../../constants/roles";
 import { userService } from "../../services/user.service";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
 import { RootStackParamList } from "../../navigation/types";
@@ -193,7 +194,7 @@ export const ProfileScreen = () => {
       icon: "options-outline" as const,
       onPress: () => navigation.navigate("NotificationPreferences"),
     },
-    ...(user?.role === "admin"
+    ...(isAdminRole(user?.role)
       ? [
           {
             key: "notification-studio",

@@ -31,7 +31,7 @@ import {
 } from "./campaign/utils/campaignContact";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
-import { AppRole } from "../constants/roles";
+import { AppRole, isAdminRole } from "../constants/roles";
 import { ComplianceStatus } from "../types/company";
 import { scale, moderateScale } from "../utils/responsive";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
@@ -168,7 +168,7 @@ const CATEGORY_META: Record<string, { icon: string; bgColor: string }> = {
 // ============================================================
 export const DashboardScreen = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role === AppRole.ADMIN;
+  const isAdmin = isAdminRole(user?.role);
 
   return isAdmin ? <AdminDashboardContent /> : <UserDashboardContent />;
 };

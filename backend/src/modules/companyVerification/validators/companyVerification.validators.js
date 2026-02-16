@@ -18,7 +18,15 @@ const submitCompanyVerificationValidation = [
 ];
 
 const listCompanyVerificationValidation = [
-  query('status').optional().isIn(COMPANY_VERIFICATION_STATUSES).withMessage('Unsupported status filter provided')
+  query('status').optional().isIn(COMPANY_VERIFICATION_STATUSES).withMessage('Unsupported status filter provided'),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 120 }),
+  query('companyId').optional().isMongoId().withMessage('companyId must be a valid ObjectId'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt(),
+  query('sort')
+    .optional()
+    .isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc'])
+    .withMessage('Unsupported sort option')
 ];
 
 const decideCompanyVerificationValidation = [

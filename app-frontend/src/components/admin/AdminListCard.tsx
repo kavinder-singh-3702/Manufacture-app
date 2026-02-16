@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 
@@ -37,6 +38,8 @@ export const AdminListCard = ({
   style,
 }: AdminListCardProps) => {
   const { colors, radius, spacing } = useTheme();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
 
   const getStatusColor = (type: StatusType) => {
     switch (type) {
@@ -62,7 +65,7 @@ export const AdminListCard = ({
           backgroundColor: colors.surface,
           borderColor: colors.border,
           borderRadius: radius.lg,
-          padding: spacing.lg + 4,
+          padding: isCompact ? spacing.md : spacing.lg,
         },
         style,
       ]}
@@ -75,10 +78,14 @@ export const AdminListCard = ({
               styles.avatar,
               {
                 backgroundColor: avatarColor || colors.primary,
+                width: isCompact ? 44 : 52,
+                height: isCompact ? 44 : 52,
+                borderRadius: isCompact ? 22 : 26,
+                marginRight: isCompact ? 12 : 16,
               },
             ]}
           >
-            <Text style={styles.avatarText}>{avatarText}</Text>
+            <Text style={[styles.avatarText, { fontSize: isCompact ? 16 : 20 }]}>{avatarText}</Text>
           </View>
         )}
 
@@ -87,8 +94,8 @@ export const AdminListCard = ({
           {/* Title Row */}
           <View style={styles.titleRow}>
             <Text
-              style={[styles.title, { color: colors.text }]}
-              numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}
+              style={[styles.title, { color: colors.text, fontSize: isCompact ? 15 : 17 }]}
+              numberOfLines={2}
             >
               {title}
             </Text>
@@ -103,7 +110,7 @@ export const AdminListCard = ({
                 <Text
                   style={[
                     styles.statusText,
-                    { color: getStatusColor(status.type) },
+                    { color: getStatusColor(status.type), fontSize: isCompact ? 12 : 13 },
                   ]}
                 >
                   {status.label}
@@ -115,8 +122,8 @@ export const AdminListCard = ({
           {/* Subtitle */}
           {subtitle && (
             <Text
-              style={[styles.subtitle, { color: colors.textMuted }]}
-              numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}
+              style={[styles.subtitle, { color: colors.textMuted, fontSize: isCompact ? 13 : 14 }]}
+              numberOfLines={2}
             >
               {subtitle}
             </Text>
@@ -124,7 +131,7 @@ export const AdminListCard = ({
 
           {/* Meta */}
           {meta && (
-            <Text style={[styles.meta, { color: colors.textTertiary }]}>
+            <Text style={[styles.meta, { color: colors.textTertiary, fontSize: isCompact ? 12 : 13 }]}>
               {meta}
             </Text>
           )}
@@ -150,15 +157,11 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
   },
   avatarText: {
     color: "#FFFFFF",
@@ -171,9 +174,10 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: "row",
-    alignItems: "center",
+    flexWrap: "wrap",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
   title: {
     fontSize: 17,
@@ -184,6 +188,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    maxWidth: "100%",
   },
   statusDot: {
     width: 8,
@@ -196,10 +201,9 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   subtitle: {
-    fontSize: 15,
+    lineHeight: 18,
   },
   meta: {
-    fontSize: 13,
     marginTop: 2,
   },
   rightContent: {

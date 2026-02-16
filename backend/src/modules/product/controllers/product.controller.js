@@ -12,6 +12,7 @@ const {
   applyTargetedDiscount,
   addProductImage
 } = require('../services/product.service');
+const { isAdminRole } = require('../../../utils/roles');
 
 const normalizeCreatorRole = (role) => {
   const value = typeof role === 'string' ? role.toLowerCase() : undefined;
@@ -31,7 +32,7 @@ const resolveRequestedCompanyId = (req, fallbackCompanyId) => {
   const requestedCompanyId = typeof req.query?.companyId === 'string' ? req.query.companyId.trim() : '';
   if (!requestedCompanyId) return fallbackCompanyId;
 
-  const isAdmin = req.user?.role === 'admin';
+  const isAdmin = isAdminRole(req.user?.role);
   if (!isAdmin) {
     throw createError(403, 'companyId filter is restricted to admin users');
   }
@@ -219,7 +220,7 @@ const getProductStatsController = async (req, res, next) => {
 
 const applyDiscountController = async (req, res, next) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       throw createError(403, 'Only admins can apply targeted discounts');
     }
 

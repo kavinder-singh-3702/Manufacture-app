@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const ServiceRequest = require('../../../models/serviceRequest.model');
+const { isAdminRole } = require('../../../utils/roles');
 const {
   SERVICE_TYPES,
   SERVICE_STATUSES,
@@ -13,7 +14,7 @@ const toObjectId = (value) => {
   return undefined;
 };
 
-const isAdmin = (user) => user?.role === 'admin';
+const isAdmin = (user) => isAdminRole(user?.role);
 
 const normalizeTypeSpecificDetails = (payload, serviceType) => {
   const normalized = { ...payload };

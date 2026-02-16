@@ -3,12 +3,16 @@
  * These determine which navigation stack a user sees
  */
 export const AppRole = {
+  SUPER_ADMIN: "super-admin",
   ADMIN: "admin",
   USER: "user",
   GUEST: "guest",
 } as const;
 
 export type AppRoleType = (typeof AppRole)[keyof typeof AppRole];
+
+export const isAdminRole = (role?: string | null): boolean =>
+  role === AppRole.ADMIN || role === AppRole.SUPER_ADMIN;
 
 /**
  * Business/operational roles within a company

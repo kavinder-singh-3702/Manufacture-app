@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
+import { isAdminRole } from "../../constants/roles";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { ProductVariant, productVariantService } from "../../services/productVariant.service";
@@ -132,7 +133,7 @@ export const ProductDetailsScreen = () => {
     if (product.company?._id && user.activeCompany && String(product.company._id) === String(user.activeCompany)) return true;
     return false;
   }, [product, user]);
-  const canManageVariants = isOwnProduct || user?.role === "admin";
+  const canManageVariants = isOwnProduct || isAdminRole(user?.role);
 
   const images = useMemo(() => {
     if (product?.images?.length) return product.images;

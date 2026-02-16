@@ -68,6 +68,10 @@ const adminCreateValidation = [
   body('password')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long'),
+  body('role')
+    .optional()
+    .isIn(['admin', 'super-admin'])
+    .withMessage('role must be either admin or super-admin'),
   body('adminToken')
     .trim()
     .notEmpty()

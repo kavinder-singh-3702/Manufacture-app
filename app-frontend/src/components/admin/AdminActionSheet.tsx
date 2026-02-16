@@ -16,6 +16,7 @@ type ActionItem = {
   onPress: () => void;
   destructive?: boolean;
   disabled?: boolean;
+  closeOnPress?: boolean;
 };
 
 type AdminActionSheetProps = {
@@ -82,7 +83,9 @@ export const AdminActionSheet = ({
                 key={index}
                 onPress={() => {
                   action.onPress();
-                  onClose();
+                  if (action.closeOnPress !== false) {
+                    onClose();
+                  }
                 }}
                 disabled={action.disabled}
                 activeOpacity={0.7}

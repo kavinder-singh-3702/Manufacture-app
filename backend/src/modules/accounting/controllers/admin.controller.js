@@ -4,10 +4,11 @@ const Product = require('../../../models/product.model');
 const ProductVariant = require('../../../models/productVariant.model');
 const InventoryBalance = require('../../../models/inventoryBalance.model');
 const { ensureAccountingSetup } = require('../services/bootstrap.service');
+const { isAdminRole } = require('../../../utils/roles');
 
 const bootstrapAllCompanyBooksController = async (req, res, next) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!isAdminRole(req.user?.role)) {
       throw createError(403, 'Only admin can run accounting bootstrap');
     }
 
@@ -91,4 +92,3 @@ const bootstrapAllCompanyBooksController = async (req, res, next) => {
 module.exports = {
   bootstrapAllCompanyBooksController
 };
-

@@ -14,34 +14,6 @@ const attachUserToSession = async (req, userId) => {
 };
 
 const loginWithPassword = async (req, { email, phone, password }) => {
-  // ============ TEST ADMIN CREDENTIALS - REMOVE AFTER TESTING ============
-  const TEST_ADMIN_EMAIL = 'admin@example.com';
-  const TEST_ADMIN_PASSWORD = 'AdminPass!234';
-  const TEST_ADMIN_OBJECT_ID = '000000000000000000000001'; // Valid 24-char hex ObjectId
-
-  if (email === TEST_ADMIN_EMAIL && password === TEST_ADMIN_PASSWORD) {
-    const testAdminUser = {
-      id: TEST_ADMIN_OBJECT_ID,
-      _id: TEST_ADMIN_OBJECT_ID,
-      email: TEST_ADMIN_EMAIL,
-      firstName: 'Jane',
-      lastName: 'Admin',
-      displayName: 'Jane Admin',
-      phone: '+15551234567',
-      role: 'admin',
-      status: 'active',
-      accountType: 'manufacturer',
-      verificationStatus: 'verified',
-      activeCompany: null,
-      companies: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await attachUserToSession(req, testAdminUser.id);
-    return testAdminUser;
-  }
-  // ============ END TEST ADMIN CREDENTIALS ============
-
   if (!email && !phone) {
     throw createError(400, 'Email or phone is required');
   }

@@ -2,7 +2,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useState 
 import { useAuth } from "../hooks/useAuth";
 import { chatService } from "../services/chat.service";
 import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../services/chatSocket";
-import { AppRole } from "../constants/roles";
+import { isAdminRole } from "../constants/roles";
 
 type UnreadMessagesContextType = {
   totalUnread: number;
@@ -28,7 +28,7 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
   const [totalUnread, setTotalUnread] = useState(0);
   const { user } = useAuth();
 
-  const isAdmin = user?.role === AppRole.ADMIN;
+  const isAdmin = isAdminRole(user?.role);
 
   const loadUnreadCount = useCallback(async () => {
     if (!isAdmin || !user?.id) {

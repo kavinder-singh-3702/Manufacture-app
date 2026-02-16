@@ -1,15 +1,17 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
   Linking,
   Modal,
   RefreshControl,
+  FlatList,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -20,90 +22,113 @@ import {
   AdminHeader,
   AdminFilterTabs,
   AdminListCard,
+  AdminSearchBar,
+  ReasonInputModal,
 } from "../../components/admin";
 
 type FilterStatus = "all" | "pending" | "approved" | "rejected";
 
+const PAGE_SIZE = 20;
+
 export const VerificationsScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
 
-  // State
-  const [allVerifications, setAllVerifications] = useState<
-    VerificationRequest[]
-  >([]);
+  const [verifications, setVerifications] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>("all");
-  const [selectedRequest, setSelectedRequest] =
-    useState<VerificationRequest | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pagination, setPagination] = useState({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
+
+  const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Filtered verifications
-  const filteredVerifications = useMemo(() => {
-    if (activeFilter === "all") {
-      return allVerifications;
-    }
-    return allVerifications.filter((v) => v.status === activeFilter);
-  }, [allVerifications, activeFilter]);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectRequestId, setRejectRequestId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
 
-  // Filter tabs config
-  const filterTabs = useMemo(() => {
-    const counts = {
-      all: allVerifications.length,
-      pending: allVerifications.filter((v) => v.status === "pending").length,
-      approved: allVerifications.filter((v) => v.status === "approved").length,
-      rejected: allVerifications.filter((v) => v.status === "rejected").length,
-    };
-    return [
-      { key: "all" as FilterStatus, label: "All", count: counts.all },
-      {
-        key: "pending" as FilterStatus,
-        label: "Pending",
-        count: counts.pending,
-      },
-      {
-        key: "approved" as FilterStatus,
-        label: "Approved",
-        count: counts.approved,
-      },
-      {
-        key: "rejected" as FilterStatus,
-        label: "Rejected",
-        count: counts.rejected,
-      },
-    ];
-  }, [allVerifications]);
+  const fetchVerifications = useCallback(
+    async ({
+      reset = true,
+      explicitSearch,
+      offset,
+    }: {
+      reset?: boolean;
+      explicitSearch?: string;
+      offset?: number;
+    } = {}) => {
+      const query = (explicitSearch ?? searchQuery).trim();
+      const nextOffset = reset ? 0 : offset ?? 0;
 
-  // Fetch verifications
-  const fetchVerifications = useCallback(async () => {
-    try {
-      setError(null);
-      const data = await verificationService.listVerificationRequests();
-      setAllVerifications(data);
-    } catch (err: any) {
-      console.error("Failed to fetch verifications:", err);
-      setError(err.message || "Failed to load verification requests");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      try {
+        setError(null);
+        if (reset) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
 
-  // Refetch verifications whenever the screen comes into focus
+        const response = await verificationService.listVerificationRequests({
+          status: activeFilter === "all" ? undefined : activeFilter,
+          search: query || undefined,
+          limit: pagination.limit,
+          offset: nextOffset,
+          sort: "createdAt:desc",
+        });
+
+        const nextPagination =
+          response.pagination || {
+            total: response.requests.length,
+            limit: pagination.limit,
+            offset: nextOffset,
+            hasMore: false,
+          };
+
+        setVerifications((previous) =>
+          reset ? response.requests : [...previous, ...response.requests]
+        );
+        setPagination(nextPagination);
+      } catch (err: any) {
+        console.error("Failed to fetch verifications:", err);
+        setError(err.message || "Failed to load verification requests");
+        if (reset) {
+          setVerifications([]);
+          setPagination((prev) => ({ ...prev, offset: 0, hasMore: false, total: 0 }));
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    [activeFilter, pagination.limit, searchQuery]
+  );
+
   useFocusEffect(
     useCallback(() => {
-      fetchVerifications();
-    }, [])
+      fetchVerifications({ reset: true });
+    }, [fetchVerifications])
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchVerifications({ reset: true, explicitSearch: searchQuery });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeFilter, fetchVerifications]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchVerifications();
+    fetchVerifications({ reset: true });
   }, [fetchVerifications]);
 
-  // Helpers
   const getStatusType = (status: string) => {
     switch (status) {
       case "approved":
@@ -115,7 +140,14 @@ export const VerificationsScreen = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const getStatusLabel = (status: string) => {
+    if (status === "approved") return "Approved";
+    if (status === "rejected") return "Rejected";
+    return "Pending review";
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -130,133 +162,228 @@ export const VerificationsScreen = () => {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert("Error", `Cannot open ${documentName}`);
+        Alert.alert("Unable to open", `Cannot open ${documentName}`);
       }
     } catch (err) {
       console.error("Failed to open document:", err);
-      Alert.alert("Error", `Failed to open ${documentName}`);
+      Alert.alert("Unable to open", `Failed to open ${documentName}`);
     }
   };
 
-  const viewRequestDetails = (request: VerificationRequest) => {
+  const viewRequestDetails = useCallback((request: VerificationRequest) => {
     setSelectedRequest(request);
     setModalVisible(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalVisible(false);
     setSelectedRequest(null);
-  };
+  }, []);
 
-  const updateLocalVerification = (
-    requestId: string,
-    newStatus: "approved" | "rejected"
-  ) => {
-    setAllVerifications((prev) =>
-      prev.map((v) => (v.id === requestId ? { ...v, status: newStatus } : v))
+  const applyVerificationUpdate = useCallback((updatedRequest: VerificationRequest) => {
+    setVerifications((previous) =>
+      previous.map((item) => (item.id === updatedRequest.id ? updatedRequest : item))
     );
-  };
+    setSelectedRequest((previous) =>
+      previous && previous.id === updatedRequest.id ? updatedRequest : previous
+    );
+  }, []);
 
-  // Approve handler
-  const handleApprove = async (requestId: string) => {
-    Alert.alert(
-      "Approve Verification",
-      "Are you sure you want to approve this company verification?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Approve",
-          style: "default",
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await verificationService.decideVerification(requestId, {
-                action: "approve",
-                notes: "Approved by admin",
-              });
-              updateLocalVerification(requestId, "approved");
-              Alert.alert("Success", "Verification approved successfully");
-              closeModal();
-            } catch (err: any) {
-              console.error("Failed to approve:", err);
-              Alert.alert(
-                "Error",
-                err.message || "Failed to approve verification"
-              );
-            } finally {
-              setActionLoading(false);
-            }
+  const handleApprove = useCallback(
+    async (requestId: string) => {
+      Alert.alert(
+        "Approve verification",
+        "Approve this verification request? The company will move to active status.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Approve",
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                const updated = await verificationService.decideVerification(requestId, {
+                  action: "approve",
+                  notes: "Approved from admin mobile console",
+                });
+                applyVerificationUpdate(updated);
+                Alert.alert("Approved", "Verification request approved successfully.");
+              } catch (err: any) {
+                console.error("Failed to approve:", err);
+                Alert.alert("Error", err.message || "Failed to approve verification");
+              } finally {
+                setActionLoading(false);
+              }
+            },
           },
-        },
-      ]
-    );
-  };
+        ]
+      );
+    },
+    [applyVerificationUpdate]
+  );
 
-  // Reject handler
-  const handleReject = async (requestId: string) => {
-    Alert.prompt(
-      "Reject Verification",
-      "Please provide a reason for rejection:",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reject",
-          style: "destructive",
-          onPress: async (reason) => {
-            if (!reason || reason.trim() === "") {
-              Alert.alert("Error", "Rejection reason is required");
-              return;
-            }
+  const openRejectModal = useCallback((requestId: string) => {
+    setRejectRequestId(requestId);
+    setRejectReason("");
+    setRejectError(null);
+    setRejectModalVisible(true);
+  }, []);
 
-            setActionLoading(true);
-            try {
-              await verificationService.decideVerification(requestId, {
-                action: "reject",
-                rejectionReason: reason.trim(),
-              });
-              updateLocalVerification(requestId, "rejected");
-              Alert.alert("Success", "Verification rejected");
-              closeModal();
-            } catch (err: any) {
-              console.error("Failed to reject:", err);
-              Alert.alert(
-                "Error",
-                err.message || "Failed to reject verification"
-              );
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ],
-      "plain-text",
-      "",
-      "default"
-    );
-  };
+  const closeRejectModal = useCallback(() => {
+    setRejectModalVisible(false);
+    setRejectRequestId(null);
+    setRejectReason("");
+    setRejectError(null);
+  }, []);
 
-  // Loading state
+  const submitReject = useCallback(async () => {
+    const reason = rejectReason.trim();
+    if (!rejectRequestId) {
+      setRejectError("No request selected.");
+      return;
+    }
+    if (!reason) {
+      setRejectError("Rejection reason is required.");
+      return;
+    }
+
+    setActionLoading(true);
+    setRejectError(null);
+    try {
+      const updated = await verificationService.decideVerification(rejectRequestId, {
+        action: "reject",
+        rejectionReason: reason,
+      });
+      applyVerificationUpdate(updated);
+      closeRejectModal();
+      Alert.alert("Rejected", "Verification request rejected.");
+    } catch (err: any) {
+      console.error("Failed to reject:", err);
+      setRejectError(err.message || "Failed to reject verification");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [applyVerificationUpdate, closeRejectModal, rejectReason, rejectRequestId]);
+
+  const filterTabs = useMemo(
+    () => [
+      { key: "all" as FilterStatus, label: "All" },
+      { key: "pending" as FilterStatus, label: "Pending" },
+      { key: "approved" as FilterStatus, label: "Approved" },
+      { key: "rejected" as FilterStatus, label: "Rejected" },
+    ],
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: VerificationRequest }) => (
+      <View>
+        <AdminListCard
+          key={item.id}
+          title={item.company?.displayName || "Unknown company"}
+          subtitle={`Requested by ${item.requestedBy?.displayName || "Unknown user"}`}
+          avatarText={(item.company?.displayName || "U")[0].toUpperCase()}
+          avatarColor={
+            item.status === "approved"
+              ? colors.success
+              : item.status === "rejected"
+              ? colors.error
+              : colors.warning
+          }
+          status={{
+            label: getStatusLabel(item.status),
+            type: getStatusType(item.status),
+          }}
+          meta={`Submitted ${formatDate(item.createdAt)}`}
+          onPress={() => viewRequestDetails(item)}
+        />
+
+        {item.status === "pending" ? (
+          <View style={[styles.inlineActions, { marginTop: spacing.sm, gap: spacing.sm }]}> 
+            <TouchableOpacity
+              onPress={() => handleApprove(item.id)}
+              style={[
+                styles.actionButton,
+                isCompact ? styles.actionButtonStacked : styles.actionButtonInline,
+                {
+                  backgroundColor: colors.success,
+                  borderRadius: radius.sm,
+                },
+              ]}
+            >
+              <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionButtonText}>Approve</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => openRejectModal(item.id)}
+              style={[
+                styles.actionButton,
+                isCompact ? styles.actionButtonStacked : styles.actionButtonInline,
+                {
+                  backgroundColor: colors.error,
+                  borderRadius: radius.sm,
+                },
+              ]}
+            >
+              <Ionicons name="close" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionButtonText}>Reject</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+    ),
+    [
+      colors.error,
+      colors.success,
+      colors.warning,
+      getStatusLabel,
+      handleApprove,
+      isCompact,
+      openRejectModal,
+      radius.sm,
+      spacing.sm,
+      viewRequestDetails,
+    ]
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+        <AdminHeader
+          title="Verifications"
+          subtitle="Review submissions, request corrections, and keep compliance queue healthy."
+          count={pagination.total}
+        />
+
+        <AdminSearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by company or requester..."
+        />
+
+        <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+      </View>
+    ),
+    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md]
+  );
+
   if (loading && !refreshing) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Loading verifications...
-        </Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading verifications...</Text>
       </View>
     );
   }
 
-  // Error state
-  if (error && !loading) {
+  if (error && !verifications.length && !loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
         <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: colors.primary }]}
           onPress={() => {
             setLoading(true);
-            fetchVerifications();
+            fetchVerifications({ reset: true });
           }}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -266,173 +393,72 @@ export const VerificationsScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { padding: spacing.lg }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <AdminHeader
-          title="Verifications"
-          subtitle="Review company verification requests"
-          count={allVerifications.length}
-        />
-
-        {/* Filter Tabs */}
-        <AdminFilterTabs
-          tabs={filterTabs}
-          activeTab={activeFilter}
-          onTabChange={setActiveFilter}
-        />
-
-        {/* Empty State */}
-        {filteredVerifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              {activeFilter === "all"
-                ? "No verification requests found"
-                : `No ${activeFilter} verification requests`}
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <FlatList
+        data={verifications}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View style={[styles.emptyState, { paddingHorizontal: spacing.lg }]}> 
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}> 
+              {searchQuery.trim()
+                ? "No verification requests match your current filters"
+                : "No verification requests found"}
             </Text>
           </View>
-        ) : (
-          /* Verification List */
-          <View style={styles.list}>
-            {filteredVerifications.map((item) => (
-              <View key={item.id}>
-                <AdminListCard
-                  title={item.company?.displayName || "Unknown Company"}
-                  subtitle={`By ${item.requestedBy?.displayName || "Unknown"}`}
-                  avatarText={(
-                    item.company?.displayName || "U"
-                  )[0].toUpperCase()}
-                  avatarColor={
-                    item.status === "approved"
-                      ? colors.success
-                      : item.status === "rejected"
-                      ? colors.error
-                      : colors.warning
-                  }
-                  status={{
-                    label: item.status,
-                    type: getStatusType(item.status),
-                  }}
-                  meta={formatDate(item.createdAt)}
-                  onPress={() => viewRequestDetails(item)}
-                />
+        }
+        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (loadingMore || !pagination.hasMore) return;
+          fetchVerifications({ reset: false, offset: pagination.offset + pagination.limit });
+        }}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+      />
 
-                {/* Inline Actions for Pending */}
-                {item.status === "pending" && (
-                  <View
-                    style={[
-                      styles.inlineActions,
-                      { marginTop: spacing.sm, gap: spacing.sm },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      onPress={() => handleApprove(item.id)}
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: colors.success,
-                          borderRadius: radius.sm,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color="#fff"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.actionButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleReject(item.id)}
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: colors.error,
-                          borderRadius: radius.sm,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="close"
-                        size={18}
-                        color="#fff"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.actionButtonText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Detail Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={closeModal}
       >
-        <View
-          style={[
-            styles.modalContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          {/* Modal Header */}
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}> 
           <View
             style={[
               styles.modalHeader,
               { borderBottomColor: colors.border, padding: spacing.lg },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Verification Details
-            </Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Verification details</Text>
             <TouchableOpacity onPress={closeModal}>
               <Ionicons name="close" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
-          {/* Modal Content */}
-          {selectedRequest && (
+          {selectedRequest ? (
             <ScrollView
               style={styles.modalContent}
               contentContainerStyle={{ padding: spacing.lg }}
               showsVerticalScrollIndicator={false}
             >
-              {/* Company */}
-              <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                <Text
-                  style={[styles.sectionLabel, { color: colors.textMuted }]}
-                >
-                  COMPANY
-                </Text>
+              <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>COMPANY</Text>
                 <Text style={[styles.sectionValue, { color: colors.text }]}>
                   {selectedRequest.company?.displayName || "Unknown"}
                 </Text>
               </View>
 
-              {/* Status */}
-              <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                <Text
-                  style={[styles.sectionLabel, { color: colors.textMuted }]}
-                >
-                  STATUS
-                </Text>
+              <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>STATUS</Text>
                 <View style={styles.statusRow}>
                   <View
                     style={[
@@ -460,42 +486,29 @@ export const VerificationsScreen = () => {
                       },
                     ]}
                   >
-                    {selectedRequest.status}
+                    {getStatusLabel(selectedRequest.status)}
                   </Text>
                 </View>
               </View>
 
-              {/* Requested By */}
-              <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                <Text
-                  style={[styles.sectionLabel, { color: colors.textMuted }]}
-                >
-                  REQUESTED BY
-                </Text>
-                <Text style={[styles.sectionValue, { color: colors.text }]}>
+              <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>REQUESTED BY</Text>
+                <Text style={[styles.sectionValue, { color: colors.text }]}> 
                   {selectedRequest.requestedBy?.displayName || "Unknown"}
                 </Text>
-                <Text
-                  style={[styles.sectionSubvalue, { color: colors.textMuted }]}
-                >
+                <Text style={[styles.sectionSubvalue, { color: colors.textMuted }]}> 
                   {selectedRequest.requestedBy?.email || ""}
                 </Text>
               </View>
 
-              {/* Submitted Date */}
-              <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                <Text
-                  style={[styles.sectionLabel, { color: colors.textMuted }]}
-                >
-                  SUBMITTED ON
-                </Text>
-                <Text style={[styles.sectionValue, { color: colors.text }]}>
+              <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>SUBMITTED ON</Text>
+                <Text style={[styles.sectionValue, { color: colors.text }]}> 
                   {formatDate(selectedRequest.createdAt)}
                 </Text>
               </View>
 
-              {/* Documents */}
-              <View style={[styles.section, { marginBottom: spacing.xl }]}>
+              <View style={[styles.section, { marginBottom: spacing.xl }]}> 
                 <Text
                   style={[
                     styles.sectionLabel,
@@ -525,39 +538,16 @@ export const VerificationsScreen = () => {
                     ]}
                   >
                     <View style={styles.documentRow}>
-                      <Ionicons
-                        name="document-text"
-                        size={24}
-                        color={colors.primary}
-                      />
+                      <Ionicons name="document-text" size={24} color={colors.primary} />
                       <View style={styles.documentInfo}>
-                        <Text
-                          style={[styles.documentTitle, { color: colors.text }]}
-                        >
-                          GST Certificate
-                        </Text>
-                        <Text
-                          style={[
-                            styles.documentMeta,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          Tap to view
-                        </Text>
+                        <Text style={[styles.documentTitle, { color: colors.text }]}>GST Certificate</Text>
+                        <Text style={[styles.documentMeta, { color: colors.textMuted }]}>Tap to view</Text>
                       </View>
-                      <Ionicons
-                        name="open-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
+                      <Ionicons name="open-outline" size={20} color={colors.primary} />
                     </View>
                   </TouchableOpacity>
                 ) : (
-                  <Text
-                    style={[styles.noDocument, { color: colors.textMuted }]}
-                  >
-                    No GST Certificate uploaded
-                  </Text>
+                  <Text style={[styles.noDocument, { color: colors.textMuted }]}>No GST certificate uploaded</Text>
                 )}
 
                 {selectedRequest.documents?.aadhaarCard?.url ? (
@@ -581,95 +571,51 @@ export const VerificationsScreen = () => {
                     <View style={styles.documentRow}>
                       <Ionicons name="card" size={24} color={colors.primary} />
                       <View style={styles.documentInfo}>
-                        <Text
-                          style={[styles.documentTitle, { color: colors.text }]}
-                        >
-                          Aadhaar Card
-                        </Text>
-                        <Text
-                          style={[
-                            styles.documentMeta,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          Tap to view
-                        </Text>
+                        <Text style={[styles.documentTitle, { color: colors.text }]}>Aadhaar Card</Text>
+                        <Text style={[styles.documentMeta, { color: colors.textMuted }]}>Tap to view</Text>
                       </View>
-                      <Ionicons
-                        name="open-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
+                      <Ionicons name="open-outline" size={20} color={colors.primary} />
                     </View>
                   </TouchableOpacity>
                 ) : (
-                  <Text
-                    style={[
-                      styles.noDocument,
-                      { color: colors.textMuted, marginTop: spacing.sm },
-                    ]}
-                  >
-                    No Aadhaar Card uploaded
+                  <Text style={[styles.noDocument, { color: colors.textMuted, marginTop: spacing.sm }]}> 
+                    No Aadhaar card uploaded
                   </Text>
                 )}
               </View>
 
-              {/* Rejection Reason */}
-              {selectedRequest.status === "rejected" &&
-                selectedRequest.rejectionReason && (
-                  <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                    <Text
-                      style={[styles.sectionLabel, { color: colors.error }]}
-                    >
-                      REJECTION REASON
-                    </Text>
-                    <Text style={[styles.sectionValue, { color: colors.text }]}>
-                      {selectedRequest.rejectionReason}
-                    </Text>
-                  </View>
-                )}
-
-              {/* Decided By */}
-              {selectedRequest.decidedBy && (
-                <View style={[styles.section, { marginBottom: spacing.xl }]}>
-                  <Text
-                    style={[styles.sectionLabel, { color: colors.textMuted }]}
-                  >
-                    DECIDED BY
+              {selectedRequest.status === "rejected" && selectedRequest.rejectionReason ? (
+                <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                  <Text style={[styles.sectionLabel, { color: colors.error }]}>REJECTION REASON</Text>
+                  <Text style={[styles.sectionValue, { color: colors.text }]}> 
+                    {selectedRequest.rejectionReason}
                   </Text>
-                  <Text style={[styles.sectionValue, { color: colors.text }]}>
+                </View>
+              ) : null}
+
+              {selectedRequest.decidedBy ? (
+                <View style={[styles.section, { marginBottom: spacing.xl }]}> 
+                  <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>DECIDED BY</Text>
+                  <Text style={[styles.sectionValue, { color: colors.text }]}> 
                     {selectedRequest.decidedBy.displayName}
                   </Text>
-                  {selectedRequest.decidedAt && (
-                    <Text
-                      style={[
-                        styles.sectionSubvalue,
-                        { color: colors.textMuted },
-                      ]}
-                    >
+                  {selectedRequest.decidedAt ? (
+                    <Text style={[styles.sectionSubvalue, { color: colors.textMuted }]}> 
                       on {formatDate(selectedRequest.decidedAt)}
                     </Text>
-                  )}
+                  ) : null}
                 </View>
-              )}
+              ) : null}
 
-              {/* Modal Actions */}
-              {selectedRequest.status === "pending" && (
-                <View
-                  style={[
-                    styles.modalActions,
-                    { gap: spacing.md, marginTop: spacing.lg },
-                  ]}
-                >
+              {selectedRequest.status === "pending" ? (
+                <View style={[styles.modalActions, { gap: spacing.sm, marginTop: spacing.lg }]}> 
                   <TouchableOpacity
                     onPress={() => handleApprove(selectedRequest.id)}
                     disabled={actionLoading}
                     style={[
                       styles.modalActionButton,
                       {
-                        backgroundColor: actionLoading
-                          ? colors.textMuted
-                          : colors.success,
+                        backgroundColor: actionLoading ? colors.textMuted : colors.success,
                         borderRadius: radius.md,
                         padding: spacing.md,
                       },
@@ -685,22 +631,18 @@ export const VerificationsScreen = () => {
                           color="#fff"
                           style={{ marginRight: 8 }}
                         />
-                        <Text style={styles.modalActionButtonText}>
-                          Approve Verification
-                        </Text>
+                        <Text style={styles.modalActionButtonText}>Approve verification</Text>
                       </>
                     )}
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => handleReject(selectedRequest.id)}
+                    onPress={() => openRejectModal(selectedRequest.id)}
                     disabled={actionLoading}
                     style={[
                       styles.modalActionButton,
                       {
-                        backgroundColor: actionLoading
-                          ? colors.textMuted
-                          : colors.error,
+                        backgroundColor: actionLoading ? colors.textMuted : colors.error,
                         borderRadius: radius.md,
                         padding: spacing.md,
                       },
@@ -716,18 +658,33 @@ export const VerificationsScreen = () => {
                           color="#fff"
                           style={{ marginRight: 8 }}
                         />
-                        <Text style={styles.modalActionButtonText}>
-                          Reject Verification
-                        </Text>
+                        <Text style={styles.modalActionButtonText}>Reject verification</Text>
                       </>
                     )}
                   </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
             </ScrollView>
-          )}
+          ) : null}
         </View>
       </Modal>
+
+      <ReasonInputModal
+        visible={rejectModalVisible}
+        title="Reject verification"
+        subtitle="Provide a clear reason. This will be visible in admin audit history."
+        value={rejectReason}
+        onChangeValue={(value) => {
+          setRejectReason(value);
+          if (rejectError) setRejectError(null);
+        }}
+        onClose={closeRejectModal}
+        onSubmit={submitReject}
+        submitLabel="Reject"
+        loading={actionLoading}
+        error={rejectError}
+        maxLength={400}
+      />
     </View>
   );
 };
@@ -735,9 +692,6 @@ export const VerificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
-    flexGrow: 1,
   },
   centered: {
     flex: 1,
@@ -747,51 +701,61 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "600",
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
     marginBottom: 16,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   retryButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
   },
-  list: {
-    gap: 16,
+  footerLoader: {
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   inlineActions: {
     flexDirection: "row",
+    flexWrap: "wrap",
   },
   actionButton: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
+    minHeight: 42,
+  },
+  actionButtonInline: {
+    flex: 1,
+  },
+  actionButtonStacked: {
+    width: "100%",
   },
   actionButtonText: {
     color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
   },
-
-  // Modal
   modalContainer: {
     flex: 1,
   },
@@ -799,10 +763,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap",
     borderBottomWidth: 1,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
   },
   modalContent: {
@@ -813,21 +778,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
     marginBottom: 4,
   },
   sectionValue: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "500",
   },
   sectionSubvalue: {
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
   },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
   },
   statusDot: {
     width: 10,
@@ -835,9 +801,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   statusText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    textTransform: "capitalize",
   },
   documentCard: {
     borderWidth: 1,
@@ -851,15 +816,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   documentTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   documentMeta: {
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 2,
   },
   noDocument: {
-    fontSize: 14,
+    fontSize: 13,
     fontStyle: "italic",
   },
   modalActions: {},
@@ -870,7 +835,7 @@ const styles = StyleSheet.create({
   },
   modalActionButtonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

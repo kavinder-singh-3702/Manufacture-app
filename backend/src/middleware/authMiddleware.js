@@ -1,6 +1,7 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
 const { verifyToken } = require('../utils/token');
+const { roleSatisfies } = require('../utils/roles');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -20,24 +21,6 @@ const authenticate = async (req, res, next) => {
       return next(createError(401, 'Authentication required'));
     }
 
-    // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
-    // This allows the test admin to authenticate without being in the database
-    // Using a valid ObjectId format for compatibility with MongoDB queries
-    const TEST_ADMIN_OBJECT_ID = '000000000000000000000001';
-    // Handle both old sessions ('test-admin-id') and new sessions (valid ObjectId)
-    if (userId === 'test-admin-id' || userId === TEST_ADMIN_OBJECT_ID) {
-      req.user = {
-        id: TEST_ADMIN_OBJECT_ID,
-        _id: TEST_ADMIN_OBJECT_ID,
-        role: 'admin',
-        email: 'admin@example.com',
-        phone: '+15551234567',
-        verificationStatus: 'verified'
-      };
-      return next();
-    }
-    // ============ END TEST ADMIN BYPASS ============
-
     const user = await User.findById(userId).lean();
 
     if (!user || (user.status && user.status !== 'active')) {
@@ -47,7 +30,7 @@ const authenticate = async (req, res, next) => {
     req.user = {
       id: user._id.toString(),
       _id: user._id,
-      role: user.role,
+      role: user.role || 'user',
       email: user.email,
       verificationStatus: user.verificationStatus,
       activeCompany: user.activeCompany
@@ -83,24 +66,6 @@ const authenticateOptional = async (req, res, next) => {
       return next();
     }
 
-    // ============ TEST ADMIN BYPASS - REMOVE AFTER TESTING ============
-    // This allows the test admin to authenticate without being in the database
-    // Using a valid ObjectId format for compatibility with MongoDB queries
-    const TEST_ADMIN_OBJECT_ID = '000000000000000000000001';
-    // Handle both old sessions ('test-admin-id') and new sessions (valid ObjectId)
-    if (userId === 'test-admin-id' || userId === TEST_ADMIN_OBJECT_ID) {
-      req.user = {
-        id: TEST_ADMIN_OBJECT_ID,
-        _id: TEST_ADMIN_OBJECT_ID,
-        role: 'admin',
-        email: 'admin@example.com',
-        phone: '+15551234567',
-        verificationStatus: 'verified'
-      };
-      return next();
-    }
-    // ============ END TEST ADMIN BYPASS ============
-
     const user = await User.findById(userId).lean();
 
     if (!user || (user.status && user.status !== 'active')) {
@@ -110,7 +75,7 @@ const authenticateOptional = async (req, res, next) => {
     req.user = {
       id: user._id.toString(),
       _id: user._id,
-      role: user.role,
+      role: user.role || 'user',
       email: user.email,
       verificationStatus: user.verificationStatus,
       activeCompany: user.activeCompany
@@ -123,7 +88,7 @@ const authenticateOptional = async (req, res, next) => {
 };
 
 const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+  if (!req.user || !roleSatisfies(req.user.role, roles)) {
     return next(createError(403, 'You are not allowed to perform this action'));
   }
   return next();

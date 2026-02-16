@@ -41,8 +41,15 @@ const getLatestCompanyVerificationRequestController = async (req, res, next) => 
 
 const listCompanyVerificationRequestsController = async (req, res, next) => {
   try {
-    const requests = await listVerificationRequests({ status: req.query.status });
-    return res.json({ requests });
+    const result = await listVerificationRequests({
+      status: req.query.status,
+      search: req.query.search,
+      companyId: req.query.companyId,
+      limit: req.query.limit,
+      offset: req.query.offset,
+      sort: req.query.sort
+    });
+    return res.json(result);
   } catch (error) {
     return next(error);
   }
@@ -69,6 +76,24 @@ const decideCompanyVerificationRequestController = async (req, res, next) => {
         meta: { requestId: request.id, status: request.status },
         context: extractRequestContext(req)
       });
+
+      if (req.user?.role === 'admin' || req.user?.role === 'super-admin') {
+        await recordActivitySafe({
+          userId: req.user.id,
+          action: ACTIVITY_ACTIONS.ADMIN_VERIFICATION_DECIDED,
+          label: `Verification ${request.status}`,
+          description: `Admin decision for ${request.company.displayName}`,
+          category: 'admin',
+          companyId: request.company.id,
+          companyName: request.company.displayName,
+          meta: {
+            requestId: request.id,
+            status: request.status,
+            action: req.body.action
+          },
+          context: extractRequestContext(req)
+        });
+      }
     }
 
     return res.json({ request });

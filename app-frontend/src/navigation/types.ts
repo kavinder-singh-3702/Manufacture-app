@@ -27,6 +27,7 @@ export type RootStackParamList = {
   ProductSearch: { initialQuery?: string } | undefined;
   QuoteCenter: { initialTab?: "asked" | "received" | "incoming" } | undefined;
   UserPreferences: { userId: string; displayName?: string };
+  UserActivity: { userId: string; displayName?: string };
   CampaignStudio: undefined;
   NotificationStudio: undefined;
   // Chat screens

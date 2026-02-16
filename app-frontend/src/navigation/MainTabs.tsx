@@ -14,7 +14,7 @@ import { SidebarMenu } from "../components/navigation/SidebarMenu";
 import { HomeToolbar } from "./components/MainTabs/components/HomeToolbar";
 import { FooterRail } from "./components/MainTabs/components/FooterRail";
 import { CompanySwitcherCard } from "../components/company";
-import { AppRole } from "../constants/roles";
+import { AppRole, isAdminRole } from "../constants/roles";
 import { companyService } from "../services/company.service";
 import { Company } from "../types/company";
 
@@ -169,8 +169,8 @@ export const MainTabs = () => {
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
-  const userRole = (user?.role as "admin" | "user" | "guest") || "guest";
-  const isAdmin = userRole === AppRole.ADMIN;
+  const userRole = (user?.role as "super-admin" | "admin" | "user" | "guest") || "guest";
+  const isAdmin = isAdminRole(userRole);
   const isGuest = userRole === "guest";
   const isAuthenticated = Boolean(user) && !isGuest;
 

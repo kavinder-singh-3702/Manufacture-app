@@ -35,7 +35,7 @@ export type RouteConfig = {
   inactiveIcon?: string;
   topBarMode?: "two_row" | "compact";
   /** Which roles can see this tab */
-  roles: Array<"admin" | "user" | "guest">;
+  roles: Array<"super-admin" | "admin" | "user" | "guest">;
   /** For placeholder tabs that show alerts */
   isPlaceholder?: boolean;
 };
@@ -113,7 +113,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "speedometer-outline",
     topBarMode: "two_row",
     gradientColors: ["#8B5CF6", "#A78BFA"],
-    roles: ["admin"],
+    roles: ["admin", "super-admin"],
   },
   {
     route: routes.USERS,
@@ -124,7 +124,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "people-outline",
     topBarMode: "compact",
     gradientColors: ["#EC4899", "#F472B6"],
-    roles: ["admin"],
+    roles: ["admin", "super-admin"],
   },
   {
     route: routes.CHAT,
@@ -135,7 +135,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "chatbubbles-outline",
     topBarMode: "compact",
     gradientColors: ["#6C63FF", "#5248E6"],
-    roles: ["admin"],
+    roles: ["admin", "super-admin"],
   },
   {
     route: routes.VERIFICATIONS,
@@ -146,7 +146,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "clipboard-outline",
     topBarMode: "compact",
     gradientColors: ["#F59E0B", "#FBBF24"],
-    roles: ["admin"],
+    roles: ["admin", "super-admin"],
   },
   {
     route: routes.COMPANIES,
@@ -157,13 +157,13 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "business-outline",
     topBarMode: "compact",
     gradientColors: ["#10B981", "#34D399"],
-    roles: ["admin"],
+    roles: ["admin", "super-admin"],
   },
 ];
 
 /**
  * Get tabs filtered by user role
  */
-export const getTabsForRole = (role: "admin" | "user" | "guest"): RouteConfig[] => {
+export const getTabsForRole = (role: "super-admin" | "admin" | "user" | "guest"): RouteConfig[] => {
   return TAB_CONFIG.filter((tab) => tab.roles.includes(role));
 };

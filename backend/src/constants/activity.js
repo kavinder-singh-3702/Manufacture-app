@@ -10,14 +10,21 @@ const ACTIVITY_ACTIONS = Object.freeze({
   COMPANY_UPDATED: 'company.updated',
   COMPANY_SWITCHED: 'company.switched',
   COMPANY_VERIFICATION_SUBMITTED: 'company.verification.submitted',
-  COMPANY_VERIFICATION_DECIDED: 'company.verification.decided'
+  COMPANY_VERIFICATION_DECIDED: 'company.verification.decided',
+  ADMIN_COMPANY_STATUS_CHANGED: 'admin.company.status.changed',
+  ADMIN_COMPANY_ARCHIVED: 'admin.company.archived',
+  ADMIN_COMPANY_HARD_DELETE_REQUESTED: 'admin.company.hard-delete.requested',
+  ADMIN_COMPANY_HARD_DELETE_COMPLETED: 'admin.company.hard-delete.completed',
+  ADMIN_DOCUMENTS_REQUESTED: 'admin.company.documents.requested',
+  ADMIN_VERIFICATION_DECIDED: 'admin.verification.decided'
 });
 
 const ACTIVITY_CATEGORIES = Object.freeze({
   AUTH: 'auth',
   USER: 'user',
   COMPANY: 'company',
-  VERIFICATION: 'verification'
+  VERIFICATION: 'verification',
+  ADMIN: 'admin'
 });
 
 module.exports = {

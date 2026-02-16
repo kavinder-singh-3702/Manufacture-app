@@ -7,6 +7,7 @@ const {
   markConversationRead,
   createCallLog
 } = require('../services/chat.service');
+const { isAdminRole } = require('../../../utils/roles');
 
 const listConversationsController = async (req, res, next) => {
   try {
@@ -51,7 +52,7 @@ const sendMessageController = async (req, res, next) => {
   try {
     const { conversationId } = req.params;
     const { content } = req.body;
-    const senderRole = req.user.role === 'admin' ? 'admin' : 'user';
+    const senderRole = isAdminRole(req.user.role) ? 'admin' : 'user';
 
     const message = await sendMessage(conversationId, req.user.id, { content, senderRole });
     return res.status(201).json({ message });

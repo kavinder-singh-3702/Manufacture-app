@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 
 type AdminHeaderProps = {
@@ -9,14 +9,16 @@ type AdminHeaderProps = {
 
 export const AdminHeader = ({ title, subtitle, count }: AdminHeaderProps) => {
   const { colors, spacing } = useTheme();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.title, { color: colors.text, fontSize: isCompact ? 22 : 26 }]}>{title}</Text>
       {(subtitle || count !== undefined) && (
-        <View style={styles.subtitleRow}>
+        <View style={[styles.subtitleRow, { marginTop: isCompact ? 6 : 8 }]}>
           {subtitle && (
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            <Text style={[styles.subtitle, { color: colors.textMuted, fontSize: isCompact ? 13 : 15 }]}>
               {subtitle}
             </Text>
           )}
@@ -46,24 +48,24 @@ export const AdminHeader = ({ title, subtitle, count }: AdminHeaderProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 28,
     fontWeight: "700",
     letterSpacing: -0.5,
   },
   subtitleRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    gap: 12,
+    flexWrap: "wrap",
+    alignItems: "flex-start",
+    gap: 10,
   },
   subtitle: {
-    fontSize: 16,
+    flexShrink: 1,
+    lineHeight: 20,
   },
   countBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
   },

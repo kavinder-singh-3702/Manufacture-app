@@ -32,7 +32,7 @@ const ensureUniqueUser = async (email, phone) => {
   }
 };
 
-const createAdminAccount = async (req, { fullName, email, phone, password, adminToken }) => {
+const createAdminAccount = async (req, { fullName, email, phone, password, adminToken, role }) => {
   ensureValidInviteToken(adminToken);
 
   const normalizedFullName = normalizeFullName(fullName);
@@ -51,7 +51,7 @@ const createAdminAccount = async (req, { fullName, email, phone, password, admin
     email: normalizedEmail,
     phone: normalizedPhone,
     password,
-    role: 'admin',
+    role: role === 'super-admin' ? 'super-admin' : 'admin',
     status: 'active',
     emailVerifiedAt: now,
     phoneVerifiedAt: normalizedPhone ? now : undefined

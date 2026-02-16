@@ -1,5 +1,6 @@
 const createError = require('http-errors');
 const Company = require('../../../models/company.model');
+const User = require('../../../models/user.model');
 const CompanyVerificationRequest = require('../../../models/companyVerificationRequest.model');
 const { uploadCompanyDocument } = require('../../../services/storage.service');
 const { COMPANY_VERIFICATION_STATUSES } = require('../../../constants/companyVerification');
@@ -144,7 +145,28 @@ const getLatestCompanyVerificationRequest = async (userId, companyId) => {
   };
 };
 
-const listVerificationRequests = async ({ status } = {}) => {
+const resolveSort = (value) => {
+  switch (value) {
+    case 'createdAt:asc':
+      return { createdAt: 1 };
+    case 'updatedAt:asc':
+      return { updatedAt: 1 };
+    case 'updatedAt:desc':
+      return { updatedAt: -1 };
+    case 'createdAt:desc':
+    default:
+      return { createdAt: -1 };
+  }
+};
+
+const listVerificationRequests = async ({
+  status,
+  search,
+  companyId,
+  limit = 50,
+  offset = 0,
+  sort
+} = {}) => {
   const query = {};
   if (status) {
     if (!COMPANY_VERIFICATION_STATUSES.includes(status)) {
@@ -153,13 +175,60 @@ const listVerificationRequests = async ({ status } = {}) => {
     query.status = status;
   }
 
-  const requests = await CompanyVerificationRequest.find(query)
-    .sort({ createdAt: -1 })
-    .populate('company', 'displayName status complianceStatus type')
-    .populate('requestedBy', 'displayName email role')
-    .populate('decidedBy', 'displayName email role');
+  if (companyId) {
+    query.company = companyId;
+  }
 
-  return requests.map(buildVerificationResponse);
+  if (search) {
+    const regex = new RegExp(search, 'i');
+    const [matchingCompanies, matchingUsers] = await Promise.all([
+      Company.find({ displayName: { $regex: regex } }).select('_id').limit(100).lean(),
+      User.find({
+        $or: [{ displayName: { $regex: regex } }, { email: { $regex: regex } }]
+      }).select('_id').limit(100).lean()
+    ]);
+    const companyIds = matchingCompanies.map((item) => item._id);
+    const userIds = matchingUsers.map((item) => item._id);
+    if (!companyIds.length && !userIds.length) {
+      return {
+        requests: [],
+        pagination: {
+          total: 0,
+          limit: Math.min(Math.max(Number(limit) || 50, 1), 100),
+          offset: Math.max(Number(offset) || 0, 0),
+          hasMore: false
+        }
+      };
+    }
+    query.$or = [
+      ...(companyIds.length ? [{ company: { $in: companyIds } }] : []),
+      ...(userIds.length ? [{ requestedBy: { $in: userIds } }] : [])
+    ];
+  }
+
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+
+  const [requests, total] = await Promise.all([
+    CompanyVerificationRequest.find(query)
+      .sort(resolveSort(sort))
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .populate('company', 'displayName status complianceStatus type')
+      .populate('requestedBy', 'displayName email role')
+      .populate('decidedBy', 'displayName email role'),
+    CompanyVerificationRequest.countDocuments(query)
+  ]);
+
+  return {
+    requests: requests.map(buildVerificationResponse),
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + requests.length < total
+    }
+  };
 };
 
 const decideVerificationRequest = async ({
@@ -185,8 +254,7 @@ const decideVerificationRequest = async ({
   const decisionTimestamp = new Date();
   const trimmedNotes = notes?.trim();
 
-  // Check if adminId is a valid MongoDB ObjectId (test-admin-id is not valid)
-  const isValidObjectId = adminId && adminId.match(/^[0-9a-fA-F]{24}$/);
+  const isValidObjectId = Boolean(adminId && /^[0-9a-fA-F]{24}$/.test(adminId));
 
   if (action === 'approve') {
     request.status = 'approved';

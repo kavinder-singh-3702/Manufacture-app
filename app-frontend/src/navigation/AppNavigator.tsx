@@ -29,6 +29,7 @@ import {
 import { ChatScreen } from "../screens/chat";
 import { CartScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
+import { UserActivityScreen } from "../screens/admin/UserActivityScreen";
 import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { NotificationStudioScreen } from "../screens/admin/NotificationStudioScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
@@ -42,10 +43,15 @@ import { PurchaseBillScreen } from "../screens/tally/PurchaseBillScreen";
 import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
 import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
+import { withAdminGuard } from "./components/AdminOnlyScreen";
 
 enableScreens(true);
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
+const GuardedUserPreferenceScreen = withAdminGuard(UserPreferenceScreen);
+const GuardedUserActivityScreen = withAdminGuard(UserActivityScreen);
+const GuardedCampaignStudioScreen = withAdminGuard(CampaignStudioScreen);
+const GuardedNotificationStudioScreen = withAdminGuard(NotificationStudioScreen);
 
 /**
  * AppNavigator - Main navigation container
@@ -214,17 +220,22 @@ export const AppNavigator = () => {
             />
             <RootStack.Screen
               name="UserPreferences"
-              component={UserPreferenceScreen}
+              component={GuardedUserPreferenceScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="UserActivity"
+              component={GuardedUserActivityScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="CampaignStudio"
-              component={CampaignStudioScreen}
+              component={GuardedCampaignStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="NotificationStudio"
-              component={NotificationStudioScreen}
+              component={GuardedNotificationStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

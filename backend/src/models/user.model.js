@@ -4,7 +4,7 @@ const { BUSINESS_ACCOUNT_TYPES } = require("../constants/business");
 
 const { Schema } = mongoose;
 
-const USER_ROLES = ["admin", "user"];
+const USER_ROLES = ["super-admin", "admin", "user"];
 const ACCOUNT_STATUSES = ["active", "inactive", "suspended", "deleted"];
 const GENDER_OPTIONS = ["male", "female", "non-binary", "prefer-not-to-say"];
 const THEME_OPTIONS = ["system", "light", "dark"];
