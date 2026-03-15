@@ -178,6 +178,72 @@ export type AdminServiceRequest = {
   internalNotes?: Array<Record<string, any>>;
 };
 
+export type AdminBusinessSetupRequest = {
+  id: string;
+  referenceCode: string;
+  title: string;
+  businessType: string;
+  workModel: string;
+  location: string;
+  budgetRange: string;
+  startTimeline: string;
+  supportAreas?: string[];
+  founderExperience?: string;
+  teamSize?: number;
+  preferredContactChannel?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  source: "authenticated" | "guest";
+  status: string;
+  priority: string;
+  company?: {
+    id: string;
+    displayName?: string;
+    status?: string;
+    type?: string;
+    complianceStatus?: string;
+  } | null;
+  createdBy?: AdminServiceRequestActor | null;
+  assignedTo?: AdminServiceRequestActor | null;
+  lastUpdatedBy?: AdminServiceRequestActor | null;
+  createdAt: string;
+  updatedAt: string;
+  timeline?: AdminServiceRequestTimelineEntry[];
+};
+
+export type AdminOpsRequest = {
+  id: string;
+  kind: "service" | "business_setup";
+  title: string;
+  status: string;
+  priority: string;
+  company?: {
+    id: string;
+    displayName?: string;
+    status?: string;
+    type?: string;
+    complianceStatus?: string;
+  } | null;
+  createdBy?: AdminServiceRequestActor | null;
+  assignedTo?: AdminServiceRequestActor | null;
+  createdAt: string;
+  updatedAt: string;
+  serviceType?: string;
+  referenceCode?: string;
+  preview?: {
+    serviceType?: string;
+    description?: string;
+    businessType?: string;
+    workModel?: string;
+    location?: string;
+    budgetRange?: string;
+    startTimeline?: string;
+    source?: string;
+  };
+};
+
 export type AdminConversationQueueItem = {
   id: string;
   lastMessage?: string;
@@ -438,8 +504,54 @@ class AdminService {
     return apiClient.get<{ requests: AdminServiceRequest[]; pagination: Pagination }>("/admin/service-requests", { params });
   }
 
+  async listBusinessSetupRequests(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc" | "priority:desc" | "slaDueAt:asc";
+    status?: string;
+    priority?: string;
+    source?: "authenticated" | "guest";
+    companyId?: string;
+    assignedTo?: string;
+    createdBy?: string;
+    from?: string;
+    to?: string;
+  }): Promise<{ requests: AdminBusinessSetupRequest[]; pagination: Pagination }> {
+    return apiClient.get<{ requests: AdminBusinessSetupRequest[]; pagination: Pagination }>(
+      "/admin/business-setup-requests",
+      { params }
+    );
+  }
+
+  async listOpsRequests(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc" | "priority:desc";
+    kind?: "all" | "service" | "business_setup";
+    statusBucket?: "all" | "open" | "closed" | "rejected";
+    status?: string;
+    priority?: string;
+    serviceType?: string;
+    companyId?: string;
+    assignedTo?: string;
+    createdBy?: string;
+    from?: string;
+    to?: string;
+  }): Promise<{ requests: AdminOpsRequest[]; pagination: Pagination }> {
+    return apiClient.get<{ requests: AdminOpsRequest[]; pagination: Pagination }>("/admin/ops-requests", { params });
+  }
+
   async getServiceRequestById(serviceRequestId: string): Promise<AdminServiceRequest> {
     const response = await apiClient.get<{ request: AdminServiceRequest }>(`/admin/service-requests/${serviceRequestId}`);
+    return response.request;
+  }
+
+  async getBusinessSetupRequestById(requestId: string): Promise<AdminBusinessSetupRequest> {
+    const response = await apiClient.get<{ request: AdminBusinessSetupRequest }>(
+      `/admin/business-setup-requests/${requestId}`
+    );
     return response.request;
   }
 
@@ -473,6 +585,25 @@ class AdminService {
   ): Promise<{ request: AdminServiceRequest; message: string }> {
     return apiClient.patch<{ request: AdminServiceRequest; message: string }>(
       `/admin/service-requests/${serviceRequestId}/content`,
+      payload
+    );
+  }
+
+  async updateBusinessSetupRequestWorkflow(
+    requestId: string,
+    payload: {
+      status?: string;
+      priority?: string;
+      assignedTo?: string | null;
+      slaDueAt?: string | null;
+      note?: string;
+      reason: string;
+      contextCompanyId?: string;
+      expectedUpdatedAt?: string;
+    }
+  ): Promise<{ request: AdminBusinessSetupRequest; message: string }> {
+    return apiClient.patch<{ request: AdminBusinessSetupRequest; message: string }>(
+      `/admin/business-setup-requests/${requestId}/workflow`,
       payload
     );
   }

@@ -35,6 +35,7 @@ import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { NotificationStudioScreen } from "../screens/admin/NotificationStudioScreen";
 import { AdminUserDetailScreen } from "../screens/admin/AdminUserDetailScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
+import { BusinessSetupRequestScreen } from "../screens/business";
 import { QuoteCenterScreen } from "../screens/quotes";
 import { ProfitLossScreen } from "../screens/accounting/ProfitLossScreen";
 import { GSTSummaryScreen } from "../screens/accounting/GSTSummaryScreen";
@@ -231,6 +232,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="ServiceDetail"
               component={ServiceDetailScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="BusinessSetupRequest"
+              component={BusinessSetupRequestScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
@@ -21,7 +21,7 @@ export const AuthScreen = () => {
   const [view, setView] = useState<AuthView>(authView ?? "intro");
   const [resetToken, setResetToken] = useState<string | undefined>(undefined);
   const entryOpacity = useRef(new Animated.Value(0)).current;
-  const entryTranslate = useRef(new Animated.Value(18)).current;
+  const entryTranslate = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
     if (authView) {
@@ -32,17 +32,17 @@ export const AuthScreen = () => {
 
   useEffect(() => {
     entryOpacity.setValue(0);
-    entryTranslate.setValue(18);
+    entryTranslate.setValue(16);
     Animated.parallel([
       Animated.timing(entryOpacity, {
         toValue: 1,
-        duration: 320,
+        duration: 420,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(entryTranslate, {
         toValue: 0,
-        duration: 360,
+        duration: 420,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -82,9 +82,15 @@ export const AuthScreen = () => {
       <SafeAreaView style={{ flex: 1 }}>
         <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />
 
-        <View style={styles.brandRail}>
-          <BrandLockup compact textColor={colors.textOnDarkSurface} subtitleColor={colors.subtextOnDarkSurface} />
-        </View>
+        {view !== "intro" ? (
+          <View style={styles.brandRail}>
+            <BrandLockup
+              compact
+              textColor={resolvedMode === "dark" ? colors.textOnDarkSurface : colors.textPrimary}
+              subtitleColor={resolvedMode === "dark" ? colors.subtextOnDarkSurface : colors.subtextOnLightSurface}
+            />
+          </View>
+        ) : null}
 
         <Animated.View
           style={[
@@ -154,83 +160,361 @@ type IntroPanelProps = {
 
 const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
   const { isCompact, isXCompact, clamp } = useResponsiveLayout();
+  const isDark = resolvedMode === "dark";
+  const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+  const orbAPulse = useRef(new Animated.Value(0)).current;
+  const orbBPulse = useRef(new Animated.Value(0.35)).current;
+  const beamProgress = useRef(new Animated.Value(0)).current;
+  const logoFloat = useRef(new Animated.Value(0)).current;
+  const ctaSheen = useRef(new Animated.Value(0)).current;
+  const ctaScale = useRef(new Animated.Value(1)).current;
+
+  const heroHeight = isXCompact ? 200 : isCompact ? 220 : 250;
+  const cardPaddingHorizontal = isXCompact ? 18 : isCompact ? 22 : 28;
+
+  const orbAScale = useMemo(
+    () =>
+      orbAPulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.94, 1.08],
+      }),
+    [orbAPulse]
+  );
+
+  const orbBScale = useMemo(
+    () =>
+      orbBPulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.96, 1.06],
+      }),
+    [orbBPulse]
+  );
+
+  const orbBOpacity = useMemo(
+    () =>
+      orbBPulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [isDark ? 0.24 : 0.2, isDark ? 0.54 : 0.4],
+      }),
+    [isDark, orbBPulse]
+  );
+
+  const beamTranslate = useMemo(
+    () =>
+      beamProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-240, 260],
+      }),
+    [beamProgress]
+  );
+
+  const logoTranslate = useMemo(
+    () =>
+      logoFloat.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, -6],
+      }),
+    [logoFloat]
+  );
+
+  const sheenTranslate = useMemo(
+    () =>
+      ctaSheen.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-220, 220],
+      }),
+    [ctaSheen]
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (mounted) {
+          setReduceMotionEnabled(enabled);
+        }
+      })
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotionEnabled);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotionEnabled) {
+      orbAPulse.setValue(0.45);
+      orbBPulse.setValue(0.45);
+      beamProgress.setValue(0);
+      logoFloat.setValue(0);
+      ctaSheen.setValue(0);
+      return;
+    }
+
+    orbAPulse.setValue(0);
+    orbBPulse.setValue(0.35);
+    beamProgress.setValue(0);
+    logoFloat.setValue(0);
+    ctaSheen.setValue(0);
+
+    const orbAAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbAPulse, {
+          toValue: 1,
+          duration: 2800,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orbAPulse, {
+          toValue: 0,
+          duration: 2800,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const orbBAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.delay(420),
+        Animated.timing(orbBPulse, {
+          toValue: 1,
+          duration: 3400,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(orbBPulse, {
+          toValue: 0,
+          duration: 3400,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const beamAnimation = Animated.loop(
+      Animated.timing(beamProgress, {
+        toValue: 1,
+        duration: 2600,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    const logoAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoFloat, {
+          toValue: 1,
+          duration: 1900,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoFloat, {
+          toValue: 0,
+          duration: 1900,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const sheenAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ctaSheen, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1400),
+        Animated.timing(ctaSheen, {
+          toValue: 0,
+          duration: 1,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    orbAAnimation.start();
+    orbBAnimation.start();
+    beamAnimation.start();
+    logoAnimation.start();
+    sheenAnimation.start();
+
+    return () => {
+      orbAAnimation.stop();
+      orbBAnimation.stop();
+      beamAnimation.stop();
+      logoAnimation.stop();
+      sheenAnimation.stop();
+    };
+  }, [beamProgress, ctaSheen, logoFloat, orbAPulse, orbBPulse, reduceMotionEnabled]);
+
+  const handleJoinPressIn = () => {
+    Animated.spring(ctaScale, {
+      toValue: 0.97,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleJoinPressOut = () => {
+    Animated.spring(ctaScale, {
+      toValue: 1,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const headingColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
+  const subheadingColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
+  const glassCardBackground = isDark ? "rgba(18,25,35,0.58)" : "rgba(255,255,255,0.78)";
+  const glassCardBorder = isDark ? "rgba(244,247,255,0.14)" : "rgba(15,23,36,0.12)";
+  const ctaSheenTint = isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.55)";
+  const skipBackground = isDark ? "rgba(5,7,12,0.34)" : "rgba(255,255,255,0.52)";
+  const skipBorder = isDark ? "rgba(244,247,255,0.16)" : "rgba(15,23,36,0.12)";
+  const skipTextColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
 
   return (
     <View
       style={[
         styles.slideCard,
         {
-          paddingHorizontal: isXCompact ? 18 : isCompact ? 22 : 32,
-          paddingVertical: isCompact ? 22 : 32,
-          justifyContent: isCompact ? "flex-start" : "center",
+          paddingHorizontal: cardPaddingHorizontal,
+          paddingVertical: isCompact ? 18 : 24,
         },
       ]}
     >
-      <View style={styles.illustrationArea}>
-        <LinearGradient
-          colors={[colors.primary + "66", colors.primary + "1a"]}
+      <View pointerEvents="none" style={styles.ambientLayer}>
+        <Animated.View
           style={[
-            styles.blob,
-            styles.blueBlob,
+            styles.ambientOrb,
+            styles.ambientPrimary,
             {
-              width: isCompact ? 180 : 220,
-              height: isCompact ? 180 : 220,
+              backgroundColor: colors.primary + (isDark ? "2f" : "22"),
+              transform: [{ scale: reduceMotionEnabled ? 1 : orbAScale }],
+              opacity: isDark ? 0.82 : 0.62,
             },
           ]}
         />
-        <View
+        <Animated.View
           style={[
-            styles.logoTile,
-            styles.imageShadow,
+            styles.ambientOrb,
+            styles.ambientAccent,
             {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.primary + "4d",
-              width: isXCompact ? 120 : isCompact ? 132 : 146,
-              height: isXCompact ? 120 : isCompact ? 132 : 146,
+              backgroundColor: colors.accent + (isDark ? "2b" : "20"),
+              transform: [{ scale: reduceMotionEnabled ? 1 : orbBScale }],
+              opacity: reduceMotionEnabled ? (isDark ? 0.36 : 0.28) : orbBOpacity,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.beamSweep,
+            {
+              transform: [{ translateX: reduceMotionEnabled ? 0 : beamTranslate }, { rotate: "-17deg" }],
+              opacity: isDark ? 0.42 : 0.3,
             },
           ]}
         >
-          <Image source={BRAND_IMAGES.logo} style={styles.logoTileImage} />
-        </View>
-        <View
-          style={[
-            styles.wordmarkTile,
-            styles.imageShadow,
-            {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.accent + "55",
-              width: isXCompact ? 156 : isCompact ? 170 : 182,
-              height: isXCompact ? 54 : isCompact ? 58 : 62,
-            },
-          ]}
-        >
-          <Image source={BRAND_IMAGES.wordmark} style={styles.wordmarkImage} />
-        </View>
+          <LinearGradient
+            colors={["transparent", colors.primary + (isDark ? "7a" : "4d"), "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
       </View>
 
-      <View style={{ marginTop: 16 }}>
-        <Text style={[styles.introHeading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 30, 22, 30) }]}>
-          Welcome to {APP_NAME}
-        </Text>
-        <Text style={[styles.introSubheading, { color: colors.subtextOnDarkSurface }]}>Built for industrial trade and operations</Text>
-      </View>
+      <View
+        style={[
+          styles.glassCard,
+          {
+            backgroundColor: glassCardBackground,
+            borderColor: glassCardBorder,
+            shadowColor: isDark ? colors.primary : "#0f1724",
+            paddingHorizontal: cardPaddingHorizontal,
+            paddingVertical: isCompact ? 20 : 26,
+          },
+        ]}
+      >
+        <View style={[styles.illustrationArea, { height: heroHeight }]}>
+          <LinearGradient
+            colors={[colors.primary + (isDark ? "4d" : "38"), "transparent"]}
+            style={[
+              styles.heroHalo,
+              {
+                width: isCompact ? 188 : 230,
+                height: isCompact ? 188 : 230,
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.logoTile,
+              styles.imageShadow,
+              {
+                backgroundColor: isDark ? "rgba(18,25,35,0.84)" : "rgba(245,249,255,0.92)",
+                borderColor: colors.primary + (isDark ? "52" : "45"),
+                width: isXCompact ? 118 : isCompact ? 130 : 144,
+                height: isXCompact ? 118 : isCompact ? 130 : 144,
+                transform: [{ translateY: reduceMotionEnabled ? 0 : logoTranslate }],
+              },
+            ]}
+          >
+            <Image source={BRAND_IMAGES.logo} style={styles.logoTileImage} />
+          </Animated.View>
+        </View>
 
-      <View style={styles.buttonContainer}>
-        <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.primaryButton, { shadowColor: colors.primary }]}
-        >
-          <TouchableOpacity onPress={onJoin} style={styles.primaryButtonInner}>
-            <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>JOIN NOW</Text>
-          </TouchableOpacity>
-        </LinearGradient>
+        <View style={styles.introCopy}>
+          <Text style={[styles.introHeading, { color: headingColor, fontSize: clamp(isXCompact ? 25 : 32, 23, 32) }]}>
+            Welcome to {APP_NAME}
+          </Text>
+          <Text style={[styles.introSubheading, { color: subheadingColor }]}>Built for industrial trade and operations</Text>
+        </View>
 
-        <TouchableOpacity style={[styles.skipButton, { backgroundColor: colors.overlayLight }]} onPress={onSkip}>
-          <Text style={[styles.skipText, { color: colors.textOnDarkSurface }]}>Skip</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <Animated.View style={[styles.primaryButtonWrap, { transform: [{ scale: ctaScale }] }]}>
+            <Pressable onPress={onJoin} onPressIn={handleJoinPressIn} onPressOut={handleJoinPressOut} style={styles.primaryButtonPressable}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.primaryButton, { shadowColor: colors.primary }]}
+              >
+                {reduceMotionEnabled ? null : (
+                  <Animated.View pointerEvents="none" style={[styles.ctaSheen, { transform: [{ translateX: sheenTranslate }] }]}>
+                    <LinearGradient
+                      colors={["transparent", ctaSheenTint, "transparent"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </Animated.View>
+                )}
+                <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>JOIN NOW</Text>
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.skipButton,
+              {
+                backgroundColor: skipBackground,
+                borderColor: skipBorder,
+              },
+              pressed ? styles.skipButtonPressed : null,
+            ]}
+            onPress={onSkip}
+          >
+            <Text style={[styles.skipText, { color: skipTextColor }]}>Skip</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -254,46 +538,58 @@ const styles = StyleSheet.create({
   slideCard: {
     flex: 1,
     width: "100%",
-    backgroundColor: "transparent",
-    borderRadius: 0,
-    paddingHorizontal: 32,
-    paddingVertical: 32,
     position: "relative",
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
   },
-  buttonContainer: {
-    marginTop: 40,
-    alignItems: "center",
+  ambientLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  ambientOrb: {
+    position: "absolute",
+    borderRadius: 320,
+  },
+  ambientPrimary: {
+    width: 320,
+    height: 320,
+    top: -80,
+    left: -124,
+  },
+  ambientAccent: {
+    width: 280,
+    height: 280,
+    bottom: -118,
+    right: -94,
+  },
+  beamSweep: {
+    position: "absolute",
+    width: 170,
+    height: 560,
+    top: -130,
+    left: -130,
+  },
+  glassCard: {
     width: "100%",
-  },
-  skipButton: {
-    padding: 10,
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    marginTop: 20,
-  },
-  skipText: {
-    fontSize: 14,
-    fontWeight: "600",
-    opacity: 0.85,
+    maxWidth: 430,
+    borderRadius: 28,
+    borderWidth: 1,
+    overflow: "hidden",
+    alignItems: "center",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 14,
   },
   illustrationArea: {
     width: "100%",
-    height: 220,
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 10,
   },
-  blob: {
+  heroHalo: {
     position: "absolute",
-    borderRadius: 200,
-  },
-  blueBlob: {
-    width: 220,
-    height: 220,
-    top: 0,
-    left: -20,
+    borderRadius: 230,
   },
   logoTile: {
     width: 146,
@@ -309,23 +605,6 @@ const styles = StyleSheet.create({
     height: "100%",
     resizeMode: "contain",
   },
-  wordmarkTile: {
-    width: 182,
-    height: 62,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "absolute",
-    bottom: 18,
-    right: 24,
-    borderWidth: 2,
-    paddingHorizontal: 12,
-  },
-  wordmarkImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
   imageShadow: {
     shadowColor: "#000",
     shadowOpacity: 0.2,
@@ -334,32 +613,74 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   introHeading: {
-    fontSize: 30,
-    fontWeight: "800",
+    fontFamily: "SpaceGrotesk_700Bold",
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: 0.4,
     textAlign: "center",
   },
   introSubheading: {
     fontSize: 15,
     marginTop: 8,
     textAlign: "center",
+    lineHeight: 21,
+    fontWeight: "500",
+    paddingHorizontal: 8,
+  },
+  introCopy: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonContainer: {
+    marginTop: 28,
+    alignItems: "center",
+    width: "100%",
+  },
+  primaryButtonWrap: {
+    width: "100%",
+    maxWidth: 280,
+  },
+  primaryButtonPressable: {
+    width: "100%",
   },
   primaryButton: {
     borderRadius: 40,
-    overflow: "hidden",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  primaryButtonInner: {
     paddingVertical: 16,
-    paddingHorizontal: 50,
+    paddingHorizontal: 24,
     alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.34,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  ctaSheen: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 120,
   },
   primaryButtonText: {
-    fontWeight: "700",
+    fontWeight: "800",
     fontSize: 16,
-    letterSpacing: 1.5,
+    letterSpacing: 1.6,
+  },
+  skipButton: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 22,
+    borderWidth: 1,
+  },
+  skipButtonPressed: {
+    opacity: 0.82,
+  },
+  skipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
   errorBanner: {
     marginTop: 24,

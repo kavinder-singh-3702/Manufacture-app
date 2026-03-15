@@ -72,11 +72,15 @@ Keep API contracts documented (OpenAPI/Swagger) to sync both ends.
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Auth tokens. |
 | `AWS_S3_BUCKET`, `AWS_S3_REGION`, `AWS_S3_ACCESS_KEY_ID`, `AWS_S3_SECRET_ACCESS_KEY` | Media storage (GST/Aadhaar uploads). |
 | `AWS_S3_UPLOADS_FOLDER` | Optional folder prefix for S3 uploads. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` | SMTP transport used for transactional emails. |
+| `EMAIL_FROM`, `APP_NAME`, `APP_URL` | Email sender identity and link base for templates. |
+| `SMTP_POOL_*`, `SMTP_*_TIMEOUT_MS`, `NOTIFICATIONS_EMAIL_ENABLED` | Email throughput/timeout controls and dispatcher toggle. |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_SECRET` (or Stripe keys) | Payments + webhooks. |
 | `FCM_SERVER_KEY` | Push notifications. |
 | `TWILIO_* / AGORA_*` | Voice/video integration. |
 
 Mirror any new secrets in `.env.example` without real values.
+If an app password/token is ever exposed in chat, logs, or commits, rotate it immediately before production deployment.
 
 ---
 

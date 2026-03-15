@@ -246,6 +246,48 @@ export const ServicesOverviewScreen = () => {
                 onStart={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
               />
             ))}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("BusinessSetupRequest")}
+              style={[
+                styles.businessCard,
+                {
+                  borderRadius: radius.lg,
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                },
+              ]}
+            >
+              <View style={styles.businessHeader}>
+                <View
+                  style={[
+                    styles.businessIcon,
+                    {
+                      borderRadius: radius.md,
+                      borderColor: colors.border,
+                      backgroundColor: `${colors.accent}14`,
+                    },
+                  ]}
+                >
+                  <Ionicons name="rocket-outline" size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.businessTitle, { color: colors.text }]}>Start your own business</Text>
+                  <Text style={[styles.businessSubtitle, { color: colors.textMuted }]}>
+                    Tell us your idea and get launch support from our team.
+                  </Text>
+                </View>
+              </View>
+              <View
+                style={[
+                  styles.businessCta,
+                  { borderRadius: radius.md, borderColor: colors.border, backgroundColor: colors.surfaceElevated },
+                ]}
+              >
+                <Text style={[styles.businessCtaText, { color: colors.text }]}>Start request</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -277,6 +319,46 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   catalogGrid: { gap: 10 },
+  businessCard: {
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  businessHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  businessIcon: {
+    width: 38,
+    height: 38,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  businessTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  businessSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  businessCta: {
+    marginTop: 4,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  businessCtaText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   requestList: { gap: 10 },
   emptyCard: {
     borderWidth: 1,

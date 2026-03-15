@@ -1,15 +1,29 @@
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const config = require('../config/env');
+const { connectSocketRedis } = require('../config/redis');
 const { verifyToken } = require('../utils/token');
+const createLogger = require('../utils/logger');
+
+const logger = createLogger('socket');
 
 let io;
 
-const initSocket = (httpServer) => {
+const initSocket = async (httpServer) => {
   io = new Server(httpServer, {
     cors: {
       origin: true,
       credentials: true
     }
   });
+
+  if (config.redisUrl) {
+    const { pubClient, subClient } = await connectSocketRedis();
+    if (pubClient && subClient) {
+      io.adapter(createAdapter(pubClient, subClient));
+      logger.info('Socket.IO Redis adapter enabled');
+    }
+  }
 
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;

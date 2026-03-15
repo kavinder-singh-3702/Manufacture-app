@@ -132,6 +132,13 @@ const resolveChannelDecision = ({ user, notification, channel }) => {
     return true;
   }
 
+  if (channel === 'email') {
+    if (notification.deliveryPolicy?.allowEmail === false) return false;
+    if (typeof topicOverride.email === 'boolean') return topicOverride.email;
+    if (typeof priorityOverride.email === 'boolean') return priorityOverride.email;
+    return prefs.emailEnabled === true;
+  }
+
   return true;
 };
 

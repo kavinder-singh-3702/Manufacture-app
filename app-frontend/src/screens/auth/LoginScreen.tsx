@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 
@@ -29,7 +30,13 @@ type LoginScreenProps = {
 export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) => {
   const { login } = useAuth();
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
   const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
+  const isDark = resolvedMode === "dark";
+  const headingColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
+  const subheadingColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
+  const brandSubtitleColor = isDark ? colors.subtextOnDarkSurface : colors.subtextOnLightSurface;
+  const fieldTextColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -138,7 +145,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   const renderIdentifierInput = () => (
     <TextInput
-      style={[styles.input, { borderColor: colors.border, color: colors.textOnDarkSurface, backgroundColor: colors.surfaceElevated }]}
+      style={[styles.input, { borderColor: colors.border, color: fieldTextColor, backgroundColor: colors.surfaceElevated }]}
       placeholder={identifierPlaceholder}
       placeholderTextColor={colors.textMuted}
       value={identifierValue}
@@ -188,11 +195,11 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                 height: isCompact ? 42 : 48,
                 borderRadius: isCompact ? 21 : 24,
               },
-            ]}
-            onPress={onBack}
-          >
-            <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
-          </TouchableOpacity>
+          ]}
+          onPress={onBack}
+        >
+          <Text style={[styles.backIcon, { color: headingColor }]}>‹</Text>
+        </TouchableOpacity>
 
           <Animated.View
             style={{
@@ -207,12 +214,12 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
               ],
             }}
           >
-            <BrandLockup showSubtitle style={styles.brandStrip} textColor={colors.textOnDarkSurface} subtitleColor={colors.subtextOnDarkSurface} />
+            <BrandLockup showSubtitle style={styles.brandStrip} textColor={headingColor} subtitleColor={brandSubtitleColor} />
             <View style={styles.headerBlock}>
-              <Text style={[styles.heading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
+              <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
                 Welcome Back!
               </Text>
-              <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>
+              <Text style={[styles.subheading, { color: subheadingColor }]}>
                 Enter your email or mobile number to continue
               </Text>
             </View>
@@ -243,7 +250,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                   styles.passwordInput,
                   {
                     borderColor: colors.border,
-                    color: colors.textOnDarkSurface,
+                    color: fieldTextColor,
                     backgroundColor: colors.surfaceElevated,
                   },
                 ]}
@@ -265,7 +272,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
               </TouchableOpacity>
             </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
 
             <Animated.View
               style={[
@@ -289,13 +296,13 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryButton}
                 >
-                  {loading ? <ActivityIndicator color="#F4F7FF" /> : <Text style={styles.primaryButtonText}>LOGIN</Text>}
+                  {loading ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>LOGIN</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
 
             <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
-              <Text style={[styles.helperText, { color: colors.subtextOnDarkSurface }]}>Forgotten your password?</Text>
+              <Text style={[styles.helperText, { color: subheadingColor }]}>Forgotten your password?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onSignup}>
               <Text style={[styles.helperText, styles.signupLink, { color: colors.primary }]}>Or Create a New Account</Text>
@@ -454,7 +461,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#F4F7FF",
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 1.5,
@@ -471,7 +477,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    color: "#FF7B87",
     marginBottom: 8,
     textAlign: "center",
     fontWeight: "500",

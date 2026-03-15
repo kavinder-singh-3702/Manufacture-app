@@ -8,10 +8,14 @@ const {
   listAllCompaniesController,
   listAllUsersController,
   listAdminAuditEventsController,
+  listAdminOpsRequestsController,
   listAdminServiceRequestsController,
+  listAdminBusinessSetupRequestsController,
   getAdminServiceRequestController,
+  getAdminBusinessSetupRequestController,
   updateAdminServiceRequestWorkflowController,
   updateAdminServiceRequestContentController,
+  updateAdminBusinessSetupRequestWorkflowController,
   listAdminConversationsController,
   listAdminCallLogsController,
   setCompanyStatusController,
@@ -27,12 +31,16 @@ const {
   hardDeleteCompanyValidation,
   requestDocumentsValidation,
   listAdminAuditEventsValidation,
+  listAdminOpsRequestsValidation,
   listAdminServiceRequestsValidation,
+  listAdminBusinessSetupRequestsValidation,
   updateServiceRequestWorkflowValidation,
   updateServiceRequestContentValidation,
+  updateBusinessSetupWorkflowValidation,
   listAdminConversationsValidation,
   listAdminCallLogsValidation,
   serviceRequestIdParamValidation,
+  businessSetupRequestIdParamValidation,
   userIdParamValidation
 } = require('../validators/admin.validators');
 
@@ -74,8 +82,21 @@ router.get('/users/:userId/overview', validate(userIdParamValidation), getAdminU
 // GET /api/admin/service-requests - Global admin service queue
 router.get('/service-requests', validate(listAdminServiceRequestsValidation), listAdminServiceRequestsController);
 
+// GET /api/admin/business-setup-requests - Startup assistance queue
+router.get('/business-setup-requests', validate(listAdminBusinessSetupRequestsValidation), listAdminBusinessSetupRequestsController);
+
+// GET /api/admin/ops-requests - merged services + startup queue
+router.get('/ops-requests', validate(listAdminOpsRequestsValidation), listAdminOpsRequestsController);
+
 // GET /api/admin/service-requests/:serviceRequestId - Service request detail
 router.get('/service-requests/:serviceRequestId', validate(serviceRequestIdParamValidation), getAdminServiceRequestController);
+
+// GET /api/admin/business-setup-requests/:requestId - Startup request detail
+router.get(
+  '/business-setup-requests/:requestId',
+  validate(businessSetupRequestIdParamValidation),
+  getAdminBusinessSetupRequestController
+);
 
 // PATCH /api/admin/service-requests/:serviceRequestId/workflow - workflow mutation
 router.patch(
@@ -89,6 +110,13 @@ router.patch(
   '/service-requests/:serviceRequestId/content',
   validate(updateServiceRequestContentValidation),
   updateAdminServiceRequestContentController
+);
+
+// PATCH /api/admin/business-setup-requests/:requestId/workflow - workflow mutation
+router.patch(
+  '/business-setup-requests/:requestId/workflow',
+  validate(updateBusinessSetupWorkflowValidation),
+  updateAdminBusinessSetupRequestWorkflowController
 );
 
 // GET /api/admin/conversations - admin communications queue

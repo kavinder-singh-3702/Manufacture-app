@@ -1,8 +1,36 @@
 const mongoose = require('mongoose');
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
+jest.mock('../src/services/email.service', () => ({
+  sendEmail: jest.fn(async () => ({
+    success: true,
+    providerMessageId: 'mock-email-message-id',
+    errorCode: null,
+    errorMessage: null,
+    error: null,
+    mock: false
+  })),
+  sendDocumentRequestEmail: jest.fn(async () => ({
+    success: true,
+    providerMessageId: 'mock-doc-message-id',
+    errorCode: null,
+    errorMessage: null,
+    error: null,
+    mock: false
+  })),
+  verifyConnection: jest.fn(async () => ({
+    success: true,
+    providerMessageId: 'smtp-verified',
+    errorCode: null,
+    errorMessage: null,
+    error: null,
+    mock: false
+  }))
+}));
+
 const User = require('../src/models/user.model');
 const Notification = require('../src/models/notification.model');
 const UserDevice = require('../src/models/userDevice.model');
+const { sendEmail } = require('../src/services/email.service');
 const {
   dispatchNotification,
   getUserNotifications,
@@ -45,6 +73,7 @@ describe('Notification platform service', () => {
   });
 
   afterEach(async () => {
+    jest.clearAllMocks();
     const collections = mongoose.connection.collections;
     await Promise.all(Object.values(collections).map((collection) => collection.deleteMany({})));
   });
@@ -175,6 +204,119 @@ describe('Notification platform service', () => {
     const delivered = await Notification.findById(result.notificationId).lean();
     const inApp = delivered.deliveries.find((item) => item.channel === 'in_app');
     expect(inApp.status).toBe('delivered');
+  });
+
+  test('dispatch cycle delivers queued email notifications when user email channel is enabled', async () => {
+    const admin = await createUser('8110', 'admin');
+    const user = await createUser('8111', 'user');
+    await updateUserNotificationPreferences(String(user._id), { emailEnabled: true });
+
+    const result = await dispatchNotification({
+      userId: String(user._id),
+      title: 'Startup submitted',
+      body: 'Your startup request is in queue',
+      eventKey: 'business_setup.request.submitted',
+      topic: 'services',
+      priority: 'normal',
+      channels: ['email'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id),
+    });
+
+    expect(result.success).toBe(true);
+
+    await runDispatchCycle();
+
+    const delivered = await Notification.findById(result.notificationId).lean();
+    const emailDelivery = delivered.deliveries.find((item) => item.channel === 'email');
+    expect(emailDelivery.status).toBe('delivered');
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: user.email,
+        subject: 'Startup submitted'
+      })
+    );
+  });
+
+  test('dispatch cycle retries and then fails email delivery after max attempts', async () => {
+    const admin = await createUser('8112', 'admin');
+    const user = await createUser('8113', 'user');
+    await updateUserNotificationPreferences(String(user._id), { emailEnabled: true });
+
+    sendEmail
+      .mockResolvedValueOnce({
+        success: false,
+        providerMessageId: null,
+        errorCode: 'smtp_temp',
+        errorMessage: 'Temporary SMTP error',
+        error: 'Temporary SMTP error',
+        mock: false
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        providerMessageId: null,
+        errorCode: 'smtp_temp',
+        errorMessage: 'Temporary SMTP error',
+        error: 'Temporary SMTP error',
+        mock: false
+      });
+
+    const result = await dispatchNotification({
+      userId: String(user._id),
+      title: 'Startup update',
+      body: 'Status changed',
+      eventKey: 'business_setup.request.status_changed',
+      topic: 'services',
+      priority: 'normal',
+      channels: ['email'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id),
+      deliveryPolicy: { maxRetries: 2 }
+    });
+
+    await runDispatchCycle();
+
+    let queued = await Notification.findById(result.notificationId);
+    let emailDelivery = queued.deliveries.find((item) => item.channel === 'email');
+    expect(emailDelivery.status).toBe('queued');
+    expect(emailDelivery.nextRetryAt).toBeTruthy();
+
+    emailDelivery.nextRetryAt = new Date(Date.now() - 1000);
+    await queued.save();
+
+    await runDispatchCycle();
+
+    queued = await Notification.findById(result.notificationId).lean();
+    emailDelivery = queued.deliveries.find((item) => item.channel === 'email');
+    expect(emailDelivery.status).toBe('failed');
+    expect(sendEmail).toHaveBeenCalledTimes(2);
+  });
+
+  test('dispatch cycle cancels email delivery when recipient email is missing', async () => {
+    const admin = await createUser('8114', 'admin');
+    const user = await createUser('8115', 'user');
+    await updateUserNotificationPreferences(String(user._id), { emailEnabled: true });
+    await User.updateOne({ _id: user._id }, { $unset: { email: 1 } });
+
+    const result = await dispatchNotification({
+      userId: String(user._id),
+      title: 'Startup update',
+      body: 'Status changed',
+      eventKey: 'business_setup.request.status_changed',
+      topic: 'services',
+      priority: 'normal',
+      channels: ['email'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    await runDispatchCycle();
+
+    const cancelled = await Notification.findById(result.notificationId).lean();
+    const emailDelivery = cancelled.deliveries.find((item) => item.channel === 'email');
+    expect(emailDelivery.status).toBe('cancelled');
+    expect(emailDelivery.errorCode).toBe('missing_email_recipient');
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 
   test('admin listing, cancel and resend are available', async () => {

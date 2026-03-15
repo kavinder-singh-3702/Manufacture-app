@@ -18,6 +18,7 @@ import { authService } from "../../services/auth.service";
 import { useAuth } from "../../hooks/useAuth";
 import { tokenStorage } from "../../services/tokenStorage";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 
@@ -85,10 +86,25 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
   const [categorySearch, setCategorySearch] = useState("");
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { isCompact, isXCompact, clamp } = useResponsiveLayout();
   const headerIntro = useRef(new Animated.Value(0)).current;
   const formIntro = useRef(new Animated.Value(0)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
+  const headingColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
+  const secondaryTextColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
+  const brandSubtitleColor = isDark ? colors.subtextOnDarkSurface : colors.subtextOnLightSurface;
+  const inputPlaceholderColor = isDark ? colors.textMuted : colors.textTertiary;
+  const primaryBlobColors = useMemo(
+    () => [colors.primary + (isDark ? "2e" : "1a"), colors.primary + (isDark ? "0d" : "08"), "transparent"] as const,
+    [colors.primary, isDark]
+  );
+  const accentBlobColors = useMemo(
+    () => [colors.accent + (isDark ? "2e" : "1a"), colors.accent + (isDark ? "0d" : "08"), "transparent"] as const,
+    [colors.accent, isDark]
+  );
 
   const filteredCategories = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();
@@ -309,6 +325,23 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
     });
   };
 
+  const InputField = ({ value, onChangeText, placeholder, errorText, rightAccessory, ...rest }: InputFieldProps) => (
+    <View style={styles.inputFieldWrap}>
+      <View style={[styles.inputWrapper, errorText ? styles.inputWrapperError : null]}>
+        <TextInput
+          style={[styles.input, rightAccessory ? styles.inputWithAccessory : null]}
+          placeholder={placeholder}
+          placeholderTextColor={inputPlaceholderColor}
+          value={value}
+          onChangeText={onChangeText}
+          {...rest}
+        />
+        {rightAccessory ? <View style={styles.inputAccessory}>{rightAccessory}</View> : null}
+      </View>
+      {errorText ? <Text style={styles.fieldError}>{errorText}</Text> : null}
+    </View>
+  );
+
   const renderProfileStep = () => (
     <View>
       <InputField
@@ -401,7 +434,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           <TextInput
             style={styles.categorySearch}
             placeholder="Search categories"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
             value={categorySearch}
             onChangeText={setCategorySearch}
           />
@@ -444,11 +477,11 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         ]}
       >
         <LinearGradient
-          colors={[colors.primary + "2e", colors.primary + "0d", "transparent"]}
+          colors={primaryBlobColors}
           style={[styles.blob, styles.pinkBlobLarge]}
         />
         <LinearGradient
-          colors={[colors.accent + "2e", colors.accent + "0d", "transparent"]}
+          colors={accentBlobColors}
           style={[styles.blob, styles.pinkBlobSmall]}
         />
 
@@ -465,7 +498,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           ]}
           onPress={handleBack}
         >
-          <Text style={[styles.backIcon, { color: colors.textOnDarkSurface }]}>‹</Text>
+          <Text style={[styles.backIcon, { color: headingColor }]}>‹</Text>
         </TouchableOpacity>
 
         <Animated.View
@@ -484,8 +517,8 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           <BrandLockup
             showSubtitle
             style={styles.brandStrip}
-            textColor={colors.textOnDarkSurface}
-            subtitleColor={colors.subtextOnDarkSurface}
+            textColor={headingColor}
+            subtitleColor={brandSubtitleColor}
           />
 
           <LinearGradient
@@ -498,10 +531,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
               Step {stepIndex + 1} of {steps.length}
             </Text>
           </LinearGradient>
-          <Text style={[styles.heading, { color: colors.textOnDarkSurface, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
+          <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
             {stepTitles[step]}
           </Text>
-          <Text style={[styles.subheading, { color: colors.subtextOnDarkSurface }]}>{stepDescriptions[step]}</Text>
+          <Text style={[styles.subheading, { color: secondaryTextColor }]}>{stepDescriptions[step]}</Text>
 
           {status ? <Text style={[styles.statusText, { color: colors.success }]}>{status}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -551,13 +584,19 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
                     end={{ x: 1, y: 1 }}
                     style={styles.primaryButton}
                   >
-                    {loading ? <ActivityIndicator color="#F4F7FF" /> : <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>}
+                    {loading ? (
+                      <ActivityIndicator color={colors.textOnPrimary} />
+                    ) : (
+                      <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
 
               <TouchableOpacity onPress={onLogin} style={{ marginTop: 24 }}>
-                <Text style={[styles.loginLink, { color: colors.subtextOnDarkSurface }]}>Already have an account? <Text style={[styles.loginLinkHighlight, { color: colors.primary }]}>Login</Text></Text>
+                <Text style={[styles.loginLink, { color: secondaryTextColor }]}>
+                  Already have an account? <Text style={[styles.loginLinkHighlight, { color: colors.primary }]}>Login</Text>
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -578,24 +617,8 @@ type InputFieldProps = {
   rightAccessory?: ReactNode;
 };
 
-const InputField = ({ value, onChangeText, placeholder, errorText, rightAccessory, ...rest }: InputFieldProps) => (
-  <View style={{ marginBottom: 18 }}>
-    <View style={[styles.inputWrapper, errorText ? styles.inputWrapperError : null]}>
-      <TextInput
-        style={[styles.input, rightAccessory ? styles.inputWithAccessory : null]}
-        placeholder={placeholder}
-        placeholderTextColor="rgba(255, 255, 255, 0.4)"
-        value={value}
-        onChangeText={onChangeText}
-        {...rest}
-      />
-      {rightAccessory ? <View style={styles.inputAccessory}>{rightAccessory}</View> : null}
-    </View>
-    {errorText ? <Text style={styles.fieldError}>{errorText}</Text> : null}
-  </View>
-);
-
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+  StyleSheet.create({
   slide: {
     flex: 1,
     width: "100%",
@@ -632,9 +655,9 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: colors.overlayLight,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -642,7 +665,6 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#F4F7FF",
   },
   brandStrip: {
     marginBottom: 12,
@@ -660,37 +682,38 @@ const styles = StyleSheet.create({
   stepBadge: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#19B8E6",
   },
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#F4F7FF",
   },
   subheading: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.6)",
     marginTop: 4,
     marginBottom: 16,
+    lineHeight: 20,
   },
   form: {
     paddingBottom: 80,
   },
+  inputFieldWrap: {
+    marginBottom: 18,
+  },
   inputWrapper: {
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderColor: isDark ? "rgba(255, 255, 255, 0.15)" : colors.border,
     borderRadius: 12,
-    backgroundColor: "rgba(22, 24, 29, 0.9)",
+    backgroundColor: isDark ? "rgba(22, 24, 29, 0.9)" : colors.surfaceElevated,
     position: "relative",
   },
   inputWrapperError: {
-    borderColor: "#FF7B87",
+    borderColor: colors.error,
   },
   input: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#F4F7FF",
+    color: isDark ? colors.textOnDarkSurface : colors.textPrimary,
   },
   inputWithAccessory: {
     paddingRight: 64,
@@ -705,13 +728,13 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontWeight: "600",
-    color: "#19B8E6",
+    color: colors.primary,
   },
   primaryButtonWrapper: {
     marginTop: 12,
     borderRadius: 32,
     overflow: "hidden",
-    shadowColor: "#19B8E6",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -723,59 +746,60 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: {
-    color: "#F4F7FF",
+    color: colors.textOnPrimary,
     fontWeight: "700",
     fontSize: 16,
     letterSpacing: 1.5,
   },
   loginLink: {
     textAlign: "center",
-    color: "rgba(255, 255, 255, 0.6)",
+    color: colors.textSecondary,
   },
   loginLinkHighlight: {
-    color: "#19B8E6",
+    color: colors.primary,
     fontWeight: "600",
   },
   errorText: {
-    color: "#FF7B87",
+    color: colors.error,
     marginBottom: 8,
     fontWeight: "500",
   },
   statusText: {
-    color: "#4ADE80",
+    color: colors.success,
     marginBottom: 8,
     fontWeight: "500",
   },
   fieldError: {
-    color: "#FF7B87",
+    color: colors.error,
     fontSize: 13,
     marginTop: 4,
   },
   helperCopy: {
-    color: "rgba(255, 255, 255, 0.6)",
+    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
     marginBottom: 12,
+    lineHeight: 20,
   },
   secondaryLink: {
-    color: "#19B8E6",
+    color: colors.primary,
     textAlign: "right",
     fontWeight: "600",
   },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "rgba(255, 255, 255, 0.7)",
+    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
     marginBottom: 8,
     marginTop: 12,
   },
   categorySearch: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: isDark ? "rgba(255,255,255,0.2)" : colors.border,
+    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : colors.surfaceElevated,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
     marginBottom: 8,
-    color: "#F4F7FF",
+    color: isDark ? colors.textOnDarkSurface : colors.textPrimary,
     fontSize: 14,
   },
   accountTypeRow: {
@@ -785,8 +809,8 @@ const styles = StyleSheet.create({
   },
   accountChip: {
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    backgroundColor: "rgba(30, 33, 39, 0.8)",
+    borderColor: isDark ? "rgba(255, 255, 255, 0.2)" : colors.border,
+    backgroundColor: isDark ? "rgba(30, 33, 39, 0.8)" : colors.surfaceElevated,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -794,15 +818,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   accountChipActive: {
-    borderColor: "#19B8E6",
-    backgroundColor: "rgba(140, 165, 239, 0.18)",
+    borderColor: colors.primary,
+    backgroundColor: colors.badgePrimary,
   },
   accountChipText: {
-    color: "rgba(255, 255, 255, 0.6)",
+    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
     fontWeight: "600",
   },
   accountChipTextActive: {
-    color: "#19B8E6",
+    color: colors.primary,
   },
   categoryGrid: {
     flexDirection: "row",
@@ -810,8 +834,8 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    backgroundColor: "rgba(30, 33, 39, 0.8)",
+    borderColor: isDark ? "rgba(255, 255, 255, 0.2)" : colors.border,
+    backgroundColor: isDark ? "rgba(30, 33, 39, 0.8)" : colors.surfaceElevated,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -819,14 +843,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryChipActive: {
-    borderColor: "#F56E79",
-    backgroundColor: "rgba(227, 72, 62, 0.2)",
+    borderColor: colors.accent,
+    backgroundColor: colors.badgeError,
   },
   categoryText: {
-    color: "rgba(255, 255, 255, 0.6)",
+    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
     fontWeight: "600",
   },
   categoryTextActive: {
-    color: "#F56E79",
+    color: colors.accent,
   },
-});
+  });

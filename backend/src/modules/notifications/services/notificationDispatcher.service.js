@@ -9,6 +9,7 @@ const {
   NOTIFICATION_DELIVERY_STATUSES,
   NOTIFICATION_LIFECYCLE_STATUSES
 } = require('../../../constants/notification');
+const { sendEmail } = require('../../../services/email.service');
 const { sendPushMessages, isExpoToken } = require('./push.providers/expo.provider');
 const { resolveChannelDecision } = require('./notificationDeliveryPolicy.service');
 
@@ -30,6 +31,16 @@ const toPlainData = (value) => {
   if (value instanceof Map) return Object.fromEntries(value.entries());
   if (typeof value.toObject === 'function') return value.toObject();
   return typeof value === 'object' ? value : {};
+};
+
+const shouldUseRetryWindow = (channel) =>
+  channel === NOTIFICATION_CHANNELS.PUSH || channel === NOTIFICATION_CHANNELS.EMAIL;
+
+const normalizeEmail = (value) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || !normalized.includes('@')) return null;
+  return normalized;
 };
 
 const computeLifecycle = (deliveries = []) => {
@@ -83,6 +94,11 @@ const setDeliveryState = ({ notification, channel, status, errorCode, errorMessa
     delivery.nextRetryAt = undefined;
   } else if (status === NOTIFICATION_DELIVERY_STATUSES.QUEUED) {
     delivery.nextRetryAt = nextRetryAt;
+    delivery.errorCode = errorCode;
+    delivery.errorMessage = errorMessage;
+  } else if (status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED) {
+    delivery.failureAt = nowDate();
+    delivery.nextRetryAt = undefined;
     delivery.errorCode = errorCode;
     delivery.errorMessage = errorMessage;
   }
@@ -265,6 +281,99 @@ const processInAppNotification = async (notification) => {
   }
 };
 
+const resolveEmailRecipient = ({ notification, user }) => {
+  const primaryFromUser = normalizeEmail(user?.email);
+  if (primaryFromUser) return primaryFromUser;
+
+  const recipients = Array.isArray(notification.recipients) ? notification.recipients : [];
+  for (const recipient of recipients) {
+    const candidate = normalizeEmail(recipient?.email);
+    if (candidate) return candidate;
+  }
+
+  const metadata = toPlainData(notification.metadata);
+  return normalizeEmail(metadata.email);
+};
+
+const processEmailNotification = async (notification) => {
+  const delivery = notification.deliveries.find((item) => item.channel === NOTIFICATION_CHANNELS.EMAIL);
+  if (!delivery) return;
+
+  const hasUser = Boolean(notification.user);
+  const user = hasUser
+    ? await User.findById(notification.user)
+        .select('email preferences')
+        .lean()
+    : null;
+
+  if (hasUser && !user) {
+    setDeliveryState({
+      notification,
+      channel: NOTIFICATION_CHANNELS.EMAIL,
+      status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+      errorCode: 'recipient_user_not_found',
+      errorMessage: 'Email delivery cancelled because target user no longer exists.'
+    });
+    notification.status = computeLifecycle(notification.deliveries);
+    await notification.save();
+    return;
+  }
+
+  if (user && !resolveChannelDecision({ user, notification, channel: NOTIFICATION_CHANNELS.EMAIL })) {
+    setDeliveryState({
+      notification,
+      channel: NOTIFICATION_CHANNELS.EMAIL,
+      status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+      errorCode: 'email_disabled',
+      errorMessage: 'Email delivery disabled by preferences or policy.'
+    });
+    notification.status = computeLifecycle(notification.deliveries);
+    await notification.save();
+    return;
+  }
+
+  const recipientEmail = resolveEmailRecipient({ notification, user });
+  if (!recipientEmail) {
+    setDeliveryState({
+      notification,
+      channel: NOTIFICATION_CHANNELS.EMAIL,
+      status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+      errorCode: 'missing_email_recipient',
+      errorMessage: 'Email delivery cancelled because no recipient email is available.'
+    });
+    notification.status = computeLifecycle(notification.deliveries);
+    await notification.save();
+    return;
+  }
+
+  const result = await sendEmail({
+    to: recipientEmail,
+    subject: notification.title,
+    text: notification.body
+  });
+
+  if (result.success) {
+    setDeliveryState({
+      notification,
+      channel: NOTIFICATION_CHANNELS.EMAIL,
+      status: NOTIFICATION_DELIVERY_STATUSES.DELIVERED,
+      providerMessageId: result.providerMessageId || undefined
+    });
+    notification.sentAt = notification.sentAt || nowDate();
+    notification.deliveredAt = nowDate();
+  } else {
+    scheduleRetry({
+      notification,
+      channel: NOTIFICATION_CHANNELS.EMAIL,
+      errorCode: result.errorCode || 'email_send_failed',
+      errorMessage: result.errorMessage || 'Email provider failed to deliver.'
+    });
+  }
+
+  notification.status = computeLifecycle(notification.deliveries);
+  await notification.save();
+};
+
 const fetchCandidatesByChannel = async (channel) => {
   const now = nowDate();
   const deliveryFilter = {
@@ -272,7 +381,7 @@ const fetchCandidatesByChannel = async (channel) => {
     status: { $in: [NOTIFICATION_DELIVERY_STATUSES.QUEUED, NOTIFICATION_DELIVERY_STATUSES.SENDING] },
   };
 
-  if (channel === NOTIFICATION_CHANNELS.PUSH) {
+  if (shouldUseRetryWindow(channel)) {
     deliveryFilter.$or = [
       { nextRetryAt: { $exists: false } },
       { nextRetryAt: null },
@@ -299,7 +408,7 @@ const claimNotificationByChannel = async (notificationId, channel) => {
     channel,
     status: { $in: [NOTIFICATION_DELIVERY_STATUSES.QUEUED, NOTIFICATION_DELIVERY_STATUSES.SENDING] },
   };
-  if (channel === NOTIFICATION_CHANNELS.PUSH) {
+  if (shouldUseRetryWindow(channel)) {
     deliveryMatch.$or = [
       { nextRetryAt: { $exists: false } },
       { nextRetryAt: null },
@@ -344,6 +453,11 @@ const processChannel = async (channel) => {
 
     if (channel === NOTIFICATION_CHANNELS.IN_APP) {
       await processInAppNotification(claimed);
+      continue;
+    }
+
+    if (channel === NOTIFICATION_CHANNELS.EMAIL) {
+      await processEmailNotification(claimed);
     }
   }
 };
@@ -380,6 +494,17 @@ const runDispatchCycle = async () => {
         'Push dispatch disabled by server configuration.'
       );
     }
+
+    if (config.notificationsEmailEnabled) {
+      await processChannel(NOTIFICATION_CHANNELS.EMAIL);
+    } else {
+      await cancelQueuedChannel(
+        NOTIFICATION_CHANNELS.EMAIL,
+        'email_globally_disabled',
+        'Email dispatch disabled by server configuration.'
+      );
+    }
+
     await processChannel(NOTIFICATION_CHANNELS.IN_APP);
   } catch (error) {
     console.error('[NotificationDispatcher] cycle failed:', error?.message || error);

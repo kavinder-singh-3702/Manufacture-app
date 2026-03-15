@@ -11,6 +11,7 @@ const ACTIVITY_ACTIONS = Object.freeze({
   COMPANY_SWITCHED: 'company.switched',
   COMPANY_VERIFICATION_SUBMITTED: 'company.verification.submitted',
   COMPANY_VERIFICATION_DECIDED: 'company.verification.decided',
+  BUSINESS_SETUP_REQUEST_SUBMITTED: 'business-setup.request.submitted',
   ADMIN_COMPANY_STATUS_CHANGED: 'admin.company.status.changed',
   ADMIN_COMPANY_ARCHIVED: 'admin.company.archived',
   ADMIN_COMPANY_HARD_DELETE_REQUESTED: 'admin.company.hard-delete.requested',
@@ -18,7 +19,8 @@ const ACTIVITY_ACTIONS = Object.freeze({
   ADMIN_DOCUMENTS_REQUESTED: 'admin.company.documents.requested',
   ADMIN_VERIFICATION_DECIDED: 'admin.verification.decided',
   ADMIN_SERVICE_REQUEST_WORKFLOW_UPDATED: 'admin.service-request.workflow.updated',
-  ADMIN_SERVICE_REQUEST_CONTENT_UPDATED: 'admin.service-request.content.updated'
+  ADMIN_SERVICE_REQUEST_CONTENT_UPDATED: 'admin.service-request.content.updated',
+  ADMIN_BUSINESS_SETUP_WORKFLOW_UPDATED: 'admin.business-setup.workflow.updated'
 });
 
 const ACTIVITY_CATEGORIES = Object.freeze({

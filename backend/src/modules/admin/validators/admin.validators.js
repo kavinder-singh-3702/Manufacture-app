@@ -2,6 +2,10 @@ const { body, param, query } = require('express-validator');
 const mongoose = require('mongoose');
 const { COMPANY_STATUS } = require('../../../constants/company');
 const { SERVICE_TYPES, SERVICE_STATUSES, SERVICE_PRIORITIES } = require('../../../constants/services');
+const {
+  BUSINESS_SETUP_STATUSES,
+  BUSINESS_SETUP_PRIORITIES
+} = require('../../../constants/businessSetup');
 
 const isObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -24,6 +28,10 @@ const userIdParamValidation = [
 
 const serviceRequestIdParamValidation = [
   param('serviceRequestId').custom(isObjectId).withMessage('A valid serviceRequestId is required')
+];
+
+const businessSetupRequestIdParamValidation = [
+  param('requestId').custom(isObjectId).withMessage('A valid requestId is required')
 ];
 
 const setCompanyStatusValidation = [
@@ -110,6 +118,53 @@ const listAdminConversationsValidation = [
   query('offset').optional().isInt({ min: 0 }).toInt()
 ];
 
+const listAdminBusinessSetupRequestsValidation = [
+  query('status').optional().isIn(BUSINESS_SETUP_STATUSES),
+  query('priority').optional().isIn(BUSINESS_SETUP_PRIORITIES),
+  query('source').optional().isIn(['authenticated', 'guest']),
+  query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
+  query('createdBy').optional().custom(isObjectId).withMessage('createdBy must be a valid ObjectId'),
+  query('assignedTo').optional().custom(isObjectId).withMessage('assignedTo must be a valid ObjectId'),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
+  query('sort')
+    .optional()
+    .isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc', 'priority:desc', 'slaDueAt:asc']),
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601(),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt()
+];
+
+const updateBusinessSetupWorkflowValidation = [
+  ...businessSetupRequestIdParamValidation,
+  body('status').optional().isIn(BUSINESS_SETUP_STATUSES),
+  body('priority').optional().isIn(BUSINESS_SETUP_PRIORITIES),
+  body('assignedTo').optional({ nullable: true }).custom((value) => value === null || value === '' || isObjectId(value))
+    .withMessage('assignedTo must be a valid ObjectId or null'),
+  body('slaDueAt').optional({ nullable: true }).isISO8601().withMessage('slaDueAt must be a valid ISO datetime'),
+  body('note').optional().isString().trim().isLength({ min: 1, max: 2000 }),
+  body('reason').isString().trim().isLength({ min: 3, max: 300 }).withMessage('reason is required'),
+  body('contextCompanyId').optional().custom(isObjectId).withMessage('contextCompanyId must be a valid ObjectId'),
+  body('expectedUpdatedAt').optional().isISO8601().withMessage('expectedUpdatedAt must be a valid ISO datetime')
+];
+
+const listAdminOpsRequestsValidation = [
+  query('kind').optional().isIn(['all', 'service', 'business_setup']),
+  query('statusBucket').optional().isIn(['all', 'open', 'closed', 'rejected']),
+  query('serviceType').optional().isIn(SERVICE_TYPES),
+  query('status').optional().isString().trim().isLength({ min: 1, max: 80 }),
+  query('priority').optional().isString().trim().isLength({ min: 1, max: 80 }),
+  query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
+  query('createdBy').optional().custom(isObjectId).withMessage('createdBy must be a valid ObjectId'),
+  query('assignedTo').optional().custom(isObjectId).withMessage('assignedTo must be a valid ObjectId'),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
+  query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc', 'priority:desc']),
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601(),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt()
+];
+
 const listAdminCallLogsValidation = [
   query('userId').optional().custom(isObjectId).withMessage('userId must be a valid ObjectId'),
   query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
@@ -127,6 +182,7 @@ module.exports = {
   companyIdParamValidation,
   userIdParamValidation,
   serviceRequestIdParamValidation,
+  businessSetupRequestIdParamValidation,
   setCompanyStatusValidation,
   archiveCompanyValidation,
   hardDeleteCompanyValidation,
@@ -135,6 +191,9 @@ module.exports = {
   listAdminServiceRequestsValidation,
   updateServiceRequestWorkflowValidation,
   updateServiceRequestContentValidation,
+  listAdminBusinessSetupRequestsValidation,
+  updateBusinessSetupWorkflowValidation,
+  listAdminOpsRequestsValidation,
   listAdminConversationsValidation,
   listAdminCallLogsValidation
 };

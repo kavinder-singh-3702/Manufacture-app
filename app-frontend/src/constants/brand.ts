@@ -20,5 +20,5 @@ export const BRAND_IMAGES: Record<"logo" | "icon" | "splash" | "wordmark", Image
   logo: require("../../assets/brand/arvann-logo-source.png"),
   icon: require("../../assets/brand/arvann-icon-1024.png"),
   splash: require("../../assets/brand/arvann-splash-logo.png"),
-  wordmark: require("../../assets/brand/arvann-logo-source.png"),
+  wordmark: require("../../assets/brand/arvann-wordmark.png"),
 };

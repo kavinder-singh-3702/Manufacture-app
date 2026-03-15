@@ -20,6 +20,7 @@ const DEFAULT_DELIVERY_POLICY = {
   respectQuietHours: true,
   allowPush: true,
   allowInApp: true,
+  allowEmail: true,
   maxRetries: 4,
   allowCriticalOverride: true,
 };

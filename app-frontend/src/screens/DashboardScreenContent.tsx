@@ -1039,6 +1039,27 @@ const UserDashboardContent = () => {
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={() => navigation.navigate("BusinessSetupRequest")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[colors.surface, colors.surface]}
+              style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+            >
+              <View style={[styles.addProductIcon, { backgroundColor: colors.accent + "15" }]}>
+                <Ionicons name="rocket-outline" size={22} color={colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.addProductText, { color: colors.text }]}>Start your own business</Text>
+                <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
+                  Get expert help from planning to launch
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </LinearGradient>
+          </TouchableOpacity>
+
           <View style={{ gap: spacing.sm }}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (

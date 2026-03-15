@@ -70,6 +70,7 @@ const DELIVERY_POLICY_SCHEMA = new Schema(
     respectQuietHours: { type: Boolean, default: true },
     allowPush: { type: Boolean, default: true },
     allowInApp: { type: Boolean, default: true },
+    allowEmail: { type: Boolean, default: true },
     maxRetries: { type: Number, default: 4, min: 0, max: 10 },
     allowCriticalOverride: { type: Boolean, default: true },
   },

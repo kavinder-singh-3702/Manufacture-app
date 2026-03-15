@@ -62,6 +62,7 @@ export type RootStackParamList = {
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };
   ServiceDetail: { serviceType: ServiceType };
+  BusinessSetupRequest: undefined;
   MyProducts: { initialQuery?: string; initialStatus?: "all" | "in_stock" | "low_stock" | "out_of_stock" } | undefined;
   // Accounting Reports
   ProfitLoss: undefined;

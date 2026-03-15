@@ -717,7 +717,10 @@ const requestDocuments = async (
     });
     results.emailSent = emailResult.success;
     if (!emailResult.success) {
-      console.warn(`[AdminService] Failed to send email to ${owner.email}:`, emailResult.error);
+      console.warn(
+        `[AdminService] Failed to send email to ${owner.email}:`,
+        emailResult.errorMessage || emailResult.error
+      );
     }
   }
 

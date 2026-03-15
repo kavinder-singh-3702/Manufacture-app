@@ -18,6 +18,12 @@ const {
   updateServiceRequestContentAdmin
 } = require('../../services/services/serviceRequest.service');
 const {
+  listBusinessSetupRequestsAdmin,
+  getBusinessSetupRequestAdminById,
+  updateBusinessSetupRequestWorkflowAdmin,
+  listOpsRequestsAdmin
+} = require('../../businessSetup/services/businessSetup.service');
+const {
   listConversationsAdmin,
   listCallLogsAdmin
 } = require('../../chat/services/chat.service');
@@ -159,6 +165,19 @@ const listAdminServiceRequestsController = async (req, res, next) => {
 };
 
 /**
+ * GET /api/admin/ops-requests
+ */
+const listAdminOpsRequestsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS);
+    const result = await listOpsRequestsAdmin(req.query);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * GET /api/admin/service-requests/:serviceRequestId
  */
 const getAdminServiceRequestController = async (req, res, next) => {
@@ -167,6 +186,35 @@ const getAdminServiceRequestController = async (req, res, next) => {
     const request = await getServiceRequestAdminById(req.params.serviceRequestId);
     if (!request) {
       return res.status(404).json({ error: 'Service request not found' });
+    }
+    return res.json({ request });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/business-setup-requests
+ */
+const listAdminBusinessSetupRequestsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS);
+    const result = await listBusinessSetupRequestsAdmin(req.query);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/business-setup-requests/:requestId
+ */
+const getAdminBusinessSetupRequestController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS);
+    const request = await getBusinessSetupRequestAdminById(req.params.requestId);
+    if (!request) {
+      return res.status(404).json({ error: 'Business setup request not found' });
     }
     return res.json({ request });
   } catch (error) {
@@ -282,6 +330,71 @@ const updateAdminServiceRequestContentController = async (req, res, next) => {
     });
 
     return res.json({ request, message: 'Service request content updated' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/business-setup-requests/:requestId/workflow
+ */
+const updateAdminBusinessSetupRequestWorkflowController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW);
+    const { requestId } = req.params;
+    const {
+      status,
+      priority,
+      assignedTo,
+      slaDueAt,
+      note,
+      reason,
+      contextCompanyId,
+      expectedUpdatedAt
+    } = req.body;
+
+    validateMutationContext({
+      actorRole: req.user.role,
+      contextCompanyId
+    });
+
+    const request = await updateBusinessSetupRequestWorkflowAdmin({
+      requestId,
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      contextCompanyId,
+      status,
+      priority,
+      assignedTo,
+      slaDueAt,
+      note,
+      reason,
+      expectedUpdatedAt
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Business setup request not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_BUSINESS_SETUP_WORKFLOW_UPDATED,
+      label: 'Business setup workflow updated',
+      description: `Business setup request ${requestId} workflow updated`,
+      companyId: request.company?.id,
+      companyName: request.company?.displayName,
+      meta: {
+        requestId,
+        status,
+        priority,
+        assignedTo,
+        slaDueAt,
+        reason,
+        note
+      }
+    });
+
+    return res.json({ request, message: 'Business setup workflow updated' });
   } catch (error) {
     return next(error);
   }
@@ -508,10 +621,14 @@ module.exports = {
   listAllCompaniesController,
   listAllUsersController,
   listAdminAuditEventsController,
+  listAdminOpsRequestsController,
   listAdminServiceRequestsController,
+  listAdminBusinessSetupRequestsController,
   getAdminServiceRequestController,
+  getAdminBusinessSetupRequestController,
   updateAdminServiceRequestWorkflowController,
   updateAdminServiceRequestContentController,
+  updateAdminBusinessSetupRequestWorkflowController,
   listAdminConversationsController,
   listAdminCallLogsController,
   setCompanyStatusController,
