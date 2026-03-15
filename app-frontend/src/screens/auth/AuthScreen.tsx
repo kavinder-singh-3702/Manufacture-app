@@ -13,6 +13,7 @@ import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { AuthView } from "../../types/auth";
 import { BrandLockup } from "../../components/brand/BrandLockup";
 import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
+import { motion } from "../../theme/motion";
 
 export const AuthScreen = () => {
   const { bootstrapError, bootstrapWarning, setUser, authView, clearAuthView } = useAuth();
@@ -36,13 +37,13 @@ export const AuthScreen = () => {
     Animated.parallel([
       Animated.timing(entryOpacity, {
         toValue: 1,
-        duration: 420,
+        duration: motion.duration.medium,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(entryTranslate, {
         toValue: 0,
-        duration: 420,
+        duration: motion.duration.medium,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -170,6 +171,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const logoFloat = useRef(new Animated.Value(0)).current;
   const ctaSheen = useRef(new Animated.Value(0)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
+  const copyReveal = useRef(new Animated.Value(0)).current;
+  const actionReveal = useRef(new Animated.Value(0)).current;
 
   const heroHeight = isXCompact ? 200 : isCompact ? 220 : 250;
   const cardPaddingHorizontal = isXCompact ? 18 : isCompact ? 22 : 28;
@@ -228,6 +231,24 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
     [ctaSheen]
   );
 
+  const copyTranslate = useMemo(
+    () =>
+      copyReveal.interpolate({
+        inputRange: [0, 1],
+        outputRange: [motion.distance.medium, 0],
+      }),
+    [copyReveal]
+  );
+
+  const actionTranslate = useMemo(
+    () =>
+      actionReveal.interpolate({
+        inputRange: [0, 1],
+        outputRange: [motion.distance.small, 0],
+      }),
+    [actionReveal]
+  );
+
   useEffect(() => {
     let mounted = true;
     AccessibilityInfo.isReduceMotionEnabled()
@@ -252,6 +273,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
       beamProgress.setValue(0);
       logoFloat.setValue(0);
       ctaSheen.setValue(0);
+      copyReveal.setValue(1);
+      actionReveal.setValue(1);
       return;
     }
 
@@ -260,18 +283,20 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
     beamProgress.setValue(0);
     logoFloat.setValue(0);
     ctaSheen.setValue(0);
+    copyReveal.setValue(0);
+    actionReveal.setValue(0);
 
     const orbAAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(orbAPulse, {
           toValue: 1,
-          duration: 2800,
+          duration: motion.duration.ambient,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(orbAPulse, {
           toValue: 0,
-          duration: 2800,
+          duration: motion.duration.ambient,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -283,13 +308,13 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
         Animated.delay(420),
         Animated.timing(orbBPulse, {
           toValue: 1,
-          duration: 3400,
+          duration: motion.duration.ambientLong,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(orbBPulse, {
           toValue: 0,
-          duration: 3400,
+          duration: motion.duration.ambientLong,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -299,7 +324,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
     const beamAnimation = Animated.loop(
       Animated.timing(beamProgress, {
         toValue: 1,
-        duration: 2600,
+        duration: motion.duration.ambient,
         easing: Easing.linear,
         useNativeDriver: true,
       })
@@ -330,7 +355,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
           easing: Easing.linear,
           useNativeDriver: true,
         }),
-        Animated.delay(1400),
+        Animated.delay(motion.delay.long + 980),
         Animated.timing(ctaSheen, {
           toValue: 0,
           duration: 1,
@@ -338,6 +363,21 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
         }),
       ])
     );
+
+    Animated.sequence([
+      Animated.timing(copyReveal, {
+        toValue: 1,
+        duration: motion.duration.medium,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(actionReveal, {
+        toValue: 1,
+        duration: motion.duration.normal,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     orbAAnimation.start();
     orbBAnimation.start();
@@ -352,7 +392,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
       logoAnimation.stop();
       sheenAnimation.stop();
     };
-  }, [beamProgress, ctaSheen, logoFloat, orbAPulse, orbBPulse, reduceMotionEnabled]);
+  }, [actionReveal, beamProgress, copyReveal, ctaSheen, logoFloat, orbAPulse, orbBPulse, reduceMotionEnabled]);
 
   const handleJoinPressIn = () => {
     Animated.spring(ctaScale, {
@@ -470,14 +510,25 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
           </Animated.View>
         </View>
 
-        <View style={styles.introCopy}>
+        <Animated.View
+          style={[
+            styles.introCopy,
+            { opacity: copyReveal, transform: [{ translateY: copyTranslate }] },
+          ]}
+        >
           <Text style={[styles.introHeading, { color: headingColor, fontSize: clamp(isXCompact ? 25 : 32, 23, 32) }]}>
             Welcome to {APP_NAME}
           </Text>
           <Text style={[styles.introSubheading, { color: subheadingColor }]}>Built for industrial trade and operations</Text>
-        </View>
+          <View style={[styles.introAccentBar, { backgroundColor: colors.primary + (isDark ? "66" : "3f") }]} />
+        </Animated.View>
 
-        <View style={styles.buttonContainer}>
+        <Animated.View
+          style={[
+            styles.buttonContainer,
+            { opacity: actionReveal, transform: [{ translateY: actionTranslate }] },
+          ]}
+        >
           <Animated.View style={[styles.primaryButtonWrap, { transform: [{ scale: ctaScale }] }]}>
             <Pressable onPress={onJoin} onPressIn={handleJoinPressIn} onPressOut={handleJoinPressOut} style={styles.primaryButtonPressable}>
               <LinearGradient
@@ -514,7 +565,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
           >
             <Text style={[styles.skipText, { color: skipTextColor }]}>Skip</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     </View>
   );
@@ -631,6 +682,12 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     marginTop: 10,
+  },
+  introAccentBar: {
+    marginTop: 14,
+    width: 86,
+    height: 4,
+    borderRadius: 999,
   },
   buttonContainer: {
     marginTop: 28,

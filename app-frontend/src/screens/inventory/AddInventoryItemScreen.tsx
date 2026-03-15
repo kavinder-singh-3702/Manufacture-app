@@ -23,12 +23,13 @@ import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
 import { productService, CreateProductInput, ProductCategory, Product } from "../../services/product.service";
 import { ProductVariant, ProductVariantUpsertInput, productVariantService } from "../../services/productVariant.service";
+import { adminService } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import { useToast } from "../../components/ui/Toast";
 import { ApiError } from "../../services/http";
 import { VariantFormSheet } from "./components/VariantFormSheet";
 import { FormStepIndicator } from "./components/FormStepIndicator";
-import { syncProductFromVariants, variantDisplayLabel } from "./components/variantDomain";
+import { variantDisplayLabel } from "./components/variantDomain";
 
 const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];
 
@@ -50,8 +51,8 @@ const toVariantEntity = (draft: DraftVariant): ProductVariant => ({
   barcode: draft.barcode,
   options: (draft.options || {}) as Record<string, unknown>,
   price: draft.price || null,
-  minStockQuantity: Number(draft.minStockQuantity || 0),
-  availableQuantity: Number(draft.availableQuantity || 0),
+  minStockQuantity: 0,
+  availableQuantity: 0,
   unit: draft.unit,
   status: draft.status || "active",
   attributes: draft.attributes,
@@ -67,7 +68,11 @@ const draftPriceLabel = (variant: DraftVariant) => {
   return `${symbol}${amount.toLocaleString("en-IN")}`;
 };
 
-export const AddProductScreen = () => {
+type AddProductScreenProps = {
+  mode?: "company" | "inhouse";
+};
+
+export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -95,8 +100,6 @@ export const AddProductScreen = () => {
     category: "",
     subCategory: "",
     price: { amount: 0, currency: "INR", unit: "unit" },
-    availableQuantity: 0,
-    minStockQuantity: 0,
     unit: "units",
     visibility: "public",
   });
@@ -122,7 +125,10 @@ export const AddProductScreen = () => {
   const fetchCategories = useCallback(async () => {
     try {
       setLoadingCategories(true);
-      const res = await productService.getCategoryStats();
+      const res =
+        mode === "inhouse"
+          ? await adminService.listInhouseProductCategories()
+          : await productService.getCategoryStats();
       setCategories(
         (res.categories || []).map((c) => ({
           ...c,
@@ -134,7 +140,7 @@ export const AddProductScreen = () => {
     } finally {
       setLoadingCategories(false);
     }
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     fetchCategories();
@@ -162,9 +168,6 @@ export const AddProductScreen = () => {
     }
     if (Number(formData.price.amount || 0) <= 0) {
       newErrors.price = "Price is required and must be greater than 0";
-    }
-    if (formData.availableQuantity !== undefined && Number(formData.availableQuantity) < 0) {
-      newErrors.availableQuantity = "Quantity cannot be negative";
     }
 
     setErrors(newErrors);
@@ -293,15 +296,11 @@ export const AddProductScreen = () => {
   );
 
   const variantStats = useMemo(() => {
-    const totalStock = variantDrafts.reduce((sum, draft) => sum + Number(draft.availableQuantity || 0), 0);
-    const minStock = variantDrafts.reduce((sum, draft) => sum + Number(draft.minStockQuantity || 0), 0);
     const prices = variantDrafts
       .map((draft) => Number(draft.price?.amount))
       .filter((value) => Number.isFinite(value) && value >= 0);
 
     return {
-      totalStock,
-      minStock,
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
     };
@@ -325,32 +324,54 @@ export const AddProductScreen = () => {
 
     setLoading(true);
     try {
-      const created: Product = await productService.create(formData);
+      const created: Product =
+        mode === "inhouse"
+          ? await adminService.createInhouseProduct(formData)
+          : await productService.create(formData);
 
       if (variantDrafts.length) {
         for (const draft of variantDrafts) {
           const { tempId: _tempId, ...payload } = draft;
-          await productVariantService.create(created._id, payload);
+          if (mode === "inhouse") {
+            await adminService.createInhouseProductVariant(created._id, payload);
+          } else {
+            await productVariantService.create(created._id, payload);
+          }
         }
-        await syncProductFromVariants(created._id, "company");
       }
 
       let uploadIssue: string | null = null;
       try {
         if (coverImage) {
-          await productService.uploadImage(created._id, {
-            fileName: coverImage.fileName,
-            mimeType: coverImage.mimeType,
-            content: coverImage.base64,
-          });
+          if (mode === "inhouse") {
+            await adminService.uploadInhouseProductImage(created._id, {
+              fileName: coverImage.fileName,
+              mimeType: coverImage.mimeType,
+              content: coverImage.base64,
+            });
+          } else {
+            await productService.uploadImage(created._id, {
+              fileName: coverImage.fileName,
+              mimeType: coverImage.mimeType,
+              content: coverImage.base64,
+            });
+          }
         }
         if (galleryImages.length) {
           for (const img of galleryImages) {
-            await productService.uploadImage(created._id, {
-              fileName: img.fileName,
-              mimeType: img.mimeType,
-              content: img.base64,
-            });
+            if (mode === "inhouse") {
+              await adminService.uploadInhouseProductImage(created._id, {
+                fileName: img.fileName,
+                mimeType: img.mimeType,
+                content: img.base64,
+              });
+            } else {
+              await productService.uploadImage(created._id, {
+                fileName: img.fileName,
+                mimeType: img.mimeType,
+                content: img.base64,
+              });
+            }
           }
         }
       } catch (uploadErr: any) {
@@ -366,7 +387,11 @@ export const AddProductScreen = () => {
         String(formData.name || "Created successfully")
       );
 
-      navigation.replace("ProductDetails", { productId: created._id });
+      if (mode === "inhouse") {
+        navigation.replace("AdminEditProduct", { productId: created._id });
+      } else {
+        navigation.replace("ProductDetails", { productId: created._id });
+      }
     } catch (error: any) {
       const apiMessage =
         (error instanceof ApiError && (error.data as any)?.error) ||
@@ -382,6 +407,7 @@ export const AddProductScreen = () => {
     coverImage,
     formData,
     galleryImages,
+    mode,
     navigation,
     toastError,
     toastSuccess,
@@ -619,76 +645,6 @@ export const AddProductScreen = () => {
         ) : null}
       </View>
 
-      <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>Stock Details</Text>
-
-      <View style={styles.row}>
-        <View style={{ flex: 1, marginRight: spacing.sm }}>
-          <InputField
-            label="Current Stock"
-            placeholder="0"
-            value={formData.availableQuantity === 0 ? "" : formData.availableQuantity?.toString() || ""}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/[^0-9]/g, "");
-              updateField("availableQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
-            }}
-            keyboardType="numeric"
-            errorText={errors.availableQuantity}
-          />
-        </View>
-        <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <Text style={[styles.label, { color: colors.textMuted }]}>Unit<Text style={{ color: "#FF7B87" }}> *</Text></Text>
-          <TouchableOpacity
-            onPress={() => setShowUnitDropdown((prev) => !prev)}
-            activeOpacity={0.85}
-            style={[
-              styles.selectInput,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                borderRadius: radius.md,
-              },
-            ]}
-          >
-            <Text style={[styles.selectValue, { color: colors.text }]}>{formData.unit || "Select unit"}</Text>
-            <Text style={{ color: colors.textMuted }}>▾</Text>
-          </TouchableOpacity>
-          {showUnitDropdown && (
-            <View
-              style={[
-                styles.dropdown,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: surfaceElevated,
-                  borderRadius: radius.md,
-                  marginTop: 6,
-                },
-              ]}
-            >
-              {UNITS.map((unit) => {
-                const isSelected = formData.unit === unit;
-                return (
-                  <TouchableOpacity
-                    key={unit}
-                    onPress={() => {
-                      updateField("unit", unit);
-                      setShowUnitDropdown(false);
-                    }}
-                    style={[
-                      styles.dropdownItem,
-                      {
-                        backgroundColor: isSelected ? colors.primary + "12" : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text style={{ color: colors.text, fontWeight: isSelected ? "800" : "600" }}>{unit}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      </View>
-
       <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>Pricing</Text>
 
       <View style={styles.row}>
@@ -716,6 +672,60 @@ export const AddProductScreen = () => {
           />
         </View>
       </View>
+
+      <View style={{ marginTop: spacing.md }}>
+        <Text style={[styles.label, { color: colors.textMuted }]}>Trade Unit<Text style={{ color: "#FF7B87" }}> *</Text></Text>
+        <TouchableOpacity
+          onPress={() => setShowUnitDropdown((prev) => !prev)}
+          activeOpacity={0.85}
+          style={[
+            styles.selectInput,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              borderRadius: radius.md,
+              marginTop: 8,
+            },
+          ]}
+        >
+          <Text style={[styles.selectValue, { color: colors.text }]}>{formData.unit || "Select unit"}</Text>
+          <Text style={{ color: colors.textMuted }}>▾</Text>
+        </TouchableOpacity>
+        {showUnitDropdown && (
+          <View
+            style={[
+              styles.dropdown,
+              {
+                borderColor: colors.border,
+                backgroundColor: surfaceElevated,
+                borderRadius: radius.md,
+                marginTop: 6,
+              },
+            ]}
+          >
+            {UNITS.map((unit) => {
+              const isSelected = formData.unit === unit;
+              return (
+                <TouchableOpacity
+                  key={unit}
+                  onPress={() => {
+                    updateField("unit", unit);
+                    setShowUnitDropdown(false);
+                  }}
+                  style={[
+                    styles.dropdownItem,
+                    {
+                      backgroundColor: isSelected ? colors.primary + "12" : "transparent",
+                    },
+                  ]}
+                >
+                  <Text style={{ color: colors.text, fontWeight: isSelected ? "800" : "600" }}>{unit}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
     </>
   );
 
@@ -723,7 +733,7 @@ export const AddProductScreen = () => {
     <>
       <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.sm }]}>Variants</Text>
       <Text style={[styles.stepHint, { color: colors.textMuted, marginBottom: spacing.md }]}>
-        Add variants like size, pack, or grade. They will be created with the product and synced automatically.
+        Add variants like size, pack, or grade. They will be created with the product.
       </Text>
 
       <View
@@ -740,10 +750,6 @@ export const AddProductScreen = () => {
         <View style={styles.variantStatRow}>
           <Text style={[styles.variantStatLabel, { color: colors.textMuted }]}>Draft variants</Text>
           <Text style={[styles.variantStatValue, { color: colors.text }]}>{variantDrafts.length}</Text>
-        </View>
-        <View style={styles.variantStatRow}>
-          <Text style={[styles.variantStatLabel, { color: colors.textMuted }]}>Total stock from variants</Text>
-          <Text style={[styles.variantStatValue, { color: colors.text }]}>{variantStats.totalStock.toLocaleString("en-IN")}</Text>
         </View>
         <View style={styles.variantStatRow}>
           <Text style={[styles.variantStatLabel, { color: colors.textMuted }]}>Price range</Text>
@@ -768,7 +774,6 @@ export const AddProductScreen = () => {
       ) : (
         <View style={{ gap: spacing.sm }}>
           {variantDrafts.map((draft, index) => {
-            const stock = Number(draft.availableQuantity || 0);
             return (
               <View
                 key={draft.tempId}
@@ -802,10 +807,7 @@ export const AddProductScreen = () => {
                     <Text style={[styles.variantPillText, { color: colors.text }]}>Price {draftPriceLabel(draft)}</Text>
                   </View>
                   <View style={[styles.variantPill, { borderColor: colors.border, backgroundColor: surfaceElevated }]}> 
-                    <Text style={[styles.variantPillText, { color: stock > 0 ? colors.success : colors.error }]}>Stock {stock}</Text>
-                  </View>
-                  <View style={[styles.variantPill, { borderColor: colors.border, backgroundColor: surfaceElevated }]}> 
-                    <Text style={[styles.variantPillText, { color: colors.textMuted }]}>Min {Number(draft.minStockQuantity || 0)}</Text>
+                    <Text style={[styles.variantPillText, { color: colors.textMuted }]}>Status {(draft.status || "active").toUpperCase()}</Text>
                   </View>
                 </View>
               </View>
@@ -830,7 +832,7 @@ export const AddProductScreen = () => {
         <Text style={[styles.addVariantButtonText, { color: colors.primary }]}>+ Add variant</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.helperText, { color: colors.textMuted, marginTop: spacing.sm }]}>Variants are created in order and product stock/price is synced from active variants.</Text>
+      <Text style={[styles.helperText, { color: colors.textMuted, marginTop: spacing.sm }]}>Variants are created in order and can be edited later.</Text>
     </>
   );
 
@@ -845,7 +847,9 @@ export const AddProductScreen = () => {
           <TouchableOpacity onPress={() => (step === 1 ? navigation.goBack() : animateToStep(1))}>
             <Text style={[styles.backButton, { color: colors.primary }]}>{step === 1 ? "← Back" : "← Product info"}</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Add Product</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {mode === "inhouse" ? "Add In-house Product" : "Add Product"}
+          </Text>
           <View style={{ width: 70 }} />
         </View>
 

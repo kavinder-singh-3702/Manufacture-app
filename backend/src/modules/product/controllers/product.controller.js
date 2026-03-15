@@ -140,7 +140,7 @@ const createProductController = async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const companyId = req.user?.activeCompany;
-    const creatorRole = req.user?.role || 'user';
+    const creatorRole = isAdminRole(req.user?.role) ? 'admin' : 'user';
 
     if (!companyId) {
       return res.status(400).json({ error: 'No active company selected' });

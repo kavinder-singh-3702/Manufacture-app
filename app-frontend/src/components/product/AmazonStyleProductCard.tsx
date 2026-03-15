@@ -53,14 +53,6 @@ const getCompareAt = (product: Product): number | null => {
   return typeof compareAt === "number" && compareAt > (product.price?.amount || 0) ? compareAt : null;
 };
 
-const getStockStatus = (product: Product): "in_stock" | "low_stock" | "out_of_stock" => {
-  const qty = Number(product.availableQuantity || 0);
-  const min = Number(product.minStockQuantity || 0);
-  if (qty <= 0) return "out_of_stock";
-  if (qty <= min) return "low_stock";
-  return "in_stock";
-};
-
 const getVariantSummaryText = (product: Product): string | null => {
   const summary = product.variantSummary;
   if (summary?.totalVariants && summary.totalVariants > 0) {
@@ -107,9 +99,6 @@ export const AmazonStyleProductCard = memo(
         text: colors.textSecondary,
         price: colors.text,
         compare: colors.textMuted,
-        badgeInStock: colors.success,
-        badgeLow: colors.warning,
-        badgeOut: colors.error,
       }),
       [colors, resolvedMode]
     );
@@ -134,12 +123,6 @@ export const AmazonStyleProductCard = memo(
     const variantText = getVariantSummaryText(product);
     const seller = product.company?.displayName || "Seller";
     const isVerified = product.company?.complianceStatus === "approved";
-    const stockStatus = getStockStatus(product);
-
-    const stockLabel =
-      stockStatus === "in_stock" ? "In stock" : stockStatus === "low_stock" ? "Low stock" : "Out of stock";
-    const stockColor =
-      stockStatus === "in_stock" ? palette.badgeInStock : stockStatus === "low_stock" ? palette.badgeLow : palette.badgeOut;
 
     const showMessage = showQuickActions && Boolean(onMessagePress);
     const showCall = showQuickActions && Boolean(onCallPress);
@@ -201,13 +184,6 @@ export const AmazonStyleProductCard = memo(
             <View style={styles.priceRow}>
               <Text style={styles.price}>{formatCurrency(price, currency)}</Text>
               {compareAt ? <Text style={styles.comparePrice}>{formatCurrency(compareAt, currency)}</Text> : null}
-            </View>
-
-            <View style={styles.metaRow}>
-              <View style={[styles.stockBadge, { borderColor: `${stockColor}66`, backgroundColor: `${stockColor}1A` }]}>
-                <Text style={[styles.stockText, { color: stockColor }]}>{stockLabel}</Text>
-              </View>
-              <Text style={styles.quantityText}>{Number(product.availableQuantity || 0)} {product.unit || "units"}</Text>
             </View>
 
             {variantText ? <Text style={styles.variantText}>{variantText}</Text> : null}
@@ -373,29 +349,6 @@ const createStyles = (
       fontSize: 12,
       fontWeight: "700",
       textDecorationLine: "line-through",
-    },
-    metaRow: {
-      marginTop: 8,
-      flexDirection: "row",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: 8,
-    },
-    stockBadge: {
-      borderWidth: 1,
-      borderRadius: radius.pill,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-    },
-    stockText: {
-      fontSize: 11,
-      fontWeight: "800",
-      textTransform: "capitalize",
-    },
-    quantityText: {
-      color: palette.subtext,
-      fontSize: 11,
-      fontWeight: "700",
     },
     variantText: {
       marginTop: 6,

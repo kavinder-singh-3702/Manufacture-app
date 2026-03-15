@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -15,20 +15,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
-import { useAuth } from "../../hooks/useAuth";
-import { productService, Product, ProductCategory } from "../../services/product.service";
-import { useCart } from "../../hooks/useCart";
+import { Product, ProductCategory } from "../../services/product.service";
+import { adminService } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
-import { preferenceService } from "../../services/preference.service";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
-import { useToast } from "../../components/ui/Toast";
-import { callProductSeller, startProductConversation } from "../product/utils/productContact";
-import { VariantChoiceSelection, VariantChoiceSheet } from "../inventory/components/VariantChoiceSheet";
-import { hasVariants, variantDisplayLabel } from "../inventory/components/variantDomain";
 
 const useAdminProductsPalette = () => {
   const { colors } = useTheme();
@@ -174,19 +169,35 @@ const ProductCard = ({ product, onAddToCart, onOpenDetails, inCartQty }: Product
 };
 
 const PAGE_SIZE = 16;
+const ALL_CATEGORY_ID = "all";
+
+type SortMode = "none" | "priceAsc" | "priceDesc" | "ratingDesc";
+
+const normalizeCategoryId = (categoryId?: string | null) => {
+  const raw = typeof categoryId === "string" ? categoryId.trim() : "";
+  if (!raw) return ALL_CATEGORY_ID;
+  const lowered = raw.toLowerCase();
+  if (lowered === ALL_CATEGORY_ID || lowered === "__all__" || lowered === "*") {
+    return ALL_CATEGORY_ID;
+  }
+  return raw;
+};
+
+const toCategoryQueryValue = (categoryId: string) => {
+  const normalized = normalizeCategoryId(categoryId);
+  return normalized === ALL_CATEGORY_ID ? undefined : normalized;
+};
 
 export const AdminProductsScreen = () => {
   const COLORS = useAdminProductsPalette();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
-  const { colors, spacing, radius } = useTheme();
+  const { colors, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, requestLogin } = useAuth();
-  const { success: toastSuccess, error: toastError } = useToast();
-  const { addToCart, getProductQuantity } = useCart();
+  const requestSequenceRef = useRef(0);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [activeCategory, setActiveCategory] = useState<string>(ALL_CATEGORY_ID);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -197,26 +208,41 @@ export const AdminProductsScreen = () => {
     [pagination.total]
   );
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [sortMode, setSortMode] = useState<"none" | "priceAsc" | "priceDesc" | "ratingDesc">("none");
-  const [minPrice, setMinPrice] = useState<string>("");
-  const [maxPrice, setMaxPrice] = useState<string>("");
-  const [variantChoiceProduct, setVariantChoiceProduct] = useState<Product | null>(null);
-  const [variantChoiceVisible, setVariantChoiceVisible] = useState(false);
+  const [draftSortMode, setDraftSortMode] = useState<SortMode>("none");
+  const [draftMinPrice, setDraftMinPrice] = useState<string>("");
+  const [draftMaxPrice, setDraftMaxPrice] = useState<string>("");
+  const [appliedSortMode, setAppliedSortMode] = useState<SortMode>("none");
+  const [appliedMinPrice, setAppliedMinPrice] = useState<string>("");
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState<string>("");
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await productService.getCategoryStats({
-        scope: "marketplace",
-        createdByRole: "admin",
+      const res = await adminService.listInhouseProductCategories();
+      const normalizedCategories = res.categories
+        .map((category) => ({ ...category, id: normalizeCategoryId(category.id) }))
+        .filter((category) => category.id !== ALL_CATEGORY_ID);
+      const allCount = normalizedCategories.reduce((sum, category) => sum + (category.count || 0), 0);
+      const nextCategories: ProductCategory[] = [
+        { id: ALL_CATEGORY_ID, title: "All", count: allCount },
+        ...normalizedCategories,
+      ];
+      setCategories(nextCategories);
+      setActiveCategory((currentCategory) => {
+        const normalizedCurrent = normalizeCategoryId(currentCategory);
+        const exists = nextCategories.some((category) => category.id === normalizedCurrent);
+        return exists ? normalizedCurrent : ALL_CATEGORY_ID;
       });
-      setCategories([{ id: "all", title: "All", count: res.categories.reduce((acc, c) => acc + c.count, 0) }, ...res.categories]);
     } catch (err: any) {
-      setCategories([{ id: "all", title: "All", count: 0 }]);
+      setCategories([{ id: ALL_CATEGORY_ID, title: "All", count: 0 }]);
+      setActiveCategory(ALL_CATEGORY_ID);
     }
   }, []);
 
   const loadProducts = useCallback(
     async (offset = 0, append = false) => {
+      const requestId = requestSequenceRef.current + 1;
+      requestSequenceRef.current = requestId;
       if (append) {
         setLoadingMore(true);
       } else {
@@ -224,30 +250,33 @@ export const AdminProductsScreen = () => {
         setError(null);
       }
       try {
-        const response = await productService.getAll({
+        const parsedMinPrice = appliedMinPrice ? Number.parseFloat(appliedMinPrice) : undefined;
+        const parsedMaxPrice = appliedMaxPrice ? Number.parseFloat(appliedMaxPrice) : undefined;
+        const response = await adminService.listInhouseProducts({
           limit: PAGE_SIZE,
           offset,
-          category: activeCategory === "all" ? undefined : activeCategory,
-          scope: "marketplace",
-          createdByRole: "admin",
-          sort: sortMode !== "none" ? sortMode : undefined,
-          minPrice: minPrice ? parseFloat(minPrice) : undefined,
-          maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+          category: toCategoryQueryValue(activeCategory),
+          sort: appliedSortMode !== "none" ? appliedSortMode : undefined,
+          minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : undefined,
+          maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : undefined,
           includeVariantSummary: true,
         });
+        if (requestId !== requestSequenceRef.current) return;
         const nextProducts = response.products;
 
         setProducts((prev) => (append ? [...prev, ...nextProducts] : nextProducts));
         setPagination(response.pagination);
       } catch (err: any) {
+        if (requestId !== requestSequenceRef.current) return;
         setError(err?.message || "Failed to load products");
       } finally {
+        if (requestId !== requestSequenceRef.current) return;
         setLoading(false);
         setLoadingMore(false);
         setRefreshing(false);
       }
     },
-    [activeCategory, sortMode, minPrice, maxPrice]
+    [activeCategory, appliedSortMode, appliedMinPrice, appliedMaxPrice]
   );
 
   useEffect(() => {
@@ -256,7 +285,7 @@ export const AdminProductsScreen = () => {
 
   useEffect(() => {
     loadProducts(0, false);
-  }, [activeCategory, loadProducts]);
+  }, [loadProducts, reloadNonce]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -269,67 +298,81 @@ export const AdminProductsScreen = () => {
     loadProducts(pagination.offset + pagination.limit, true);
   }, [loadProducts, loading, loadingMore, pagination]);
 
-  const applyCartSelection = useCallback(
-    (selection: VariantChoiceSelection) => {
-      if (selection.mode === "variant") {
-        addToCart(selection.product, 1, {
-          id: selection.variant._id,
-          title: variantDisplayLabel(selection.variant),
-          options: (selection.variant.options || {}) as Record<string, unknown>,
-          price: selection.variant.price || null,
-          unit: selection.variant.unit || selection.variant.price?.unit || selection.product.unit,
-        });
-        toastSuccess("Added variant", variantDisplayLabel(selection.variant));
-      } else {
-        addToCart(selection.product, 1);
-        toastSuccess("Added to cart", selection.product.name);
-      }
-
-      preferenceService
-        .logEvent({
-          type: "view_product",
-          productId: selection.product._id,
-          category: selection.product.category,
-          meta: { action: "add_to_cart" },
-        })
-        .catch(() => {});
-    },
-    [addToCart, toastSuccess]
-  );
-
-  const closeVariantChoice = useCallback(() => {
-    setVariantChoiceVisible(false);
-    setVariantChoiceProduct(null);
-  }, []);
-
-  const handleAddToCart = useCallback(
+  const handleOpenEdit = useCallback(
     (product: Product) => {
-      if (hasVariants(product)) {
-        setVariantChoiceProduct(product);
-        setVariantChoiceVisible(true);
-        return;
-      }
-      applyCartSelection({ mode: "base", product });
-    },
-    [applyCartSelection]
-  );
-
-  const handleOpenDetails = useCallback(
-    (productId: string) => {
-      navigation.navigate("ProductDetails", { productId });
+      navigation.navigate("AdminEditProduct", { productId: product._id });
     },
     [navigation]
   );
 
   const handleOpenVariants = useCallback(
     (product: Product) => {
-      navigation.navigate("ProductVariants", {
+      navigation.navigate("AdminProductVariants", {
         productId: product._id,
         productName: product.name,
-        scope: "company",
       });
     },
     [navigation]
+  );
+
+  const handleOpenFilters = useCallback(() => {
+    setDraftSortMode(appliedSortMode);
+    setDraftMinPrice(appliedMinPrice);
+    setDraftMaxPrice(appliedMaxPrice);
+    setFilterModalVisible(true);
+  }, [appliedSortMode, appliedMinPrice, appliedMaxPrice]);
+
+  const handleApplyFilters = useCallback(() => {
+    setFilterModalVisible(false);
+    const hasChanges =
+      draftSortMode !== appliedSortMode ||
+      draftMinPrice !== appliedMinPrice ||
+      draftMaxPrice !== appliedMaxPrice;
+
+    if (!hasChanges) {
+      setReloadNonce((value) => value + 1);
+      return;
+    }
+
+    setAppliedSortMode(draftSortMode);
+    setAppliedMinPrice(draftMinPrice);
+    setAppliedMaxPrice(draftMaxPrice);
+  }, [
+    draftSortMode,
+    draftMinPrice,
+    draftMaxPrice,
+    appliedSortMode,
+    appliedMinPrice,
+    appliedMaxPrice,
+  ]);
+
+  const handleResetFilters = useCallback(() => {
+    const isAllActive = normalizeCategoryId(activeCategory) === ALL_CATEGORY_ID;
+    setActiveCategory(ALL_CATEGORY_ID);
+    setDraftSortMode("none");
+    setDraftMinPrice("");
+    setDraftMaxPrice("");
+    setAppliedSortMode("none");
+    setAppliedMinPrice("");
+    setAppliedMaxPrice("");
+    if (isAllActive) {
+      setReloadNonce((value) => value + 1);
+    }
+  }, [activeCategory]);
+
+  const handleCategoryPress = useCallback(
+    (categoryId: string) => {
+      const normalizedCategory = normalizeCategoryId(categoryId);
+      if (
+        normalizedCategory === ALL_CATEGORY_ID &&
+        normalizeCategoryId(activeCategory) === ALL_CATEGORY_ID
+      ) {
+        setReloadNonce((value) => value + 1);
+        return;
+      }
+      setActiveCategory(normalizedCategory);
+    },
+    [activeCategory]
   );
 
   const renderCategoryChips = useCallback(() => {
@@ -341,11 +384,12 @@ export const AdminProductsScreen = () => {
         contentContainerStyle={styles.chipsContainer}
       >
         {categories.map((cat) => {
-          const isActive = activeCategory === cat.id;
+          const normalizedCategoryId = normalizeCategoryId(cat.id);
+          const isActive = normalizeCategoryId(activeCategory) === normalizedCategoryId;
           return (
             <TouchableOpacity
-              key={cat.id}
-              onPress={() => setActiveCategory(cat.id)}
+              key={normalizedCategoryId}
+              onPress={() => handleCategoryPress(normalizedCategoryId)}
               activeOpacity={0.85}
               style={[styles.chip, isActive && styles.chipActive]}
             >
@@ -364,7 +408,7 @@ export const AdminProductsScreen = () => {
         })}
       </ScrollView>
     );
-  }, [categories, activeCategory]);
+  }, [categories, activeCategory, handleCategoryPress]);
 
   const renderListHeader = useCallback(() => {
     return (
@@ -385,7 +429,7 @@ export const AdminProductsScreen = () => {
           <TouchableOpacity
             style={styles.filterButton}
             activeOpacity={0.8}
-            onPress={() => setFilterModalVisible(true)}
+            onPress={handleOpenFilters}
           >
             <Text style={styles.filterIcon}>☰</Text>
             <Text style={styles.filterText}>Filters</Text>
@@ -394,13 +438,7 @@ export const AdminProductsScreen = () => {
           <TouchableOpacity
             style={styles.resetButton}
             activeOpacity={0.8}
-            onPress={() => {
-              setActiveCategory("all");
-              setSortMode("none");
-              setMinPrice("");
-              setMaxPrice("");
-              loadProducts(0, false);
-            }}
+            onPress={handleResetFilters}
           >
             <Text style={styles.resetText}>Reset</Text>
           </TouchableOpacity>
@@ -420,34 +458,19 @@ export const AdminProductsScreen = () => {
         )}
       </>
     );
-  }, [renderCategoryChips, error, loadProducts, totalLabel]);
+  }, [renderCategoryChips, error, loadProducts, totalLabel, handleOpenFilters, handleResetFilters]);
 
   const renderItem = ({ item }: { item: Product }) => {
-    const inCartQty = getProductQuantity(item._id) || undefined;
-    const isGuest = user?.role === "guest";
     return (
       <View style={styles.cardContainer}>
         <AmazonStyleProductCard
           product={item}
-          onPress={handleOpenDetails}
-          onMessagePress={(product) =>
-            startProductConversation({
-              product,
-              isGuest,
-              requestLogin,
-              navigation,
-              toastError,
-            })
-          }
-          onCallPress={(product) =>
-            callProductSeller({
-              product,
-              toastError,
-            })
-          }
+          onPress={() => handleOpenEdit(item)}
+          onMessagePress={undefined}
+          onCallPress={undefined}
           showPrimaryAction
-          primaryActionLabel={inCartQty ? `In cart (${inCartQty})` : "Add to cart"}
-          onPrimaryActionPress={(product) => handleAddToCart(product)}
+          primaryActionLabel="Edit product"
+          onPrimaryActionPress={handleOpenEdit}
         />
         <TouchableOpacity
           activeOpacity={0.85}
@@ -506,10 +529,28 @@ export const AdminProductsScreen = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Catalog</Text>
-          <Text style={styles.headerSubtitle}>Discover premium products</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <Ionicons name="chevron-back" size={20} color={COLORS.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>In-house Catalog</Text>
+            <Text style={styles.headerSubtitle}>Manage products visible across the marketplace</Text>
+          </View>
         </View>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate("AdminAddProduct")}
+          style={[styles.addInhouseButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+        >
+          <Text style={styles.addInhouseButtonIcon}>＋</Text>
+          <Text style={styles.addInhouseButtonText}>Add</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Products list */}
@@ -577,12 +618,12 @@ export const AdminProductsScreen = () => {
               { key: "priceDesc", label: "Price: High to Low" },
               { key: "ratingDesc", label: "Rating: High to Low" },
             ].map((option) => {
-              const selected = sortMode === option.key;
+              const selected = draftSortMode === option.key;
               return (
                 <TouchableOpacity
                   key={option.key}
                   style={[styles.optionRow, selected && styles.optionRowSelected]}
-                  onPress={() => setSortMode(option.key as typeof sortMode)}
+                  onPress={() => setDraftSortMode(option.key as SortMode)}
                 >
                   <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                     {option.label}
@@ -598,8 +639,8 @@ export const AdminProductsScreen = () => {
                 placeholder="Min"
                 placeholderTextColor={COLORS.textSubtle}
                 keyboardType="numeric"
-                value={minPrice}
-                onChangeText={(text) => setMinPrice(text.replace(/[^0-9.]/g, ""))}
+                value={draftMinPrice}
+                onChangeText={(text) => setDraftMinPrice(text.replace(/[^0-9.]/g, ""))}
                 style={styles.priceInput}
               />
               <Text style={styles.priceTo}>to</Text>
@@ -607,8 +648,8 @@ export const AdminProductsScreen = () => {
                 placeholder="Max"
                 placeholderTextColor={COLORS.textSubtle}
                 keyboardType="numeric"
-                value={maxPrice}
-                onChangeText={(text) => setMaxPrice(text.replace(/[^0-9.]/g, ""))}
+                value={draftMaxPrice}
+                onChangeText={(text) => setDraftMaxPrice(text.replace(/[^0-9.]/g, ""))}
                 style={styles.priceInput}
               />
             </View>
@@ -616,19 +657,16 @@ export const AdminProductsScreen = () => {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 onPress={() => {
-                  setSortMode("none");
-                  setMinPrice("");
-                  setMaxPrice("");
+                  setDraftSortMode("none");
+                  setDraftMinPrice("");
+                  setDraftMaxPrice("");
                 }}
                 style={styles.modalButtonSecondary}
               >
                 <Text style={styles.modalButtonSecondaryText}>Clear</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => {
-                  setFilterModalVisible(false);
-                  loadProducts(0, false);
-                }}
+                onPress={handleApplyFilters}
                 style={styles.modalButtonPrimary}
               >
                 <LinearGradient
@@ -645,17 +683,6 @@ export const AdminProductsScreen = () => {
         </Pressable>
       </Modal>
 
-      <VariantChoiceSheet
-        visible={variantChoiceVisible}
-        product={variantChoiceProduct}
-        scope="marketplace"
-        title="Add product to cart"
-        subtitle="Choose the base product or a specific variant for accurate pricing and stock."
-        onClose={closeVariantChoice}
-        onSelect={async (selection) => {
-          applyCartSelection(selection);
-        }}
-      />
     </SafeAreaView>
   );
 };
@@ -700,6 +727,23 @@ const createStyles = (COLORS: ReturnType<typeof useAdminProductsPalette>) =>
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginRight: 12,
+  },
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerTitleContainer: {
     flex: 1,
   },
@@ -713,6 +757,23 @@ const createStyles = (COLORS: ReturnType<typeof useAdminProductsPalette>) =>
     fontWeight: "500",
     color: COLORS.textMuted,
     marginTop: 2,
+  },
+  addInhouseButton: {
+    height: 38,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  addInhouseButtonIcon: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  addInhouseButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
   },
   cartButton: {
     borderRadius: 16,

@@ -1,6 +1,7 @@
 const {
   startSignup,
   verifySignupOtp,
+  saveSignupContact,
   completeSignup
 } = require('../services/signup.service');
 const { signToken } = require('../../../utils/token');
@@ -23,6 +24,15 @@ const verifyOtp = async (req, res, next) => {
   }
 };
 
+const saveContact = async (req, res, next) => {
+  try {
+    const result = await saveSignupContact(req.body, req.session);
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const finalizeSignup = async (req, res, next) => {
   try {
     const user = await completeSignup(req.body, req);
@@ -37,5 +47,6 @@ const finalizeSignup = async (req, res, next) => {
 module.exports = {
   beginSignup,
   verifyOtp,
+  saveContact,
   finalizeSignup
 };

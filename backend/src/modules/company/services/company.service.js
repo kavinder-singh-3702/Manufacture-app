@@ -3,6 +3,7 @@ const Company = require('../../../models/company.model');
 const User = require('../../../models/user.model');
 const { normalizeCategories, buildCompanyResponse } = require('../utils/company.util');
 const { uploadCompanyDocument } = require('../../../services/storage.service');
+const { INHOUSE_COMPANY_EXCLUDE_QUERY } = require('../utils/inhouseCatalog.util');
 
 const pruneUndefined = (obj = {}) =>
   Object.entries(obj).reduce((acc, [key, value]) => {
@@ -20,7 +21,11 @@ const ensureUser = async (userId) => {
 };
 
 const ensureOwnedCompany = async (ownerId, companyId) => {
-  const company = await Company.findOne({ _id: companyId, owner: ownerId });
+  const company = await Company.findOne({
+    _id: companyId,
+    owner: ownerId,
+    ...INHOUSE_COMPANY_EXCLUDE_QUERY
+  });
   if (!company) {
     throw createError(404, 'Company not found');
   }
@@ -75,7 +80,7 @@ const createCompany = async (ownerId, payload) => {
 };
 
 const listCompanies = async (ownerId) => {
-  const companies = await Company.find({ owner: ownerId }).sort({ createdAt: -1 });
+  const companies = await Company.find({ owner: ownerId, ...INHOUSE_COMPANY_EXCLUDE_QUERY }).sort({ createdAt: -1 });
   return companies.map(buildCompanyResponse);
 };
 

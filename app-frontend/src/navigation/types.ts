@@ -58,6 +58,10 @@ export type RootStackParamList = {
   AdminUserDetail: { userId: string; displayName?: string };
   CampaignStudio: undefined;
   NotificationStudio: undefined;
+  AdminCatalog: undefined;
+  AdminAddProduct: undefined;
+  AdminEditProduct: { productId: string };
+  AdminProductVariants: { productId: string; productName?: string };
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
   ServiceRequest: { serviceType?: ServiceType };

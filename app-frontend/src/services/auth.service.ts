@@ -4,6 +4,7 @@ import {
   ForgotPasswordPayload,
   LoginPayload,
   ResetPasswordPayload,
+  SignupContactPayload,
   SignupCompletePayload,
   SignupStartPayload,
   SignupVerifyPayload,
@@ -12,10 +13,17 @@ import {
 type SignupStartResponse = {
   message: string;
   expiresInMs: number;
+  resendAvailableInMs?: number;
 };
 
 type SignupVerifyResponse = {
   message: string;
+  verifiedAt?: string;
+};
+
+type SignupContactResponse = {
+  message: string;
+  phone: string;
 };
 
 type SignupCompleteResponse = {
@@ -46,6 +54,8 @@ const signup = {
     apiClient.post<SignupStartResponse>(`${signupBasePath}/start`, payload),
   verify: (payload: SignupVerifyPayload) =>
     apiClient.post<SignupVerifyResponse>(`${signupBasePath}/verify`, payload),
+  contact: (payload: SignupContactPayload) =>
+    apiClient.post<SignupContactResponse>(`${signupBasePath}/contact`, payload),
   complete: (payload: SignupCompletePayload) =>
     apiClient.post<SignupCompleteResponse>(`${signupBasePath}/complete`, payload),
 };

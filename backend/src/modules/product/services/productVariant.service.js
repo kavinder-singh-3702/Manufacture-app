@@ -198,6 +198,9 @@ const createVariant = async (productId, companyId, payload, userId) => {
   if (cleanedPayload.barcode === '' || cleanedPayload.barcode === null) {
     delete cleanedPayload.barcode;
   }
+  // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
+  delete cleanedPayload.availableQuantity;
+  delete cleanedPayload.minStockQuantity;
 
   const variant = new ProductVariant({
     ...cleanedPayload,
@@ -248,6 +251,9 @@ const updateVariant = async (productId, variantId, updates, userId, companyId) =
   if (cleanedUpdates.barcode === '' || cleanedUpdates.barcode === null) {
     cleanedUpdates.barcode = undefined;
   }
+  // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
+  delete cleanedUpdates.availableQuantity;
+  delete cleanedUpdates.minStockQuantity;
 
   variant.set(cleanedUpdates);
   variant.lastUpdatedBy = userId;

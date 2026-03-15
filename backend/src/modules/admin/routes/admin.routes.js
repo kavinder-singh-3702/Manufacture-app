@@ -16,6 +16,20 @@ const {
   updateAdminServiceRequestWorkflowController,
   updateAdminServiceRequestContentController,
   updateAdminBusinessSetupRequestWorkflowController,
+  listAdminInhouseProductCategoriesController,
+  listAdminInhouseProductsController,
+  getAdminInhouseProductController,
+  createAdminInhouseProductController,
+  updateAdminInhouseProductController,
+  adjustAdminInhouseProductQuantityController,
+  deleteAdminInhouseProductController,
+  uploadAdminInhouseProductImageController,
+  listAdminInhouseVariantsController,
+  getAdminInhouseVariantController,
+  createAdminInhouseVariantController,
+  updateAdminInhouseVariantController,
+  adjustAdminInhouseVariantQuantityController,
+  deleteAdminInhouseVariantController,
   listAdminConversationsController,
   listAdminCallLogsController,
   setCompanyStatusController,
@@ -34,6 +48,10 @@ const {
   listAdminOpsRequestsValidation,
   listAdminServiceRequestsValidation,
   listAdminBusinessSetupRequestsValidation,
+  listAdminInhouseProductsValidation,
+  listAdminInhouseVariantsValidation,
+  inhouseProductIdParamValidation,
+  inhouseVariantIdParamValidation,
   updateServiceRequestWorkflowValidation,
   updateServiceRequestContentValidation,
   updateBusinessSetupWorkflowValidation,
@@ -43,6 +61,17 @@ const {
   businessSetupRequestIdParamValidation,
   userIdParamValidation
 } = require('../validators/admin.validators');
+const {
+  createProductValidation,
+  updateProductValidation,
+  adjustQuantityValidation,
+  uploadProductImageValidation
+} = require('../../product/validators/product.validators');
+const {
+  createVariantValidation,
+  updateVariantValidation,
+  adjustVariantQuantityValidation
+} = require('../../product/validators/productVariant.validators');
 
 const router = Router();
 
@@ -87,6 +116,84 @@ router.get('/business-setup-requests', validate(listAdminBusinessSetupRequestsVa
 
 // GET /api/admin/ops-requests - merged services + startup queue
 router.get('/ops-requests', validate(listAdminOpsRequestsValidation), listAdminOpsRequestsController);
+
+// GET /api/admin/inhouse-products/categories - in-house category stats
+router.get('/inhouse-products/categories', listAdminInhouseProductCategoriesController);
+
+// GET /api/admin/inhouse-products - in-house product list
+router.get('/inhouse-products', validate(listAdminInhouseProductsValidation), listAdminInhouseProductsController);
+
+// POST /api/admin/inhouse-products - create in-house product
+router.post('/inhouse-products', validate(createProductValidation), createAdminInhouseProductController);
+
+// GET /api/admin/inhouse-products/:productId - in-house product detail
+router.get('/inhouse-products/:productId', validate(inhouseProductIdParamValidation), getAdminInhouseProductController);
+
+// PUT /api/admin/inhouse-products/:productId - update in-house product
+router.put(
+  '/inhouse-products/:productId',
+  validate([...inhouseProductIdParamValidation, ...updateProductValidation]),
+  updateAdminInhouseProductController
+);
+
+// PATCH /api/admin/inhouse-products/:productId/quantity - quantity adjust
+router.patch(
+  '/inhouse-products/:productId/quantity',
+  validate([...inhouseProductIdParamValidation, ...adjustQuantityValidation]),
+  adjustAdminInhouseProductQuantityController
+);
+
+// DELETE /api/admin/inhouse-products/:productId - archive in-house product
+router.delete('/inhouse-products/:productId', validate(inhouseProductIdParamValidation), deleteAdminInhouseProductController);
+
+// POST /api/admin/inhouse-products/:productId/images - upload in-house product image
+router.post(
+  '/inhouse-products/:productId/images',
+  validate([...inhouseProductIdParamValidation, ...uploadProductImageValidation]),
+  uploadAdminInhouseProductImageController
+);
+
+// GET /api/admin/inhouse-products/:productId/variants - list in-house variants
+router.get(
+  '/inhouse-products/:productId/variants',
+  validate(listAdminInhouseVariantsValidation),
+  listAdminInhouseVariantsController
+);
+
+// POST /api/admin/inhouse-products/:productId/variants - create in-house variant
+router.post(
+  '/inhouse-products/:productId/variants',
+  validate([...inhouseProductIdParamValidation, ...createVariantValidation]),
+  createAdminInhouseVariantController
+);
+
+// GET /api/admin/inhouse-products/:productId/variants/:variantId - in-house variant detail
+router.get(
+  '/inhouse-products/:productId/variants/:variantId',
+  validate([...inhouseProductIdParamValidation, ...inhouseVariantIdParamValidation]),
+  getAdminInhouseVariantController
+);
+
+// PUT /api/admin/inhouse-products/:productId/variants/:variantId - update in-house variant
+router.put(
+  '/inhouse-products/:productId/variants/:variantId',
+  validate([...inhouseProductIdParamValidation, ...inhouseVariantIdParamValidation, ...updateVariantValidation]),
+  updateAdminInhouseVariantController
+);
+
+// PATCH /api/admin/inhouse-products/:productId/variants/:variantId/quantity - adjust in-house variant quantity
+router.patch(
+  '/inhouse-products/:productId/variants/:variantId/quantity',
+  validate([...inhouseProductIdParamValidation, ...inhouseVariantIdParamValidation, ...adjustVariantQuantityValidation]),
+  adjustAdminInhouseVariantQuantityController
+);
+
+// DELETE /api/admin/inhouse-products/:productId/variants/:variantId - archive in-house variant
+router.delete(
+  '/inhouse-products/:productId/variants/:variantId',
+  validate([...inhouseProductIdParamValidation, ...inhouseVariantIdParamValidation]),
+  deleteAdminInhouseVariantController
+);
 
 // GET /api/admin/service-requests/:serviceRequestId - Service request detail
 router.get('/service-requests/:serviceRequestId', validate(serviceRequestIdParamValidation), getAdminServiceRequestController);

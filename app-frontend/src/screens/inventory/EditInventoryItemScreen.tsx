@@ -12,36 +12,39 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
 import { productService, CreateProductInput, Product, ProductCategory } from "../../services/product.service";
 import { productVariantService } from "../../services/productVariant.service";
+import { adminService } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import { useToast } from "../../components/ui/Toast";
-import { syncProductFromVariants } from "./components/variantDomain";
 
 const UNITS = ["units", "pieces", "kg", "liters", "meters", "boxes", "pallets"];
 
-export const EditProductScreen = () => {
+type EditProductScreenProps = {
+  mode?: "company" | "inhouse";
+};
+
+export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, "EditProduct">>();
-  const { productId } = route.params;
+  const route = useRoute<any>();
+  const { productId } = route.params as { productId: string };
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [syncing, setSyncing] = useState(false);
 
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
-  const [variantSummary, setVariantSummary] = useState({ total: 0, inStock: 0, totalQty: 0 });
+  const [variantSummary, setVariantSummary] = useState({ total: 0 });
 
   const [formData, setFormData] = useState<CreateProductInput>({
     name: "",
@@ -50,8 +53,6 @@ export const EditProductScreen = () => {
     category: "",
     subCategory: "",
     price: { amount: 0, currency: "INR", unit: "unit" },
-    availableQuantity: 0,
-    minStockQuantity: 0,
     unit: "units",
     visibility: "public",
   });
@@ -77,7 +78,10 @@ export const EditProductScreen = () => {
   const fetchCategories = useCallback(async () => {
     try {
       setLoadingCategories(true);
-      const res = await productService.getCategoryStats({ scope: "company" });
+      const res =
+        mode === "inhouse"
+          ? await adminService.listInhouseProductCategories()
+          : await productService.getCategoryStats({ scope: "company" });
       setCategories(
         (res.categories || []).map((item) => ({
           ...item,
@@ -89,11 +93,14 @@ export const EditProductScreen = () => {
     } finally {
       setLoadingCategories(false);
     }
-  }, []);
+  }, [mode]);
 
   const fetchItem = useCallback(async () => {
     try {
-      const item: Product = await productService.getById(productId, { scope: "company", includeVariantSummary: true });
+      const item: Product =
+        mode === "inhouse"
+          ? await adminService.getInhouseProductById(productId, { includeVariantSummary: true })
+          : await productService.getById(productId, { scope: "company", includeVariantSummary: true });
       setFormData({
         name: item.name,
         description: item.description || "",
@@ -105,27 +112,26 @@ export const EditProductScreen = () => {
           currency: item.price?.currency || "INR",
           unit: item.price?.unit || "unit",
         },
-        availableQuantity: item.availableQuantity,
-        minStockQuantity: item.minStockQuantity,
         unit: item.unit || "units",
         visibility: item.visibility || "public",
         status: item.status,
       });
 
       try {
-        const variants = await productVariantService.listAll(productId, { scope: "company" });
+        const variants =
+          mode === "inhouse"
+            ? (await adminService.listInhouseProductVariants(productId, { limit: 100, offset: 0 })).variants || []
+            : await productVariantService.listAll(productId, { scope: "company" });
         const active = variants.filter((variant) => variant.status === "active");
-        const totalQty = active.reduce((sum, variant) => sum + Number(variant.availableQuantity || 0), 0);
-        const inStock = active.filter((variant) => Number(variant.availableQuantity || 0) > 0).length;
-        setVariantSummary({ total: active.length, inStock, totalQty });
+        setVariantSummary({ total: active.length });
       } catch {
-        setVariantSummary({ total: Number(item.variantSummary?.totalVariants || 0), inStock: Number(item.variantSummary?.inStockVariants || 0), totalQty: Number(item.availableQuantity || 0) });
+        setVariantSummary({ total: Number(item.variantSummary?.totalVariants || 0) });
       }
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to load product");
       navigation.goBack();
     }
-  }, [navigation, productId]);
+  }, [mode, navigation, productId]);
 
   useEffect(() => {
     const init = async () => {
@@ -156,9 +162,6 @@ export const EditProductScreen = () => {
     if (!formData.category) {
       newErrors.category = "Please select a category";
     }
-    if (formData.availableQuantity !== undefined && formData.availableQuantity < 0) {
-      newErrors.availableQuantity = "Quantity cannot be negative";
-    }
     if (Number(formData.price.amount || 0) <= 0) {
       newErrors.price = "Price must be greater than 0";
     }
@@ -172,7 +175,11 @@ export const EditProductScreen = () => {
 
     setLoading(true);
     try {
-      await productService.update(productId, formData);
+      if (mode === "inhouse") {
+        await adminService.updateInhouseProduct(productId, formData);
+      } else {
+        await productService.update(productId, formData);
+      }
       toastSuccess("Product updated", formData.name || "Saved");
       navigation.goBack();
     } catch (error: any) {
@@ -180,7 +187,7 @@ export const EditProductScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, navigation, productId, toastError, toastSuccess, validate]);
+  }, [formData, mode, navigation, productId, toastError, toastSuccess, validate]);
 
   const handleDelete = useCallback(() => {
     Alert.alert("Delete Product", "Are you sure you want to delete this product?", [
@@ -191,7 +198,11 @@ export const EditProductScreen = () => {
         onPress: async () => {
           setLoading(true);
           try {
-            await productService.delete(productId);
+            if (mode === "inhouse") {
+              await adminService.deleteInhouseProduct(productId);
+            } else {
+              await productService.delete(productId);
+            }
             Alert.alert("Deleted", "Product has been removed.", [{ text: "OK", onPress: () => navigation.goBack() }]);
           } catch (error: any) {
             toastError("Delete failed", error.message || "Failed to delete product.");
@@ -200,20 +211,7 @@ export const EditProductScreen = () => {
         },
       },
     ]);
-  }, [navigation, productId, toastError]);
-
-  const handleSyncFromVariants = useCallback(async () => {
-    setSyncing(true);
-    try {
-      await syncProductFromVariants(productId, "company");
-      await fetchItem();
-      toastSuccess("Synced", "Product stock and price updated from variants.");
-    } catch (err: any) {
-      toastError("Sync failed", err?.message || "Could not sync product from variants.");
-    } finally {
-      setSyncing(false);
-    }
-  }, [fetchItem, productId, toastError, toastSuccess]);
+  }, [mode, navigation, productId, toastError]);
 
   if (fetching) {
     return (
@@ -237,7 +235,9 @@ export const EditProductScreen = () => {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Product</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {mode === "inhouse" ? "Edit In-house Product" : "Edit Product"}
+          </Text>
           <TouchableOpacity onPress={handleDelete}>
             <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>
           </TouchableOpacity>
@@ -265,15 +265,20 @@ export const EditProductScreen = () => {
             <View style={styles.variantPanelTop}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.variantPanelTitle, { color: colors.text }]}>Variant summary</Text>
-                <Text style={[styles.variantPanelSubtitle, { color: colors.textMuted }]}>Keep product totals synced from variant data.</Text>
+                <Text style={[styles.variantPanelSubtitle, { color: colors.textMuted }]}>Manage product options and pricing variants.</Text>
               </View>
               <TouchableOpacity
                 onPress={() =>
-                  navigation.navigate("ProductVariants", {
-                    productId,
-                    productName: formData.name,
-                    scope: "company",
-                  })
+                  mode === "inhouse"
+                    ? navigation.navigate("AdminProductVariants", {
+                        productId,
+                        productName: formData.name,
+                      })
+                    : navigation.navigate("ProductVariants", {
+                        productId,
+                        productName: formData.name,
+                        scope: "company",
+                      })
                 }
               >
                 <Text style={[styles.variantsButton, { color: colors.primary }]}>Manage</Text>
@@ -284,22 +289,7 @@ export const EditProductScreen = () => {
               <View style={[styles.variantStatPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}> 
                 <Text style={[styles.variantStatPillText, { color: colors.text }]}>{variantSummary.total} variants</Text>
               </View>
-              <View style={[styles.variantStatPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}> 
-                <Text style={[styles.variantStatPillText, { color: colors.success }]}>{variantSummary.inStock} in stock</Text>
-              </View>
-              <View style={[styles.variantStatPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}> 
-                <Text style={[styles.variantStatPillText, { color: colors.text }]}>{variantSummary.totalQty.toLocaleString("en-IN")} qty</Text>
-              </View>
             </View>
-
-            <Button
-              label={syncing ? "Syncing..." : "Sync product from variants"}
-              onPress={handleSyncFromVariants}
-              disabled={syncing}
-              loading={syncing}
-              variant="secondary"
-              style={{ marginTop: spacing.sm }}
-            />
           </View>
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>Basic Information</Text>
@@ -442,48 +432,6 @@ export const EditProductScreen = () => {
             </View>
           ) : null}
 
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>Stock Details</Text>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <InputField
-                label="Current Stock"
-                placeholder="0"
-                value={formData.availableQuantity === 0 ? "" : formData.availableQuantity?.toString() || ""}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9]/g, "");
-                  updateField("availableQuantity", cleaned === "" ? 0 : parseInt(cleaned, 10));
-                }}
-                keyboardType="numeric"
-                errorText={errors.availableQuantity}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Text style={[styles.label, { color: colors.textMuted }]}>Unit</Text>
-              <View style={[styles.unitSelector, { borderRadius: radius.md, marginTop: 8 }]}> 
-                {UNITS.map((unit) => {
-                  const isSelected = formData.unit === unit;
-                  return (
-                    <TouchableOpacity
-                      key={unit}
-                      onPress={() => updateField("unit", unit)}
-                      style={[
-                        styles.unitChip,
-                        {
-                          backgroundColor: isSelected ? colors.primary : colors.surface,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                          borderRadius: radius.sm,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.unitText, { color: isSelected ? "#fff" : colors.textSecondary }]}>{unit}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>Pricing</Text>
 
           <View style={styles.row}>
@@ -508,6 +456,31 @@ export const EditProductScreen = () => {
                 onChangeText={(text) => updatePriceField("currency", text.toUpperCase())}
                 autoCapitalize="characters"
               />
+            </View>
+          </View>
+
+          <View style={{ marginTop: spacing.md }}>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Trade Unit</Text>
+            <View style={[styles.unitSelector, { borderRadius: radius.md, marginTop: 8 }]}> 
+              {UNITS.map((unit) => {
+                const isSelected = formData.unit === unit;
+                return (
+                  <TouchableOpacity
+                    key={unit}
+                    onPress={() => updateField("unit", unit)}
+                    style={[
+                      styles.unitChip,
+                      {
+                        backgroundColor: isSelected ? colors.primary : colors.surface,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                        borderRadius: radius.sm,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.unitText, { color: isSelected ? "#fff" : colors.textSecondary }]}>{unit}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 

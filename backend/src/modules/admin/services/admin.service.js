@@ -24,6 +24,7 @@ const AccountingVoucher = require('../../../models/accountingVoucher.model');
 const AccountingSequence = require('../../../models/accountingSequence.model');
 const { sendDocumentRequestEmail } = require('../../../services/email.service');
 const { createDocumentRequestNotification } = require('../../../services/notification.service');
+const { INHOUSE_COMPANY_EXCLUDE_QUERY } = require('../../company/utils/inhouseCatalog.util');
 
 const HARD_DELETE_JOB_STORE = new Map();
 
@@ -105,6 +106,8 @@ const shapeUserSummary = (user) => {
  * Returns counts for users, companies, and verification requests
  */
 const getAdminStats = async () => {
+  const companyFilter = { ...INHOUSE_COMPANY_EXCLUDE_QUERY };
+
   const [
     totalUsers,
     activeUsers,
@@ -116,8 +119,8 @@ const getAdminStats = async () => {
   ] = await Promise.all([
     User.countDocuments({}),
     User.countDocuments({ status: 'active' }),
-    Company.countDocuments({}),
-    Company.countDocuments({ status: 'active' }),
+    Company.countDocuments(companyFilter),
+    Company.countDocuments({ ...companyFilter, status: 'active' }),
     CompanyVerificationRequest.countDocuments({ status: 'pending' }),
     CompanyVerificationRequest.countDocuments({ status: 'approved' }),
     CompanyVerificationRequest.countDocuments({ status: 'rejected' })
@@ -260,7 +263,7 @@ const listAllCompanies = async ({ status, search, limit = 50, offset = 0, sort }
   const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
   const safeOffset = Math.max(parseNumber(offset, 0), 0);
 
-  const filter = {};
+  const filter = { ...INHOUSE_COMPANY_EXCLUDE_QUERY };
 
   if (status) {
     filter.status = status;

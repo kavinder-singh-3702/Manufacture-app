@@ -5,8 +5,18 @@ const Company = require('../src/models/company.model');
 const Product = require('../src/models/product.model');
 const ProductVariant = require('../src/models/productVariant.model');
 const { PRODUCT_CATEGORIES } = require('../src/constants/product');
-const { getAllProducts, getProductById, getProductsByCategory } = require('../src/modules/product/services/product.service');
-const { listVariants } = require('../src/modules/product/services/productVariant.service');
+const {
+  getAllProducts,
+  getProductById,
+  getProductsByCategory,
+  createProduct: createProductRecord,
+  updateProduct: updateProductRecord
+} = require('../src/modules/product/services/product.service');
+const {
+  listVariants,
+  createVariant: createVariantRecord,
+  updateVariant: updateVariantRecord
+} = require('../src/modules/product/services/productVariant.service');
 
 jest.setTimeout(120000);
 
@@ -175,5 +185,64 @@ describe('Product catalog services', () => {
     expect(variantsMarketplace).toBeTruthy();
     expect(variantsMarketplace.variants).toHaveLength(1);
   });
-});
 
+  test('product and variant create/update ignore stock fields in payload', async () => {
+    const owner = await createUser('3006');
+    const company = await createCompany(owner, '3006');
+
+    const created = await createProductRecord(
+      {
+        name: 'Non Inventory Catalog Item',
+        category: PRODUCT_CATEGORIES[0].id,
+        subCategory: 'Non Inventory',
+        price: { amount: 220, currency: 'INR', unit: 'pcs' },
+        availableQuantity: 500,
+        minStockQuantity: 50
+      },
+      owner._id,
+      company._id,
+      'user'
+    );
+
+    expect(Number(created.availableQuantity || 0)).toBe(0);
+    expect(Number(created.minStockQuantity || 0)).toBe(0);
+
+    const updated = await updateProductRecord(
+      created._id,
+      { availableQuantity: 400, minStockQuantity: 40, unit: 'pcs' },
+      owner._id,
+      company._id
+    );
+
+    expect(Number(updated.availableQuantity || 0)).toBe(0);
+    expect(Number(updated.minStockQuantity || 0)).toBe(0);
+
+    const createdVariant = await createVariantRecord(
+      created._id,
+      company._id,
+      {
+        title: 'Variant A',
+        options: { pack: 'A' },
+        price: { amount: 199, currency: 'INR', unit: 'pcs' },
+        availableQuantity: 25,
+        minStockQuantity: 3
+      },
+      owner._id
+    );
+
+    expect(Number(createdVariant.availableQuantity || 0)).toBe(0);
+    expect(Number(createdVariant.minStockQuantity || 0)).toBe(0);
+
+    const updatedVariant = await updateVariantRecord(
+      created._id,
+      createdVariant._id,
+      { availableQuantity: 20, minStockQuantity: 2, title: 'Variant A+' },
+      owner._id,
+      company._id
+    );
+
+    expect(updatedVariant.title).toBe('Variant A+');
+    expect(Number(updatedVariant.availableQuantity || 0)).toBe(0);
+    expect(Number(updatedVariant.minStockQuantity || 0)).toBe(0);
+  });
+});

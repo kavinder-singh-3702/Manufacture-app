@@ -47,8 +47,6 @@ export const VariantFormSheet = ({
   const [priceAmount, setPriceAmount] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [unit, setUnit] = useState("units");
-  const [availableQuantity, setAvailableQuantity] = useState("0");
-  const [minStockQuantity, setMinStockQuantity] = useState("0");
   const [status, setStatus] = useState<ProductVariantStatus>("active");
   const [optionsRows, setOptionsRows] = useState<VariantOptionRow[]>([{ key: "", value: "" }]);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +59,6 @@ export const VariantFormSheet = ({
     setPriceAmount(typeof variant?.price?.amount === "number" ? String(variant.price.amount) : "");
     setCurrency(variant?.price?.currency || "INR");
     setUnit(variant?.unit || variant?.price?.unit || "units");
-    setAvailableQuantity(String(variant?.availableQuantity ?? 0));
-    setMinStockQuantity(String(variant?.minStockQuantity ?? 0));
     setStatus(variant?.status || "active");
     setOptionsRows(toOptionRows((variant?.options as Record<string, unknown>) || {}));
     setError(null);
@@ -85,8 +81,6 @@ export const VariantFormSheet = ({
       setError("At least one valid option is required (example: Size = 500ml).");
       return;
     }
-    const parsedAvailable = Number(availableQuantity || 0);
-    const parsedMin = Number(minStockQuantity || 0);
     const parsedPrice = Number(priceAmount);
 
     const payload: ProductVariantUpsertInput = {
@@ -94,8 +88,6 @@ export const VariantFormSheet = ({
       sku: sku.trim() || undefined,
       barcode: barcode.trim() || undefined,
       options: optionsPayload,
-      minStockQuantity: Number.isFinite(parsedMin) ? Math.max(0, parsedMin) : 0,
-      availableQuantity: Number.isFinite(parsedAvailable) ? Math.max(0, parsedAvailable) : 0,
       unit: unit.trim() || undefined,
       status,
       price:
@@ -151,11 +143,6 @@ export const VariantFormSheet = ({
                 <View style={styles.row}>
                   <Input label="Price" value={priceAmount} onChangeText={setPriceAmount} placeholder="0" keyboardType="decimal-pad" />
                   <Input label="Currency" value={currency} onChangeText={setCurrency} placeholder="INR" autoCapitalize="characters" />
-                </View>
-
-                <View style={styles.row}>
-                  <Input label="Available Qty" value={availableQuantity} onChangeText={setAvailableQuantity} placeholder="0" keyboardType="number-pad" />
-                  <Input label="Min Stock Qty" value={minStockQuantity} onChangeText={setMinStockQuantity} placeholder="0" keyboardType="number-pad" />
                 </View>
 
                 <Input label="Unit" value={unit} onChangeText={setUnit} placeholder="units" />
@@ -301,4 +288,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-

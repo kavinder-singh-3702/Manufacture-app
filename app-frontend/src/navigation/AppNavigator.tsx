@@ -28,7 +28,7 @@ import {
   MyProductsScreen,
 } from "../screens/inventory";
 import { ChatScreen } from "../screens/chat";
-import { CartScreen } from "../screens/cart";
+import { CartScreen, AdminProductsScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { UserActivityScreen } from "../screens/admin/UserActivityScreen";
 import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
@@ -57,6 +57,13 @@ const GuardedUserActivityScreen = withAdminGuard(UserActivityScreen);
 const GuardedCampaignStudioScreen = withAdminGuard(CampaignStudioScreen);
 const GuardedNotificationStudioScreen = withAdminGuard(NotificationStudioScreen);
 const GuardedAdminUserDetailScreen = withAdminGuard(AdminUserDetailScreen);
+const AdminAddProductScreen = () => <AddProductScreen mode="inhouse" />;
+const AdminEditProductScreen = () => <EditProductScreen mode="inhouse" />;
+const AdminProductVariantsScreen = () => <ProductVariantsScreen mode="inhouse" />;
+const GuardedAdminCatalogScreen = withAdminGuard(AdminProductsScreen);
+const GuardedAdminAddProductScreen = withAdminGuard(AdminAddProductScreen);
+const GuardedAdminEditProductScreen = withAdminGuard(AdminEditProductScreen);
+const GuardedAdminProductVariantsScreen = withAdminGuard(AdminProductVariantsScreen);
 const GuardedAddProductScreen = withCompanyContextGuard(AddProductScreen, { sourceLabel: "Add Product" });
 const GuardedEditProductScreen = withCompanyContextGuard(EditProductScreen, { sourceLabel: "Edit Product" });
 const GuardedProductVariantsScreen = withCompanyContextGuard(ProductVariantsScreen, { sourceLabel: "Product Variants" });
@@ -183,6 +190,26 @@ export const AppNavigator = () => {
               name="AddProduct"
               component={GuardedAddProductScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="AdminCatalog"
+              component={GuardedAdminCatalogScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminAddProduct"
+              component={GuardedAdminAddProductScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="AdminEditProduct"
+              component={GuardedAdminEditProductScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="AdminProductVariants"
+              component={GuardedAdminProductVariantsScreen}
+              options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ProductSearch"

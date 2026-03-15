@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const createError = require('http-errors');
 const config = require('../../../config/env');
 const User = require('../../../models/user.model');
@@ -12,9 +13,13 @@ const { buildUserResponse } = require('../utils/response.util');
 const { attachUserToSession } = require('./session-auth.service');
 const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
+const { sendSignupOtpEmail } = require('../../../services/email.service');
 
-const OTP_CODE = config.signupOtp;
-const OTP_TTL_MS = config.signupOtpTtlMs;
+const TEST_OTP_CODE = config.signupTestOtp || config.signupOtp;
+const OTP_TTL_MS = Math.max(Number(config.signupOtpTtlMs) || 5 * 60 * 1000, 1);
+const OTP_RESEND_COOLDOWN_MS = Math.max(Number(config.signupOtpResendCooldownMs) || 30 * 1000, 1);
+const OTP_MAX_VERIFY_ATTEMPTS = Math.max(Number(config.signupOtpMaxVerifyAttempts) || 5, 1);
+const OTP_MAX_RESENDS = Math.max(Number(config.signupOtpMaxResends) || 5, 0);
 
 const getSignupState = (session) => session[SIGNUP_SESSION_KEY];
 const setSignupState = (session, state) => {
@@ -22,6 +27,90 @@ const setSignupState = (session, state) => {
 };
 const clearSignupState = (session) => {
   delete session[SIGNUP_SESSION_KEY];
+};
+
+const normalizeFullName = (value) => value.trim().replace(/\s+/g, ' ');
+const normalizeEmail = (value) => value.trim().toLowerCase();
+const normalizePhone = (value) => value.trim();
+
+const generateSignupOtp = () => {
+  if (TEST_OTP_CODE) {
+    return String(TEST_OTP_CODE).trim();
+  }
+  return crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+};
+
+const createOtpCooldownError = (remainingMs) => {
+  const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
+  return createError(429, `Please wait ${remainingSeconds} seconds before requesting another code`);
+};
+
+const ensureUniqueEmail = async (email) => {
+  const existingUser = await User.findOne({ email }).lean();
+  if (existingUser) {
+    throw createError(409, 'User with provided email already exists');
+  }
+};
+
+const ensureUniquePhone = async (phone) => {
+  if (!phone) return;
+  const existingUser = await User.findOne({ phone }).lean();
+  if (existingUser) {
+    throw createError(409, 'User with provided phone already exists');
+  }
+};
+
+const sendSignupOtp = async ({ fullName, email, otp }) => {
+  const emailResult = await sendSignupOtpEmail({
+    to: email,
+    fullName,
+    otp,
+    expiresInMs: OTP_TTL_MS
+  });
+
+  if (!emailResult?.success) {
+    throw createError(502, emailResult?.errorMessage || 'Unable to send verification email');
+  }
+};
+
+const markOtpVerified = (sessionState) => {
+  sessionState.otpVerified = true;
+  sessionState.otpVerifiedAt = new Date().toISOString();
+  sessionState.verifyAttempts = 0;
+  return sessionState;
+};
+
+const validateOtpAgainstSession = ({ otp, sessionState, session, allowAlreadyVerified = false }) => {
+  if (!sessionState) {
+    throw createError(400, 'Start signup before verifying the OTP');
+  }
+
+  if (allowAlreadyVerified && sessionState.otpVerified) {
+    return sessionState;
+  }
+
+  if (Date.now() > sessionState.otpExpiresAt) {
+    throw createError(410, 'OTP has expired. Please request a new code.');
+  }
+
+  if ((sessionState.verifyAttempts || 0) >= OTP_MAX_VERIFY_ATTEMPTS) {
+    throw createError(429, 'Too many invalid attempts. Request a new code.');
+  }
+
+  if (otp !== sessionState.otp) {
+    sessionState.verifyAttempts = (sessionState.verifyAttempts || 0) + 1;
+    setSignupState(session, sessionState);
+
+    if (sessionState.verifyAttempts >= OTP_MAX_VERIFY_ATTEMPTS) {
+      throw createError(429, 'Too many invalid attempts. Request a new code.');
+    }
+
+    throw createError(400, 'Invalid OTP provided');
+  }
+
+  markOtpVerified(sessionState);
+  setSignupState(session, sessionState);
+  return sessionState;
 };
 
 const maybeCreateInitialCompany = async (
@@ -69,115 +158,130 @@ const maybeCreateInitialCompany = async (
 };
 
 const startSignup = async ({ fullName, email, phone }, session) => {
-  const normalizedFullName = fullName.trim().replace(/\s+/g, ' ');
-  const normalizedPhone = phone.trim();
+  const normalizedFullName = normalizeFullName(fullName);
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = typeof phone === 'string' && phone.trim() ? normalizePhone(phone) : undefined;
+  const currentState = getSignupState(session);
+  const sameIdentity =
+    currentState &&
+    currentState.fullName === normalizedFullName &&
+    currentState.email === normalizedEmail;
 
-  const existingUser = await User.findOne({ $or: [{ email }, { phone: normalizedPhone }] });
-  if (existingUser) {
-    throw createError(409, 'User with provided email or phone already exists');
+  await ensureUniqueEmail(normalizedEmail);
+  await ensureUniquePhone(normalizedPhone);
+
+  if (sameIdentity && currentState.lastOtpSentAt) {
+    const elapsedMs = Date.now() - currentState.lastOtpSentAt;
+    if (elapsedMs < OTP_RESEND_COOLDOWN_MS) {
+      throw createOtpCooldownError(OTP_RESEND_COOLDOWN_MS - elapsedMs);
+    }
   }
 
-  setSignupState(session, {
+  if (sameIdentity && (currentState.resendCount || 0) >= OTP_MAX_RESENDS) {
+    throw createError(429, 'Maximum OTP resend attempts reached. Please try again later.');
+  }
+
+  const otp = generateSignupOtp();
+  await sendSignupOtp({
     fullName: normalizedFullName,
-    email,
-    phone: normalizedPhone,
-    otp: OTP_CODE,
-    otpExpiresAt: Date.now() + OTP_TTL_MS,
-    otpVerified: false
+    email: normalizedEmail,
+    otp
   });
 
+  const now = Date.now();
+  const nextState = {
+    fullName: normalizedFullName,
+    email: normalizedEmail,
+    phone: sameIdentity ? normalizedPhone || currentState.phone : normalizedPhone,
+    otp,
+    otpExpiresAt: now + OTP_TTL_MS,
+    otpVerified: false,
+    otpVerifiedAt: undefined,
+    lastOtpSentAt: now,
+    resendCount: sameIdentity ? (currentState.resendCount || 0) + 1 : 0,
+    verifyAttempts: 0
+  };
+
+  setSignupState(session, nextState);
+
   return {
-    message: 'OTP has been generated for verification',
-    expiresInMs: OTP_TTL_MS
+    message: sameIdentity ? 'A new OTP has been sent to your email' : 'OTP has been sent to your email',
+    expiresInMs: OTP_TTL_MS,
+    resendAvailableInMs: OTP_RESEND_COOLDOWN_MS
   };
 };
 
-const verifySignupOtp = ({ otp, fullName, email, phone }, session) => {
-  let sessionState = getSignupState(session);
+const verifySignupOtp = ({ otp }, session) => {
+  const sessionState = validateOtpAgainstSession({
+    otp,
+    sessionState: getSignupState(session),
+    session
+  });
 
-  if (!sessionState) {
-    if (otp !== OTP_CODE) {
-      throw createError(400, 'Start signup before verifying the OTP');
-    }
+  return {
+    message: 'OTP verification successful',
+    verifiedAt: sessionState.otpVerifiedAt
+  };
+};
 
-    sessionState = {
-      fullName: typeof fullName === 'string' ? fullName.trim().replace(/\s+/g, ' ') : undefined,
-      email: typeof email === 'string' ? email.trim().toLowerCase() : undefined,
-      phone: typeof phone === 'string' ? phone.trim() : undefined,
-      otp: OTP_CODE,
-      otpExpiresAt: Date.now() + OTP_TTL_MS,
-      otpVerified: false
-    };
-    setSignupState(session, sessionState);
+const saveSignupContact = async ({ phone }, session) => {
+  const sessionState = getSignupState(session);
+
+  if (!sessionState || !sessionState.otpVerified) {
+    throw createError(400, 'Verify your email before adding a mobile number');
   }
 
-  if (Date.now() > sessionState.otpExpiresAt) {
-    throw createError(410, 'OTP has expired. Please request a new code.');
-  }
+  const normalizedPhone = normalizePhone(phone);
+  await ensureUniquePhone(normalizedPhone);
 
-  if (otp !== sessionState.otp) {
-    throw createError(400, 'Invalid OTP provided');
-  }
+  sessionState.phone = normalizedPhone;
+  sessionState.phoneCapturedAt = new Date().toISOString();
+  setSignupState(session, sessionState);
 
-  sessionState.otpVerified = true;
-  sessionState.otpVerifiedAt = new Date().toISOString();
-
-  return { message: 'OTP verification successful' };
+  return {
+    message: 'Mobile number saved',
+    phone: normalizedPhone
+  };
 };
 
 const completeSignup = async (
   { password, accountType, companyName, categories, fullName, email, phone, otp },
   req
 ) => {
-  let sessionState = getSignupState(req.session);
+  const sessionState = getSignupState(req.session);
 
-  if (!sessionState || !sessionState.otpVerified) {
+  if (!sessionState) {
+    throw createError(400, 'Start signup before completing signup');
+  }
+
+  if (!sessionState.otpVerified) {
     if (!otp) {
       throw createError(400, 'Verify your OTP before completing signup');
     }
 
-    if (sessionState?.otpExpiresAt && Date.now() > sessionState.otpExpiresAt) {
-      throw createError(410, 'OTP has expired. Please request a new code.');
-    }
-
-    const expectedOtp = sessionState?.otp || OTP_CODE;
-    if (otp !== expectedOtp) {
-      throw createError(400, 'Invalid OTP provided');
-    }
-
-    if (!sessionState) {
-      sessionState = {
-        fullName: typeof fullName === 'string' ? fullName.trim().replace(/\s+/g, ' ') : undefined,
-        email: typeof email === 'string' ? email.trim().toLowerCase() : undefined,
-        phone: typeof phone === 'string' ? phone.trim() : undefined,
-        otp: expectedOtp,
-        otpExpiresAt: Date.now() + OTP_TTL_MS,
-        otpVerified: true,
-        otpVerifiedAt: new Date().toISOString()
-      };
-      setSignupState(req.session, sessionState);
-    } else {
-      sessionState.otpVerified = true;
-      sessionState.otpVerifiedAt = new Date().toISOString();
-    }
+    validateOtpAgainstSession({
+      otp,
+      sessionState,
+      session: req.session
+    });
   }
 
   const resolvedFullName = sessionState.fullName || fullName;
   const resolvedEmail = sessionState.email || email;
-  const resolvedPhone = sessionState.phone || phone;
+  const resolvedPhone =
+    sessionState.phone ||
+    (typeof phone === 'string' && phone.trim() ? normalizePhone(phone) : undefined);
 
   if (!resolvedFullName || !resolvedEmail || !resolvedPhone) {
     throw createError(400, 'Full name, email, and phone are required to complete signup');
   }
 
-  const normalizedFullName = resolvedFullName.trim().replace(/\s+/g, ' ');
-  const normalizedEmail = resolvedEmail.trim().toLowerCase();
-  const normalizedPhone = resolvedPhone.trim();
+  const normalizedFullName = normalizeFullName(resolvedFullName);
+  const normalizedEmail = normalizeEmail(resolvedEmail);
+  const normalizedPhone = normalizePhone(resolvedPhone);
 
-  const existingUser = await User.findOne({ $or: [{ email: normalizedEmail }, { phone: normalizedPhone }] });
-  if (existingUser) {
-    throw createError(409, 'User with provided email or phone already exists');
-  }
+  await ensureUniqueEmail(normalizedEmail);
+  await ensureUniquePhone(normalizedPhone);
 
   let normalizedCategories = [];
   if (COMPANY_REQUIRED_TYPES.has(accountType)) {
@@ -200,8 +304,8 @@ const completeSignup = async (
     email: normalizedEmail,
     phone: normalizedPhone,
     password,
-    emailVerifiedAt: now,
-    phoneVerifiedAt: now
+    accountType,
+    emailVerifiedAt: now
   });
 
   user = await maybeCreateInitialCompany(user, {
@@ -230,5 +334,6 @@ const completeSignup = async (
 module.exports = {
   startSignup,
   verifySignupOtp,
+  saveSignupContact,
   completeSignup
 };

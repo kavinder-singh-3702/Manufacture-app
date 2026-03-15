@@ -1,5 +1,7 @@
 import { apiClient } from "./apiClient";
 import { PreferenceSummary } from "./preference.service";
+import { CreateProductInput, Product, ProductCategory, ProductImage } from "./product.service";
+import { ProductVariant, ProductVariantStatus, ProductVariantUpsertInput } from "./productVariant.service";
 
 // ============================================================
 // ADMIN STATS TYPES
@@ -243,6 +245,9 @@ export type AdminOpsRequest = {
     source?: string;
   };
 };
+
+export type AdminInhouseProduct = Product;
+export type AdminInhouseVariant = ProductVariant;
 
 export type AdminConversationQueueItem = {
   id: string;
@@ -631,6 +636,115 @@ class AdminService {
     offset?: number;
   }): Promise<{ callLogs: AdminCallLog[]; pagination: Pagination }> {
     return apiClient.get<{ callLogs: AdminCallLog[]; pagination: Pagination }>("/admin/call-logs", { params });
+  }
+
+  async listInhouseProductCategories(): Promise<{ categories: ProductCategory[] }> {
+    return apiClient.get<{ categories: ProductCategory[] }>("/admin/inhouse-products/categories");
+  }
+
+  async listInhouseProducts(params?: {
+    limit?: number;
+    offset?: number;
+    category?: string;
+    status?: "draft" | "active" | "inactive" | "archived";
+    visibility?: "public" | "private";
+    search?: string;
+    sort?: "createdAt:desc" | "createdAt:asc" | "priceAsc" | "priceDesc" | "ratingDesc";
+    minPrice?: number;
+    maxPrice?: number;
+    includeVariantSummary?: boolean;
+  }): Promise<{ products: AdminInhouseProduct[]; pagination: Pagination }> {
+    return apiClient.get<{ products: AdminInhouseProduct[]; pagination: Pagination }>("/admin/inhouse-products", { params });
+  }
+
+  async getInhouseProductById(productId: string, params?: { includeVariantSummary?: boolean }): Promise<AdminInhouseProduct> {
+    const response = await apiClient.get<{ product: AdminInhouseProduct }>(`/admin/inhouse-products/${productId}`, { params });
+    return response.product;
+  }
+
+  async createInhouseProduct(payload: CreateProductInput): Promise<AdminInhouseProduct> {
+    const response = await apiClient.post<{ product: AdminInhouseProduct }>("/admin/inhouse-products", payload);
+    return response.product;
+  }
+
+  async updateInhouseProduct(productId: string, payload: Partial<CreateProductInput>): Promise<AdminInhouseProduct> {
+    const response = await apiClient.put<{ product: AdminInhouseProduct }>(`/admin/inhouse-products/${productId}`, payload);
+    return response.product;
+  }
+
+  async adjustInhouseProductQuantity(productId: string, adjustment: number): Promise<AdminInhouseProduct> {
+    const response = await apiClient.patch<{ product: AdminInhouseProduct }>(
+      `/admin/inhouse-products/${productId}/quantity`,
+      { adjustment }
+    );
+    return response.product;
+  }
+
+  async deleteInhouseProduct(productId: string): Promise<{ success: boolean }> {
+    return apiClient.delete<{ success: boolean }>(`/admin/inhouse-products/${productId}`);
+  }
+
+  async uploadInhouseProductImage(
+    productId: string,
+    payload: { fileName: string; mimeType?: string; content: string }
+  ): Promise<{ product: AdminInhouseProduct; image: ProductImage }> {
+    return apiClient.post<{ product: AdminInhouseProduct; image: ProductImage }>(
+      `/admin/inhouse-products/${productId}/images`,
+      payload
+    );
+  }
+
+  async listInhouseProductVariants(
+    productId: string,
+    params?: { limit?: number; offset?: number; status?: ProductVariantStatus }
+  ): Promise<{ variants: AdminInhouseVariant[]; pagination: Pagination }> {
+    return apiClient.get<{ variants: AdminInhouseVariant[]; pagination: Pagination }>(
+      `/admin/inhouse-products/${productId}/variants`,
+      { params }
+    );
+  }
+
+  async getInhouseProductVariantById(productId: string, variantId: string): Promise<AdminInhouseVariant> {
+    const response = await apiClient.get<{ variant: AdminInhouseVariant }>(
+      `/admin/inhouse-products/${productId}/variants/${variantId}`
+    );
+    return response.variant;
+  }
+
+  async createInhouseProductVariant(productId: string, payload: ProductVariantUpsertInput): Promise<AdminInhouseVariant> {
+    const response = await apiClient.post<{ variant: AdminInhouseVariant }>(
+      `/admin/inhouse-products/${productId}/variants`,
+      payload
+    );
+    return response.variant;
+  }
+
+  async updateInhouseProductVariant(
+    productId: string,
+    variantId: string,
+    payload: Partial<ProductVariantUpsertInput>
+  ): Promise<AdminInhouseVariant> {
+    const response = await apiClient.put<{ variant: AdminInhouseVariant }>(
+      `/admin/inhouse-products/${productId}/variants/${variantId}`,
+      payload
+    );
+    return response.variant;
+  }
+
+  async adjustInhouseProductVariantQuantity(
+    productId: string,
+    variantId: string,
+    adjustment: number
+  ): Promise<AdminInhouseVariant> {
+    const response = await apiClient.patch<{ variant: AdminInhouseVariant }>(
+      `/admin/inhouse-products/${productId}/variants/${variantId}/quantity`,
+      { adjustment }
+    );
+    return response.variant;
+  }
+
+  async deleteInhouseProductVariant(productId: string, variantId: string): Promise<{ success: boolean }> {
+    return apiClient.delete<{ success: boolean }>(`/admin/inhouse-products/${productId}/variants/${variantId}`);
   }
 }
 

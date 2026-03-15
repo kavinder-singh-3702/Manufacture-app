@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,19 +17,23 @@ import { useTheme } from "../../hooks/useTheme";
 import { useToast } from "../../components/ui/Toast";
 import { RootStackParamList } from "../../navigation/types";
 import { ProductVariant, ProductVariantUpsertInput, productVariantService } from "../../services/productVariant.service";
+import { adminService } from "../../services/admin.service";
 import { VariantCardRow } from "./components/VariantCardRow";
 import { VariantFormSheet } from "./components/VariantFormSheet";
-import { syncProductFromVariants } from "./components/variantDomain";
 
-type ScreenRoute = RouteProp<RootStackParamList, "ProductVariants">;
+type ProductVariantsScreenProps = {
+  mode?: "company" | "inhouse";
+};
 
-export const ProductVariantsScreen = () => {
+type ScreenRoute = RouteProp<RootStackParamList, "ProductVariants"> | RouteProp<RootStackParamList, "AdminProductVariants">;
+
+export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScreenProps) => {
   const { colors, spacing, radius } = useTheme();
   const { success: toastSuccess, error: toastError } = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<ScreenRoute>();
-
-  const { productId, productName, scope = "company" } = route.params;
+  const params = route.params as { productId: string; productName?: string; scope?: "company" | "marketplace" };
+  const { productId, productName, scope = "company" } = params;
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +42,14 @@ export const ProductVariantsScreen = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const loadVariants = useCallback(async () => {
     try {
       setError(null);
-      const response = await productVariantService.list(productId, { scope, limit: 100, offset: 0 });
+      const response =
+        mode === "inhouse"
+          ? await adminService.listInhouseProductVariants(productId, { limit: 100, offset: 0 })
+          : await productVariantService.list(productId, { scope, limit: 100, offset: 0 });
       setVariants(response.variants || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load variants");
@@ -51,7 +57,7 @@ export const ProductVariantsScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [productId, scope]);
+  }, [mode, productId, scope]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,45 +86,30 @@ export const ProductVariantsScreen = () => {
     setEditingVariant(null);
   };
 
-  const syncProduct = useCallback(async () => {
-    try {
-      setSyncing(true);
-      await syncProductFromVariants(productId, "company");
-    } catch (err: any) {
-      toastError("Sync failed", err?.message || "Variants were saved but product totals were not synced");
-    } finally {
-      setSyncing(false);
-    }
-  }, [productId, toastError]);
-
   const saveVariant = async (payload: ProductVariantUpsertInput) => {
     setSaving(true);
     try {
       if (editingVariant?._id) {
-        await productVariantService.update(productId, editingVariant._id, payload);
+        if (mode === "inhouse") {
+          await adminService.updateInhouseProductVariant(productId, editingVariant._id, payload);
+        } else {
+          await productVariantService.update(productId, editingVariant._id, payload);
+        }
         toastSuccess("Variant updated");
       } else {
-        await productVariantService.create(productId, payload);
+        if (mode === "inhouse") {
+          await adminService.createInhouseProductVariant(productId, payload);
+        } else {
+          await productVariantService.create(productId, payload);
+        }
         toastSuccess("Variant created");
       }
-      await syncProduct();
       closeForm();
       await loadVariants();
     } catch (err: any) {
       toastError("Save failed", err?.message || "Could not save variant");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const adjustVariant = async (variant: ProductVariant, delta: number) => {
-    try {
-      await productVariantService.adjustQuantity(productId, variant._id, delta);
-      await syncProduct();
-      await loadVariants();
-      toastSuccess("Variant stock updated");
-    } catch (err: any) {
-      toastError("Update failed", err?.message || "Could not adjust quantity");
     }
   };
 
@@ -130,8 +121,11 @@ export const ProductVariantsScreen = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            await productVariantService.delete(productId, variant._id);
-            await syncProduct();
+            if (mode === "inhouse") {
+              await adminService.deleteInhouseProductVariant(productId, variant._id);
+            } else {
+              await productVariantService.delete(productId, variant._id);
+            }
             await loadVariants();
             toastSuccess("Variant deleted");
           } catch (err: any) {
@@ -141,8 +135,6 @@ export const ProductVariantsScreen = () => {
       },
     ]);
   };
-
-  const totalInStock = useMemo(() => variants.filter((item) => Number(item.availableQuantity || 0) > 0).length, [variants]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -155,8 +147,7 @@ export const ProductVariantsScreen = () => {
             Variants
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
-            {productName || "Product"} • {variants.length} total • {totalInStock} in stock
-            {syncing ? " • syncing..." : ""}
+            {productName || "Product"} • {variants.length} total
           </Text>
         </View>
         <TouchableOpacity onPress={openCreate} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
@@ -179,7 +170,6 @@ export const ProductVariantsScreen = () => {
               variant={item}
               onEdit={() => openEdit(item)}
               onDelete={() => deleteVariant(item)}
-              onAdjust={(delta) => adjustVariant(item, delta)}
             />
           )}
           contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, paddingBottom: 120 }}
@@ -189,7 +179,7 @@ export const ProductVariantsScreen = () => {
               <Ionicons name="albums-outline" size={32} color={colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No variants yet</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Add options like size, weight, or packaging to manage pricing and stock precisely.
+                Add options like size, weight, or packaging to manage pricing precisely.
               </Text>
               <TouchableOpacity onPress={openCreate} style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
                 <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary }]}>Create first variant</Text>

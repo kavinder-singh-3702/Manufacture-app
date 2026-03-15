@@ -36,8 +36,6 @@ export type ProductVariantUpsertInput = {
     currency?: string;
     unit?: string;
   } | null;
-  minStockQuantity?: number;
-  availableQuantity?: number;
   unit?: string;
   status?: ProductVariantStatus;
   attributes?: Record<string, unknown>;

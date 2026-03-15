@@ -31,6 +31,161 @@ const buildFailureResult = ({ errorCode, errorMessage, mock = false }) => ({
   mock
 });
 
+const EMAIL_STYLES = Object.freeze({
+  bodyBackground: '#f3f7fc',
+  cardBackground: '#ffffff',
+  cardBorder: '#d9e5f2',
+  text: '#1f2a3d',
+  mutedText: '#5d6f8b',
+  divider: '#e2eaf4',
+  primary: '#148db2',
+  primaryDark: '#0d7696',
+  primarySoft: '#e8f6fb',
+  primarySoftBorder: '#b8dfee',
+  warningSoft: '#fff8e8',
+  warningSoftBorder: '#f2cf83'
+});
+
+const getAppName = () => toSafeString(config.appName) || 'ARVANN';
+
+const buildHtmlList = (items) => {
+  const safeItems = items
+    .map((item) => toSafeString(item))
+    .filter(Boolean)
+    .map((item) => `<li style="margin-bottom: 8px;">${escapeHtml(item)}</li>`)
+    .join('');
+
+  if (!safeItems) return '';
+
+  return `<ul style="margin: 10px 0 0; padding-left: 20px; color: ${EMAIL_STYLES.text};">${safeItems}</ul>`;
+};
+
+const buildPanel = ({
+  title,
+  contentHtml,
+  tone = 'info'
+}) => {
+  const safeTitle = toSafeString(title);
+  const safeContent = toSafeString(contentHtml);
+  if (!safeContent) return '';
+
+  const isWarning = tone === 'warning';
+  const backgroundColor = isWarning ? EMAIL_STYLES.warningSoft : EMAIL_STYLES.primarySoft;
+  const borderColor = isWarning ? EMAIL_STYLES.warningSoftBorder : EMAIL_STYLES.primarySoftBorder;
+
+  return `
+  <div style="margin: 18px 0; padding: 16px; border-radius: 12px; background: ${backgroundColor}; border: 1px solid ${borderColor};">
+    ${safeTitle ? `<p style="margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${EMAIL_STYLES.mutedText};">${escapeHtml(safeTitle)}</p>` : ''}
+    <div style="margin-top: ${safeTitle ? '10px' : '0'}; color: ${EMAIL_STYLES.text}; font-size: 14px; line-height: 1.6;">
+      ${safeContent}
+    </div>
+  </div>
+  `.trim();
+};
+
+const buildKeyValueList = (rows) => {
+  const safeRows = rows
+    .map((row) => ({
+      label: toSafeString(row?.label),
+      value: toSafeString(row?.value) || 'n/a'
+    }))
+    .filter((row) => row.label);
+
+  if (!safeRows.length) return '';
+
+  const rowHtml = safeRows
+    .map(
+      (row) => `
+      <tr>
+        <td style="padding: 7px 0; font-weight: 600; color: ${EMAIL_STYLES.mutedText}; width: 42%;">${escapeHtml(row.label)}</td>
+        <td style="padding: 7px 0; color: ${EMAIL_STYLES.text};">${escapeHtml(row.value)}</td>
+      </tr>
+      `
+    )
+    .join('');
+
+  return `
+  <table role="presentation" width="100%" style="border-collapse: collapse; margin-top: 6px;">
+    ${rowHtml}
+  </table>
+  `.trim();
+};
+
+const buildOtpCodePanel = (otp) => {
+  const safeOtp = toSafeString(otp) || '------';
+
+  return `
+  <div style="margin: 24px 0; padding: 18px; border-radius: 14px; background: ${EMAIL_STYLES.primarySoft}; border: 1px solid ${EMAIL_STYLES.primarySoftBorder}; text-align: center;">
+    <p style="margin: 0 0 8px; color: ${EMAIL_STYLES.mutedText}; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">Verification code</p>
+    <p style="margin: 0; color: ${EMAIL_STYLES.primaryDark}; font-size: 30px; font-weight: 800; letter-spacing: 0.3em;">${escapeHtml(safeOtp)}</p>
+  </div>
+  `.trim();
+};
+
+const buildEmailLayout = ({
+  preheader,
+  title,
+  subtitle,
+  bodyHtml,
+  ctaLabel,
+  ctaHref,
+  footerHint = 'Need help? Contact our support team.'
+}) => {
+  const appName = getAppName();
+  const safeTitle = toSafeString(title);
+  const safeSubtitle = toSafeString(subtitle);
+  const safeBody = toSafeString(bodyHtml);
+  const safePreheader = toSafeString(preheader) || safeTitle || appName;
+  const safeCtaLabel = toSafeString(ctaLabel);
+  const safeCtaHref = toSafeString(ctaHref || config.appUrl);
+  const safeFooterHint = toSafeString(footerHint);
+  const showCta = Boolean(safeCtaLabel && safeCtaHref);
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(safeTitle || appName)}</title>
+</head>
+<body style="margin: 0; padding: 24px; background: ${EMAIL_STYLES.bodyBackground}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: ${EMAIL_STYLES.text};">
+  <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; visibility: hidden; mso-hide: all;">
+    ${escapeHtml(safePreheader)}
+  </div>
+
+  <div style="max-width: 600px; margin: 0 auto; background: ${EMAIL_STYLES.cardBackground}; border: 1px solid ${EMAIL_STYLES.cardBorder}; border-radius: 16px; overflow: hidden;">
+    <div style="padding: 24px; background: linear-gradient(135deg, ${EMAIL_STYLES.primary} 0%, ${EMAIL_STYLES.primaryDark} 100%);">
+      <p style="margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;">${escapeHtml(appName)}</p>
+      <h1 style="margin: 8px 0 0; color: #ffffff; font-size: 24px; line-height: 1.3;">${escapeHtml(safeTitle)}</h1>
+      ${safeSubtitle ? `<p style="margin: 10px 0 0; color: rgba(255, 255, 255, 0.92); font-size: 14px; line-height: 1.6;">${escapeHtml(safeSubtitle)}</p>` : ''}
+    </div>
+
+    <div style="padding: 24px;">
+      ${safeBody}
+
+      ${showCta ? `
+      <div style="text-align: center; margin: 24px 0 20px;">
+        <a href="${escapeHtml(safeCtaHref)}" style="display: inline-block; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, ${EMAIL_STYLES.primary} 0%, ${EMAIL_STYLES.primaryDark} 100%);">
+          ${escapeHtml(safeCtaLabel)}
+        </a>
+      </div>
+      ` : ''}
+
+      <hr style="border: none; border-top: 1px solid ${EMAIL_STYLES.divider}; margin: 18px 0;">
+      <p style="margin: 0; color: ${EMAIL_STYLES.mutedText}; font-size: 12px; line-height: 1.6;">
+        ${escapeHtml(safeFooterHint)}
+      </p>
+      <p style="margin: 10px 0 0; color: ${EMAIL_STYLES.mutedText}; font-size: 12px; line-height: 1.6;">
+        Regards,<br>${escapeHtml(appName)} Team
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+};
+
 const initTransporter = () => {
   if (transporter) return transporter;
 
@@ -107,84 +262,102 @@ const sendEmail = async ({ to, subject, text, html }) => {
 };
 
 const sendDocumentRequestEmail = async ({ ownerEmail, ownerName, companyName, customMessage }) => {
-  const subject = `Action Required: Submit Verification Documents for ${companyName}`;
+  const appName = getAppName();
+  const safeOwnerName = toSafeString(ownerName) || 'there';
+  const safeCompanyName = toSafeString(companyName) || 'your company';
+  const safeCustomMessage = toSafeString(customMessage);
+  const subject = `Action Required: Submit Verification Documents for ${safeCompanyName}`;
 
   const text = `
-Hello ${ownerName},
+Hello ${safeOwnerName},
 
-Your company "${companyName}" is pending verification on ${config.appName}.
+Your company "${safeCompanyName}" is pending verification on ${appName}.
 
 To complete the verification process, please submit the following documents:
 - GST Certificate
 - Aadhaar Card (of authorized signatory)
 
-${customMessage ? `Message from Admin:\n${customMessage}\n` : ''}
-Please log in to your account and navigate to Company Settings > Verification to upload your documents.
+${safeCustomMessage ? `Message from Admin:\n${safeCustomMessage}\n` : ''}Please log in to your account and navigate to Company Settings > Verification to upload your documents.
 
-If you have any questions, please contact our support team.
+Need help? Contact our support team.
 
-Best regards,
-${config.appName} Team
+Regards,
+${appName} Team
   `.trim();
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document Request</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">${escapeHtml(config.appName)}</h1>
-  </div>
+  const customMessagePanel = safeCustomMessage
+    ? buildPanel({
+      title: 'Message from Admin',
+      contentHtml: `<p style="margin: 0;">${escapeHtml(safeCustomMessage)}</p>`,
+      tone: 'warning'
+    })
+    : '';
 
-  <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
-    <h2 style="color: #333; margin-top: 0;">Action Required: Submit Verification Documents</h2>
-
-    <p>Hello <strong>${escapeHtml(ownerName)}</strong>,</p>
-
-    <p>Your company <strong>"${escapeHtml(companyName)}"</strong> is pending verification on ${escapeHtml(config.appName)}.</p>
-
-    <div style="background: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0 0 10px 0;"><strong>Required Documents:</strong></p>
-      <ul style="margin: 0; padding-left: 20px;">
-        <li>GST Certificate</li>
-        <li>Aadhaar Card (of authorized signatory)</li>
-      </ul>
-    </div>
-
-    ${customMessage ? `
-    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0;"><strong>Message from Admin:</strong></p>
-      <p style="margin: 10px 0 0 0;">${escapeHtml(customMessage)}</p>
-    </div>
-    ` : ''}
-
-    <p>Please log in to your account and navigate to <strong>Company Settings &gt; Verification</strong> to upload your documents.</p>
-
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${escapeHtml(config.appUrl)}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-        Go to ${escapeHtml(config.appName)}
-      </a>
-    </div>
-
-    <p style="color: #666; font-size: 14px;">If you have any questions, please contact our support team.</p>
-
-    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
-
-    <p style="color: #999; font-size: 12px; margin: 0;">
-      Best regards,<br>
-      ${escapeHtml(config.appName)} Team
-    </p>
-  </div>
-</body>
-</html>
-  `.trim();
+  const html = buildEmailLayout({
+    preheader: `Document submission required for ${safeCompanyName}`,
+    title: 'Submit verification documents',
+    subtitle: `${safeCompanyName} is pending verification`,
+    bodyHtml: `
+      <p style="margin: 0;">Hello <strong>${escapeHtml(safeOwnerName)}</strong>,</p>
+      <p style="margin: 14px 0 0;">Your company <strong>"${escapeHtml(safeCompanyName)}"</strong> is pending verification on ${escapeHtml(appName)}.</p>
+      ${buildPanel({
+        title: 'Required documents',
+        contentHtml: buildHtmlList(['GST Certificate', 'Aadhaar Card (of authorized signatory)'])
+      })}
+      ${customMessagePanel}
+      <p style="margin: 14px 0 0;">Please log in and go to <strong>Company Settings &gt; Verification</strong> to upload your documents.</p>
+    `,
+    ctaLabel: `Open ${appName}`,
+    ctaHref: config.appUrl
+  });
 
   return sendEmail({
     to: ownerEmail,
+    subject,
+    text,
+    html
+  });
+};
+
+const sendSignupOtpEmail = async ({ to, fullName, otp, expiresInMs }) => {
+  const appName = getAppName();
+  const safeName = toSafeString(fullName) || 'there';
+  const safeOtp = toSafeString(otp);
+  const expiresInMinutes = Math.max(1, Math.ceil(Number(expiresInMs || 0) / 60000));
+  const subject = `${appName} email verification code`;
+
+  const text = `
+Hi ${safeName},
+
+Use this verification code to continue creating your ${appName} account:
+
+${safeOtp}
+
+This code expires in ${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}.
+
+If you did not request this code, you can ignore this email.
+
+Regards,
+${appName} Team
+  `.trim();
+
+  const html = buildEmailLayout({
+    preheader: 'Your verification code is ready',
+    title: 'Verify your email',
+    subtitle: 'Complete signup securely in ARVANN',
+    bodyHtml: `
+      <p style="margin: 0;">Hi <strong>${escapeHtml(safeName)}</strong>,</p>
+      <p style="margin: 14px 0 0;">Use this verification code to continue creating your ${escapeHtml(appName)} account.</p>
+      ${buildOtpCodePanel(safeOtp)}
+      <p style="margin: 0;">This code expires in <strong>${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}</strong>.</p>
+      <p style="margin: 10px 0 0; color: ${EMAIL_STYLES.mutedText};">If you did not request this code, you can ignore this email.</p>
+    `,
+    ctaLabel: `Open ${appName}`,
+    ctaHref: config.appUrl
+  });
+
+  return sendEmail({
+    to,
     subject,
     text,
     html
@@ -200,17 +373,19 @@ const sendBusinessSetupSubmissionEmail = async ({
   location,
   startTimeline
 }) => {
+  const appName = getAppName();
   const safeName = toSafeString(contactName) || 'there';
+  const safeReferenceCode = toSafeString(referenceCode) || 'n/a';
   const safeBusinessType = toSafeString(businessType) || 'your business';
   const safeWorkModel = toSafeString(workModel) || 'n/a';
   const safeLocation = toSafeString(location) || 'n/a';
   const safeTimeline = toSafeString(startTimeline) || 'n/a';
 
-  const subject = `Startup request received (${referenceCode})`;
+  const subject = `Startup request received (${safeReferenceCode})`;
   const text = `
 Hi ${safeName},
 
-We have received your startup assistance request (${referenceCode}).
+We have received your startup assistance request (${safeReferenceCode}).
 
 Summary:
 - Business type: ${safeBusinessType}
@@ -220,23 +395,31 @@ Summary:
 
 Our operations team will contact you shortly with next steps.
 
-Thanks,
-${config.appName} Team
+Regards,
+${appName} Team
   `.trim();
 
-  const html = `
-<p>Hi ${escapeHtml(safeName)},</p>
-<p>We have received your startup assistance request <strong>(${escapeHtml(referenceCode)})</strong>.</p>
-<p><strong>Summary</strong></p>
-<ul>
-  <li>Business type: ${escapeHtml(safeBusinessType)}</li>
-  <li>Work model: ${escapeHtml(safeWorkModel)}</li>
-  <li>Location: ${escapeHtml(safeLocation)}</li>
-  <li>Start timeline: ${escapeHtml(safeTimeline)}</li>
-</ul>
-<p>Our operations team will contact you shortly with next steps.</p>
-<p>Thanks,<br>${escapeHtml(config.appName)} Team</p>
-  `.trim();
+  const html = buildEmailLayout({
+    preheader: `Startup request ${safeReferenceCode} received`,
+    title: 'Startup request received',
+    subtitle: `Reference ${safeReferenceCode}`,
+    bodyHtml: `
+      <p style="margin: 0;">Hi <strong>${escapeHtml(safeName)}</strong>,</p>
+      <p style="margin: 14px 0 0;">We have received your startup assistance request <strong>(${escapeHtml(safeReferenceCode)})</strong>.</p>
+      ${buildPanel({
+        title: 'Request summary',
+        contentHtml: buildKeyValueList([
+          { label: 'Business type', value: safeBusinessType },
+          { label: 'Work model', value: safeWorkModel },
+          { label: 'Location', value: safeLocation },
+          { label: 'Start timeline', value: safeTimeline }
+        ])
+      })}
+      <p style="margin: 14px 0 0;">Our operations team will contact you shortly with next steps.</p>
+    `,
+    ctaLabel: `Open ${appName}`,
+    ctaHref: config.appUrl
+  });
 
   return sendEmail({ to, subject, text, html });
 };
@@ -248,29 +431,48 @@ const sendBusinessSetupStatusEmail = async ({
   status,
   note
 }) => {
+  const appName = getAppName();
   const safeName = toSafeString(contactName) || 'there';
+  const safeReferenceCode = toSafeString(referenceCode) || 'n/a';
   const safeStatus = toSafeString(status).replace(/_/g, ' ') || 'updated';
   const safeNote = toSafeString(note);
-  const subject = `Startup request update (${referenceCode})`;
+  const subject = `Startup request update (${safeReferenceCode})`;
 
   const text = `
 Hi ${safeName},
 
-Your startup assistance request (${referenceCode}) is now: ${safeStatus}.
+Your startup assistance request (${safeReferenceCode}) is now: ${safeStatus}.
 ${safeNote ? `\nAdditional note from our team: ${safeNote}\n` : ''}
 If you need help, reply to this email or contact support.
 
-Thanks,
-${config.appName} Team
+Regards,
+${appName} Team
   `.trim();
 
-  const html = `
-<p>Hi ${escapeHtml(safeName)},</p>
-<p>Your startup assistance request <strong>(${escapeHtml(referenceCode)})</strong> is now: <strong>${escapeHtml(safeStatus)}</strong>.</p>
-${safeNote ? `<p><strong>Additional note from our team:</strong> ${escapeHtml(safeNote)}</p>` : ''}
-<p>If you need help, reply to this email or contact support.</p>
-<p>Thanks,<br>${escapeHtml(config.appName)} Team</p>
-  `.trim();
+  const notePanel = safeNote
+    ? buildPanel({
+      title: 'Additional note',
+      contentHtml: `<p style="margin: 0;">${escapeHtml(safeNote)}</p>`,
+      tone: 'warning'
+    })
+    : '';
+
+  const html = buildEmailLayout({
+    preheader: `Startup request ${safeReferenceCode} status updated`,
+    title: 'Startup request update',
+    subtitle: `Reference ${safeReferenceCode}`,
+    bodyHtml: `
+      <p style="margin: 0;">Hi <strong>${escapeHtml(safeName)}</strong>,</p>
+      ${buildPanel({
+        title: 'Current status',
+        contentHtml: `<p style="margin: 0; font-size: 16px; font-weight: 700; color: ${EMAIL_STYLES.primaryDark}; text-transform: capitalize;">${escapeHtml(safeStatus)}</p>`
+      })}
+      ${notePanel}
+      <p style="margin: 14px 0 0;">If you need help, reply to this email or contact support.</p>
+    `,
+    ctaLabel: `Open ${appName}`,
+    ctaHref: config.appUrl
+  });
 
   return sendEmail({ to, subject, text, html });
 };
@@ -300,6 +502,7 @@ const verifyConnection = async () => {
 module.exports = {
   sendEmail,
   sendDocumentRequestEmail,
+  sendSignupOtpEmail,
   sendBusinessSetupSubmissionEmail,
   sendBusinessSetupStatusEmail,
   verifyConnection

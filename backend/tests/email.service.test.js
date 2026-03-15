@@ -18,8 +18,8 @@ const loadEmailService = ({ configOverrides = {}, sendMailImpl, verifyImpl } = {
     smtpConnectionTimeoutMs: 10000,
     smtpSocketTimeoutMs: 20000,
     smtpGreetingTimeoutMs: 10000,
-    emailFrom: 'Manufacture App <sender@example.com>',
-    appName: 'Manufacture App',
+    emailFrom: 'ARVANN <sender@example.com>',
+    appName: 'ARVANN',
     appUrl: 'http://localhost:3000',
     ...configOverrides
   }));
@@ -112,5 +112,24 @@ describe('email service', () => {
     const failed = await failService.verifyConnection();
     expect(failed.success).toBe(false);
     expect(failed.errorCode).toBe('smtp_verify_failed');
+  });
+
+  test('sendSignupOtpEmail renders and dispatches signup verification email', async () => {
+    const { emailService, sendMail } = loadEmailService();
+
+    const result = await emailService.sendSignupOtpEmail({
+      to: 'owner@example.com',
+      fullName: 'Owner Name',
+      otp: '654321',
+      expiresInMs: 5 * 60 * 1000
+    });
+
+    expect(result.success).toBe(true);
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'owner@example.com',
+        subject: 'ARVANN email verification code'
+      })
+    );
   });
 });

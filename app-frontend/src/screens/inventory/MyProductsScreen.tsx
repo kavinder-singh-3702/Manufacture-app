@@ -17,15 +17,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { productService, type Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
-import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
 import { CompanyRequiredCard } from "../../components/company";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
-import { ProductVariant } from "../../services/productVariant.service";
-import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
-import { hasVariants } from "./components/variantDomain";
 
 const PAGE_SIZE = 25;
 type StatusFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
@@ -49,23 +45,6 @@ export const MyProductsScreen = () => {
   const [query, setQuery] = useState<string>(route.params?.initialQuery ?? "");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(route.params?.initialStatus ?? "all");
   const autoFocusSearch = useMemo(() => route.params?.initialQuery !== undefined, [route.params?.initialQuery]);
-
-  const [adjustSheet, setAdjustSheet] = useState<{
-    open: boolean;
-    product: Product | null;
-    variant: ProductVariant | null;
-    suggestedQty: number;
-  }>({
-    open: false,
-    product: null,
-    variant: null,
-    suggestedQty: 1,
-  });
-  const [variantChoice, setVariantChoice] = useState<{ visible: boolean; product: Product | null; suggestedQty: number }>({
-    visible: false,
-    product: null,
-    suggestedQty: 1,
-  });
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,43 +126,6 @@ export const MyProductsScreen = () => {
     fetchProducts(nextOffset, true);
   }, [fetchProducts, loading, loadingMore, pagination.hasMore, pagination.limit, pagination.offset]);
 
-  const openAdjustSheet = useCallback((product: Product, suggestedQty?: number) => {
-    const resolvedSuggestedQty = typeof suggestedQty === "number" && suggestedQty > 0 ? suggestedQty : 1;
-    if (hasVariants(product)) {
-      setVariantChoice({ visible: true, product, suggestedQty: resolvedSuggestedQty });
-      return;
-    }
-    setAdjustSheet({ open: true, product, variant: null, suggestedQty: resolvedSuggestedQty });
-  }, []);
-
-  const closeAdjustSheet = useCallback(() => {
-    setAdjustSheet({ open: false, product: null, variant: null, suggestedQty: 1 });
-  }, []);
-
-  const closeVariantChoice = useCallback(() => {
-    setVariantChoice({ visible: false, product: null, suggestedQty: 1 });
-  }, []);
-
-  const handleVariantChoice = useCallback((selection: VariantChoiceSelection) => {
-    const resolvedSuggestedQty = variantChoice.suggestedQty;
-    if (selection.mode === "variant") {
-      setAdjustSheet({
-        open: true,
-        product: selection.product,
-        variant: selection.variant,
-        suggestedQty: resolvedSuggestedQty,
-      });
-    } else {
-      setAdjustSheet({
-        open: true,
-        product: selection.product,
-        variant: null,
-        suggestedQty: resolvedSuggestedQty,
-      });
-    }
-    closeVariantChoice();
-  }, [closeVariantChoice, variantChoice.suggestedQty]);
-
   const handleProductPress = useCallback(
     (productId: string) => {
       navigation.navigate("ProductDetails", { productId });
@@ -213,12 +155,18 @@ export const MyProductsScreen = () => {
             })
           }
           showPrimaryAction
-          primaryActionLabel="Adjust stock"
-          onPrimaryActionPress={(selectedProduct) => openAdjustSheet(selectedProduct, 1)}
+          primaryActionLabel="Manage variants"
+          onPrimaryActionPress={(selectedProduct) =>
+            navigation.navigate("ProductVariants", {
+              productId: selectedProduct._id,
+              productName: selectedProduct.name,
+              scope: "company",
+            })
+          }
         />
       );
     },
-    [handleProductPress, navigation, openAdjustSheet, requestLogin, toastError, user?.role]
+    [handleProductPress, navigation, requestLogin, toastError, user?.role]
   );
 
   const headerCount = pagination.total || products.length;
@@ -379,27 +327,6 @@ export const MyProductsScreen = () => {
         />
       ) : null}
 
-      <QuickAdjustStockSheet
-        visible={adjustSheet.open}
-        product={adjustSheet.product}
-        variant={adjustSheet.variant}
-        suggestedQty={adjustSheet.suggestedQty}
-        onClose={closeAdjustSheet}
-        onSaved={() => fetchProducts(0, false)}
-      />
-
-      <VariantChoiceSheet
-        visible={variantChoice.visible}
-        product={variantChoice.product}
-        scope="company"
-        title="Adjust stock"
-        subtitle="Choose whether to adjust the base product stock or a specific variant."
-        baseActionLabel="Adjust base product stock"
-        onClose={closeVariantChoice}
-        onSelect={async (selection) => {
-          handleVariantChoice(selection);
-        }}
-      />
     </SafeAreaView>
   );
 };

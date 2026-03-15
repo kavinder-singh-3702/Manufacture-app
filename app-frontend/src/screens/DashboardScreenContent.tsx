@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
+  AccessibilityInfo,
   ScrollView,
   View,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   RefreshControl,
   Alert,
   Animated,
+  Easing,
   useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,11 +34,13 @@ import {
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
+import { APP_NAME } from "../constants/brand";
 import { ComplianceStatus } from "../types/company";
 import { scale, moderateScale } from "../utils/responsive";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
 import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
+import { motion } from "../theme/motion";
 
 // ============================================================
 // TYPES
@@ -504,6 +508,13 @@ const AdminDashboardContent = () => {
                 onPress={() => navigateToTab(routes.CHAT)}
                 cardWidth={actionCardWidth}
               />
+              <ActionCard
+                icon="cube"
+                label="Catalog"
+                color="#8B5CF6"
+                onPress={() => navigation.navigate("AdminCatalog")}
+                cardWidth={actionCardWidth}
+              />
             </ScrollView>
           </View>
 
@@ -541,6 +552,12 @@ const AdminDashboardContent = () => {
                 title="Campaign Studio"
                 subtitle="Create and manage targeted campaign ads"
                 onPress={() => navigation.navigate("CampaignStudio")}
+              />
+              <ManagementCard
+                icon="cube-outline"
+                title="Manage In-house Products"
+                subtitle="Publish catalog products shown to all users"
+                onPress={() => navigation.navigate("AdminCatalog")}
               />
             </View>
           </View>
@@ -705,6 +722,10 @@ const UserDashboardContent = () => {
   const { user, requestSignup, requestLogin } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isGuest = user?.role === AppRole.GUEST;
+  const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+  const heroFloatAnim = useRef(new Animated.Value(0)).current;
+  const heroGlowAnim = useRef(new Animated.Value(0)).current;
+  const sectionReveal = useRef(Array.from({ length: 5 }, () => new Animated.Value(0))).current;
 
   const promptSignup = useCallback(() => {
     Alert.alert(
@@ -737,6 +758,111 @@ const UserDashboardContent = () => {
   const [campaigns, setCampaigns] = useState<PersonalizedOffer[]>([]);
   const [recommendations, setRecommendations] = useState<HomeFeedRecommendation[]>([]);
   const [campaignFeedLoading, setCampaignFeedLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (mounted) setReduceMotionEnabled(enabled);
+      })
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotionEnabled);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotionEnabled) {
+      heroFloatAnim.setValue(0);
+      heroGlowAnim.setValue(0.45);
+      sectionReveal.forEach((value) => value.setValue(1));
+      return;
+    }
+
+    heroFloatAnim.setValue(0);
+    heroGlowAnim.setValue(0);
+    sectionReveal.forEach((value) => value.setValue(0));
+
+    const ambientFloat = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroFloatAnim, {
+          toValue: 1,
+          duration: motion.duration.ambient,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(heroFloatAnim, {
+          toValue: 0,
+          duration: motion.duration.ambient,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const ambientGlow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroGlowAnim, {
+          toValue: 1,
+          duration: motion.duration.ambientLong,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(heroGlowAnim, {
+          toValue: 0,
+          duration: motion.duration.ambientLong,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    ambientFloat.start();
+    ambientGlow.start();
+
+    Animated.stagger(
+      motion.delay.short,
+      sectionReveal.map((value) =>
+        Animated.timing(value, {
+          toValue: 1,
+          duration: motion.duration.medium,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        })
+      )
+    ).start();
+
+    return () => {
+      ambientFloat.stop();
+      ambientGlow.stop();
+    };
+  }, [heroFloatAnim, heroGlowAnim, reduceMotionEnabled, sectionReveal]);
+
+  const revealStyle = (index: number) => ({
+    opacity: sectionReveal[index],
+    transform: [
+      {
+        translateY: sectionReveal[index].interpolate({
+          inputRange: [0, 1],
+          outputRange: [motion.distance.medium, 0],
+        }),
+      },
+    ],
+  });
+
+  const heroFloatTranslate = heroFloatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -motion.distance.tiny],
+  });
+
+  const heroGlowScale = heroGlowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1.08],
+  });
 
   const mapCategories = useCallback(
     (incoming?: ProductCategory[]) => {
@@ -906,161 +1032,239 @@ const UserDashboardContent = () => {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
+          locations={[0, 0.48, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
+          locations={[0, 0.56, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.userAmbientOrb,
+            {
+              backgroundColor: colors.primary + "20",
+              transform: [{ scale: heroGlowScale }],
+              opacity: reduceMotionEnabled ? 0.34 : 0.5,
+            },
+          ]}
+        />
+      </View>
       <ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-          <View style={{ gap: spacing.xs }}>
-            <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()},</Text>
-            <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
-          </View>
-
-          {campaigns.length > 0 ? (
-            <CampaignHeroCarousel
-              campaigns={campaigns}
-              loading={campaignFeedLoading}
-              canMessage={canMessageCampaign}
-              canCall={canCallCampaign}
-              onImpression={(campaign) => {
-                preferenceService
-                  .logEvent({
-                    type: "campaign_impression",
-                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                  })
-                  .catch(() => {});
-              }}
-              onPrimaryPress={(campaign) => {
-                preferenceService
-                  .logEvent({
-                    type: "campaign_click",
-                    productId: campaign.product?.id,
-                    category: campaign.product?.category,
-                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                  })
-                  .catch(() => {});
-
-                if (campaign.contentType === "service") {
-                  navigation.navigate("ServiceRequest", { serviceType: campaign.serviceType });
-                  return;
-                }
-                if (campaign.product?.id) {
-                  navigation.navigate("ProductDetails", { productId: campaign.product.id });
-                  return;
-                }
-                navigation.navigate("ProductSearch");
-              }}
-              onMessagePress={(campaign) => {
-                preferenceService
-                  .logEvent({
-                    type: "campaign_message",
-                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                  })
-                  .catch(() => {});
-                startCampaignConversation({
-                  campaign,
-                  isGuest,
-                  requestLogin,
-                  navigation,
-                  toastError: (title, message) => Alert.alert(title, message),
-                });
-              }}
-              onCallPress={(campaign) => {
-                preferenceService
-                  .logEvent({
-                    type: "campaign_call",
-                    meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                  })
-                  .catch(() => {});
-                callCampaignContact({
-                  campaign,
-                  toastError: (title, message) => Alert.alert(title, message),
-                });
-              }}
-            />
-          ) : (
-            <RecommendedProductsRail
-              recommendations={recommendations}
-              loading={campaignFeedLoading}
-              onBrowseAll={() => navigation.navigate("ProductSearch")}
-              onOpenProduct={(productId) => {
-                preferenceService
-                  .logEvent({ type: "view_product", productId, meta: { source: "home_fallback_reco" } })
-                  .catch(() => {});
-                navigation.navigate("ProductDetails", { productId });
-              }}
-            />
-          )}
-
-          {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
-            <TouchableOpacity onPress={handleVerificationPress} activeOpacity={0.9}>
+          <Animated.View style={revealStyle(0)}>
+            <LinearGradient
+              colors={[colors.surface, colors.surfaceElevated, colors.surface]}
+              locations={[0, 0.6, 1]}
+              style={[
+                styles.userHeroCard,
+                {
+                  borderRadius: radius.lg,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <LinearGradient
-                colors={verificationConfig.gradient}
+                colors={[colors.primary + "2b", "transparent"]}
+                style={styles.userHeroDecorTop}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.verificationCard, { borderRadius: radius.lg }]}
+              />
+              <LinearGradient
+                colors={[colors.accent + "24", "transparent"]}
+                style={styles.userHeroDecorBottom}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <Animated.View
+                style={[
+                  styles.userHeroContentWrap,
+                  { transform: [{ translateY: reduceMotionEnabled ? 0 : heroFloatTranslate }] },
+                ]}
               >
-                <View style={styles.verificationIcon}>
-                  <Ionicons name={verificationConfig.icon as any} size={28} color="#fff" />
-                </View>
-                <View style={styles.verificationContent}>
-                  <Text style={styles.verificationTitle}>{verificationConfig.title}</Text>
-                  <Text style={styles.verificationMessage}>{verificationConfig.message}</Text>
-                </View>
-                {verificationConfig.showAction && (
-                  <View style={styles.verificationArrow}>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                <Text style={[styles.userHeroGreeting, { color: colors.textMuted }]}>
+                  {getGreeting()}, {firstName}
+                </Text>
+                <Text style={[styles.userHeroTitle, { color: colors.text }]}>
+                  Welcome to {APP_NAME}
+                </Text>
+                <Text style={[styles.userHeroSubtitle, { color: colors.textSecondary }]}>
+                  Your industrial operations command center for sourcing, services, and business growth.
+                </Text>
+                <View style={styles.userHeroTags}>
+                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgePrimary }]}>
+                    <Text style={[styles.userHeroTagText, { color: colors.primary }]}>Marketplace</Text>
                   </View>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeWarning }]}>
+                    <Text style={[styles.userHeroTagText, { color: colors.warningStrong }]}>Operations</Text>
+                  </View>
+                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeInfo }]}>
+                    <Text style={[styles.userHeroTagText, { color: colors.info }]}>Growth</Text>
+                  </View>
+                </View>
+              </Animated.View>
+            </LinearGradient>
+          </Animated.View>
+
+          <Animated.View style={revealStyle(1)}>
+            {campaigns.length > 0 ? (
+              <CampaignHeroCarousel
+                campaigns={campaigns}
+                loading={campaignFeedLoading}
+                canMessage={canMessageCampaign}
+                canCall={canCallCampaign}
+                onImpression={(campaign) => {
+                  preferenceService
+                    .logEvent({
+                      type: "campaign_impression",
+                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                    })
+                    .catch(() => {});
+                }}
+                onPrimaryPress={(campaign) => {
+                  preferenceService
+                    .logEvent({
+                      type: "campaign_click",
+                      productId: campaign.product?.id,
+                      category: campaign.product?.category,
+                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                    })
+                    .catch(() => {});
+
+                  if (campaign.contentType === "service") {
+                    navigation.navigate("ServiceRequest", { serviceType: campaign.serviceType });
+                    return;
+                  }
+                  if (campaign.product?.id) {
+                    navigation.navigate("ProductDetails", { productId: campaign.product.id });
+                    return;
+                  }
+                  navigation.navigate("ProductSearch");
+                }}
+                onMessagePress={(campaign) => {
+                  preferenceService
+                    .logEvent({
+                      type: "campaign_message",
+                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                    })
+                    .catch(() => {});
+                  startCampaignConversation({
+                    campaign,
+                    isGuest,
+                    requestLogin,
+                    navigation,
+                    toastError: (title, message) => Alert.alert(title, message),
+                  });
+                }}
+                onCallPress={(campaign) => {
+                  preferenceService
+                    .logEvent({
+                      type: "campaign_call",
+                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
+                    })
+                    .catch(() => {});
+                  callCampaignContact({
+                    campaign,
+                    toastError: (title, message) => Alert.alert(title, message),
+                  });
+                }}
+              />
+            ) : (
+              <RecommendedProductsRail
+                recommendations={recommendations}
+                loading={campaignFeedLoading}
+                onBrowseAll={() => navigation.navigate("ProductSearch")}
+                onOpenProduct={(productId) => {
+                  preferenceService
+                    .logEvent({ type: "view_product", productId, meta: { source: "home_fallback_reco" } })
+                    .catch(() => {});
+                  navigation.navigate("ProductDetails", { productId });
+                }}
+              />
+            )}
+          </Animated.View>
+
+          {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
+            <Animated.View style={revealStyle(2)}>
+              <TouchableOpacity onPress={handleVerificationPress} activeOpacity={0.9}>
+                <LinearGradient
+                  colors={verificationConfig.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.verificationCard, { borderRadius: radius.lg }]}
+                >
+                  <View style={styles.verificationIcon}>
+                    <Ionicons name={verificationConfig.icon as any} size={28} color="#fff" />
+                  </View>
+                  <View style={styles.verificationContent}>
+                    <Text style={styles.verificationTitle}>{verificationConfig.title}</Text>
+                    <Text style={styles.verificationMessage}>{verificationConfig.message}</Text>
+                  </View>
+                  {verificationConfig.showAction && (
+                    <View style={styles.verificationArrow}>
+                      <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </View>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
           )}
 
-          <TouchableOpacity
-            onPress={() => {
-              if (isGuest) {
-                promptSignup();
-                return;
-              }
-              navigation.navigate("AddProduct");
-            }}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[colors.surface, colors.surface]}
-              style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+          <Animated.View style={[revealStyle(3), styles.userActionStack]}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isGuest) {
+                  promptSignup();
+                  return;
+                }
+                navigation.navigate("AddProduct");
+              }}
+              activeOpacity={0.8}
             >
-              <View style={[styles.addProductIcon, { backgroundColor: colors.primary + "15" }]}>
-                <Ionicons name="add" size={24} color={colors.primary} />
-              </View>
-              <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={[colors.surface, colors.surface]}
+                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+              >
+                <View style={[styles.addProductIcon, { backgroundColor: colors.primary + "15" }]}>
+                  <Ionicons name="add" size={24} color={colors.primary} />
+                </View>
+                <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate("BusinessSetupRequest")}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[colors.surface, colors.surface]}
-              style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+            <TouchableOpacity
+              onPress={() => navigation.navigate("BusinessSetupRequest")}
+              activeOpacity={0.8}
             >
-              <View style={[styles.addProductIcon, { backgroundColor: colors.accent + "15" }]}>
-                <Ionicons name="rocket-outline" size={22} color={colors.accent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.addProductText, { color: colors.text }]}>Start your own business</Text>
-                <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
-                  Get expert help from planning to launch
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={[colors.surface, colors.surface]}
+                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+              >
+                <View style={[styles.addProductIcon, { backgroundColor: colors.accent + "15" }]}>
+                  <Ionicons name="rocket-outline" size={22} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addProductText, { color: colors.text }]}>Start your own business</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
+                    Get expert help from planning to launch
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
 
-          <View style={{ gap: spacing.sm }}>
+          <Animated.View style={[revealStyle(4), { gap: spacing.sm }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (
               <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", padding: spacing.sm, borderRadius: radius.md }]}>
@@ -1090,7 +1294,7 @@ const UserDashboardContent = () => {
                 }}
               />
             )}
-          </View>
+          </Animated.View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -1323,6 +1527,77 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   greeting: { fontSize: moderateScale(16), fontWeight: "600" },
   userName: { fontSize: moderateScale(32), fontWeight: "800", letterSpacing: -0.5 },
+  userAmbientOrb: {
+    position: "absolute",
+    width: scale(260),
+    height: scale(260),
+    borderRadius: scale(130),
+    top: scale(-90),
+    right: scale(-70),
+  },
+  userHeroCard: {
+    borderWidth: 1,
+    padding: scale(20),
+    overflow: "hidden",
+    shadowColor: "#0B1220",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
+  },
+  userHeroDecorTop: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: scale(180),
+    height: scale(160),
+    borderBottomLeftRadius: scale(120),
+  },
+  userHeroDecorBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: scale(160),
+    height: scale(120),
+    borderTopRightRadius: scale(100),
+  },
+  userHeroContentWrap: {
+    gap: scale(8),
+  },
+  userHeroGreeting: {
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+  },
+  userHeroTitle: {
+    fontSize: moderateScale(26),
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  userHeroSubtitle: {
+    fontSize: moderateScale(13),
+    lineHeight: moderateScale(18),
+    fontWeight: "500",
+    maxWidth: "92%",
+  },
+  userHeroTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(8),
+    marginTop: scale(6),
+  },
+  userHeroTag: {
+    borderWidth: 1,
+    paddingHorizontal: scale(11),
+    paddingVertical: scale(6),
+  },
+  userHeroTagText: {
+    fontSize: moderateScale(11),
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  userActionStack: {
+    gap: scale(12),
+  },
   profileButton: { width: scale(50), height: scale(50), borderRadius: scale(25), padding: scale(3) },
   profileGradient: { flex: 1, borderRadius: scale(22), alignItems: "center", justifyContent: "center" },
   profileInitial: { color: "#fff", fontSize: moderateScale(20), fontWeight: "700" },

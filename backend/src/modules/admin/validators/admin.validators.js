@@ -1,6 +1,8 @@
 const { body, param, query } = require('express-validator');
 const mongoose = require('mongoose');
 const { COMPANY_STATUS } = require('../../../constants/company');
+const { PRODUCT_STATUSES, PRODUCT_VISIBILITY } = require('../../../constants/product');
+const { PRODUCT_VARIANT_STATUSES } = require('../../../constants/productVariant');
 const { SERVICE_TYPES, SERVICE_STATUSES, SERVICE_PRIORITIES } = require('../../../constants/services');
 const {
   BUSINESS_SETUP_STATUSES,
@@ -32,6 +34,14 @@ const serviceRequestIdParamValidation = [
 
 const businessSetupRequestIdParamValidation = [
   param('requestId').custom(isObjectId).withMessage('A valid requestId is required')
+];
+
+const inhouseProductIdParamValidation = [
+  param('productId').custom(isObjectId).withMessage('A valid productId is required')
+];
+
+const inhouseVariantIdParamValidation = [
+  param('variantId').custom(isObjectId).withMessage('A valid variantId is required')
 ];
 
 const setCompanyStatusValidation = [
@@ -165,6 +175,26 @@ const listAdminOpsRequestsValidation = [
   query('offset').optional().isInt({ min: 0 }).toInt()
 ];
 
+const listAdminInhouseProductsValidation = [
+  query('category').optional().isString().trim().isLength({ min: 1, max: 120 }),
+  query('status').optional().isIn(PRODUCT_STATUSES),
+  query('visibility').optional().isIn(PRODUCT_VISIBILITY),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
+  query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'priceAsc', 'priceDesc', 'ratingDesc']),
+  query('minPrice').optional().isFloat({ min: 0 }).toFloat(),
+  query('maxPrice').optional().isFloat({ min: 0 }).toFloat(),
+  query('includeVariantSummary').optional().isBoolean().toBoolean(),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt()
+];
+
+const listAdminInhouseVariantsValidation = [
+  ...inhouseProductIdParamValidation,
+  query('status').optional().isIn(PRODUCT_VARIANT_STATUSES),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt()
+];
+
 const listAdminCallLogsValidation = [
   query('userId').optional().custom(isObjectId).withMessage('userId must be a valid ObjectId'),
   query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
@@ -183,6 +213,8 @@ module.exports = {
   userIdParamValidation,
   serviceRequestIdParamValidation,
   businessSetupRequestIdParamValidation,
+  inhouseProductIdParamValidation,
+  inhouseVariantIdParamValidation,
   setCompanyStatusValidation,
   archiveCompanyValidation,
   hardDeleteCompanyValidation,
@@ -194,6 +226,8 @@ module.exports = {
   listAdminBusinessSetupRequestsValidation,
   updateBusinessSetupWorkflowValidation,
   listAdminOpsRequestsValidation,
+  listAdminInhouseProductsValidation,
+  listAdminInhouseVariantsValidation,
   listAdminConversationsValidation,
   listAdminCallLogsValidation
 };

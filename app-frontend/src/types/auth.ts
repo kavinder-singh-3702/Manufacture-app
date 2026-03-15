@@ -47,11 +47,14 @@ export type LoginPayload = {
 export type SignupStartPayload = {
   fullName: string;
   email: string;
-  phone: string;
 };
 
 export type SignupVerifyPayload = {
   otp: string;
+};
+
+export type SignupContactPayload = {
+  phone: string;
 };
 
 export type SignupCompletePayload = {

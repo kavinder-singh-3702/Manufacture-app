@@ -11,7 +11,7 @@ type SignupStepperProps<Step extends StepKey> = {
 };
 
 export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles }: SignupStepperProps<Step>) => {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
   const currentStepIndex = steps.indexOf(activeStep);
   const progressRatio = steps.length > 1 ? currentStepIndex / (steps.length - 1) : 1;
 
@@ -22,17 +22,17 @@ export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles 
         styles.container,
         {
           borderColor: colors.border,
-          backgroundColor: colors.surface,
-          padding: spacing.md,
-          borderRadius: 16,
+          backgroundColor: colors.surfaceElevated,
         },
       ]}
     >
       <View style={styles.header}>
-        <Text style={[styles.progressStep, { color: colors.muted }]}>
+        <Text style={[styles.progressStep, { color: colors.textSecondary }]}>
           Step {currentStepIndex + 1} of {steps.length}
         </Text>
-        <Text style={[styles.progressTitle, { color: colors.text }]}>{titles[activeStep]}</Text>
+        <Text style={[styles.progressTitle, { color: colors.text }]}>
+          {titles[activeStep]}
+        </Text>
       </View>
       <View style={[styles.track, { backgroundColor: colors.border }]}>
         <View
@@ -45,26 +45,11 @@ export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles 
           ]}
         />
       </View>
-      <View style={[styles.stepRow, { marginTop: spacing.sm }]}>
+      <View style={styles.dotRow}>
         {steps.map((value, index) => {
-          const isCurrent = activeStep === value;
-          const isComplete = index < currentStepIndex;
+          const isActive = index <= currentStepIndex;
           return (
-            <View key={value} style={styles.stepItem}>
-              <View
-                style={[
-                  authSharedStyles.dot,
-                  styles.dot,
-                  {
-                    borderColor: isComplete || isCurrent ? colors.primary : colors.border,
-                    backgroundColor: isComplete ? colors.accent : isCurrent ? colors.primary : colors.surface,
-                  },
-                ]}
-              >
-                <Text style={[styles.dotText, { color: isComplete || isCurrent ? "#fff" : colors.muted }]}>{index + 1}</Text>
-              </View>
-              <Text style={[styles.stepLabel, { color: isCurrent ? colors.text : colors.muted }]}>{titles[value]}</Text>
-            </View>
+            <View key={value} style={[styles.dot, { backgroundColor: isActive ? colors.primary : colors.border }]} />
           );
         })}
       </View>
@@ -73,25 +58,32 @@ export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles 
 };
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: 8,
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
   },
   progressStep: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   progressTitle: {
-    fontSize: 15,
-    fontWeight: "600",
+    flexShrink: 1,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "700",
   },
   track: {
-    height: 6,
+    height: 4,
     borderRadius: 999,
     overflow: "hidden",
   },
@@ -99,24 +91,15 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 999,
   },
-  stepRow: {
+  dotRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    flexWrap: "wrap",
+    marginTop: 8,
+    paddingHorizontal: 1,
   },
-  stepItem: {
-    alignItems: "center",
-    marginTop: 12,
-    minWidth: 80,
-  },
-  dot: {},
-  dotText: {
-    fontWeight: "700",
-  },
-  stepLabel: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "center",
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
   },
 });

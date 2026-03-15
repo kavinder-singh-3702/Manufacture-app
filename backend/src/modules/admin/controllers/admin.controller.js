@@ -28,6 +28,22 @@ const {
   listCallLogsAdmin
 } = require('../../chat/services/chat.service');
 const {
+  listInhouseCategoryStats,
+  listInhouseProducts,
+  getInhouseProductById,
+  createInhouseProduct,
+  updateInhouseProduct,
+  adjustInhouseProductQuantity,
+  deleteInhouseProduct,
+  addInhouseProductImage,
+  listInhouseVariants,
+  getInhouseVariantById,
+  createInhouseVariant,
+  updateInhouseVariant,
+  adjustInhouseVariantQuantity,
+  deleteInhouseVariant
+} = require('../../product/services/adminInhouseProduct.service');
+const {
   ADMIN_PERMISSIONS,
   assertAdminPermission,
   validateMutationContext
@@ -55,6 +71,12 @@ const recordAdminActivity = async ({
     meta,
     context: extractRequestContext(req)
   });
+};
+
+const parseBooleanQuery = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return false;
+  return value.toLowerCase() === 'true';
 };
 
 /**
@@ -401,6 +423,418 @@ const updateAdminBusinessSetupRequestWorkflowController = async (req, res, next)
 };
 
 /**
+ * GET /api/admin/inhouse-products/categories
+ */
+const listAdminInhouseProductCategoriesController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS);
+    const result = await listInhouseCategoryStats({ actorUserId: req.user.id });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/inhouse-products
+ */
+const listAdminInhouseProductsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS);
+    const { limit, offset, category, status, visibility, search, sort, minPrice, maxPrice, includeVariantSummary } = req.query;
+    const result = await listInhouseProducts({
+      actorUserId: req.user.id,
+      query: {
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+        category,
+        status,
+        visibility,
+        search,
+        sort,
+        minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
+        maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
+        includeVariantSummary: parseBooleanQuery(includeVariantSummary)
+      }
+    });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/inhouse-products/:productId
+ */
+const getAdminInhouseProductController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS);
+    const product = await getInhouseProductById({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      includeVariantSummary: parseBooleanQuery(req.query.includeVariantSummary)
+    });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    return res.json({ product });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * POST /api/admin/inhouse-products
+ */
+const createAdminInhouseProductController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const product = await createInhouseProduct({
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      payload: req.body
+    });
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_PRODUCT_CREATED,
+      label: 'In-house product created',
+      description: `Created in-house product ${product.name}`,
+      companyId: product.company,
+      meta: { productId: product._id?.toString?.() || product._id, name: product.name }
+    });
+
+    return res.status(201).json({ product, message: 'In-house product created successfully' });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'A product with this SKU already exists' });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/inhouse-products/:productId
+ */
+const updateAdminInhouseProductController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const product = await updateInhouseProduct({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      updates: req.body
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_PRODUCT_UPDATED,
+      label: 'In-house product updated',
+      description: `Updated in-house product ${product.name}`,
+      companyId: product.company,
+      meta: {
+        productId: product._id?.toString?.() || product._id,
+        fields: Object.keys(req.body || {})
+      }
+    });
+
+    return res.json({ product, message: 'In-house product updated successfully' });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'A product with this SKU already exists' });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/inhouse-products/:productId/quantity
+ */
+const adjustAdminInhouseProductQuantityController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const parsedAdjustment = Number(req.body?.adjustment);
+    if (Number.isNaN(parsedAdjustment)) {
+      return res.status(400).json({ error: 'Adjustment must be a number' });
+    }
+
+    const product = await adjustInhouseProductQuantity({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      adjustment: parsedAdjustment
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_PRODUCT_QUANTITY_ADJUSTED,
+      label: 'In-house product quantity adjusted',
+      description: `Adjusted quantity for ${product.name} by ${parsedAdjustment}`,
+      companyId: product.company,
+      meta: { productId: product._id?.toString?.() || product._id, adjustment: parsedAdjustment }
+    });
+
+    return res.json({ product });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * DELETE /api/admin/inhouse-products/:productId
+ */
+const deleteAdminInhouseProductController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const deleted = await deleteInhouseProduct({
+      actorUserId: req.user.id,
+      productId: req.params.productId
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_PRODUCT_DELETED,
+      label: 'In-house product archived',
+      description: `Archived in-house product ${req.params.productId}`,
+      meta: { productId: req.params.productId }
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * POST /api/admin/inhouse-products/:productId/images
+ */
+const uploadAdminInhouseProductImageController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const result = await addInhouseProductImage({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      filePayload: req.body
+    });
+
+    if (!result) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_PRODUCT_IMAGE_UPLOADED,
+      label: 'In-house product image uploaded',
+      description: `Uploaded image for in-house product ${req.params.productId}`,
+      companyId: result.product?.company,
+      meta: { productId: req.params.productId, fileName: req.body?.fileName }
+    });
+
+    return res.status(201).json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/inhouse-products/:productId/variants
+ */
+const listAdminInhouseVariantsController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS);
+    const result = await listInhouseVariants({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      query: {
+        limit: req.query.limit ? parseInt(req.query.limit, 10) : undefined,
+        offset: req.query.offset ? parseInt(req.query.offset, 10) : undefined,
+        status: req.query.status
+      }
+    });
+    if (!result) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/inhouse-products/:productId/variants/:variantId
+ */
+const getAdminInhouseVariantController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS);
+    const variant = await getInhouseVariantById({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      variantId: req.params.variantId
+    });
+    if (!variant) {
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+    return res.json({ variant });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * POST /api/admin/inhouse-products/:productId/variants
+ */
+const createAdminInhouseVariantController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const variant = await createInhouseVariant({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      payload: req.body
+    });
+
+    if (!variant) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_VARIANT_CREATED,
+      label: 'In-house variant created',
+      description: `Created variant for product ${req.params.productId}`,
+      companyId: variant.company,
+      meta: { productId: req.params.productId, variantId: variant._id?.toString?.() || variant._id }
+    });
+
+    return res.status(201).json({ variant, message: 'Variant created successfully' });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ error: 'Variant already exists (duplicate SKU or option combination)' });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/inhouse-products/:productId/variants/:variantId
+ */
+const updateAdminInhouseVariantController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const variant = await updateInhouseVariant({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      variantId: req.params.variantId,
+      updates: req.body
+    });
+
+    if (!variant) {
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_VARIANT_UPDATED,
+      label: 'In-house variant updated',
+      description: `Updated variant ${req.params.variantId}`,
+      companyId: variant.company,
+      meta: {
+        productId: req.params.productId,
+        variantId: req.params.variantId,
+        fields: Object.keys(req.body || {})
+      }
+    });
+
+    return res.json({ variant, message: 'Variant updated successfully' });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ error: 'Variant already exists (duplicate SKU or option combination)' });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/inhouse-products/:productId/variants/:variantId/quantity
+ */
+const adjustAdminInhouseVariantQuantityController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const parsedAdjustment = Number(req.body?.adjustment);
+    if (Number.isNaN(parsedAdjustment)) {
+      return res.status(400).json({ error: 'Adjustment must be a number' });
+    }
+
+    const variant = await adjustInhouseVariantQuantity({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      variantId: req.params.variantId,
+      adjustment: parsedAdjustment
+    });
+
+    if (!variant) {
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_VARIANT_QUANTITY_ADJUSTED,
+      label: 'In-house variant quantity adjusted',
+      description: `Adjusted quantity for variant ${req.params.variantId} by ${parsedAdjustment}`,
+      companyId: variant.company,
+      meta: {
+        productId: req.params.productId,
+        variantId: req.params.variantId,
+        adjustment: parsedAdjustment
+      }
+    });
+
+    return res.json({ variant });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * DELETE /api/admin/inhouse-products/:productId/variants/:variantId
+ */
+const deleteAdminInhouseVariantController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS);
+    const deleted = await deleteInhouseVariant({
+      actorUserId: req.user.id,
+      productId: req.params.productId,
+      variantId: req.params.variantId
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Variant not found' });
+    }
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_INHOUSE_VARIANT_DELETED,
+      label: 'In-house variant archived',
+      description: `Archived in-house variant ${req.params.variantId}`,
+      meta: { productId: req.params.productId, variantId: req.params.variantId }
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * GET /api/admin/conversations
  */
 const listAdminConversationsController = async (req, res, next) => {
@@ -629,6 +1063,20 @@ module.exports = {
   updateAdminServiceRequestWorkflowController,
   updateAdminServiceRequestContentController,
   updateAdminBusinessSetupRequestWorkflowController,
+  listAdminInhouseProductCategoriesController,
+  listAdminInhouseProductsController,
+  getAdminInhouseProductController,
+  createAdminInhouseProductController,
+  updateAdminInhouseProductController,
+  adjustAdminInhouseProductQuantityController,
+  deleteAdminInhouseProductController,
+  uploadAdminInhouseProductImageController,
+  listAdminInhouseVariantsController,
+  getAdminInhouseVariantController,
+  createAdminInhouseVariantController,
+  updateAdminInhouseVariantController,
+  adjustAdminInhouseVariantQuantityController,
+  deleteAdminInhouseVariantController,
   listAdminConversationsController,
   listAdminCallLogsController,
   setCompanyStatusController,

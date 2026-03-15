@@ -32,6 +32,10 @@ const buildAdminCreatorFilter = async (createdByRole) => {
 };
 
 const getSortOptions = (sort) => {
+  if (sort === 'createdAt:asc') return { createdAt: 1 };
+  if (sort === 'createdAt:desc') return { createdAt: -1 };
+  if (sort === 'updatedAt:asc') return { updatedAt: 1 };
+  if (sort === 'updatedAt:desc') return { updatedAt: -1 };
   if (sort === 'priceAsc') return { 'price.amount': 1 };
   if (sort === 'priceDesc') return { 'price.amount': -1 };
   if (sort === 'ratingDesc') return { 'attributes.rating': -1, 'attributes.stars': -1 };
@@ -337,6 +341,9 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
   if (cleanedPayload.sku === '' || cleanedPayload.sku === null) {
     delete cleanedPayload.sku;
   }
+  // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
+  delete cleanedPayload.availableQuantity;
+  delete cleanedPayload.minStockQuantity;
 
   const product = new Product({
     ...cleanedPayload,
@@ -364,6 +371,9 @@ const updateProduct = async (productId, updates, userId, companyId) => {
   if (cleanedUpdates.sku === '' || cleanedUpdates.sku === null) {
     cleanedUpdates.sku = undefined; // Use $unset behavior
   }
+  // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
+  delete cleanedUpdates.availableQuantity;
+  delete cleanedUpdates.minStockQuantity;
 
   const product = await Product.findOneAndUpdate(
     query,

@@ -1,37 +1,45 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Easing,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from "../../constants/business";
+import { SignupStepper } from "../../components/auth/SignupStepper";
+import { OtpCodeInput, OtpInputChangeMeta } from "../../components/auth/OtpCodeInput";
 import { authService } from "../../services/auth.service";
-import { useAuth } from "../../hooks/useAuth";
 import { tokenStorage } from "../../services/tokenStorage";
+import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
-import { BrandLockup } from "../../components/brand/BrandLockup";
 
 type SignupScreenProps = {
   onBack: () => void;
   onLogin: () => void;
 };
 
-type SignupStep = "profile" | "otp" | "account";
+type SignupStep = "identity" | "otp" | "contact" | "password" | "business";
 
-type ProfileState = {
+type IdentityState = {
   fullName: string;
   email: string;
+};
+
+type ContactState = {
   phone: string;
 };
 
@@ -44,23 +52,56 @@ type AccountState = {
 
 type FieldErrors<T extends Record<string, unknown>> = Partial<Record<keyof T, string>>;
 
-const steps: SignupStep[] = ["profile", "otp", "account"];
-
-const stepTitles: Record<SignupStep, string> = {
-  profile: "Create Account :)",
-  otp: "Secure Verification",
-  account: "Workspace Setup",
+type StepDescriptor = {
+  title: string;
+  description: string;
+  hint: string;
 };
 
-const stepDescriptions: Record<SignupStep, string> = {
-  profile: "Enter who is leading ops so we can personalize the workspace.",
-  otp: "Enter the 4-digit OTP we sent to your email / phone.",
-  account: "Set your password and tell us about your business.",
+const steps: SignupStep[] = ["identity", "otp", "contact", "password", "business"];
+
+const stepMeta: Record<SignupStep, StepDescriptor> = {
+  identity: {
+    title: "Create your account",
+    description: "Add your name and work email.",
+    hint: "We only need basic identity details here.",
+  },
+  otp: {
+    title: "Verify your email",
+    description: "Enter the 6-digit code from your inbox.",
+    hint: "Use the latest code. You can resend after the cooldown.",
+  },
+  contact: {
+    title: "Add mobile number",
+    description: "Use a reachable number for account support.",
+    hint: "No phone OTP in this step.",
+  },
+  password: {
+    title: "Set your password",
+    description: "Create a secure password for sign in.",
+    hint: "Use at least 8 characters.",
+  },
+  business: {
+    title: "Business details",
+    description: "Choose account type and business profile.",
+    hint: "Normal accounts can continue immediately.",
+  },
 };
 
-const initialProfile: ProfileState = {
+const progressTitles: Record<SignupStep, string> = {
+  identity: "Identity",
+  otp: "Verify",
+  contact: "Mobile",
+  password: "Password",
+  business: "Business"
+};
+
+const initialIdentity: IdentityState = {
   fullName: "",
   email: "",
+};
+
+const initialContact: ContactState = {
   phone: "",
 };
 
@@ -71,50 +112,78 @@ const createInitialAccount = (): AccountState => ({
   categories: [],
 });
 
+const normalizeFullName = (value: string) => value.trim().replace(/\s+/g, " ");
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const normalizePhone = (value: string) => value.trim();
+const OTP_LENGTH = 6;
+
+const formatCountdown = (milliseconds: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
+const maskEmail = (email: string) => {
+  const safeEmail = normalizeEmail(email || "");
+  const [localPart, domainPart] = safeEmail.split("@");
+  if (!localPart || !domainPart) return "your email";
+  if (localPart.length <= 1) return `*@${domainPart}`;
+  return `${localPart.slice(0, 1)}***@${domainPart}`;
+};
+
 export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
-  const [step, setStep] = useState<SignupStep>("profile");
-  const [profile, setProfile] = useState<ProfileState>(initialProfile);
+  const [step, setStep] = useState<SignupStep>("identity");
+  const [identity, setIdentity] = useState<IdentityState>(initialIdentity);
+  const [contact, setContact] = useState<ContactState>(initialContact);
   const [otp, setOtp] = useState("");
   const [account, setAccount] = useState<AccountState>(createInitialAccount());
   const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [profileErrors, setProfileErrors] = useState<FieldErrors<ProfileState>>({});
+  const [identityErrors, setIdentityErrors] = useState<FieldErrors<IdentityState>>({});
+  const [contactErrors, setContactErrors] = useState<FieldErrors<ContactState>>({});
   const [accountErrors, setAccountErrors] = useState<FieldErrors<AccountState>>({});
   const [otpError, setOtpError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
+  const [resendCountdownMs, setResendCountdownMs] = useState(0);
   const [categorySearch, setCategorySearch] = useState("");
+  const [verifiedIdentity, setVerifiedIdentity] = useState<IdentityState | null>(null);
+  const { setUser } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
   const headerIntro = useRef(new Animated.Value(0)).current;
   const formIntro = useRef(new Animated.Value(0)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
+  const scrollRef = useRef<ScrollView | null>(null);
+  const lastAutoSubmittedOtpRef = useRef<string | null>(null);
   const headingColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
   const secondaryTextColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
-  const brandSubtitleColor = isDark ? colors.subtextOnDarkSurface : colors.subtextOnLightSurface;
   const inputPlaceholderColor = isDark ? colors.textMuted : colors.textTertiary;
-  const primaryBlobColors = useMemo(
-    () => [colors.primary + (isDark ? "2e" : "1a"), colors.primary + (isDark ? "0d" : "08"), "transparent"] as const,
-    [colors.primary, isDark]
-  );
-  const accentBlobColors = useMemo(
-    () => [colors.accent + (isDark ? "2e" : "1a"), colors.accent + (isDark ? "0d" : "08"), "transparent"] as const,
-    [colors.accent, isDark]
-  );
 
   const filteredCategories = useMemo(() => {
-    const q = categorySearch.trim().toLowerCase();
-    if (!q) return BUSINESS_CATEGORIES;
-    return BUSINESS_CATEGORIES.filter((c) => c.toLowerCase().includes(q));
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return BUSINESS_CATEGORIES;
+    return BUSINESS_CATEGORIES.filter((category) => category.toLowerCase().includes(query));
   }, [categorySearch]);
 
-  const { setUser } = useAuth();
-  const requiresCompany = account.accountType !== "normal";
   const stepIndex = steps.indexOf(step);
+  const requiresCompany = account.accountType !== "normal";
+  const activeStepMeta = stepMeta[step];
+  const normalizedIdentity = useMemo(
+    () => ({
+      fullName: normalizeFullName(identity.fullName || ""),
+      email: normalizeEmail(identity.email || ""),
+    }),
+    [identity.email, identity.fullName]
+  );
+  const canResendOtp = resendCountdownMs <= 0 && !loading;
+  const maskedIdentityEmail = useMemo(() => maskEmail(normalizedIdentity.email), [normalizedIdentity.email]);
+  const otpExpiryText = expiresInMs ? `Expires in ${Math.ceil(expiresInMs / 60000)} min` : "Code expires soon";
 
   useEffect(() => {
     headerIntro.setValue(0);
@@ -135,6 +204,18 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
     ]).start();
   }, [formIntro, headerIntro, step]);
 
+  useEffect(() => {
+    if (resendCountdownMs <= 0) return undefined;
+    const timeout = setTimeout(() => {
+      setResendCountdownMs((current) => Math.max(0, current - 1000));
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [resendCountdownMs]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
+
   const handleCtaPressIn = () => {
     Animated.spring(ctaScale, {
       toValue: 0.97,
@@ -151,17 +232,32 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
     }).start();
   };
 
-  const resetFlow = () => {
-    setStep("profile");
-    setProfile(initialProfile);
-    setOtp("");
-    setAccount(createInitialAccount());
-    setProfileErrors({});
-    setAccountErrors({});
-    setOtpError(null);
+  const clearTransientFeedback = () => {
     setStatus(null);
     setError(null);
+    setOtpError(null);
+  };
+
+  const resetDownstreamState = () => {
+    setOtp("");
+    setContact(initialContact);
+    setAccount(createInitialAccount());
+    setCategorySearch("");
+    setContactErrors({});
+    setAccountErrors({});
+    setOtpError(null);
+    setVerifiedIdentity(null);
     setExpiresInMs(null);
+    setResendCountdownMs(0);
+    lastAutoSubmittedOtpRef.current = null;
+  };
+
+  const resetFlow = () => {
+    setStep("identity");
+    setIdentity(initialIdentity);
+    setIdentityErrors({});
+    resetDownstreamState();
+    clearTransientFeedback();
   };
 
   const handleBack = () => {
@@ -170,48 +266,56 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       onBack();
       return;
     }
-    const previous = steps[stepIndex - 1];
-    setStep(previous);
-    setError(null);
-    setStatus(null);
-    setOtpError(null);
-    setProfileErrors({});
-    setAccountErrors({});
+
+    setStep(steps[stepIndex - 1]);
+    clearTransientFeedback();
   };
 
-  const validateProfile = () => {
-    const nextErrors: FieldErrors<ProfileState> = {};
-    const trimmedName = profile.fullName.trim();
-    const trimmedEmail = profile.email.trim().toLowerCase();
-    const trimmedPhone = profile.phone.trim();
+  const validateIdentity = () => {
+    const nextErrors: FieldErrors<IdentityState> = {};
 
-    if (!trimmedName.length) {
+    if (!normalizedIdentity.fullName.length) {
       nextErrors.fullName = "Please enter your full name";
-    } else if (trimmedName.split(" ").length < 2) {
+    } else if (normalizedIdentity.fullName.split(" ").length < 2) {
       nextErrors.fullName = "Include both first and last name";
     }
 
-    if (!trimmedEmail.length) {
+    if (!normalizedIdentity.email.length) {
       nextErrors.email = "Email is required";
-    } else if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-      nextErrors.email = "Enter a valid email";
+    } else if (!/^\S+@\S+\.\S+$/.test(normalizedIdentity.email)) {
+      nextErrors.email = "Enter a valid email address";
     }
 
-    if (!trimmedPhone.length) {
-      nextErrors.phone = "Phone number is required";
-    } else if (!/^[0-9+]{7,15}$/.test(trimmedPhone)) {
-      nextErrors.phone = "Use 7-15 digits (optionally +)";
-    }
-
-    setProfileErrors(nextErrors);
+    setIdentityErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const validateAccount = () => {
+  const validateContact = () => {
+    const nextErrors: FieldErrors<ContactState> = {};
+    const normalizedPhone = normalizePhone(contact.phone || "");
+
+    if (!normalizedPhone.length) {
+      nextErrors.phone = "Mobile number is required";
+    } else if (!/^[0-9+]{7,15}$/.test(normalizedPhone)) {
+      nextErrors.phone = "Use 7-15 digits, optionally with +";
+    }
+
+    setContactErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validatePassword = () => {
     const nextErrors: FieldErrors<AccountState> = {};
     if (account.password.length < 8) {
       nextErrors.password = "Use at least 8 characters";
     }
+    setAccountErrors((current) => ({ ...current, password: nextErrors.password }));
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateBusiness = () => {
+    const nextErrors: FieldErrors<AccountState> = {};
+
     if (requiresCompany) {
       if (!account.companyName.trim()) {
         nextErrors.companyName = "Company name is required";
@@ -220,85 +324,139 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         nextErrors.categories = "Select at least one category";
       }
     }
-    setAccountErrors(nextErrors);
+
+    setAccountErrors((current) => ({
+      ...current,
+      companyName: nextErrors.companyName,
+      categories: nextErrors.categories,
+    }));
+
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleProfileSubmit = async () => {
-    if (!validateProfile()) {
+  const handleIdentitySubmit = async () => {
+    if (!validateIdentity()) {
+      setError("Please fix the highlighted fields.");
+      return;
+    }
+
+    const identityChangedAfterVerification =
+      verifiedIdentity &&
+      (verifiedIdentity.email !== normalizedIdentity.email ||
+        verifiedIdentity.fullName !== normalizedIdentity.fullName);
+
+    if (identityChangedAfterVerification) {
+      resetDownstreamState();
+    }
+
+    try {
+      setLoading(true);
+      clearTransientFeedback();
+      const response = await authService.signup.start({
+        fullName: normalizedIdentity.fullName,
+        email: normalizedIdentity.email,
+      });
+      setExpiresInMs(response.expiresInMs);
+      setResendCountdownMs(response.resendAvailableInMs ?? 0);
+      setStatus(`Verification code sent to ${normalizedIdentity.email}.`);
+      setStep("otp");
+    } catch (signupStartError) {
+      setError(signupStartError instanceof Error ? signupStartError.message : "Unable to start signup");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResendOtp) return;
+    await handleIdentitySubmit();
+  };
+
+  const handleOtpSubmit = async (otpValue?: string) => {
+    const trimmedOtp = (otpValue ?? otp).trim();
+    if (!trimmedOtp.length) {
+      setOtpError("Enter the verification code");
+      setError("Verification code is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      clearTransientFeedback();
+      await authService.signup.verify({ otp: trimmedOtp });
+      setVerifiedIdentity({
+        fullName: normalizedIdentity.fullName,
+        email: normalizedIdentity.email,
+      });
+      setStatus(`Email verified for ${normalizedIdentity.email}.`);
+      setStep("contact");
+    } catch (otpSubmitError) {
+      const message = otpSubmitError instanceof Error ? otpSubmitError.message : "Unable to verify code";
+      setError(message);
+      setOtpError("Enter the latest code from your inbox");
+    } finally {
+      setLoading(false);
+      lastAutoSubmittedOtpRef.current = null;
+    }
+  };
+
+  const handleContactSubmit = async () => {
+    if (!validateContact()) {
       setError("Please fix the highlighted fields.");
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-      const response = await authService.signup.start({
-        fullName: profile.fullName.trim(),
-        email: profile.email.trim().toLowerCase(),
-        phone: profile.phone.trim(),
+      clearTransientFeedback();
+      const response = await authService.signup.contact({
+        phone: normalizePhone(contact.phone),
       });
-      setStatus(`OTP sent. Expires in ${(response.expiresInMs / 60000).toFixed(0)} min.`);
-      setExpiresInMs(response.expiresInMs);
-      setStep("otp");
-    } catch (profileError) {
-      setError(profileError instanceof Error ? profileError.message : "Unable to start signup");
+      setContact({ phone: response.phone });
+      setStatus("Mobile number saved.");
+      setStep("password");
+    } catch (contactSubmitError) {
+      setError(contactSubmitError instanceof Error ? contactSubmitError.message : "Unable to save mobile number");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpSubmit = async () => {
-    const trimmedOtp = otp.trim();
-    if (!trimmedOtp) {
-      setOtpError("Enter the OTP code");
-      setError("OTP is required");
+  const handlePasswordSubmit = () => {
+    if (!validatePassword()) {
+      setError("Use a stronger password to continue.");
       return;
     }
 
-    try {
-      setLoading(true);
-      setOtpError(null);
-      setError(null);
-      await authService.signup.verify({ otp: trimmedOtp });
-      setStatus("OTP verified. Finish your setup.");
-      setStep("account");
-    } catch (otpSubmitError) {
-      const message = otpSubmitError instanceof Error ? otpSubmitError.message : "Unable to verify OTP";
-      setError(message);
-      setOtpError("Invalid OTP");
-    } finally {
-      setLoading(false);
-    }
+    clearTransientFeedback();
+    setStatus("Password saved. Complete your business setup.");
+    setStep("business");
   };
 
-  const handleAccountSubmit = async () => {
-    if (!validateAccount()) {
-      setError("Complete the required fields.");
+  const handleBusinessSubmit = async () => {
+    if (!validateBusiness()) {
+      setError("Complete the required business details.");
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-      const trimmedOtp = otp.trim();
-      const payload = {
+      clearTransientFeedback();
+      const response = await authService.signup.complete({
         password: account.password,
         accountType: account.accountType,
         companyName: requiresCompany ? account.companyName.trim() : undefined,
         categories: requiresCompany ? account.categories : undefined,
-        otp: trimmedOtp || undefined,
-        fullName: profile.fullName.trim(),
-        email: profile.email.trim().toLowerCase(),
-        phone: profile.phone.trim(),
-      };
-      const response = await authService.signup.complete(payload);
-      // Store the JWT token for API authentication
+        fullName: normalizedIdentity.fullName,
+        email: normalizedIdentity.email,
+        phone: normalizePhone(contact.phone),
+      });
+
       if (response.token) {
         await tokenStorage.setToken(response.token);
       }
-      setStatus("Signup complete! Redirecting...");
-      // For manufacturer/trader accounts, trigger verification redirect
+
+      setStatus("Account created. Redirecting...");
       setUser(response.user, { requiresVerification: requiresCompany });
     } catch (accountError) {
       setError(accountError instanceof Error ? accountError.message : "Unable to complete signup");
@@ -308,103 +466,191 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   };
 
   const handleContinue = () => {
-    if (step === "profile") {
-      return handleProfileSubmit();
+    if (step === "identity") return handleIdentitySubmit();
+    if (step === "otp") return handleOtpSubmit();
+    if (step === "contact") return handleContactSubmit();
+    if (step === "password") return handlePasswordSubmit();
+    return handleBusinessSubmit();
+  };
+
+  const handleEditEmail = () => {
+    resetDownstreamState();
+    clearTransientFeedback();
+    setStep("identity");
+  };
+
+  const handleOtpInputChange = (nextValue: string, meta: OtpInputChangeMeta) => {
+    setOtp(nextValue);
+    setOtpError(null);
+    setError(null);
+
+    if (nextValue.length < OTP_LENGTH) {
+      lastAutoSubmittedOtpRef.current = null;
+      return;
     }
-    if (step === "otp") {
-      return handleOtpSubmit();
+
+    if (meta.bulk && nextValue.length === OTP_LENGTH && !loading && lastAutoSubmittedOtpRef.current !== nextValue) {
+      lastAutoSubmittedOtpRef.current = nextValue;
+      void handleOtpSubmit(nextValue);
     }
-    return handleAccountSubmit();
   };
 
   const toggleCategory = (category: string) => {
-    setAccount((prev) => {
-      const exists = prev.categories.includes(category);
-      const categories = exists ? prev.categories.filter((item) => item !== category) : [...prev.categories, category];
-      return { ...prev, categories };
+    setAccount((current) => {
+      const exists = current.categories.includes(category);
+      const categories = exists
+        ? current.categories.filter((value) => value !== category)
+        : [...current.categories, category];
+      return { ...current, categories };
     });
   };
 
-  const InputField = ({ value, onChangeText, placeholder, errorText, rightAccessory, ...rest }: InputFieldProps) => (
-    <View style={styles.inputFieldWrap}>
-      <View style={[styles.inputWrapper, errorText ? styles.inputWrapperError : null]}>
-        <TextInput
-          style={[styles.input, rightAccessory ? styles.inputWithAccessory : null]}
-          placeholder={placeholder}
-          placeholderTextColor={inputPlaceholderColor}
-          value={value}
-          onChangeText={onChangeText}
-          {...rest}
-        />
-        {rightAccessory ? <View style={styles.inputAccessory}>{rightAccessory}</View> : null}
-      </View>
-      {errorText ? <Text style={styles.fieldError}>{errorText}</Text> : null}
-    </View>
-  );
+  const primaryButtonLabel =
+    step === "otp"
+      ? "Verify email"
+      : step === "contact"
+      ? "Save mobile"
+      : step === "password"
+      ? "Continue"
+      : step === "business"
+      ? "Create Account"
+      : "Continue";
 
-  const renderProfileStep = () => (
+  const renderStepHint = (copy: string) => <Text style={styles.stepHint}>{copy}</Text>;
+
+  const renderIdentityStep = () => (
     <View>
+      {renderStepHint(activeStepMeta.hint)}
       <InputField
-        value={profile.fullName}
-        onChangeText={(value) => setProfile((prev) => ({ ...prev, fullName: value }))}
-        placeholder="Enter Full Name"
-        errorText={profileErrors.fullName}
+        label="Full name"
+        value={identity.fullName}
+        onChangeText={(value) => {
+          setIdentity((current) => ({ ...current, fullName: value }));
+          setIdentityErrors((current) => ({ ...current, fullName: undefined }));
+        }}
+        placeholder="Enter your full name"
+        autoCapitalize="words"
+        textContentType="name"
+        autoComplete="name"
+        returnKeyType="next"
+        errorText={identityErrors.fullName}
+        placeholderTextColor={inputPlaceholderColor}
+        styles={styles}
       />
       <InputField
-        value={profile.email}
-        onChangeText={(value) => setProfile((prev) => ({ ...prev, email: value }))}
-        placeholder="Enter Email Id"
+        label="Email address"
+        value={identity.email}
+        onChangeText={(value) => {
+          setIdentity((current) => ({ ...current, email: value }));
+          setIdentityErrors((current) => ({ ...current, email: undefined }));
+        }}
+        placeholder="name@company.com"
         keyboardType="email-address"
         autoCapitalize="none"
-        errorText={profileErrors.email}
-      />
-      <InputField
-        value={profile.phone}
-        onChangeText={(value) => setProfile((prev) => ({ ...prev, phone: value }))}
-        placeholder="Enter Mobile Number"
-        keyboardType="phone-pad"
-        errorText={profileErrors.phone}
+        textContentType="emailAddress"
+        autoComplete="email"
+        returnKeyType="done"
+        errorText={identityErrors.email}
+        helperText="We will send a verification code to this email."
+        placeholderTextColor={inputPlaceholderColor}
+        styles={styles}
       />
     </View>
   );
 
   const renderOtpStep = () => (
     <View>
-      <Text style={styles.helperCopy}>
-        We sent an OTP to {profile.email || "your email"} and {profile.phone || "your phone"}. Expires in{" "}
-        {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
-      </Text>
-      <InputField
+      <View style={styles.otpInfoCard}>
+        <Text style={styles.otpInfoLabel}>Code sent to</Text>
+        <Text style={styles.otpInfoEmail}>{maskedIdentityEmail}</Text>
+        <Text style={styles.otpInfoMeta}>{otpExpiryText}</Text>
+      </View>
+
+      <Text style={styles.fieldLabel}>Verification code</Text>
+      <OtpCodeInput
         value={otp}
-        onChangeText={setOtp}
-        placeholder="Enter OTP"
-        keyboardType="number-pad"
-        autoCapitalize="none"
+        onChange={handleOtpInputChange}
+        length={OTP_LENGTH}
         errorText={otpError || undefined}
+        disabled={loading}
+        onSubmitEditing={() => {
+          void handleOtpSubmit();
+        }}
       />
-      <TouchableOpacity onPress={resetFlow}>
-        <Text style={styles.secondaryLink}>Start over</Text>
-      </TouchableOpacity>
+
+      <View style={styles.otpActionRow}>
+        <TouchableOpacity onPress={handleEditEmail} activeOpacity={0.8}>
+          <Text style={styles.otpEditEmail}>Edit email</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleResendOtp}
+          activeOpacity={0.85}
+          disabled={!canResendOtp}
+          style={[styles.otpResendButton, !canResendOtp ? styles.otpResendButtonDisabled : null]}
+        >
+          <Text style={[styles.otpResendButtonText, !canResendOtp ? styles.otpResendButtonTextDisabled : null]}>
+            {canResendOtp ? "Resend code" : `Resend in ${formatCountdown(resendCountdownMs)}`}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
-  const renderAccountStep = () => (
+  const renderContactStep = () => (
     <View>
+      {renderStepHint(activeStepMeta.hint)}
       <InputField
+        label="Mobile number"
+        value={contact.phone}
+        onChangeText={(value) => {
+          setContact({ phone: value });
+          setContactErrors((current) => ({ ...current, phone: undefined }));
+        }}
+        placeholder="+91 98765 43210"
+        keyboardType="phone-pad"
+        autoCapitalize="none"
+        textContentType="telephoneNumber"
+        autoComplete="tel"
+        errorText={contactErrors.phone}
+        helperText="This helps with order coordination and business support."
+        placeholderTextColor={inputPlaceholderColor}
+        styles={styles}
+      />
+    </View>
+  );
+
+  const renderPasswordStep = () => (
+    <View>
+      {renderStepHint(activeStepMeta.hint)}
+      <InputField
+        label="Password"
         value={account.password}
-        onChangeText={(value) => setAccount((prev) => ({ ...prev, password: value }))}
-        placeholder="Create Password"
+        onChangeText={(value) => {
+          setAccount((current) => ({ ...current, password: value }));
+          setAccountErrors((current) => ({ ...current, password: undefined }));
+        }}
+        placeholder="Create a strong password"
         secureTextEntry={!showSignupPassword}
         autoCapitalize="none"
+        textContentType="newPassword"
+        autoComplete="password-new"
         errorText={accountErrors.password}
+        helperText="Use at least 8 characters."
+        placeholderTextColor={inputPlaceholderColor}
+        styles={styles}
         rightAccessory={
-          <TouchableOpacity onPress={() => setShowSignupPassword((prev) => !prev)}>
+          <TouchableOpacity onPress={() => setShowSignupPassword((current) => !current)} activeOpacity={0.8}>
             <Text style={styles.eyeText}>{showSignupPassword ? "Hide" : "Show"}</Text>
           </TouchableOpacity>
         }
       />
+    </View>
+  );
 
-      <Text style={styles.sectionLabel}>Select Account Type</Text>
+  const renderBusinessStep = () => (
+    <View>
+      {renderStepHint(activeStepMeta.hint)}
+      <Text style={styles.sectionLabel}>Account type</Text>
       <View style={styles.accountTypeRow}>
         {BUSINESS_ACCOUNT_TYPES.map((type) => {
           const isActive = account.accountType === type;
@@ -412,7 +658,8 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             <TouchableOpacity
               key={type}
               style={[styles.accountChip, isActive ? styles.accountChipActive : null]}
-              onPress={() => setAccount((prev) => ({ ...prev, accountType: type }))}
+              onPress={() => setAccount((current) => ({ ...current, accountType: type }))}
+              activeOpacity={0.85}
             >
               <Text style={[styles.accountChipText, isActive ? styles.accountChipTextActive : null]}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -425,19 +672,31 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       {requiresCompany ? (
         <View>
           <InputField
+            label="Company name"
             value={account.companyName}
-            onChangeText={(value) => setAccount((prev) => ({ ...prev, companyName: value }))}
-            placeholder="Company Name"
+            onChangeText={(value) => {
+              setAccount((current) => ({ ...current, companyName: value }));
+              setAccountErrors((current) => ({ ...current, companyName: undefined }));
+            }}
+            placeholder="Enter your company name"
+            autoCapitalize="words"
+            textContentType="organizationName"
             errorText={accountErrors.companyName}
+            placeholderTextColor={inputPlaceholderColor}
+            styles={styles}
           />
-          <Text style={styles.sectionLabel}>Business Categories</Text>
-          <TextInput
-            style={styles.categorySearch}
-            placeholder="Search categories"
-            placeholderTextColor={colors.textTertiary}
-            value={categorySearch}
-            onChangeText={setCategorySearch}
-          />
+
+          <Text style={styles.sectionLabel}>Business categories</Text>
+          <View style={styles.categorySearchWrap}>
+            <TextInput
+              style={styles.categorySearch}
+              placeholder="Search categories"
+              placeholderTextColor={inputPlaceholderColor}
+              value={categorySearch}
+              onChangeText={setCategorySearch}
+            />
+          </View>
+
           <View style={styles.categoryGrid}>
             {filteredCategories.map((category) => {
               const isSelected = account.categories.includes(category);
@@ -446,6 +705,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
                   key={category}
                   style={[styles.categoryChip, isSelected ? styles.categoryChipActive : null]}
                   onPress={() => toggleCategory(category)}
+                  activeOpacity={0.85}
                 >
                   <Text style={[styles.categoryText, isSelected ? styles.categoryTextActive : null]}>
                     {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -456,7 +716,11 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           </View>
           {accountErrors.categories ? <Text style={styles.fieldError}>{accountErrors.categories}</Text> : null}
         </View>
-      ) : null}
+      ) : (
+        <Text style={styles.helperCopy}>
+          Normal accounts can start right away. You can add business information later from your workspace.
+        </Text>
+      )}
     </View>
   );
 
@@ -471,20 +735,11 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           styles.card,
           {
             paddingHorizontal: isXCompact ? 16 : isCompact ? 20 : 28,
-            paddingTop: isCompact ? 22 : 32,
-            paddingBottom: isCompact ? 28 : 40,
+            paddingTop: isCompact ? 14 : 20,
+            paddingBottom: isCompact ? 20 : 28,
           },
         ]}
       >
-        <LinearGradient
-          colors={primaryBlobColors}
-          style={[styles.blob, styles.pinkBlobLarge]}
-        />
-        <LinearGradient
-          colors={accentBlobColors}
-          style={[styles.blob, styles.pinkBlobSmall]}
-        />
-
         <TouchableOpacity
           style={[
             styles.backButton,
@@ -497,70 +752,63 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             },
           ]}
           onPress={handleBack}
+          activeOpacity={0.85}
         >
           <Text style={[styles.backIcon, { color: headingColor }]}>‹</Text>
         </TouchableOpacity>
 
-        <Animated.View
-          style={{
-            opacity: headerIntro,
-            transform: [
-              {
-                translateY: headerIntro.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [14, 0],
-                }),
-              },
-            ],
-          }}
+        <ScrollView
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <BrandLockup
-            showSubtitle
-            style={styles.brandStrip}
-            textColor={headingColor}
-            subtitleColor={brandSubtitleColor}
-          />
-
-          <LinearGradient
-            colors={[colors.primary + "33", colors.primary + "14"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.stepBadgeWrapper}
-          >
-            <Text style={[styles.stepBadge, { color: colors.primary }]}>
-              Step {stepIndex + 1} of {steps.length}
-            </Text>
-          </LinearGradient>
-          <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
-            {stepTitles[step]}
-          </Text>
-          <Text style={[styles.subheading, { color: secondaryTextColor }]}>{stepDescriptions[step]}</Text>
-
-          {status ? <Text style={[styles.statusText, { color: colors.success }]}>{status}</Text> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.scrollAnimated,
-            {
-              opacity: formIntro,
+          <Animated.View
+            style={{
+              opacity: headerIntro,
               transform: [
                 {
-                  translateY: formIntro.interpolate({
+                  translateY: headerIntro.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [16, 0],
+                    outputRange: [10, 0],
                   }),
                 },
               ],
-            },
-          ]}
-        >
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+            }}
+          >
+            <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 22 : 26, 21, 26) }]}>
+              {activeStepMeta.title}
+            </Text>
+            <Text style={[styles.subheading, { color: secondaryTextColor }]}>{activeStepMeta.description}</Text>
+
+            {status && step !== "otp" ? <Text style={[styles.statusText, { color: colors.success }]}>{status}</Text> : null}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <SignupStepper steps={steps} activeStep={step} titles={progressTitles} />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.formAnimated,
+              {
+                opacity: formIntro,
+                transform: [
+                  {
+                    translateY: formIntro.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [16, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <View style={styles.form}>
-              {step === "profile" && renderProfileStep()}
-              {step === "otp" && renderOtpStep()}
-              {step === "account" && renderAccountStep()}
+              {step === "identity" ? renderIdentityStep() : null}
+              {step === "otp" ? renderOtpStep() : null}
+              {step === "contact" ? renderContactStep() : null}
+              {step === "password" ? renderPasswordStep() : null}
+              {step === "business" ? renderBusinessStep() : null}
 
               <Animated.View
                 style={[
@@ -577,6 +825,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
                   disabled={loading}
                   onPressIn={handleCtaPressIn}
                   onPressOut={handleCtaPressOut}
+                  activeOpacity={0.9}
                 >
                   <LinearGradient
                     colors={[colors.primary, colors.primaryDark]}
@@ -587,270 +836,368 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
                     {loading ? (
                       <ActivityIndicator color={colors.textOnPrimary} />
                     ) : (
-                      <Text style={styles.primaryButtonText}>{step === "account" ? "Create Account" : "Continue"}</Text>
+                      <Text style={styles.primaryButtonText}>{primaryButtonLabel}</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
 
-              <TouchableOpacity onPress={onLogin} style={{ marginTop: 24 }}>
+              <TouchableOpacity onPress={onLogin} style={styles.loginLinkWrap} activeOpacity={0.8}>
                 <Text style={[styles.loginLink, { color: secondaryTextColor }]}>
                   Already have an account? <Text style={[styles.loginLinkHighlight, { color: colors.primary }]}>Login</Text>
                 </Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </Animated.View>
+          </Animated.View>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
 };
 
 type InputFieldProps = {
+  label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
   errorText?: string;
-  secureTextEntry?: boolean;
-  autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  keyboardType?: "default" | "email-address" | "numeric" | "phone-pad" | "number-pad";
+  helperText?: string;
   rightAccessory?: ReactNode;
-};
+  styles: ReturnType<typeof createStyles>;
+  inputStyle?: StyleProp<TextStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
+  placeholderTextColor: string;
+} & Pick<
+  TextInputProps,
+  | "secureTextEntry"
+  | "autoCapitalize"
+  | "keyboardType"
+  | "textContentType"
+  | "autoComplete"
+  | "maxLength"
+  | "returnKeyType"
+>;
+
+const InputField = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  errorText,
+  helperText,
+  rightAccessory,
+  styles,
+  inputStyle,
+  containerStyle,
+  placeholderTextColor,
+  ...rest
+}: InputFieldProps) => (
+  <View style={[styles.inputFieldWrap, containerStyle]}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={[styles.inputWrapper, errorText ? styles.inputWrapperError : null]}>
+      <TextInput
+        style={[styles.input, rightAccessory ? styles.inputWithAccessory : null, inputStyle]}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        value={value}
+        onChangeText={onChangeText}
+        {...rest}
+      />
+      {rightAccessory ? <View style={styles.inputAccessory}>{rightAccessory}</View> : null}
+    </View>
+    {errorText ? <Text style={styles.fieldError}>{errorText}</Text> : null}
+    {!errorText && helperText ? <Text style={styles.fieldHelper}>{helperText}</Text> : null}
+  </View>
+);
 
 const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
   StyleSheet.create({
-  slide: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: "transparent",
-  },
-  card: {
-    flex: 1,
-    width: "100%",
-    backgroundColor: "transparent",
-    borderRadius: 0,
-    paddingHorizontal: 32,
-    paddingTop: 32,
-    paddingBottom: 40,
-    position: "relative",
-    overflow: "hidden",
-  },
-  blob: {
-    position: "absolute",
-    borderRadius: 200,
-  },
-  pinkBlobLarge: {
-    width: 300,
-    height: 300,
-    top: -80,
-    right: -60,
-  },
-  pinkBlobSmall: {
-    width: 240,
-    height: 240,
-    bottom: -60,
-    left: -60,
-  },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.overlayLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  backIcon: {
-    fontSize: 22,
-    fontWeight: "600",
-  },
-  brandStrip: {
-    marginBottom: 12,
-  },
-  scrollAnimated: {
-    flex: 1,
-  },
-  stepBadgeWrapper: {
-    alignSelf: "flex-start",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginBottom: 12,
-  },
-  stepBadge: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  subheading: {
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  form: {
-    paddingBottom: 80,
-  },
-  inputFieldWrap: {
-    marginBottom: 18,
-  },
-  inputWrapper: {
-    borderWidth: 1.5,
-    borderColor: isDark ? "rgba(255, 255, 255, 0.15)" : colors.border,
-    borderRadius: 12,
-    backgroundColor: isDark ? "rgba(22, 24, 29, 0.9)" : colors.surfaceElevated,
-    position: "relative",
-  },
-  inputWrapperError: {
-    borderColor: colors.error,
-  },
-  input: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: isDark ? colors.textOnDarkSurface : colors.textPrimary,
-  },
-  inputWithAccessory: {
-    paddingRight: 64,
-  },
-  inputAccessory: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  eyeText: {
-    fontWeight: "600",
-    color: colors.primary,
-  },
-  primaryButtonWrapper: {
-    marginTop: 12,
-    borderRadius: 32,
-    overflow: "hidden",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  primaryButton: {
-    borderRadius: 32,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: colors.textOnPrimary,
-    fontWeight: "700",
-    fontSize: 16,
-    letterSpacing: 1.5,
-  },
-  loginLink: {
-    textAlign: "center",
-    color: colors.textSecondary,
-  },
-  loginLinkHighlight: {
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  errorText: {
-    color: colors.error,
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  statusText: {
-    color: colors.success,
-    marginBottom: 8,
-    fontWeight: "500",
-  },
-  fieldError: {
-    color: colors.error,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  helperCopy: {
-    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  secondaryLink: {
-    color: colors.primary,
-    textAlign: "right",
-    fontWeight: "600",
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  categorySearch: {
-    borderWidth: 1,
-    borderColor: isDark ? "rgba(255,255,255,0.2)" : colors.border,
-    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : colors.surfaceElevated,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 8,
-    color: isDark ? colors.textOnDarkSurface : colors.textPrimary,
-    fontSize: 14,
-  },
-  accountTypeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 12,
-  },
-  accountChip: {
-    borderWidth: 1,
-    borderColor: isDark ? "rgba(255, 255, 255, 0.2)" : colors.border,
-    backgroundColor: isDark ? "rgba(30, 33, 39, 0.8)" : colors.surfaceElevated,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  accountChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.badgePrimary,
-  },
-  accountChipText: {
-    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
-    fontWeight: "600",
-  },
-  accountChipTextActive: {
-    color: colors.primary,
-  },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  categoryChip: {
-    borderWidth: 1,
-    borderColor: isDark ? "rgba(255, 255, 255, 0.2)" : colors.border,
-    backgroundColor: isDark ? "rgba(30, 33, 39, 0.8)" : colors.surfaceElevated,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  categoryChipActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.badgeError,
-  },
-  categoryText: {
-    color: isDark ? colors.subtextOnDarkSurface : colors.textSecondary,
-    fontWeight: "600",
-  },
-  categoryTextActive: {
-    color: colors.accent,
-  },
+    slide: {
+      flex: 1,
+      width: "100%",
+      backgroundColor: "transparent",
+    },
+    card: {
+      flex: 1,
+      width: "100%",
+      backgroundColor: "transparent",
+      borderRadius: 0,
+      position: "relative",
+      overflow: "hidden",
+    },
+    backButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      marginBottom: 10,
+      alignSelf: "flex-start",
+    },
+    backIcon: {
+      fontSize: 26,
+      fontWeight: "700",
+      marginTop: -2,
+    },
+    heading: {
+      fontWeight: "800",
+      lineHeight: 30,
+    },
+    subheading: {
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    statusText: {
+      marginBottom: 8,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    errorText: {
+      marginBottom: 8,
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.error,
+    },
+    scrollContent: {
+      paddingBottom: 14,
+    },
+    formAnimated: {
+      marginTop: 12,
+    },
+    form: {
+      paddingBottom: 8,
+    },
+    stepHint: {
+      marginBottom: 12,
+      fontSize: 12,
+      lineHeight: 18,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    otpInfoCard: {
+      marginBottom: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.82)",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    otpInfoLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      color: colors.textSecondary,
+    },
+    otpInfoEmail: {
+      marginTop: 3,
+      fontSize: 14,
+      fontWeight: "800",
+      color: colors.text,
+    },
+    otpInfoMeta: {
+      marginTop: 3,
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    inputFieldWrap: {
+      marginBottom: 16,
+    },
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.text,
+      marginBottom: 8,
+    },
+    inputWrapper: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.82)",
+      minHeight: 58,
+      paddingHorizontal: 16,
+      justifyContent: "center",
+    },
+    inputWrapperError: {
+      borderColor: colors.error,
+    },
+    input: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+      paddingVertical: 16,
+    },
+    inputWithAccessory: {
+      paddingRight: 68,
+    },
+    inputAccessory: {
+      position: "absolute",
+      right: 16,
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+    },
+    fieldError: {
+      marginTop: 7,
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.error,
+    },
+    fieldHelper: {
+      marginTop: 7,
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    otpActionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 14,
+      gap: 12,
+      minWidth: 0,
+    },
+    otpEditEmail: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: colors.primary,
+    },
+    otpResendButton: {
+      marginLeft: "auto",
+      borderWidth: 1,
+      borderColor: colors.borderPrimary,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      backgroundColor: isDark ? "rgba(25,184,230,0.1)" : "rgba(20,141,178,0.08)",
+    },
+    otpResendButtonDisabled: {
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,36,0.04)",
+    },
+    otpResendButtonText: {
+      fontSize: 12,
+      fontWeight: "800",
+      color: colors.primary,
+    },
+    otpResendButtonTextDisabled: {
+      color: colors.textMuted,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: colors.text,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 10,
+      marginTop: 4,
+    },
+    accountTypeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 18,
+    },
+    accountChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.82)",
+    },
+    accountChipActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + "16",
+    },
+    accountChipText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    accountChipTextActive: {
+      color: colors.primary,
+    },
+    categorySearchWrap: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.82)",
+      marginBottom: 12,
+      paddingHorizontal: 14,
+    },
+    categorySearch: {
+      fontSize: 15,
+      color: colors.text,
+      paddingVertical: 14,
+    },
+    categoryGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    categoryChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.74)",
+    },
+    categoryChipActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + "16",
+    },
+    categoryText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    categoryTextActive: {
+      color: colors.primary,
+    },
+    helperCopy: {
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    eyeText: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: colors.primary,
+    },
+    primaryButtonWrapper: {
+      marginTop: 16,
+      shadowOpacity: 0.18,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 6,
+    },
+    primaryButton: {
+      minHeight: 56,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 18,
+    },
+    primaryButtonText: {
+      fontSize: 15,
+      fontWeight: "800",
+      color: colors.textOnPrimary,
+      letterSpacing: 0.3,
+    },
+    loginLinkWrap: {
+      marginTop: 18,
+      alignItems: "center",
+    },
+    loginLink: {
+      fontSize: 13,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    loginLinkHighlight: {
+      fontWeight: "800",
+    },
   });

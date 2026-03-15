@@ -15,18 +15,12 @@ export const VariantCardRow = ({
   variant,
   onEdit,
   onDelete,
-  onAdjust,
 }: {
   variant: ProductVariant;
   onEdit: () => void;
   onDelete: () => void;
-  onAdjust: (delta: number) => void;
 }) => {
   const { colors, radius } = useTheme();
-  const stock = Number(variant.availableQuantity || 0);
-  const minStock = Number(variant.minStockQuantity || 0);
-  const stockStatus = stock <= 0 ? "Out" : stock <= minStock ? "Low" : "In";
-  const stockColor = stock <= 0 ? colors.error : stock <= minStock ? colors.warning : colors.success;
 
   return (
     <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface }]}>
@@ -39,32 +33,19 @@ export const VariantCardRow = ({
             {optionLabel(variant)}
           </Text>
         </View>
-        <View style={[styles.stockBadge, { borderColor: stockColor + "66", backgroundColor: stockColor + "1A", borderRadius: radius.pill }]}>
-          <Text style={[styles.stockText, { color: stockColor }]}>{stockStatus}</Text>
-        </View>
       </View>
 
       <View style={styles.metaRow}>
         <Text style={[styles.meta, { color: colors.textMuted }]}>
           Price: {variant.price?.currency || "INR"} {Number(variant.price?.amount || 0).toLocaleString("en-IN")}
         </Text>
-        <Text style={[styles.meta, { color: colors.textMuted }]}>Qty: {stock}</Text>
+        <Text style={[styles.meta, { color: colors.textMuted }]}>Status: {variant.status}</Text>
       </View>
 
       <View style={styles.actionsRow}>
         <TouchableOpacity onPress={onEdit} style={[styles.actionBtn, { borderColor: colors.border, borderRadius: radius.sm }]}>
           <Ionicons name="create-outline" size={14} color={colors.primary} />
           <Text style={[styles.actionText, { color: colors.primary }]}>Edit</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => onAdjust(-1)} style={[styles.actionBtn, { borderColor: colors.border, borderRadius: radius.sm }]}>
-          <Ionicons name="remove-outline" size={14} color={colors.text} />
-          <Text style={[styles.actionText, { color: colors.text }]}>-1</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => onAdjust(1)} style={[styles.actionBtn, { borderColor: colors.border, borderRadius: radius.sm }]}>
-          <Ionicons name="add-outline" size={14} color={colors.text} />
-          <Text style={[styles.actionText, { color: colors.text }]}>+1</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={onDelete} style={[styles.actionBtn, { borderColor: colors.error + "55", borderRadius: radius.sm }]}>
@@ -95,16 +76,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginTop: 2,
-  },
-  stockBadge: {
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  stockText: {
-    fontSize: 10,
-    fontWeight: "900",
-    textTransform: "uppercase",
   },
   metaRow: {
     flexDirection: "row",

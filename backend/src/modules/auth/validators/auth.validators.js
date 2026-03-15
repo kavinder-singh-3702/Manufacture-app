@@ -3,6 +3,7 @@ const {
   BUSINESS_ACCOUNT_TYPES,
   BUSINESS_CATEGORIES
 } = require('../../../constants/business');
+const { SIGNUP_SESSION_KEY } = require('../constants');
 
 const ACCOUNT_TYPES_REQUIRING_COMPANY = BUSINESS_ACCOUNT_TYPES.filter((type) => type !== 'normal');
 const requiresCompanyDetails = (accountType) => ACCOUNT_TYPES_REQUIRING_COMPANY.includes(accountType);
@@ -11,6 +12,7 @@ const signupStartValidation = [
   body('fullName').trim().isLength({ min: 2 }).withMessage('Full name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('phone')
+    .optional()
     .trim()
     .isLength({ min: 7 })
     .withMessage('Phone number must be at least 7 digits')
@@ -18,12 +20,42 @@ const signupStartValidation = [
     .withMessage('Phone number can only include digits and + sign')
 ];
 
-const signupVerifyValidation = [body('otp').trim().notEmpty().withMessage('OTP is required')];
+const signupVerifyValidation = [
+  body('otp')
+    .trim()
+    .notEmpty()
+    .withMessage('OTP is required')
+    .matches(/^[0-9]{4,8}$/)
+    .withMessage('OTP must be numeric')
+];
+
+const signupContactValidation = [
+  body('phone')
+    .trim()
+    .isLength({ min: 7 })
+    .withMessage('Phone number must be at least 7 digits')
+    .matches(/^[0-9+]+$/)
+    .withMessage('Phone number can only include digits and + sign')
+];
 
 const signupCompleteValidation = [
   body('password')
     .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long'),
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ min: 7 })
+    .withMessage('Phone number must be at least 7 digits')
+    .matches(/^[0-9+]+$/)
+    .withMessage('Phone number can only include digits and + sign'),
+  body('phone').custom((value, { req }) => {
+    const sessionPhone = req.session?.[SIGNUP_SESSION_KEY]?.phone;
+    if (!sessionPhone && (!value || !String(value).trim())) {
+      throw new Error('Phone number is required before completing signup');
+    }
+    return true;
+  }),
   body('accountType')
     .isIn(BUSINESS_ACCOUNT_TYPES)
     .withMessage('Invalid account type supplied'),
@@ -115,6 +147,7 @@ const resetPasswordValidation = [
 module.exports = {
   signupStartValidation,
   signupVerifyValidation,
+  signupContactValidation,
   signupCompleteValidation,
   adminCreateValidation,
   loginValidation,

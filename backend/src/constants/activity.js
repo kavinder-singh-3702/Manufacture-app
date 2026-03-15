@@ -20,7 +20,16 @@ const ACTIVITY_ACTIONS = Object.freeze({
   ADMIN_VERIFICATION_DECIDED: 'admin.verification.decided',
   ADMIN_SERVICE_REQUEST_WORKFLOW_UPDATED: 'admin.service-request.workflow.updated',
   ADMIN_SERVICE_REQUEST_CONTENT_UPDATED: 'admin.service-request.content.updated',
-  ADMIN_BUSINESS_SETUP_WORKFLOW_UPDATED: 'admin.business-setup.workflow.updated'
+  ADMIN_BUSINESS_SETUP_WORKFLOW_UPDATED: 'admin.business-setup.workflow.updated',
+  ADMIN_INHOUSE_PRODUCT_CREATED: 'admin.inhouse-product.created',
+  ADMIN_INHOUSE_PRODUCT_UPDATED: 'admin.inhouse-product.updated',
+  ADMIN_INHOUSE_PRODUCT_DELETED: 'admin.inhouse-product.deleted',
+  ADMIN_INHOUSE_PRODUCT_IMAGE_UPLOADED: 'admin.inhouse-product.image-uploaded',
+  ADMIN_INHOUSE_PRODUCT_QUANTITY_ADJUSTED: 'admin.inhouse-product.quantity-adjusted',
+  ADMIN_INHOUSE_VARIANT_CREATED: 'admin.inhouse-variant.created',
+  ADMIN_INHOUSE_VARIANT_UPDATED: 'admin.inhouse-variant.updated',
+  ADMIN_INHOUSE_VARIANT_DELETED: 'admin.inhouse-variant.deleted',
+  ADMIN_INHOUSE_VARIANT_QUANTITY_ADJUSTED: 'admin.inhouse-variant.quantity-adjusted'
 });
 
 const ACTIVITY_CATEGORIES = Object.freeze({
