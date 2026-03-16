@@ -20,7 +20,10 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
-import { Product, ProductCategory } from "../../services/product.service";
+import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
+import { isAdminRole } from "../../constants/roles";
+import { Product, ProductCategory, productService } from "../../services/product.service";
 import { adminService } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
@@ -192,6 +195,9 @@ export const AdminProductsScreen = () => {
   const COLORS = useAdminProductsPalette();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { colors, radius } = useTheme();
+  const { user } = useAuth();
+  const isAdmin = isAdminRole(user?.role);
+  const { addToCart } = useCart();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const requestSequenceRef = useRef(0);
 
@@ -218,7 +224,12 @@ export const AdminProductsScreen = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await adminService.listInhouseProductCategories();
+      const res = isAdmin
+        ? await adminService.listInhouseProductCategories()
+        : await productService.getCategoryStats({
+            scope: "marketplace",
+            createdByRole: "admin",
+          });
       const normalizedCategories = res.categories
         .map((category) => ({ ...category, id: normalizeCategoryId(category.id) }))
         .filter((category) => category.id !== ALL_CATEGORY_ID);
@@ -237,7 +248,7 @@ export const AdminProductsScreen = () => {
       setCategories([{ id: ALL_CATEGORY_ID, title: "All", count: 0 }]);
       setActiveCategory(ALL_CATEGORY_ID);
     }
-  }, []);
+  }, [isAdmin]);
 
   const loadProducts = useCallback(
     async (offset = 0, append = false) => {
@@ -252,15 +263,28 @@ export const AdminProductsScreen = () => {
       try {
         const parsedMinPrice = appliedMinPrice ? Number.parseFloat(appliedMinPrice) : undefined;
         const parsedMaxPrice = appliedMaxPrice ? Number.parseFloat(appliedMaxPrice) : undefined;
-        const response = await adminService.listInhouseProducts({
-          limit: PAGE_SIZE,
-          offset,
-          category: toCategoryQueryValue(activeCategory),
-          sort: appliedSortMode !== "none" ? appliedSortMode : undefined,
-          minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : undefined,
-          maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : undefined,
-          includeVariantSummary: true,
-        });
+        const response = isAdmin
+          ? await adminService.listInhouseProducts({
+              limit: PAGE_SIZE,
+              offset,
+              category: toCategoryQueryValue(activeCategory),
+              sort: appliedSortMode !== "none" ? appliedSortMode : undefined,
+              minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : undefined,
+              maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : undefined,
+              includeVariantSummary: true,
+            })
+          : await productService.getAll({
+              limit: PAGE_SIZE,
+              offset,
+              category: toCategoryQueryValue(activeCategory),
+              sort: appliedSortMode !== "none" ? appliedSortMode : undefined,
+              minPrice: Number.isFinite(parsedMinPrice) ? parsedMinPrice : undefined,
+              maxPrice: Number.isFinite(parsedMaxPrice) ? parsedMaxPrice : undefined,
+              includeVariantSummary: true,
+              scope: "marketplace",
+              createdByRole: "admin",
+              visibility: "public",
+            });
         if (requestId !== requestSequenceRef.current) return;
         const nextProducts = response.products;
 
@@ -276,7 +300,7 @@ export const AdminProductsScreen = () => {
         setRefreshing(false);
       }
     },
-    [activeCategory, appliedSortMode, appliedMinPrice, appliedMaxPrice]
+    [activeCategory, appliedSortMode, appliedMinPrice, appliedMaxPrice, isAdmin]
   );
 
   useEffect(() => {
@@ -313,6 +337,20 @@ export const AdminProductsScreen = () => {
       });
     },
     [navigation]
+  );
+
+  const handleOpenDetails = useCallback(
+    (productId: string) => {
+      navigation.navigate("ProductDetails", { productId });
+    },
+    [navigation]
+  );
+
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      addToCart(product, 1);
+    },
+    [addToCart]
   );
 
   const handleOpenFilters = useCallback(() => {
@@ -461,6 +499,20 @@ export const AdminProductsScreen = () => {
   }, [renderCategoryChips, error, loadProducts, totalLabel, handleOpenFilters, handleResetFilters]);
 
   const renderItem = ({ item }: { item: Product }) => {
+    if (!isAdmin) {
+      return (
+        <View style={styles.cardContainer}>
+          <AmazonStyleProductCard
+            product={item}
+            onPress={handleOpenDetails}
+            showPrimaryAction
+            primaryActionLabel="Add to cart"
+            onPrimaryActionPress={handleAddToCart}
+          />
+        </View>
+      );
+    }
+
     return (
       <View style={styles.cardContainer}>
         <AmazonStyleProductCard
@@ -540,17 +592,21 @@ export const AdminProductsScreen = () => {
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>In-house Catalog</Text>
-            <Text style={styles.headerSubtitle}>Manage products visible across the marketplace</Text>
+            <Text style={styles.headerSubtitle}>
+              {isAdmin ? "Manage products visible across the marketplace" : "Browse products visible across the marketplace"}
+            </Text>
           </View>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate("AdminAddProduct")}
-          style={[styles.addInhouseButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
-        >
-          <Text style={styles.addInhouseButtonIcon}>＋</Text>
-          <Text style={styles.addInhouseButtonText}>Add</Text>
-        </TouchableOpacity>
+        {isAdmin ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("AdminAddProduct")}
+            style={[styles.addInhouseButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.addInhouseButtonIcon}>＋</Text>
+            <Text style={styles.addInhouseButtonText}>Add</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Products list */}

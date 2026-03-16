@@ -1,5 +1,6 @@
 const BUSINESS_ACCOUNT_TYPES = Object.freeze(['normal', 'trader', 'manufacturer']);
 const COMPANY_VERIFICATION_ACCOUNT_TYPES = Object.freeze(['trader', 'manufacturer']);
+const { PRODUCT_CATEGORIES } = require('./product');
 
 const MODERN_MANUFACTURING_CATEGORIES = [
   'food & beverage manufacturing',
@@ -26,11 +27,19 @@ const MODERN_MANUFACTURING_CATEGORIES = [
 
 const LEGACY_BUSINESS_CATEGORIES = ['printing', 'manufacturing', 'packaging', 'logistics', 'textiles', 'machinery', 'other'];
 
+const PRODUCT_CATEGORY_EXPANSION = PRODUCT_CATEGORIES.flatMap((category) => {
+  const label = String(category?.label || '').trim().toLowerCase();
+  const id = String(category?.id || '').trim().toLowerCase();
+  const slug = label.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return [label, id, slug].filter(Boolean);
+});
+
 const BUSINESS_CATEGORIES = Object.freeze([
   ...new Set([
     ...MODERN_MANUFACTURING_CATEGORIES.map((label) => label.toLowerCase()),
     ...MODERN_MANUFACTURING_CATEGORIES.map((label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
-    ...LEGACY_BUSINESS_CATEGORIES
+    ...LEGACY_BUSINESS_CATEGORIES,
+    ...PRODUCT_CATEGORY_EXPANSION
   ])
 ]);
 

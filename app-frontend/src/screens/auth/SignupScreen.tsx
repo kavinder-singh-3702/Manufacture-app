@@ -21,6 +21,7 @@ import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from
 import { SignupStepper } from "../../components/auth/SignupStepper";
 import { OtpCodeInput, OtpInputChangeMeta } from "../../components/auth/OtpCodeInput";
 import { authService } from "../../services/auth.service";
+import { ProductCategory, productService } from "../../services/product.service";
 import { tokenStorage } from "../../services/tokenStorage";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
@@ -56,6 +57,12 @@ type StepDescriptor = {
   title: string;
   description: string;
   hint: string;
+};
+
+type BusinessCategoryOption = {
+  id: string;
+  label: string;
+  value: string;
 };
 
 const steps: SignupStep[] = ["identity", "otp", "contact", "password", "business"];
@@ -116,6 +123,59 @@ const normalizeFullName = (value: string) => value.trim().replace(/\s+/g, " ");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizePhone = (value: string) => value.trim();
 const OTP_LENGTH = 6;
+const BUSINESS_CATEGORY_SET = new Set(BUSINESS_CATEGORIES.map((category) => category.toLowerCase()));
+
+const createCategorySlug = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const toHeadlineCase = (value: string) =>
+  value
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+const mapProductCategoryToOption = (category: ProductCategory): BusinessCategoryOption | null => {
+  const rawTitle = category.title?.trim() || "";
+  const rawId = category.id?.trim().toLowerCase() || "";
+  const normalizedTitle = rawTitle.toLowerCase();
+
+  if (normalizedTitle && BUSINESS_CATEGORY_SET.has(normalizedTitle)) {
+    return {
+      id: rawId || createCategorySlug(normalizedTitle),
+      label: rawTitle || toHeadlineCase(normalizedTitle),
+      value: normalizedTitle,
+    };
+  }
+
+  if (rawId && BUSINESS_CATEGORY_SET.has(rawId)) {
+    return {
+      id: rawId,
+      label: rawTitle || toHeadlineCase(rawId.replace(/-/g, " ")),
+      value: rawId,
+    };
+  }
+
+  return null;
+};
+
+const getFallbackBusinessCategoryOptions = (): BusinessCategoryOption[] => {
+  const options = BUSINESS_CATEGORIES.map((category) => ({
+    id: createCategorySlug(category),
+    label: toHeadlineCase(category),
+    value: category.toLowerCase(),
+  }));
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+};
 
 const formatCountdown = (milliseconds: number) => {
   const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -149,6 +209,11 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
   const [resendCountdownMs, setResendCountdownMs] = useState(0);
   const [categorySearch, setCategorySearch] = useState("");
+  const [businessCategoryOptions, setBusinessCategoryOptions] = useState<BusinessCategoryOption[]>(
+    getFallbackBusinessCategoryOptions
+  );
+  const [businessCategoryLoading, setBusinessCategoryLoading] = useState(false);
+  const [businessCategoryLoadedFromApi, setBusinessCategoryLoadedFromApi] = useState(false);
   const [verifiedIdentity, setVerifiedIdentity] = useState<IdentityState | null>(null);
   const { setUser } = useAuth();
   const { colors } = useTheme();
@@ -165,11 +230,13 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const secondaryTextColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
   const inputPlaceholderColor = isDark ? colors.textMuted : colors.textTertiary;
 
-  const filteredCategories = useMemo(() => {
+  const filteredBusinessCategories = useMemo(() => {
     const query = categorySearch.trim().toLowerCase();
-    if (!query) return BUSINESS_CATEGORIES;
-    return BUSINESS_CATEGORIES.filter((category) => category.toLowerCase().includes(query));
-  }, [categorySearch]);
+    if (!query) return businessCategoryOptions;
+    return businessCategoryOptions.filter(
+      (category) => category.label.toLowerCase().includes(query) || category.value.includes(query)
+    );
+  }, [businessCategoryOptions, categorySearch]);
 
   const stepIndex = steps.indexOf(step);
   const requiresCompany = account.accountType !== "normal";
@@ -215,6 +282,49 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [step]);
+
+  useEffect(() => {
+    if (step !== "business" || !requiresCompany || businessCategoryLoadedFromApi || businessCategoryLoading) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadBusinessCategories = async () => {
+      try {
+        setBusinessCategoryLoading(true);
+        const response = await productService.getCategoryStats();
+        if (!isMounted) return;
+
+        const mappedOptions = response.categories
+          .map(mapProductCategoryToOption)
+          .filter((option): option is BusinessCategoryOption => Boolean(option));
+
+        if (mappedOptions.length) {
+          const seenValues = new Set<string>();
+          const uniqueOptions = mappedOptions.filter((option) => {
+            if (seenValues.has(option.value)) return false;
+            seenValues.add(option.value);
+            return true;
+          });
+          setBusinessCategoryOptions(uniqueOptions);
+        }
+      } catch {
+        // Keep fallback categories for signup if category API is unavailable.
+      } finally {
+        if (isMounted) {
+          setBusinessCategoryLoading(false);
+          setBusinessCategoryLoadedFromApi(true);
+        }
+      }
+    };
+
+    void loadBusinessCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [businessCategoryLoadedFromApi, businessCategoryLoading, requiresCompany, step]);
 
   const handleCtaPressIn = () => {
     Animated.spring(ctaScale, {
@@ -686,7 +796,13 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             styles={styles}
           />
 
-          <Text style={styles.sectionLabel}>Business categories</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionLabel, styles.sectionLabelTight]}>Business categories</Text>
+            <Text style={styles.sectionMetaText}>
+              {businessCategoryLoading ? "Loading..." : `${account.categories.length} selected`}
+            </Text>
+          </View>
+          <Text style={styles.sectionHelper}>Choose categories that match your product line.</Text>
           <View style={styles.categorySearchWrap}>
             <TextInput
               style={styles.categorySearch}
@@ -697,22 +813,26 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
             />
           </View>
 
-          <View style={styles.categoryGrid}>
-            {filteredCategories.map((category) => {
-              const isSelected = account.categories.includes(category);
+          <View style={styles.categoryListWrap}>
+            {filteredBusinessCategories.map((category) => {
+              const isSelected = account.categories.includes(category.value);
               return (
                 <TouchableOpacity
-                  key={category}
-                  style={[styles.categoryChip, isSelected ? styles.categoryChipActive : null]}
-                  onPress={() => toggleCategory(category)}
+                  key={category.id}
+                  style={[styles.categoryRow, isSelected ? styles.categoryRowActive : null]}
+                  onPress={() => toggleCategory(category.value)}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.categoryText, isSelected ? styles.categoryTextActive : null]}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Text>
+                  <View style={[styles.categoryIndicator, isSelected ? styles.categoryIndicatorActive : null]}>
+                    {isSelected ? <View style={styles.categoryIndicatorDot} /> : null}
+                  </View>
+                  <Text style={[styles.categoryRowText, isSelected ? styles.categoryRowTextActive : null]}>{category.label}</Text>
                 </TouchableOpacity>
               );
             })}
+            {!filteredBusinessCategories.length ? (
+              <Text style={styles.categoryEmpty}>No categories found for this search.</Text>
+            ) : null}
           </View>
           {accountErrors.categories ? <Text style={styles.fieldError}>{accountErrors.categories}</Text> : null}
         </View>
@@ -1093,6 +1213,29 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       marginBottom: 10,
       marginTop: 4,
     },
+    sectionLabelTight: {
+      marginBottom: 0,
+      marginTop: 0,
+    },
+    sectionHeaderRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 6,
+      gap: 10,
+    },
+    sectionMetaText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    sectionHelper: {
+      marginBottom: 10,
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
     accountTypeRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -1132,30 +1275,58 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       color: colors.text,
       paddingVertical: 14,
     },
-    categoryGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
+    categoryListWrap: {
+      gap: 8,
     },
-    categoryChip: {
-      paddingHorizontal: 12,
+    categoryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
       paddingVertical: 10,
-      borderRadius: 14,
+      paddingHorizontal: 12,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.74)",
+      backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.74)",
     },
-    categoryChipActive: {
+    categoryRowActive: {
       borderColor: colors.primary,
-      backgroundColor: colors.primary + "16",
+      backgroundColor: colors.primary + "14",
     },
-    categoryText: {
+    categoryIndicator: {
+      width: 18,
+      height: 18,
+      borderRadius: 999,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(15,23,36,0.04)",
+    },
+    categoryIndicatorActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + "1f",
+    },
+    categoryIndicatorDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: colors.primary,
+    },
+    categoryRowText: {
+      flex: 1,
       fontSize: 13,
       fontWeight: "700",
       color: colors.textSecondary,
     },
-    categoryTextActive: {
-      color: colors.primary,
+    categoryRowTextActive: {
+      color: colors.text,
+    },
+    categoryEmpty: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textMuted,
+      marginTop: 6,
     },
     helperCopy: {
       fontSize: 14,
