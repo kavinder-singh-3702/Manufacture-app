@@ -32,19 +32,19 @@ export const AdminSearchBar = ({
         {
           backgroundColor: colors.surface,
           borderRadius: radius.lg,
-          borderColor: isFocused ? colors.primary : colors.border,
-          borderWidth: isFocused ? 1.5 : 1,
+          borderColor: isFocused ? colors.text + "35" : colors.text + "20",
+          borderWidth: 1.5,
         },
       ]}
     >
       <Ionicons
         name="search"
-        size={20}
-        color={isFocused ? colors.primary : colors.textMuted}
+        size={18}
+        color={colors.textSecondary}
         style={styles.searchIcon}
       />
       <TextInput
-        style={[styles.input, { color: colors.text, fontSize: compact ? 14 : 15 }]}
+        style={[styles.input, { color: colors.text, fontSize: compact ? 13 : 14 }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -55,10 +55,10 @@ export const AdminSearchBar = ({
       {value.length > 0 && (
         <TouchableOpacity
           onPress={() => onChangeText("")}
-          style={[styles.clearButton, { backgroundColor: colors.border }]}
+          style={[styles.clearButton, { backgroundColor: colors.textMuted + "30" }]}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="close" size={14} color={colors.textMuted} />
+          <Ionicons name="close" size={12} color={colors.textSecondary} />
         </TouchableOpacity>
       )}
     </View>
@@ -69,16 +69,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 46,
+    minHeight: 44,
     paddingHorizontal: 14,
     marginBottom: 14,
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: "500",
     height: "100%",
   },
   clearButton: {

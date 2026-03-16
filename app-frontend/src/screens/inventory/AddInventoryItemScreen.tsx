@@ -267,8 +267,8 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
 
   const saveDraftVariant = useCallback(
     async (payload: ProductVariantUpsertInput) => {
-      if (!Object.keys(payload.options || {}).length) {
-        toastError("Variant options required", "Add at least one option like Size or Pack.");
+      if (!payload.title?.trim() && !Object.keys(payload.options || {}).length) {
+        toastError("Variant needs a title or option", "Add a title or at least one option like Size or Pack.");
         return;
       }
       setSavingDraftVariant(true);
@@ -818,7 +818,7 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
 
       <TouchableOpacity
         onPress={openCreateVariant}
-        activeOpacity={0.9}
+        activeOpacity={0.6}
         style={[
           styles.addVariantButton,
           {
@@ -896,14 +896,15 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           )}
         </View>
 
-        <VariantFormSheet
-          visible={variantSheetVisible}
-          variant={currentEditingVariant}
-          onClose={closeVariantSheet}
-          onSubmit={saveDraftVariant}
-          loading={savingDraftVariant}
-        />
       </KeyboardAvoidingView>
+
+      <VariantFormSheet
+        visible={variantSheetVisible}
+        variant={currentEditingVariant}
+        onClose={closeVariantSheet}
+        onSubmit={saveDraftVariant}
+        loading={savingDraftVariant}
+      />
     </SafeAreaView>
   );
 };

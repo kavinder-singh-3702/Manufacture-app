@@ -67,6 +67,10 @@ export type RootStackParamList = {
   ServiceRequest: { serviceType?: ServiceType };
   ServiceDetail: { serviceType: ServiceType };
   BusinessSetupRequest: undefined;
+  // Admin management screens (opened from Settings with back button)
+  AdminUsers: undefined;
+  AdminCompanies: undefined;
+  AdminVerifications: undefined;
   MyProducts: { initialQuery?: string; initialStatus?: "all" | "in_stock" | "low_stock" | "out_of_stock" } | undefined;
   // Accounting Reports
   ProfitLoss: undefined;

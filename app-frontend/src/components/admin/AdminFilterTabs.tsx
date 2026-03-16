@@ -18,110 +18,121 @@ export function AdminFilterTabs<T extends string>({
   activeTab,
   onTabChange,
 }: AdminFilterTabsProps<T>) {
-  const { colors, radius } = useTheme();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 390;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-      style={{ marginBottom: 16 }}
-    >
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
-        return (
-          <TouchableOpacity
-            key={tab.key}
-            onPress={() => onTabChange(tab.key)}
-            activeOpacity={0.7}
-            style={[
-              styles.tab,
-              compact ? styles.tabCompact : null,
-              {
-                backgroundColor: isActive ? colors.primary : colors.surface,
-                borderColor: isActive ? colors.primary : colors.border,
-                borderRadius: radius.pill,
-              },
-            ]}
-          >
-            <Text
+    <View style={styles.wrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => onTabChange(tab.key)}
+              activeOpacity={0.7}
               style={[
-                styles.tabText,
-                compact ? styles.tabTextCompact : null,
-                {
-                  color: isActive ? colors.textOnPrimary : colors.text,
-                },
+                styles.tab,
+                compact && styles.tabCompact,
+                isActive
+                  ? {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                      shadowColor: colors.primary,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }
+                  : {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
               ]}
             >
-              {tab.label}
-            </Text>
-            {tab.count !== undefined && (
-              <View
+              <Text
                 style={[
-                  styles.countBadge,
-                  {
-                    backgroundColor: isActive
-                      ? colors.primary + "40"
-                      : colors.border,
-                  },
+                  styles.tabText,
+                  compact && styles.tabTextCompact,
+                  { color: isActive ? colors.textOnPrimary : colors.text },
                 ]}
+                numberOfLines={1}
               >
-                <Text
+                {tab.label}
+              </Text>
+              {tab.count !== undefined && (
+                <View
                   style={[
-                    styles.countText,
+                    styles.countBadge,
                     {
-                      color: isActive ? colors.textOnPrimary : colors.textSecondary,
+                      backgroundColor: isActive ? "rgba(255,255,255,0.25)" : colors.primary + "20",
                     },
                   ]}
                 >
-                  {tab.count}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+                  <Text
+                    style={[
+                      styles.countText,
+                      { color: isActive ? colors.textOnPrimary : colors.primary },
+                    ]}
+                  >
+                    {tab.count}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginBottom: 12,
+  },
   container: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+    paddingRight: 4,
   },
   tab: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 36,
+    height: 34,
     paddingHorizontal: 14,
-    borderWidth: 1,
-    gap: 4,
+    borderWidth: 1.5,
+    borderRadius: 999,
+    gap: 6,
+  },
+  tabCompact: {
+    height: 30,
+    paddingHorizontal: 10,
   },
   tabText: {
     fontSize: 13,
-    fontWeight: "600",
-  },
-  tabCompact: {
-    height: 33,
-    paddingHorizontal: 12,
+    fontWeight: "700",
   },
   tabTextCompact: {
     fontSize: 12,
   },
   countBadge: {
-    minWidth: 18,
-    height: 16,
-    borderRadius: 8,
+    minWidth: 20,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
   },
   countText: {
-    fontSize: 9,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

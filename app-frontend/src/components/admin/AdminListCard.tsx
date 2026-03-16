@@ -64,24 +64,27 @@ export const AdminListCard = ({
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          shadowColor: colors.shadow,
           borderRadius: radius.lg,
           padding: isCompact ? spacing.md : spacing.lg,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
+          elevation: 3,
         },
         style,
       ]}
     >
       <View style={styles.row}>
-        {/* Avatar */}
         {avatarText && (
           <View
             style={[
               styles.avatar,
               {
                 backgroundColor: avatarColor || colors.primary,
-                width: isCompact ? 44 : 52,
-                height: isCompact ? 44 : 52,
-                borderRadius: isCompact ? 22 : 26,
+                width: isCompact ? 44 : 50,
+                height: isCompact ? 44 : 50,
+                borderRadius: isCompact ? 14 : 16,
                 marginRight: isCompact ? 12 : 16,
               },
             ]}
@@ -90,29 +93,19 @@ export const AdminListCard = ({
           </View>
         )}
 
-        {/* Content */}
         <View style={styles.content}>
-          {/* Title Row */}
           <View style={styles.titleRow}>
             <Text
-              style={[styles.title, { color: colors.text, fontSize: isCompact ? 15 : 17 }]}
+              style={[styles.title, { color: colors.text, fontSize: isCompact ? 15 : 16 }]}
               numberOfLines={2}
             >
               {title}
             </Text>
             {status && (
-              <View style={styles.statusContainer}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    { backgroundColor: getStatusColor(status.type) },
-                  ]}
-                />
+              <View style={[styles.statusPill, { backgroundColor: getStatusColor(status.type) + "16", borderWidth: 1, borderColor: getStatusColor(status.type) + "30" }]}>
+                <View style={[styles.statusDot, { backgroundColor: getStatusColor(status.type) }]} />
                 <Text
-                  style={[
-                    styles.statusText,
-                    { color: getStatusColor(status.type), fontSize: isCompact ? 12 : 13 },
-                  ]}
+                  style={[styles.statusText, { color: getStatusColor(status.type), fontSize: isCompact ? 11 : 12 }]}
                 >
                   {status.label}
                 </Text>
@@ -120,25 +113,22 @@ export const AdminListCard = ({
             )}
           </View>
 
-          {/* Subtitle */}
           {subtitle && (
             <Text
-              style={[styles.subtitle, { color: colors.textMuted, fontSize: isCompact ? 13 : 14 }]}
+              style={[styles.subtitle, { color: colors.textSecondary, fontSize: isCompact ? 13 : 14 }]}
               numberOfLines={2}
             >
               {subtitle}
             </Text>
           )}
 
-          {/* Meta */}
           {meta && (
-            <Text style={[styles.meta, { color: colors.textTertiary, fontSize: isCompact ? 12 : 13 }]}>
+            <Text style={[styles.meta, { color: colors.textMuted, fontSize: isCompact ? 12 : 13 }]}>
               {meta}
             </Text>
           )}
         </View>
 
-        {/* Right Content */}
         {rightContent && (
           <View style={styles.rightContent}>{rightContent}</View>
         )}
@@ -149,11 +139,7 @@ export const AdminListCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1.5,
   },
   row: {
     flexDirection: "row",
@@ -165,7 +151,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   content: {
     flex: 1,
@@ -174,36 +160,38 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
   },
   title: {
-    fontSize: 17,
-    fontWeight: "600",
+    fontWeight: "700",
     flex: 1,
   },
-  statusContainer: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    maxWidth: "100%",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
-    fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "700",
     textTransform: "capitalize",
   },
   subtitle: {
     lineHeight: 18,
+    fontWeight: "500",
   },
   meta: {
     marginTop: 2,
+    fontWeight: "600",
   },
   rightContent: {
     marginLeft: 12,

@@ -31,6 +31,7 @@ import {
   AdminFilterTabs,
   AdminListCard,
   ReasonInputModal,
+  CommandCenterSubTabs,
 } from "../../components/admin";
 
 type OpsView = "services" | "messages" | "calls";
@@ -448,6 +449,15 @@ export const AdminOpsConsoleScreen = () => {
     []
   );
 
+  const getPriorityTint = useCallback(
+    (priority: string) => {
+      if (priority === "critical") return { backgroundColor: colors.error + "0A", borderColor: colors.error + "25" };
+      if (priority === "high") return { backgroundColor: colors.warning + "08", borderColor: colors.warning + "20" };
+      return {};
+    },
+    [colors.error, colors.warning]
+  );
+
   const renderOpsItem = useCallback(
     ({ item }: { item: AdminOpsRequest }) => {
       const nextStatus = getNextStatus(item);
@@ -458,15 +468,18 @@ export const AdminOpsConsoleScreen = () => {
           : `${item.preview?.businessType || "Startup request"} • ${item.preview?.location || "No location"}`;
 
       const kindLabel = toKindLabel(item.kind);
+      const priorityTint = getPriorityTint(item.priority);
 
       return (
         <AdminListCard
           title={title}
           subtitle={subtitle}
           avatarText={(title || "R")[0].toUpperCase()}
+          avatarColor={item.priority === "critical" ? colors.error : item.priority === "high" ? colors.warning : undefined}
           status={{ label: toStatusLabel(item.status), type: getRequestTone(item.status) }}
           meta={`${kindLabel} • Priority: ${item.priority} • Updated ${formatDate(item.updatedAt)}`}
           onPress={() => openRequestDetail(item)}
+          style={priorityTint}
           rightContent={
             nextStatus ? (
               <TouchableOpacity
@@ -488,7 +501,7 @@ export const AdminOpsConsoleScreen = () => {
         />
       );
     },
-    [colors.border, colors.primary, colors.surfaceElevated, openRequestDetail, openWorkflowModal, radius.md]
+    [colors.border, colors.error, colors.primary, colors.surfaceElevated, colors.warning, getPriorityTint, openRequestDetail, openWorkflowModal, radius.md]
   );
 
   const renderConversationItem = useCallback(
@@ -556,23 +569,42 @@ export const AdminOpsConsoleScreen = () => {
         keyExtractor={(item: any) => `${item.kind || "generic"}:${item.id}`}
         renderItem={renderItem as any}
         ListHeaderComponent={
-          <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
-            <AdminHeader
-              title="Ops Console"
-              subtitle="Control startup and service queues, messages, and calls from one place."
-              count={pagination.total}
+          <View style={{ paddingBottom: spacing.md }}>
+            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+              <AdminHeader
+                title="Ops Console"
+                subtitle="Manage service queues, messages, and calls."
+                count={pagination.total}
+              />
+              <AdminSearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder={activeView === "services" ? "Search requests..." : "Search users, messages..."}
+              />
+            </View>
+            <CommandCenterSubTabs
+              tabs={viewTabs}
+              activeTab={activeView}
+              onTabChange={(key) => setActiveView(key as OpsView)}
             />
-            <AdminSearchBar
-              value={search}
-              onChangeText={setSearch}
-              placeholder={activeView === "services" ? "Search startup/service requests..." : "Search users, messages, or phone..."}
-            />
-            <AdminFilterTabs tabs={viewTabs} activeTab={activeView} onTabChange={setActiveView} />
             {activeView === "services" ? (
-              <>
-                <AdminFilterTabs tabs={kindTabs} activeTab={opsKindFilter} onTabChange={setOpsKindFilter} />
-                <AdminFilterTabs tabs={statusTabs} activeTab={opsStatusBucket} onTabChange={setOpsStatusBucket} />
-              </>
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: 14 }}>
+                <AdminFilterTabs
+                  tabs={[...kindTabs, ...statusTabs.filter(t => t.key !== "all")]}
+                  activeTab={opsKindFilter !== "all" ? opsKindFilter : opsStatusBucket !== "all" ? opsStatusBucket : "all"}
+                  onTabChange={(key) => {
+                    const isKind = ["all", "service", "business_setup"].includes(key);
+                    const isStatus = ["open", "closed", "rejected"].includes(key);
+                    if (isKind) {
+                      setOpsKindFilter(key as OpsKindFilter);
+                      setOpsStatusBucket("all");
+                    } else if (isStatus) {
+                      setOpsStatusBucket(key as OpsStatusBucket);
+                      setOpsKindFilter("all");
+                    }
+                  }}
+                />
+              </View>
             ) : null}
           </View>
         }
