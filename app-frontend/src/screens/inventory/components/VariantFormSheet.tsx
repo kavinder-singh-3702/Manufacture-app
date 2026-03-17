@@ -77,8 +77,8 @@ export const VariantFormSheet = ({
   }, [optionsRows]);
 
   const handleSubmit = async () => {
-    if (!Object.keys(optionsPayload).length) {
-      setError("At least one valid option is required (example: Size = 500ml).");
+    if (!title.trim() && !Object.keys(optionsPayload).length) {
+      setError("Enter a title or at least one option (example: Size = 500ml).");
       return;
     }
     const parsedPrice = Number(priceAmount);
@@ -87,7 +87,7 @@ export const VariantFormSheet = ({
       title: title.trim() || undefined,
       sku: sku.trim() || undefined,
       barcode: barcode.trim() || undefined,
-      options: optionsPayload,
+      options: Object.keys(optionsPayload).length ? optionsPayload : undefined,
       unit: unit.trim() || undefined,
       status,
       price:
@@ -105,7 +105,7 @@ export const VariantFormSheet = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>

@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
@@ -310,6 +310,14 @@ export const AdminProductsScreen = () => {
   useEffect(() => {
     loadProducts(0, false);
   }, [loadProducts, reloadNonce]);
+
+  // Refresh products and categories when screen regains focus (after add/edit/delete)
+  useFocusEffect(
+    useCallback(() => {
+      fetchCategories();
+      loadProducts(0, false);
+    }, [fetchCategories, loadProducts])
+  );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);

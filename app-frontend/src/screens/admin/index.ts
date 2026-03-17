@@ -6,3 +6,7 @@ export { UserActivityScreen } from "./UserActivityScreen";
 export { CampaignStudioScreen } from "./CampaignStudioScreen";
 export { AdminOpsConsoleScreen } from "./AdminOpsConsoleScreen";
 export { AdminUserDetailScreen } from "./AdminUserDetailScreen";
+export { CommandCenterScreen } from "./CommandCenterScreen";
+export { AdminInventoryScreen } from "./AdminInventoryScreen";
+export { AdminOrdersScreen } from "./AdminOrdersScreen";
+export { AdminSettingsScreen } from "./AdminSettingsScreen";

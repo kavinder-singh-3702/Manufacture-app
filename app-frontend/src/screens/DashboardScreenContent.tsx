@@ -35,6 +35,7 @@ import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
 import { APP_NAME } from "../constants/brand";
+import { AdminDashboardExtras } from "./admin/components/AdminDashboardExtras";
 import { ComplianceStatus } from "../types/company";
 import { scale, moderateScale } from "../utils/responsive";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
@@ -561,6 +562,9 @@ const AdminDashboardContent = () => {
               />
             </View>
           </View>
+
+          {/* Command Center Extras: Chart, Approvals, Activity Feed */}
+          <AdminDashboardExtras />
         </Animated.View>
       </ScrollView>
     </View>

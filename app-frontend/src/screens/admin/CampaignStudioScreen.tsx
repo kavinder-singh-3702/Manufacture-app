@@ -302,7 +302,7 @@ export const CampaignStudioScreen = () => {
                 },
               ]}
             >
-              <Text style={{ color: statusFilter === item ? colors.primary : colors.textMuted, fontWeight: "700", fontSize: 12 }}>
+              <Text style={{ color: statusFilter === item ? colors.primary : colors.textMuted, fontWeight: "800", fontSize: 13 }}>
                 {item}
               </Text>
             </TouchableOpacity>
@@ -328,7 +328,7 @@ export const CampaignStudioScreen = () => {
                 },
               ]}
             >
-              <Text style={{ color: contentFilter === item ? colors.primary : colors.textMuted, fontWeight: "700", fontSize: 12 }}>
+              <Text style={{ color: contentFilter === item ? colors.primary : colors.textMuted, fontWeight: "800", fontSize: 13 }}>
                 {item}
               </Text>
             </TouchableOpacity>
@@ -354,7 +354,7 @@ export const CampaignStudioScreen = () => {
                 },
               ]}
             >
-              <Text style={{ color: sort === item.key ? colors.primary : colors.textMuted, fontWeight: "700", fontSize: 12 }}>
+              <Text style={{ color: sort === item.key ? colors.primary : colors.textMuted, fontWeight: "800", fontSize: 13 }}>
                 {item.label}
               </Text>
             </TouchableOpacity>
@@ -527,38 +527,53 @@ const styles = StyleSheet.create({
   backButton: {
     width: 42,
     height: 42,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
   },
   title: {
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   subtitle: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     marginTop: 2,
   },
   input: {
-    minHeight: 44,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 13,
-    fontWeight: "500",
+    minHeight: 46,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontWeight: "600",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   textArea: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     minHeight: 120,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    fontWeight: "500",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontWeight: "600",
   },
   chip: {
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   centered: {
     flex: 1,
@@ -567,10 +582,15 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   retryButton: {
-    minHeight: 42,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   footerLoader: {
     paddingVertical: 14,
@@ -580,7 +600,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -589,7 +609,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   themeRow: {
     flexDirection: "row",
@@ -597,19 +617,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   themeChip: {
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 36,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 38,
     alignItems: "center",
     justifyContent: "center",
   },
   modalButton: {
-    minHeight: 40,
-    minWidth: 120,
-    borderWidth: 1,
+    flex: 1,
+    minHeight: 46,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

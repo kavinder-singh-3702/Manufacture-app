@@ -47,6 +47,7 @@ import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
 import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
 import { withAdminGuard } from "./components/AdminOnlyScreen";
+import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
 import { withCompanyContextGuard } from "./components/CompanyContextGuard";
 import { InternalInventoryItemFormScreen } from "../screens/internalInventory/InternalInventoryItemFormScreen";
 
@@ -62,6 +63,9 @@ const AdminAddProductScreen = () => <AddProductScreen mode="inhouse" />;
 const AdminEditProductScreen = () => <EditProductScreen mode="inhouse" />;
 const AdminProductVariantsScreen = () => <ProductVariantsScreen mode="inhouse" />;
 const GuardedAdminCatalogScreen = withAdminGuard(AdminProductsScreen);
+const GuardedAdminUsersScreen = withAdminGuard(UserManagementScreen);
+const GuardedAdminCompaniesScreen = withAdminGuard(CompaniesScreen);
+const GuardedAdminVerificationsScreen = withAdminGuard(VerificationsScreen);
 const GuardedAdminAddProductScreen = withAdminGuard(AdminAddProductScreen);
 const GuardedAdminEditProductScreen = withAdminGuard(AdminEditProductScreen);
 const GuardedAdminProductVariantsScreen = withAdminGuard(AdminProductVariantsScreen);
@@ -307,6 +311,45 @@ export const AppNavigator = () => {
               name="NotificationStudio"
               component={GuardedNotificationStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminUsers"
+              component={GuardedAdminUsersScreen}
+              options={{
+                animation: "slide_from_right",
+                headerShown: true,
+                title: "User Management",
+                headerStyle: { backgroundColor: colors.surface },
+                headerTintColor: colors.text,
+                headerShadowVisible: false,
+                headerBackTitle: "Settings",
+              }}
+            />
+            <RootStack.Screen
+              name="AdminCompanies"
+              component={GuardedAdminCompaniesScreen}
+              options={{
+                animation: "slide_from_right",
+                headerShown: true,
+                title: "Companies",
+                headerStyle: { backgroundColor: colors.surface },
+                headerTintColor: colors.text,
+                headerShadowVisible: false,
+                headerBackTitle: "Settings",
+              }}
+            />
+            <RootStack.Screen
+              name="AdminVerifications"
+              component={GuardedAdminVerificationsScreen}
+              options={{
+                animation: "slide_from_right",
+                headerShown: true,
+                title: "Verifications",
+                headerStyle: { backgroundColor: colors.surface },
+                headerTintColor: colors.text,
+                headerShadowVisible: false,
+                headerBackTitle: "Settings",
+              }}
             />
             <RootStack.Screen
               name="MyProducts"

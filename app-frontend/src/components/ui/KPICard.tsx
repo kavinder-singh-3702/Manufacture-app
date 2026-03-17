@@ -193,7 +193,7 @@ export const KPICard = ({
   onPress,
   style,
 }: KPICardProps) => {
-  const { colors, radius, shadows } = useTheme();
+  const { colors, radius } = useTheme();
   const animatedValue = useAnimatedCounter(value);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -222,16 +222,20 @@ export const KPICard = ({
           transform: [{ translateY: slideAnim }],
           backgroundColor: colors.surface,
           borderRadius: radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          ...shadows.medium,
+          borderWidth: 2,
+          borderColor: colors.text + "30",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.07,
+          shadowRadius: 6,
+          elevation: 2,
         },
         style,
       ]}
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textMuted }]}>
+        <Text style={[styles.title, { color: colors.textSecondary }]}>
           {title}
         </Text>
         {icon && (
@@ -324,9 +328,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   iconContainer: {
     width: 32,
@@ -342,7 +346,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 28,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   trendContainer: {
     flexDirection: "row",
