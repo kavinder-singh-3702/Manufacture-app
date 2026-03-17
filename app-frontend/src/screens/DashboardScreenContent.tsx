@@ -1237,7 +1237,54 @@ const UserDashboardContent = () => {
                 <View style={[styles.addProductIcon, { backgroundColor: colors.primary + "15" }]}>
                   <Ionicons name="add" size={24} color={colors.primary} />
                 </View>
-                <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
+                    Public listing for buyers to discover and contact you
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("InternalInventoryItemCreate")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.surface, colors.surface]}
+                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+              >
+                <View style={[styles.addProductIcon, { backgroundColor: colors.info + "15" }]}>
+                  <Ionicons name="cube-outline" size={22} color={colors.info} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addProductText, { color: colors.text }]}>Add Internal Stock Item</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
+                    Private stock for internal analytics and operations
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Main", { screen: routes.STATS })}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.surface, colors.surface]}
+                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
+              >
+                <View style={[styles.addProductIcon, { backgroundColor: colors.success + "15" }]}>
+                  <Ionicons name="analytics-outline" size={22} color={colors.success} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addProductText, { color: colors.text }]}>Open Internal Inventory</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
+                    View stock health, low stock queue, and value trends
+                  </Text>
+                </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </LinearGradient>
             </TouchableOpacity>

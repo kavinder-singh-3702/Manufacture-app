@@ -5,6 +5,8 @@ import { ServiceType } from "../services/serviceRequest.service";
 export type CompanyContextStackScreen =
   | "AddProduct"
   | "EditProduct"
+  | "InternalInventoryItemCreate"
+  | "InternalInventoryItemEdit"
   | "ProductVariants"
   | "SalesInvoice"
   | "PurchaseBill"
@@ -46,6 +48,8 @@ export type RootStackParamList = {
   VerificationSubmit: { companyId: string };
   Notifications: undefined;
   AddProduct: undefined;
+  InternalInventoryItemCreate: undefined;
+  InternalInventoryItemEdit: { itemId: string };
   EditProduct: { productId: string };
   FilteredProducts: { filter: "low_stock" | "out_of_stock"; title: string };
   CategoryProducts: { categoryId: string; title: string; subCategory?: string };

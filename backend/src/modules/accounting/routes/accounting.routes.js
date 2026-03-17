@@ -6,6 +6,7 @@ const unitsRouter = require('./units.routes');
 const vouchersRouter = require('./vouchers.routes');
 const reportsRouter = require('./reports.routes');
 const adminRouter = require('./admin.routes');
+const internalInventoryRouter = require('./internalInventory.routes');
 
 const router = Router();
 
@@ -17,6 +18,6 @@ router.use('/units', unitsRouter);
 router.use('/vouchers', vouchersRouter);
 router.use('/reports', reportsRouter);
 router.use('/admin', adminRouter);
+router.use('/internal-inventory', internalInventoryRouter);
 
 module.exports = router;
-

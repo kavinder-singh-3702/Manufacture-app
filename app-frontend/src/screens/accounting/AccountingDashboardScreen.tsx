@@ -23,6 +23,7 @@ import type { RootStackParamList } from "../../navigation/types";
 import { routes } from "../../navigation/routes";
 import { DateRangePicker, type DateRange } from "../../components/accounting/DateRangePicker";
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
+import { InternalInventoryModeView } from "./components/InternalInventoryModeView";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -95,6 +96,7 @@ export const AccountingDashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [mode, setMode] = useState<"books" | "internal_stock">("books");
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [recentVouchers, setRecentVouchers] = useState<Voucher[]>([]);
@@ -105,6 +107,13 @@ export const AccountingDashboardScreen = () => {
     if (isGuest || !hasCompany) {
       setDashboard(null);
       setRecentVouchers([]);
+      setError(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (mode !== "books") {
       setError(null);
       setLoading(false);
       setRefreshing(false);
@@ -138,7 +147,7 @@ export const AccountingDashboardScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [dateRange, hasCompany, isGuest]);
+  }, [dateRange, hasCompany, isGuest, mode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,12 +157,12 @@ export const AccountingDashboardScreen = () => {
 
   useEffect(() => {
     // If date range changes while screen is visible, refresh.
-    if (!loading && !isGuest && hasCompany) {
+    if (mode === "books" && !loading && !isGuest && hasCompany) {
       setLoading(true);
       fetchAll();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange.from, dateRange.to, hasCompany, isGuest]);
+  }, [dateRange.from, dateRange.to, hasCompany, isGuest, mode]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -232,7 +241,9 @@ export const AccountingDashboardScreen = () => {
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: contentPadding, paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          mode === "books" ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> : undefined
+        }
       >
         {/* Header */}
         <View style={{ marginBottom: spacing.lg }}>
@@ -240,12 +251,49 @@ export const AccountingDashboardScreen = () => {
             Accounting
           </AdaptiveSingleLineText>
           <AdaptiveSingleLineText style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {periodLabel}
+            {mode === "books" ? periodLabel : "Internal stock analytics mode"}
           </AdaptiveSingleLineText>
         </View>
 
-        {/* Error Banner */}
-        {error ? (
+        <View
+          style={[
+            styles.modeSwitchWrap,
+            {
+              marginBottom: spacing.lg,
+              borderRadius: radius.pill,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => setMode("books")}
+            activeOpacity={0.85}
+            style={[
+              styles.modeSwitchBtn,
+              mode === "books" && { backgroundColor: colors.primary, borderRadius: radius.pill },
+            ]}
+          >
+            <Text style={[styles.modeSwitchText, { color: mode === "books" ? colors.textOnPrimary : colors.text }]}>Books</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setMode("internal_stock")}
+            activeOpacity={0.85}
+            style={[
+              styles.modeSwitchBtn,
+              mode === "internal_stock" && { backgroundColor: colors.primary, borderRadius: radius.pill },
+            ]}
+          >
+            <Text style={[styles.modeSwitchText, { color: mode === "internal_stock" ? colors.textOnPrimary : colors.text }]}>
+              Internal Stock
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {mode === "books" ? (
+          <>
+            {/* Error Banner */}
+            {error ? (
           <View
             style={[
               styles.errorBanner,
@@ -265,16 +313,16 @@ export const AccountingDashboardScreen = () => {
               <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : null}
+            ) : null}
 
-        {/* Period Picker */}
-        <View style={{ marginBottom: spacing.lg }}>
-          <DateRangePicker label="Period" value={dateRange} onChange={setDateRange} />
-        </View>
+            {/* Period Picker */}
+            <View style={{ marginBottom: spacing.lg }}>
+              <DateRangePicker label="Period" value={dateRange} onChange={setDateRange} />
+            </View>
 
-        {/* KPI Grid */}
-        <SectionHeader title="Overview" subtitle="Key financial metrics" />
-        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
+            {/* KPI Grid */}
+            <SectionHeader title="Overview" subtitle="Key financial metrics" />
+            <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
           <MetricCard
             label="Sales"
             value={formatMoneyCompact(dashboard?.sales || 0)}
@@ -323,11 +371,11 @@ export const AccountingDashboardScreen = () => {
             singleColumn={isXCompact}
             cardPadding={cardPadding}
           />
-        </View>
+            </View>
 
-        {/* Quick Entry */}
-        <SectionHeader title="Quick Entry" subtitle="Create transactions fast" />
-        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
+            {/* Quick Entry */}
+            <SectionHeader title="Quick Entry" subtitle="Create transactions fast" />
+            <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
           <ActionCard
             label="Sales Invoice"
             subtitle="Record a sale"
@@ -364,21 +412,21 @@ export const AccountingDashboardScreen = () => {
             singleColumn={isXCompact}
             cardPadding={cardPadding}
           />
-        </View>
+            </View>
 
-        {/* Recent Transactions */}
-        <SectionHeader
-          title="Recent Transactions"
-          subtitle="Latest posted vouchers"
-          rightActionLabel="View all"
-          onRightAction={() => navigation.navigate("TransactionList")}
-        />
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
-          ]}
-        >
+            {/* Recent Transactions */}
+            <SectionHeader
+              title="Recent Transactions"
+              subtitle="Latest posted vouchers"
+              rightActionLabel="View all"
+              onRightAction={() => navigation.navigate("TransactionList")}
+            />
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
+              ]}
+            >
           {recentVouchers.length ? (
             recentVouchers.map((voucher, index) => (
               <VoucherRow
@@ -396,187 +444,195 @@ export const AccountingDashboardScreen = () => {
               </Text>
             </View>
           )}
-        </View>
+            </View>
 
-        {/* Reports */}
-        <SectionHeader title="Reports" subtitle="Detailed accounting views" />
-        <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
-          <ActionCard
-            label="Profit & Loss"
-            subtitle="Income vs expense"
-            iconName="pie-chart-outline"
-            accent={colors.success}
-            onPress={() => navigation.navigate("ProfitLoss")}
-            singleColumn={isXCompact}
-            cardPadding={cardPadding}
-          />
-          <ActionCard
-            label="GST Summary"
-            subtitle="Input vs output tax"
-            iconName="receipt-outline"
-            accent={colors.primary}
-            onPress={() => navigation.navigate("GSTSummary")}
-            singleColumn={isXCompact}
-            cardPadding={cardPadding}
-          />
-          <ActionCard
-            label="Outstanding"
-            subtitle="Receivable / payable aging"
-            iconName="people-outline"
-            accent={colors.warning}
-            onPress={() => navigation.navigate("PartyOutstanding")}
-            singleColumn={isXCompact}
-            cardPadding={cardPadding}
-          />
-        </View>
+            {/* Reports */}
+            <SectionHeader title="Reports" subtitle="Detailed accounting views" />
+            <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
+              <ActionCard
+                label="Profit & Loss"
+                subtitle="Income vs expense"
+                iconName="pie-chart-outline"
+                accent={colors.success}
+                onPress={() => navigation.navigate("ProfitLoss")}
+                singleColumn={isXCompact}
+                cardPadding={cardPadding}
+              />
+              <ActionCard
+                label="GST Summary"
+                subtitle="Input vs output tax"
+                iconName="receipt-outline"
+                accent={colors.primary}
+                onPress={() => navigation.navigate("GSTSummary")}
+                singleColumn={isXCompact}
+                cardPadding={cardPadding}
+              />
+              <ActionCard
+                label="Outstanding"
+                subtitle="Receivable / payable aging"
+                iconName="people-outline"
+                accent={colors.warning}
+                onPress={() => navigation.navigate("PartyOutstanding")}
+                singleColumn={isXCompact}
+                cardPadding={cardPadding}
+              />
+            </View>
 
-        {/* Working Capital */}
-        <SectionHeader title="Working Capital" subtitle="Receivables vs payables" />
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
-          ]}
-        >
-          <View style={{ padding: spacing.md, gap: spacing.md }}>
-            <WorkingCapitalBar
-              label="Receivables"
-              value={workingCapital.receivables}
-              max={workingCapital.max}
-              accent={colors.success}
-            />
-            <WorkingCapitalBar
-              label="Payables"
-              value={workingCapital.payables}
-              max={workingCapital.max}
-              accent={colors.error}
-            />
+            {/* Working Capital */}
+            <SectionHeader title="Working Capital" subtitle="Receivables vs payables" />
             <View
               style={[
-                styles.netPositionCard,
-                {
-                  borderRadius: radius.md,
-                  borderColor: workingCapital.net >= 0 ? colors.success + "35" : colors.error + "35",
-                  backgroundColor: workingCapital.net >= 0 ? colors.success + "10" : colors.error + "10",
-                },
+                styles.card,
+                { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
               ]}
             >
-              <Text style={[styles.netPositionLabel, { color: colors.textMuted }]}>Net Position</Text>
-              <Text
-                style={[
-                  styles.netPositionValue,
-                  { color: workingCapital.net >= 0 ? colors.success : colors.error },
-                ]}
-              >
-                {workingCapital.net >= 0 ? "+" : ""}
-                {formatMoney(workingCapital.net)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Inventory Snapshot */}
-        <SectionHeader title="Inventory Snapshot" subtitle="Low stock and top movement" />
-
-        {dashboard?.lowStockProducts?.length ? (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
-            ]}
-          >
-            <View style={[styles.cardHeaderRow, { padding: spacing.md, paddingBottom: spacing.sm }]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Low stock</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("FilteredProducts", { filter: "low_stock", title: "Low Stock Products" })}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.linkText, { color: colors.primary }]}>View</Text>
-              </TouchableOpacity>
-            </View>
-            {dashboard.lowStockProducts.slice(0, 5).map((p, idx) => (
-              <View
-                key={p._id}
-                style={[
-                  styles.snapshotRow,
-                  {
-                    borderTopColor: colors.border,
-                    borderTopWidth: idx === 0 ? StyleSheet.hairlineWidth : 0,
-                    borderBottomColor: colors.border,
-                    borderBottomWidth: idx < Math.min(4, dashboard.lowStockProducts.length - 1) ? StyleSheet.hairlineWidth : 0,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                  },
-                ]}
-              >
-                <View style={styles.flexShrink}>
-                  <AdaptiveSingleLineText
-                    minimumFontScale={0.72}
-                    style={[styles.snapshotName, { color: colors.text }]}
-                  >
-                    {p.name}
-                  </AdaptiveSingleLineText>
-                  <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
-                    On hand: {p.availableQuantity}  Min: {p.minStockQuantity}
-                  </Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: colors.warning + "18", borderColor: colors.warning + "40" }]}>
-                  <Text style={[styles.badgeText, { color: colors.warning }]}>Low</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {dashboard?.topItems?.length ? (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
-            ]}
-          >
-            <View style={[styles.cardHeaderRow, { padding: spacing.md, paddingBottom: spacing.sm }]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>Top items</Text>
-              <Text style={[styles.cardHint, { color: colors.textMuted }]}>By quantity sold</Text>
-            </View>
-            {dashboard.topItems.slice(0, 5).map((item, idx) => {
-              const productId = typeof item._id?.product === "string" ? item._id.product : String(item._id?.product || "");
-              const displayName = item.productName || (productId ? `Product ${productId.slice(0, 8)}` : "Product");
-              return (
+              <View style={{ padding: spacing.md, gap: spacing.md }}>
+                <WorkingCapitalBar
+                  label="Receivables"
+                  value={workingCapital.receivables}
+                  max={workingCapital.max}
+                  accent={colors.success}
+                />
+                <WorkingCapitalBar
+                  label="Payables"
+                  value={workingCapital.payables}
+                  max={workingCapital.max}
+                  accent={colors.error}
+                />
                 <View
-                  key={`${productId}-${idx}`}
                   style={[
-                    styles.snapshotRow,
+                    styles.netPositionCard,
                     {
-                      borderTopColor: colors.border,
-                      borderTopWidth: idx === 0 ? StyleSheet.hairlineWidth : 0,
-                      borderBottomColor: colors.border,
-                      borderBottomWidth: idx < Math.min(4, dashboard.topItems.length - 1) ? StyleSheet.hairlineWidth : 0,
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
+                      borderRadius: radius.md,
+                      borderColor: workingCapital.net >= 0 ? colors.success + "35" : colors.error + "35",
+                      backgroundColor: workingCapital.net >= 0 ? colors.success + "10" : colors.error + "10",
                     },
                   ]}
                 >
-                  <View style={[styles.rankBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
-                    <Text style={[styles.rankText, { color: colors.primary }]}>{idx + 1}</Text>
-                  </View>
-                  <View style={styles.flexShrink}>
-                    <AdaptiveSingleLineText
-                      minimumFontScale={0.72}
-                      style={[styles.snapshotName, { color: colors.text }]}
-                    >
-                      {displayName}
-                    </AdaptiveSingleLineText>
-                    <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
-                      Qty: {Number(item.qtyOut || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.snapshotValue, { color: colors.success }]}>{formatMoneyCompact(item.costValue || 0)}</Text>
+                  <Text style={[styles.netPositionLabel, { color: colors.textMuted }]}>Net Position</Text>
+                  <Text
+                    style={[
+                      styles.netPositionValue,
+                      { color: workingCapital.net >= 0 ? colors.success : colors.error },
+                    ]}
+                  >
+                    {workingCapital.net >= 0 ? "+" : ""}
+                    {formatMoney(workingCapital.net)}
+                  </Text>
                 </View>
-              );
-            })}
-          </View>
-        ) : null}
+              </View>
+            </View>
+
+            {/* Inventory Snapshot */}
+            <SectionHeader title="Inventory Snapshot" subtitle="Low stock and top movement" />
+
+            {dashboard?.lowStockProducts?.length ? (
+              <View
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
+                ]}
+              >
+                <View style={[styles.cardHeaderRow, { padding: spacing.md, paddingBottom: spacing.sm }]}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Low stock</Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("FilteredProducts", { filter: "low_stock", title: "Low Stock Products" })}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.linkText, { color: colors.primary }]}>View</Text>
+                  </TouchableOpacity>
+                </View>
+                {dashboard.lowStockProducts.slice(0, 5).map((p, idx) => (
+                  <View
+                    key={p._id}
+                    style={[
+                      styles.snapshotRow,
+                      {
+                        borderTopColor: colors.border,
+                        borderTopWidth: idx === 0 ? StyleSheet.hairlineWidth : 0,
+                        borderBottomColor: colors.border,
+                        borderBottomWidth: idx < Math.min(4, dashboard.lowStockProducts.length - 1) ? StyleSheet.hairlineWidth : 0,
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: spacing.sm,
+                      },
+                    ]}
+                  >
+                    <View style={styles.flexShrink}>
+                      <AdaptiveSingleLineText
+                        minimumFontScale={0.72}
+                        style={[styles.snapshotName, { color: colors.text }]}
+                      >
+                        {p.name}
+                      </AdaptiveSingleLineText>
+                      <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
+                        On hand: {p.availableQuantity}  Min: {p.minStockQuantity}
+                      </Text>
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: colors.warning + "18", borderColor: colors.warning + "40" }]}>
+                      <Text style={[styles.badgeText, { color: colors.warning }]}>Low</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {dashboard?.topItems?.length ? (
+              <View
+                style={[
+                  styles.card,
+                  { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, marginBottom: spacing.lg },
+                ]}
+              >
+                <View style={[styles.cardHeaderRow, { padding: spacing.md, paddingBottom: spacing.sm }]}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>Top items</Text>
+                  <Text style={[styles.cardHint, { color: colors.textMuted }]}>By quantity sold</Text>
+                </View>
+                {dashboard.topItems.slice(0, 5).map((item, idx) => {
+                  const productId = typeof item._id?.product === "string" ? item._id.product : String(item._id?.product || "");
+                  const displayName = item.productName || (productId ? `Product ${productId.slice(0, 8)}` : "Product");
+                  return (
+                    <View
+                      key={`${productId}-${idx}`}
+                      style={[
+                        styles.snapshotRow,
+                        {
+                          borderTopColor: colors.border,
+                          borderTopWidth: idx === 0 ? StyleSheet.hairlineWidth : 0,
+                          borderBottomColor: colors.border,
+                          borderBottomWidth: idx < Math.min(4, dashboard.topItems.length - 1) ? StyleSheet.hairlineWidth : 0,
+                          paddingHorizontal: spacing.md,
+                          paddingVertical: spacing.sm,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.rankBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                        <Text style={[styles.rankText, { color: colors.primary }]}>{idx + 1}</Text>
+                      </View>
+                      <View style={styles.flexShrink}>
+                        <AdaptiveSingleLineText
+                          minimumFontScale={0.72}
+                          style={[styles.snapshotName, { color: colors.text }]}
+                        >
+                          {displayName}
+                        </AdaptiveSingleLineText>
+                        <Text style={[styles.snapshotMeta, { color: colors.textMuted }]}>
+                          Qty: {Number(item.qtyOut || 0).toFixed(2)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.snapshotValue, { color: colors.success }]}>{formatMoneyCompact(item.costValue || 0)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <InternalInventoryModeView
+            enabled={mode === "internal_stock"}
+            onAddItem={() => navigation.navigate("InternalInventoryItemCreate")}
+            onOpenInventory={() => navigation.navigate("Main", { screen: routes.STATS })}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -792,6 +848,23 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: "900", letterSpacing: -0.6 },
   titleCompact: { fontSize: 24 },
   subtitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
+  modeSwitchWrap: {
+    flexDirection: "row",
+    borderWidth: 1,
+    padding: 4,
+    gap: 4,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modeSwitchText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
 
   errorBanner: {
     flexDirection: "row",

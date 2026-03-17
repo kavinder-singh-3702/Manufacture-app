@@ -48,6 +48,7 @@ import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
 import { withAdminGuard } from "./components/AdminOnlyScreen";
 import { withCompanyContextGuard } from "./components/CompanyContextGuard";
+import { InternalInventoryItemFormScreen } from "../screens/internalInventory/InternalInventoryItemFormScreen";
 
 enableScreens(true);
 
@@ -67,6 +68,12 @@ const GuardedAdminProductVariantsScreen = withAdminGuard(AdminProductVariantsScr
 const GuardedAddProductScreen = withCompanyContextGuard(AddProductScreen, { sourceLabel: "Add Product" });
 const GuardedEditProductScreen = withCompanyContextGuard(EditProductScreen, { sourceLabel: "Edit Product" });
 const GuardedProductVariantsScreen = withCompanyContextGuard(ProductVariantsScreen, { sourceLabel: "Product Variants" });
+const GuardedInternalInventoryItemCreateScreen = withCompanyContextGuard(InternalInventoryItemFormScreen, {
+  sourceLabel: "Internal Inventory Item",
+});
+const GuardedInternalInventoryItemEditScreen = withCompanyContextGuard(InternalInventoryItemFormScreen, {
+  sourceLabel: "Internal Inventory Item",
+});
 const GuardedSalesInvoiceScreen = withCompanyContextGuard(SalesInvoiceScreen, { sourceLabel: "Sales Invoice" });
 const GuardedPurchaseBillScreen = withCompanyContextGuard(PurchaseBillScreen, { sourceLabel: "Purchase Bill" });
 const GuardedReceiptPaymentScreen = withCompanyContextGuard(ReceiptPaymentScreen, { sourceLabel: "Receipt / Payment" });
@@ -189,6 +196,16 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="AddProduct"
               component={GuardedAddProductScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="InternalInventoryItemCreate"
+              component={GuardedInternalInventoryItemCreateScreen}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
+            <RootStack.Screen
+              name="InternalInventoryItemEdit"
+              component={GuardedInternalInventoryItemEditScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <RootStack.Screen

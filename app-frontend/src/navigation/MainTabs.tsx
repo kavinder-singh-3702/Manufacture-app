@@ -502,7 +502,7 @@ export const MainTabs = () => {
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[styles.accountsSheetOptionTitle, { color: colors.textOnLightSurface }]}>Accounting</Text>
-                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Dashboard, reports, vouchers</Text>
+                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Dashboard, reports, vouchers, internal stock</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -519,7 +519,7 @@ export const MainTabs = () => {
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[styles.accountsSheetOptionTitle, { color: colors.textOnLightSurface }]}>Inventory</Text>
-                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Stock insights, products, low stock</Text>
+                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Internal stock insights and low-stock queue</Text>
                     </View>
                   </TouchableOpacity>
                 </View>
