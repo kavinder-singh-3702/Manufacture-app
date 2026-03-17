@@ -7,6 +7,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "email:verify": "node src/scripts/verifyEmailConnection.js",
+    "email:smoke": "node src/scripts/sendSmokeEmail.js",
+    "cleanup:legacy-campaigns": "node src/scripts/cleanupLegacyCampaigns.js",
     "bootstrap:accounting": "node src/modules/accounting/scripts/bootstrapCompanyBooks.js",
     "lint": "echo \"Add lint command\" && exit 0",
     "test": "jest --runInBand",

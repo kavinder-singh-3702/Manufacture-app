@@ -52,16 +52,16 @@ export const AdminSettingsScreen = () => {
       title: "TOOLS",
       items: [
         {
-          icon: "megaphone",
-          label: "Campaign Studio",
-          description: "Create and manage campaigns",
-          onPress: () => navigation.navigate("CampaignStudio"),
-        },
-        {
           icon: "notifications",
           label: "Notification Studio",
           description: "Dispatch and track notifications",
           onPress: () => navigation.navigate("NotificationStudio"),
+        },
+        {
+          icon: "megaphone",
+          label: "Ad Studio",
+          description: "Create targeted advertisements",
+          onPress: () => navigation.navigate("AdStudio"),
         },
       ],
     },

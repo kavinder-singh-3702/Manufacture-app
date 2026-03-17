@@ -94,13 +94,6 @@ export type AdminOverview = {
     failed: number;
     successRate: number;
   };
-  campaigns: {
-    active: number;
-    draft: number;
-    expired: number;
-    archived: number;
-    total: number;
-  };
   servicesQueue?: {
     pending: number;
     inProgress: number;
@@ -306,10 +299,6 @@ export type AdminUserOverview = {
       updatedAt?: string;
     }>;
     total: number;
-  };
-  campaigns: {
-    total: number;
-    byStatus: Record<string, number>;
   };
   communications: {
     conversations: {

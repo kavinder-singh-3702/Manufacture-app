@@ -22,15 +22,9 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
 import { verificationService } from "../services/verificationService";
-import { productService, ProductCategory } from "../services/product.service";
-import { preferenceService, PersonalizedOffer, HomeFeedRecommendation } from "../services/preference.service";
-import { CampaignHeroCarousel, RecommendedProductsRail } from "./dashboard/components";
-import {
-  canCallCampaign,
-  canMessageCampaign,
-  callCampaignContact,
-  startCampaignConversation,
-} from "./campaign/utils/campaignContact";
+import { productService, Product, ProductCategory } from "../services/product.service";
+import { preferenceService } from "../services/preference.service";
+import { adService, AdFeedCard } from "../services/ad.service";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
@@ -42,6 +36,8 @@ import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
 import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
 import { motion } from "../theme/motion";
+import { useToast } from "../components/ui/Toast";
+import { callProductSeller, startProductConversation } from "./product/utils/productContact";
 
 // ============================================================
 // TYPES
@@ -54,17 +50,6 @@ type CategoryItem = {
   icon: string;
   bgColor: string;
   totalQuantity?: number;
-};
-type PromoOffer = {
-  id: string;
-  title: string;
-  description: string;
-  oldPrice?: string;
-  newPrice: string;
-  discountLabel: string;
-  tag?: string;
-  accent: string;
-  gradient: [string, string];
 };
 
 // ============================================================
@@ -549,16 +534,16 @@ const AdminDashboardContent = () => {
                 onPress={() => navigateToTab(routes.COMPANIES)}
               />
               <ManagementCard
-                icon="megaphone"
-                title="Campaign Studio"
-                subtitle="Create and manage targeted campaign ads"
-                onPress={() => navigation.navigate("CampaignStudio")}
-              />
-              <ManagementCard
                 icon="cube-outline"
                 title="Manage In-house Products"
                 subtitle="Publish catalog products shown to all users"
                 onPress={() => navigation.navigate("AdminCatalog")}
+              />
+              <ManagementCard
+                icon="megaphone-outline"
+                title="Ad Studio"
+                subtitle="Launch targeted dashboard advertisements"
+                onPress={() => navigation.navigate("AdStudio")}
               />
             </View>
           </View>
@@ -724,6 +709,7 @@ const UserDashboardContent = () => {
   const { isXCompact, isCompact } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const { user, requestSignup, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isGuest = user?.role === AppRole.GUEST;
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
@@ -759,9 +745,9 @@ const UserDashboardContent = () => {
   );
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
-  const [campaigns, setCampaigns] = useState<PersonalizedOffer[]>([]);
-  const [recommendations, setRecommendations] = useState<HomeFeedRecommendation[]>([]);
-  const [campaignFeedLoading, setCampaignFeedLoading] = useState(false);
+  const [adCards, setAdCards] = useState<AdFeedCard[]>([]);
+  const [adFeedLoading, setAdFeedLoading] = useState(false);
+  const seenImpressionCampaigns = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -954,25 +940,136 @@ const UserDashboardContent = () => {
     }, [fetchCategories])
   );
 
-  const fetchHomeFeed = useCallback(async () => {
-    setCampaignFeedLoading(true);
-    try {
-      const feed = await preferenceService.getHomeFeed({ campaignLimit: 5, recommendationLimit: 10 });
-      setCampaigns(feed.campaigns || []);
-      setRecommendations(feed.recommendations || []);
-    } catch (err: any) {
-      console.warn("Failed to fetch home campaign feed", err?.message || err);
-      setCampaigns([]);
-      setRecommendations([]);
-    } finally {
-      setCampaignFeedLoading(false);
-    }
+  const trackAdImpression = useCallback((card?: AdFeedCard | null) => {
+    if (!card) return;
+    if (seenImpressionCampaigns.current.has(card.campaignId)) return;
+    seenImpressionCampaigns.current.add(card.campaignId);
+    adService.logEvent({
+      campaignId: card.campaignId,
+      type: "impression",
+      placement: card.placement,
+      sessionId: card.sessionId,
+      metadata: { origin: "dashboard_home" },
+    }).catch(() => {});
   }, []);
+
+  const fetchAdFeed = useCallback(async () => {
+    if (isGuest) {
+      setAdCards([]);
+      return;
+    }
+    try {
+      setAdFeedLoading(true);
+      const feed = await adService.getFeed({ placement: "dashboard_home", limit: 5 });
+      seenImpressionCampaigns.current.clear();
+      setAdCards(feed.cards || []);
+      if (feed.cards?.length) {
+        trackAdImpression(feed.cards[0]);
+      }
+    } catch {
+      setAdCards([]);
+    } finally {
+      setAdFeedLoading(false);
+    }
+  }, [isGuest, trackAdImpression]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchHomeFeed();
-    }, [fetchHomeFeed])
+      fetchAdFeed();
+    }, [fetchAdFeed])
+  );
+
+  const buildContactProduct = useCallback((card: AdFeedCard): Product => {
+    const product = card.product;
+    return {
+      _id: product.id,
+      name: product.name || "Promoted product",
+      category: product.category || "other",
+      subCategory: product.subCategory,
+      createdBy: product.createdBy,
+      price: {
+        amount: Number(product.price?.amount || 0),
+        currency: product.price?.currency || "INR",
+      },
+      minStockQuantity: 0,
+      availableQuantity: 1,
+      visibility: "public" as const,
+      status: "active" as const,
+      images: product.images || [],
+      contactPreferences: product.contactPreferences,
+      company: product.company
+        ? {
+            _id: product.company.id || "",
+            displayName: product.company.displayName,
+            complianceStatus: product.company.complianceStatus,
+            contact: product.company.contact,
+          }
+        : undefined,
+      createdAt: "",
+      updatedAt: "",
+    };
+  }, []);
+
+  const handleAdView = useCallback(
+    (card: AdFeedCard) => {
+      adService.logEvent({
+        campaignId: card.campaignId,
+        type: "click",
+        placement: card.placement,
+        sessionId: card.sessionId,
+        metadata: { action: "view_product" },
+      }).catch(() => {});
+      navigation.navigate("ProductDetails", { productId: card.product.id });
+    },
+    [navigation]
+  );
+
+  const handleAdDismiss = useCallback((card: AdFeedCard) => {
+    setAdCards((prev) => prev.filter((entry) => entry.id !== card.id));
+    adService.logEvent({
+      campaignId: card.campaignId,
+      type: "dismiss",
+      placement: card.placement,
+      sessionId: card.sessionId,
+      metadata: { action: "dismiss" },
+    }).catch(() => {});
+  }, []);
+
+  const handleAdMessage = useCallback(
+    (card: AdFeedCard) => {
+      startProductConversation({
+        product: buildContactProduct(card),
+        isGuest,
+        requestLogin,
+        navigation,
+        toastError,
+      });
+      adService.logEvent({
+        campaignId: card.campaignId,
+        type: "click",
+        placement: card.placement,
+        sessionId: card.sessionId,
+        metadata: { action: "message" },
+      }).catch(() => {});
+    },
+    [buildContactProduct, isGuest, navigation, requestLogin, toastError]
+  );
+
+  const handleAdCall = useCallback(
+    (card: AdFeedCard) => {
+      callProductSeller({
+        product: buildContactProduct(card),
+        toastError,
+      });
+      adService.logEvent({
+        campaignId: card.campaignId,
+        type: "click",
+        placement: card.placement,
+        sessionId: card.sessionId,
+        metadata: { action: "call" },
+      }).catch(() => {});
+    },
+    [buildContactProduct, toastError]
   );
 
   const getGreeting = () => {
@@ -1120,79 +1217,21 @@ const UserDashboardContent = () => {
           </Animated.View>
 
           <Animated.View style={revealStyle(1)}>
-            {campaigns.length > 0 ? (
-              <CampaignHeroCarousel
-                campaigns={campaigns}
-                loading={campaignFeedLoading}
-                canMessage={canMessageCampaign}
-                canCall={canCallCampaign}
-                onImpression={(campaign) => {
-                  preferenceService
-                    .logEvent({
-                      type: "campaign_impression",
-                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                    })
-                    .catch(() => {});
-                }}
-                onPrimaryPress={(campaign) => {
-                  preferenceService
-                    .logEvent({
-                      type: "campaign_click",
-                      productId: campaign.product?.id,
-                      category: campaign.product?.category,
-                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                    })
-                    .catch(() => {});
-
-                  if (campaign.contentType === "service") {
-                    navigation.navigate("ServiceRequest", { serviceType: campaign.serviceType });
-                    return;
-                  }
-                  if (campaign.product?.id) {
-                    navigation.navigate("ProductDetails", { productId: campaign.product.id });
-                    return;
-                  }
-                  navigation.navigate("ProductSearch");
-                }}
-                onMessagePress={(campaign) => {
-                  preferenceService
-                    .logEvent({
-                      type: "campaign_message",
-                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                    })
-                    .catch(() => {});
-                  startCampaignConversation({
-                    campaign,
-                    isGuest,
-                    requestLogin,
-                    navigation,
-                    toastError: (title, message) => Alert.alert(title, message),
-                  });
-                }}
-                onCallPress={(campaign) => {
-                  preferenceService
-                    .logEvent({
-                      type: "campaign_call",
-                      meta: { campaignId: campaign.id, contentType: campaign.contentType },
-                    })
-                    .catch(() => {});
-                  callCampaignContact({
-                    campaign,
-                    toastError: (title, message) => Alert.alert(title, message),
-                  });
-                }}
+            {adCards.length ? (
+              <AdSwipeDeck
+                cards={adCards}
+                loading={adFeedLoading}
+                onCardVisible={trackAdImpression}
+                onView={handleAdView}
+                onDismiss={handleAdDismiss}
+                onMessage={handleAdMessage}
+                onCall={handleAdCall}
               />
             ) : (
-              <RecommendedProductsRail
-                recommendations={recommendations}
-                loading={campaignFeedLoading}
-                onBrowseAll={() => navigation.navigate("ProductSearch")}
-                onOpenProduct={(productId) => {
-                  preferenceService
-                    .logEvent({ type: "view_product", productId, meta: { source: "home_fallback_reco" } })
-                    .catch(() => {});
-                  navigation.navigate("ProductDetails", { productId });
-                }}
+              <NoAdHero
+                loading={adFeedLoading}
+                onPress={() => navigation.navigate("ProductSearch")}
+                onBrowseServices={() => navigation.navigate("Main", { screen: routes.SERVICES })}
               />
             )}
           </Animated.View>
@@ -1355,41 +1394,140 @@ const UserDashboardContent = () => {
 // ============================================================
 // USER DASHBOARD COMPONENTS
 // ============================================================
-const PromoBanner = ({ offer, onPress, loading }: { offer: PromoOffer; onPress?: () => void; loading?: boolean }) => {
-  const { spacing, radius } = useTheme();
+const AdSwipeDeck = ({
+  cards,
+  loading,
+  onCardVisible,
+  onView,
+  onDismiss,
+  onMessage,
+  onCall,
+}: {
+  cards: AdFeedCard[];
+  loading?: boolean;
+  onCardVisible?: (card: AdFeedCard) => void;
+  onView?: (card: AdFeedCard) => void;
+  onDismiss?: (card: AdFeedCard) => void;
+  onMessage?: (card: AdFeedCard) => void;
+  onCall?: (card: AdFeedCard) => void;
+}) => {
+  const { colors, radius, spacing } = useTheme();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.max(260, width - spacing.lg * 2);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    if (cards.length) {
+      onCardVisible?.(cards[0]);
+    }
+  }, [cards, onCardVisible]);
 
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
-      <LinearGradient
-        colors={offer.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.promoCard, { borderRadius: radius.lg, padding: spacing.lg }]}
+    <View style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={[styles.noAdPillPremium, { backgroundColor: colors.badgeInfo }]}>
+          <Text style={[styles.noAdPillTextPremium, { color: colors.info }]}>Sponsored products</Text>
+        </View>
+        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700" }}>
+          {loading ? "Loading..." : `${activeIndex + 1}/${cards.length}`}
+        </Text>
+      </View>
+
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(event) => {
+          const page = Math.round(event.nativeEvent.contentOffset.x / cardWidth);
+          const index = Math.max(0, Math.min(cards.length - 1, page));
+          setActiveIndex(index);
+          onCardVisible?.(cards[index]);
+        }}
       >
-        <View style={[styles.promoGlow, { backgroundColor: offer.accent }]} />
-        <View style={[styles.promoGlowSmall, { backgroundColor: offer.accent }]} />
-        <View style={[styles.promoBadgeRow, { marginBottom: spacing.sm }]}>
-          <View style={[styles.promoBadge, { borderRadius: radius.pill }]}>
-            <Text style={styles.promoBadgeText}>{offer.tag ?? "Special"}</Text>
-          </View>
-          <View style={[styles.promoDiscount, { backgroundColor: offer.accent, borderRadius: radius.pill }]}>
-            <Text style={styles.promoDiscountText}>{offer.discountLabel}</Text>
-          </View>
-        </View>
-        <View style={{ gap: spacing.xs }}>
-          <Text style={styles.promoTitle}>{offer.title}</Text>
-          <Text style={styles.promoSubtitle}>{offer.description}</Text>
-        </View>
-        <View style={[styles.promoPriceRow, { marginTop: spacing.sm }]}>
-          {offer.oldPrice && <Text style={styles.promoOldPrice}>{offer.oldPrice}</Text>}
-          <Text style={styles.promoNewPrice}>{offer.newPrice}</Text>
-        </View>
-        <View style={[styles.promoCta, { borderRadius: radius.md }]}>
-          <Text style={styles.promoCtaText}>{loading ? "Checking offer..." : "Grab this price"}</Text>
-          <Text style={styles.promoCtaArrow}>→</Text>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+        {cards.map((card) => {
+          const imageUrl = card.product.images?.[0]?.url;
+          const canMessage = Boolean(card.product.createdBy && card.product.contactPreferences?.allowChat !== false);
+          const canCall = Boolean(card.product.company?.contact?.phone && card.product.contactPreferences?.allowCall !== false);
+          return (
+            <View
+              key={card.id}
+              style={[
+                styles.adCard,
+                {
+                  width: cardWidth,
+                  borderRadius: radius.lg,
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                },
+              ]}
+            >
+              {imageUrl ? (
+                <View style={[styles.adImageWrap, { borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}>
+                  <Animated.Image source={{ uri: imageUrl }} style={styles.adImage} resizeMode="cover" />
+                </View>
+              ) : (
+                <View style={[styles.adImagePlaceholder, { borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}>
+                  <Ionicons name="image-outline" size={26} color={colors.textMuted} />
+                </View>
+              )}
+
+              <View style={{ gap: 4 }}>
+                {card.badge ? (
+                  <View style={[styles.adBadge, { borderRadius: radius.pill, backgroundColor: colors.badgeWarning }]}>
+                    <Text style={[styles.adBadgeText, { color: colors.warningStrong }]}>{card.badge}</Text>
+                  </View>
+                ) : null}
+                <Text style={[styles.adTitle, { color: colors.text }]} numberOfLines={2}>
+                  {card.title}
+                </Text>
+                <Text style={[styles.adSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
+                  {card.subtitle || "Recommended for you"}
+                </Text>
+              </View>
+
+              <View style={styles.adActionRow}>
+                <TouchableOpacity
+                  onPress={() => onDismiss?.(card)}
+                  style={[styles.adGhostBtn, { borderColor: colors.border, borderRadius: radius.md }]}
+                >
+                  <Text style={[styles.adGhostBtnText, { color: colors.textMuted }]}>Dismiss</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onView?.(card)}
+                  style={[styles.adPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.adPrimaryBtnText, { color: colors.textOnPrimary }]}>{card.ctaLabel || "View Product"}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {(canMessage || canCall) ? (
+                <View style={styles.adContactRow}>
+                  {canMessage ? (
+                    <TouchableOpacity
+                      onPress={() => onMessage?.(card)}
+                      style={[styles.adGhostBtn, { borderColor: colors.border, borderRadius: radius.md }]}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary} />
+                      <Text style={[styles.adGhostBtnText, { color: colors.primary }]}>Message</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {canCall ? (
+                    <TouchableOpacity
+                      onPress={() => onCall?.(card)}
+                      style={[styles.adGhostBtn, { borderColor: colors.border, borderRadius: radius.md }]}
+                    >
+                      <Ionicons name="call-outline" size={14} color={colors.primary} />
+                      <Text style={[styles.adGhostBtnText, { color: colors.primary }]}>Call</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 };
 
@@ -1431,7 +1569,7 @@ const NoAdHero = ({
 
       <View style={{ gap: 8, position: "relative", zIndex: 1 }}>
         <View style={styles.noAdPillPremium}>
-          <Text style={styles.noAdPillTextPremium}>No admin campaigns right now</Text>
+          <Text style={styles.noAdPillTextPremium}>No sponsored products right now</Text>
         </View>
         <Text style={styles.noAdTitlePremium}>What do you want to source next?</Text>
         <Text style={styles.noAdSubtitlePremium}>
@@ -1731,23 +1869,80 @@ const styles = StyleSheet.create({
   addProductIcon: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
   addProductText: { flex: 1, fontSize: moderateScale(16), fontWeight: "600" },
 
-  // Promo Banner
-  promoCard: { position: "relative", overflow: "hidden" },
-  promoGlow: { position: "absolute", width: scale(140), height: scale(140), borderRadius: scale(70), opacity: 0.35, top: scale(-30), right: scale(-30) },
-  promoGlowSmall: { position: "absolute", width: scale(90), height: scale(90), borderRadius: scale(45), opacity: 0.25, bottom: scale(-20), left: scale(-20) },
-  promoBadgeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  promoBadge: { paddingHorizontal: scale(12), paddingVertical: scale(6), backgroundColor: "rgba(255,255,255,0.18)" },
-  promoBadgeText: { color: "#FFFFFF", fontSize: moderateScale(12), fontWeight: "700", letterSpacing: 0.5 },
-  promoDiscount: { paddingHorizontal: scale(12), paddingVertical: scale(6) },
-  promoDiscountText: { color: "#1F2937", fontSize: moderateScale(12), fontWeight: "800" },
-  promoTitle: { color: "#FFFFFF", fontSize: moderateScale(20), fontWeight: "800", letterSpacing: -0.4 },
-  promoSubtitle: { color: "rgba(255,255,255,0.9)", fontSize: moderateScale(13), fontWeight: "600", lineHeight: moderateScale(18) },
-  promoPriceRow: { flexDirection: "row", alignItems: "baseline", gap: scale(12) },
-  promoOldPrice: { color: "rgba(255,255,255,0.75)", fontSize: moderateScale(14), fontWeight: "600", textDecorationLine: "line-through" },
-  promoNewPrice: { color: "#FFFFFF", fontSize: moderateScale(26), fontWeight: "800", letterSpacing: -0.5 },
-  promoCta: { marginTop: scale(14), flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(255,255,255,0.18)", paddingVertical: scale(10), paddingHorizontal: scale(12) },
-  promoCtaText: { color: "#FFFFFF", fontSize: moderateScale(14), fontWeight: "700" },
-  promoCtaArrow: { color: "#FFFFFF", fontSize: moderateScale(16), fontWeight: "800" },
+  // Ad Swipe Deck
+  adCard: {
+    borderWidth: 1,
+    padding: scale(12),
+    marginRight: scale(10),
+    gap: scale(10),
+  },
+  adImageWrap: {
+    width: "100%",
+    height: scale(150),
+    overflow: "hidden",
+  },
+  adImage: {
+    width: "100%",
+    height: "100%",
+  },
+  adImagePlaceholder: {
+    width: "100%",
+    height: scale(120),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+  },
+  adBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  adTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "800",
+    lineHeight: moderateScale(22),
+  },
+  adSubtitle: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    lineHeight: moderateScale(17),
+  },
+  adActionRow: {
+    flexDirection: "row",
+    gap: scale(8),
+  },
+  adPrimaryBtn: {
+    flex: 1,
+    minHeight: scale(40),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: scale(12),
+  },
+  adPrimaryBtnText: {
+    fontSize: moderateScale(12),
+    fontWeight: "900",
+  },
+  adGhostBtn: {
+    minHeight: scale(40),
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(5),
+    paddingHorizontal: scale(10),
+  },
+  adGhostBtnText: {
+    fontSize: moderateScale(12),
+    fontWeight: "800",
+  },
+  adContactRow: {
+    flexDirection: "row",
+    gap: scale(8),
+  },
 
   // No Ad Hero - Premium Style (matching Services stats section)
   noAdCard: { position: "relative", overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },

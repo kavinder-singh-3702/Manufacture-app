@@ -31,6 +31,13 @@ export const SERVICE_META: Record<ServiceType, ServiceMeta> = {
     quickHint: "Pickup and drop city required",
     icon: "car-outline",
   },
+  advertisement: {
+    type: "advertisement",
+    title: "Advertisement",
+    subtitle: "Promote your listed products to targeted buyers",
+    quickHint: "Pick product and targeting goal",
+    icon: "megaphone-outline",
+  },
 };
 
 export type ServiceStatusTone = "neutral" | "warning" | "info" | "progress" | "success" | "danger";

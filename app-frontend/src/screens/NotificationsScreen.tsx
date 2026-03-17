@@ -29,7 +29,6 @@ type ViewMode = "unread" | "all" | "archived";
 const topicIcon = (topic?: string) => {
   if (!topic) return "notifications-outline";
   if (topic.includes("quote")) return "receipt-outline";
-  if (topic.includes("campaign")) return "megaphone-outline";
   if (topic.includes("compliance")) return "shield-checkmark-outline";
   if (topic.includes("service")) return "construct-outline";
   return "notifications-outline";

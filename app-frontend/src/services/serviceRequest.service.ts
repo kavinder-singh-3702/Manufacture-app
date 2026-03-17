@@ -1,6 +1,6 @@
 import { apiClient } from "./apiClient";
 
-export type ServiceType = "machine_repair" | "worker" | "transport";
+export type ServiceType = "machine_repair" | "worker" | "transport" | "advertisement";
 export type ServiceStatus = "pending" | "in_review" | "scheduled" | "in_progress" | "completed" | "cancelled";
 export type ServicePriority = "low" | "normal" | "high" | "urgent";
 
@@ -70,6 +70,29 @@ export type TransportDetails = {
   insuranceNeeded?: boolean;
 };
 
+export type AdvertisementDetails = {
+  product: string;
+  objective?: string;
+  targetingMode?: "any" | "all";
+  targetUserIds?: string[];
+  shopperCategories?: string[];
+  shopperSubCategories?: string[];
+  buyIntentCategories?: string[];
+  buyIntentSubCategories?: string[];
+  listedProductCategories?: string[];
+  listedProductSubCategories?: string[];
+  requireListedProductInSameCategory?: boolean;
+  lookbackDays?: number;
+  startAt?: string | Date;
+  endAt?: string | Date;
+  headline?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  badge?: string;
+  frequencyCapPerDay?: number;
+  priority?: number;
+};
+
 export type CreateServiceRequestInput = {
   serviceType: ServiceType;
   title: string;
@@ -86,6 +109,7 @@ export type CreateServiceRequestInput = {
   machineRepairDetails?: MachineRepairDetails;
   workerDetails?: WorkerRequestDetails;
   transportDetails?: TransportDetails;
+  advertisementDetails?: AdvertisementDetails;
   notes?: string;
 };
 
@@ -111,6 +135,7 @@ export type ServiceRequest = {
   machineRepairDetails?: MachineRepairDetails;
   workerDetails?: WorkerRequestDetails;
   transportDetails?: TransportDetails;
+  advertisementDetails?: AdvertisementDetails;
   notes?: string;
   createdAt: string;
   updatedAt: string;

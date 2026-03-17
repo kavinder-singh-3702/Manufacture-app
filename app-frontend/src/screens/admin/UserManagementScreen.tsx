@@ -182,10 +182,14 @@ export const UserManagementScreen = () => {
         },
       },
       {
-        label: "Campaign Studio",
+        label: "Run Advertisement",
         icon: "megaphone-outline" as const,
         onPress: () => {
-          navigation.navigate("CampaignStudio");
+          if (!selectedUser) return;
+          navigation.navigate("AdStudio", {
+            prefillTargetUserId: selectedUser.id,
+            prefillUserName: selectedUser.displayName || selectedUser.email,
+          });
         },
       },
       {

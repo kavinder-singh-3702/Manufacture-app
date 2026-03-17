@@ -8,10 +8,6 @@ const EVENT_TYPES = [
   'view_product',
   'add_to_cart',
   'remove_from_cart',
-  'campaign_impression',
-  'campaign_click',
-  'campaign_message',
-  'campaign_call',
   'checkout_start'
 ];
 

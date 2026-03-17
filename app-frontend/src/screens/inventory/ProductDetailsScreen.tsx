@@ -178,6 +178,20 @@ export const ProductDetailsScreen = () => {
     setQuoteSheetOpen(true);
   }, [isGuest, requestLogin]);
 
+  const openPromoteRequest = useCallback(() => {
+    if (isGuest) {
+      requestLogin();
+      return;
+    }
+    if (!product) return;
+    navigation.navigate("ServiceRequest", {
+      serviceType: "advertisement",
+      prefillProductId: product._id,
+      prefillProductName: product.name,
+      prefillObjective: `Promote ${product.name} to relevant buyers`,
+    });
+  }, [isGuest, navigation, product, requestLogin]);
+
   const submitQuoteRequest = useCallback(
     async (payload: QuoteRequestFormSubmit) => {
       if (!product) return;
@@ -416,13 +430,22 @@ export const ProductDetailsScreen = () => {
             ]}
           > 
             {canManageVariants ? (
-              <TouchableOpacity
-                onPress={openManageVariants}
-                style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
-              >
-                <Ionicons name="options-outline" size={18} color={colors.textOnPrimary} />
-                <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Manage variants</Text>
-              </TouchableOpacity>
+              <View style={styles.bottomColumn}>
+                <TouchableOpacity
+                  onPress={openManageVariants}
+                  style={[styles.bottomPrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="options-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Manage variants</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={openPromoteRequest}
+                  style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                >
+                  <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Promote Product</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={styles.bottomColumn}>
                 <TouchableOpacity

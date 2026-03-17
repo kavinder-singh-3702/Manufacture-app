@@ -146,6 +146,7 @@ const shapeServiceRequestAdmin = (doc) => {
     machineRepairDetails: plain.machineRepairDetails,
     workerDetails: plain.workerDetails,
     transportDetails: plain.transportDetails,
+    advertisementDetails: plain.advertisementDetails,
     notes: plain.notes,
     metadata: plain.metadata instanceof Map ? Object.fromEntries(plain.metadata) : plain.metadata || {},
     statusHistory,
@@ -191,12 +192,19 @@ const normalizeTypeSpecificDetails = (payload, serviceType) => {
   if (serviceType === 'machine_repair') {
     normalized.workerDetails = undefined;
     normalized.transportDetails = undefined;
+    normalized.advertisementDetails = undefined;
   } else if (serviceType === 'worker') {
     normalized.machineRepairDetails = undefined;
     normalized.transportDetails = undefined;
+    normalized.advertisementDetails = undefined;
   } else if (serviceType === 'transport') {
     normalized.machineRepairDetails = undefined;
     normalized.workerDetails = undefined;
+    normalized.advertisementDetails = undefined;
+  } else if (serviceType === 'advertisement') {
+    normalized.machineRepairDetails = undefined;
+    normalized.workerDetails = undefined;
+    normalized.transportDetails = undefined;
   }
 
   return normalized;
@@ -204,13 +212,16 @@ const normalizeTypeSpecificDetails = (payload, serviceType) => {
 
 const buildUnsetForType = (serviceType) => {
   if (serviceType === 'machine_repair') {
-    return { workerDetails: '', transportDetails: '' };
+    return { workerDetails: '', transportDetails: '', advertisementDetails: '' };
   }
   if (serviceType === 'worker') {
-    return { machineRepairDetails: '', transportDetails: '' };
+    return { machineRepairDetails: '', transportDetails: '', advertisementDetails: '' };
   }
   if (serviceType === 'transport') {
-    return { machineRepairDetails: '', workerDetails: '' };
+    return { machineRepairDetails: '', workerDetails: '', advertisementDetails: '' };
+  }
+  if (serviceType === 'advertisement') {
+    return { machineRepairDetails: '', workerDetails: '', transportDetails: '' };
   }
   return {};
 };
@@ -225,6 +236,9 @@ const buildScopedQuery = (user, base = {}) => {
 
 const createServiceRequest = async (payload, user) => {
   const scopedPayload = normalizeTypeSpecificDetails(payload, payload.serviceType);
+  if (scopedPayload.serviceType === 'advertisement' && !scopedPayload?.advertisementDetails?.product) {
+    throw createError(400, 'advertisementDetails.product is required for advertisement requests');
+  }
   scopedPayload.createdBy = toObjectId(user?.id);
   scopedPayload.createdByRole = isAdmin(user) ? 'admin' : 'user';
   scopedPayload.company = toObjectId(user?.activeCompany);
@@ -330,6 +344,7 @@ const buildUpdatePayload = (updates, user, existingType) => {
     'machineRepairDetails',
     'workerDetails',
     'transportDetails',
+    'advertisementDetails',
     'notes'
   ]);
 
@@ -362,6 +377,13 @@ const updateServiceRequest = async (serviceId, updates, user) => {
   const updatePayload = buildUpdatePayload(updates, user, existing.serviceType);
   const now = new Date();
   const targetType = updatePayload.serviceType || existing.serviceType;
+  if (
+    targetType === 'advertisement' &&
+    !updatePayload?.advertisementDetails?.product &&
+    !existing?.advertisementDetails?.product
+  ) {
+    throw createError(400, 'advertisementDetails.product is required for advertisement requests');
+  }
   const unsetPayload = buildUnsetForType(targetType);
   const statusChanged = updatePayload.status && updatePayload.status !== existing.status;
 

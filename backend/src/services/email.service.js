@@ -4,6 +4,7 @@ const config = require('../config/env');
 let transporter = null;
 
 const toSafeString = (value) => (typeof value === 'string' ? value.trim() : '');
+const isProduction = () => toSafeString(config.node).toLowerCase() === 'production';
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -190,7 +191,11 @@ const initTransporter = () => {
   if (transporter) return transporter;
 
   if (!config.smtpUser || !config.smtpPass) {
-    console.warn('[EmailService] SMTP credentials are not configured. Emails are logged in mock mode.');
+    if (isProduction()) {
+      console.error('[EmailService] SMTP credentials are not configured in production.');
+    } else {
+      console.warn('[EmailService] SMTP credentials are not configured. Emails are logged in mock mode.');
+    }
     return null;
   }
 
@@ -227,6 +232,14 @@ const sendEmail = async ({ to, subject, text, html }) => {
   const transport = initTransporter();
 
   if (!transport) {
+    if (isProduction()) {
+      return buildFailureResult({
+        errorCode: 'smtp_not_configured',
+        errorMessage: 'SMTP credentials are not configured.',
+        mock: false
+      });
+    }
+
     console.log('[EmailService] Mock email send (SMTP unavailable):', {
       to: recipient,
       subject: normalizedSubject

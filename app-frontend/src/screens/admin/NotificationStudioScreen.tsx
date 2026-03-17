@@ -166,7 +166,7 @@ export const NotificationStudioScreen = () => {
 
           <TextInput
             style={styles.input}
-            placeholder="Event key (e.g. campaign.flash_offer)"
+            placeholder="Event key (e.g. system.admin.broadcast)"
             placeholderTextColor={colors.textMuted}
             value={composer.eventKey}
             onChangeText={(value) => setComposer((prev) => ({ ...prev, eventKey: value }))}

@@ -31,7 +31,6 @@ import { ChatScreen } from "../screens/chat";
 import { CartScreen, AdminProductsScreen } from "../screens/cart";
 import { UserPreferenceScreen } from "../screens/admin/UserPreferenceScreen";
 import { UserActivityScreen } from "../screens/admin/UserActivityScreen";
-import { CampaignStudioScreen } from "../screens/admin/CampaignStudioScreen";
 import { NotificationStudioScreen } from "../screens/admin/NotificationStudioScreen";
 import { AdminUserDetailScreen } from "../screens/admin/AdminUserDetailScreen";
 import { ServiceDetailScreen, ServiceRequestScreen, ServicesOverviewScreen } from "../screens/services";
@@ -47,7 +46,7 @@ import { ReceiptPaymentScreen } from "../screens/tally/ReceiptPaymentScreen";
 import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
 import { withAdminGuard } from "./components/AdminOnlyScreen";
-import { UserManagementScreen, VerificationsScreen, CompaniesScreen } from "../screens/admin";
+import { UserManagementScreen, VerificationsScreen, CompaniesScreen, AdStudioScreen } from "../screens/admin";
 import { withCompanyContextGuard } from "./components/CompanyContextGuard";
 import { InternalInventoryItemFormScreen } from "../screens/internalInventory/InternalInventoryItemFormScreen";
 
@@ -56,7 +55,6 @@ enableScreens(true);
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const GuardedUserPreferenceScreen = withAdminGuard(UserPreferenceScreen);
 const GuardedUserActivityScreen = withAdminGuard(UserActivityScreen);
-const GuardedCampaignStudioScreen = withAdminGuard(CampaignStudioScreen);
 const GuardedNotificationStudioScreen = withAdminGuard(NotificationStudioScreen);
 const GuardedAdminUserDetailScreen = withAdminGuard(AdminUserDetailScreen);
 const AdminAddProductScreen = () => <AddProductScreen mode="inhouse" />;
@@ -66,6 +64,7 @@ const GuardedAdminCatalogScreen = withAdminGuard(AdminProductsScreen);
 const GuardedAdminUsersScreen = withAdminGuard(UserManagementScreen);
 const GuardedAdminCompaniesScreen = withAdminGuard(CompaniesScreen);
 const GuardedAdminVerificationsScreen = withAdminGuard(VerificationsScreen);
+const GuardedAdStudioScreen = withAdminGuard(AdStudioScreen);
 const GuardedAdminAddProductScreen = withAdminGuard(AdminAddProductScreen);
 const GuardedAdminEditProductScreen = withAdminGuard(AdminEditProductScreen);
 const GuardedAdminProductVariantsScreen = withAdminGuard(AdminProductVariantsScreen);
@@ -303,13 +302,13 @@ export const AppNavigator = () => {
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
-              name="CampaignStudio"
-              component={GuardedCampaignStudioScreen}
+              name="NotificationStudio"
+              component={GuardedNotificationStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen
-              name="NotificationStudio"
-              component={GuardedNotificationStudioScreen}
+              name="AdStudio"
+              component={GuardedAdStudioScreen}
               options={{ presentation: "modal", animation: "slide_from_right" }}
             />
             <RootStack.Screen

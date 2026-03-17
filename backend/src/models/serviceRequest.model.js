@@ -10,6 +10,7 @@ const {
   CONTRACT_TYPES,
   TRANSPORT_MODES
 } = require('../constants/services');
+const { AD_TARGETING_MODES } = require('../constants/ad');
 
 const { Schema } = mongoose;
 
@@ -103,6 +104,32 @@ const TransportDetailsSchema = new Schema(
   { _id: false }
 );
 
+const AdvertisementDetailsSchema = new Schema(
+  {
+    product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    objective: { type: String, trim: true, maxlength: 500 },
+    targetingMode: { type: String, enum: AD_TARGETING_MODES, default: 'any' },
+    targetUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    shopperCategories: [{ type: String, trim: true, maxlength: 120 }],
+    shopperSubCategories: [{ type: String, trim: true, maxlength: 120 }],
+    buyIntentCategories: [{ type: String, trim: true, maxlength: 120 }],
+    buyIntentSubCategories: [{ type: String, trim: true, maxlength: 120 }],
+    listedProductCategories: [{ type: String, trim: true, maxlength: 120 }],
+    listedProductSubCategories: [{ type: String, trim: true, maxlength: 120 }],
+    requireListedProductInSameCategory: { type: Boolean, default: false },
+    lookbackDays: { type: Number, min: 1, max: 365, default: 60 },
+    startAt: Date,
+    endAt: Date,
+    headline: { type: String, trim: true, maxlength: 140 },
+    subtitle: { type: String, trim: true, maxlength: 220 },
+    ctaLabel: { type: String, trim: true, maxlength: 60 },
+    badge: { type: String, trim: true, maxlength: 40 },
+    frequencyCapPerDay: { type: Number, min: 1, max: 50, default: 3 },
+    priority: { type: Number, min: 1, max: 100, default: 50 }
+  },
+  { _id: false }
+);
+
 const ServiceStatusHistorySchema = new Schema(
   {
     from: { type: String, enum: SERVICE_STATUSES },
@@ -168,6 +195,7 @@ const serviceRequestSchema = new Schema(
     machineRepairDetails: MachineRepairDetailsSchema,
     workerDetails: WorkerRequestDetailsSchema,
     transportDetails: TransportDetailsSchema,
+    advertisementDetails: AdvertisementDetailsSchema,
     notes: { type: String, trim: true, maxlength: 2000 },
     metadata: {
       type: Map,

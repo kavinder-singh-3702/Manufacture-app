@@ -155,12 +155,13 @@ export const MyProductsScreen = () => {
             })
           }
           showPrimaryAction
-          primaryActionLabel="Manage variants"
+          primaryActionLabel="Promote product"
           onPrimaryActionPress={(selectedProduct) =>
-            navigation.navigate("ProductVariants", {
-              productId: selectedProduct._id,
-              productName: selectedProduct.name,
-              scope: "company",
+            navigation.navigate("ServiceRequest", {
+              serviceType: "advertisement",
+              prefillProductId: selectedProduct._id,
+              prefillProductName: selectedProduct.name,
+              prefillObjective: `Promote ${selectedProduct.name} to relevant buyers`,
             })
           }
         />

@@ -1,4 +1,4 @@
-const SERVICE_TYPES = Object.freeze(['machine_repair', 'worker', 'transport']);
+const SERVICE_TYPES = Object.freeze(['machine_repair', 'worker', 'transport', 'advertisement']);
 
 const SERVICE_STATUSES = Object.freeze([
   'pending', // captured but not yet reviewed by admin

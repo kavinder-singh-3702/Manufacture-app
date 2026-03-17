@@ -60,15 +60,29 @@ export type RootStackParamList = {
   UserPreferences: { userId: string; displayName?: string };
   UserActivity: { userId: string; displayName?: string };
   AdminUserDetail: { userId: string; displayName?: string };
-  CampaignStudio: undefined;
   NotificationStudio: undefined;
+  AdStudio:
+    | {
+        prefillTargetUserId?: string;
+        prefillUserName?: string;
+        prefillServiceRequestId?: string;
+      }
+    | undefined;
   AdminCatalog: undefined;
   AdminAddProduct: undefined;
   AdminEditProduct: { productId: string };
   AdminProductVariants: { productId: string; productName?: string };
   // Chat screens
   Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
-  ServiceRequest: { serviceType?: ServiceType };
+  ServiceRequest:
+    | {
+        serviceType?: ServiceType;
+        prefillProductId?: string;
+        prefillProductName?: string;
+        sourceRequestId?: string;
+        prefillObjective?: string;
+      }
+    | undefined;
   ServiceDetail: { serviceType: ServiceType };
   BusinessSetupRequest: undefined;
   // Admin management screens (opened from Settings with back button)

@@ -36,6 +36,12 @@ type SignupScreenProps = {
 type SignupStep = "identity" | "otp" | "contact" | "password" | "business";
 
 type IdentityState = {
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+type VerifiedIdentityState = {
   fullName: string;
   email: string;
 };
@@ -104,7 +110,8 @@ const progressTitles: Record<SignupStep, string> = {
 };
 
 const initialIdentity: IdentityState = {
-  fullName: "",
+  firstName: "",
+  lastName: "",
   email: "",
 };
 
@@ -119,9 +126,11 @@ const createInitialAccount = (): AccountState => ({
   categories: [],
 });
 
-const normalizeFullName = (value: string) => value.trim().replace(/\s+/g, " ");
+const normalizeNamePart = (value: string) => value.trim().replace(/\s+/g, " ");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizePhone = (value: string) => value.trim();
+const composeFullName = (firstName: string, lastName: string) =>
+  [firstName, lastName].filter(Boolean).join(" ").trim();
 const OTP_LENGTH = 6;
 const BUSINESS_CATEGORY_SET = new Set(BUSINESS_CATEGORIES.map((category) => category.toLowerCase()));
 
@@ -214,7 +223,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   );
   const [businessCategoryLoading, setBusinessCategoryLoading] = useState(false);
   const [businessCategoryLoadedFromApi, setBusinessCategoryLoadedFromApi] = useState(false);
-  const [verifiedIdentity, setVerifiedIdentity] = useState<IdentityState | null>(null);
+  const [verifiedIdentity, setVerifiedIdentity] = useState<VerifiedIdentityState | null>(null);
   const { setUser } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
@@ -241,13 +250,16 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const stepIndex = steps.indexOf(step);
   const requiresCompany = account.accountType !== "normal";
   const activeStepMeta = stepMeta[step];
-  const normalizedIdentity = useMemo(
-    () => ({
-      fullName: normalizeFullName(identity.fullName || ""),
+  const normalizedIdentity = useMemo(() => {
+    const firstName = normalizeNamePart(identity.firstName || "");
+    const lastName = normalizeNamePart(identity.lastName || "");
+    return {
+      firstName,
+      lastName,
+      fullName: composeFullName(firstName, lastName),
       email: normalizeEmail(identity.email || ""),
-    }),
-    [identity.email, identity.fullName]
-  );
+    };
+  }, [identity.email, identity.firstName, identity.lastName]);
   const canResendOtp = resendCountdownMs <= 0 && !loading;
   const maskedIdentityEmail = useMemo(() => maskEmail(normalizedIdentity.email), [normalizedIdentity.email]);
   const otpExpiryText = expiresInMs ? `Expires in ${Math.ceil(expiresInMs / 60000)} min` : "Code expires soon";
@@ -384,10 +396,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const validateIdentity = () => {
     const nextErrors: FieldErrors<IdentityState> = {};
 
-    if (!normalizedIdentity.fullName.length) {
-      nextErrors.fullName = "Please enter your full name";
-    } else if (normalizedIdentity.fullName.split(" ").length < 2) {
-      nextErrors.fullName = "Include both first and last name";
+    if (!normalizedIdentity.firstName.length) {
+      nextErrors.firstName = "First name is required";
+    } else if (normalizedIdentity.firstName.length < 2) {
+      nextErrors.firstName = "Use at least 2 characters";
     }
 
     if (!normalizedIdentity.email.length) {
@@ -631,24 +643,44 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const renderIdentityStep = () => (
     <View>
       {renderStepHint(activeStepMeta.hint)}
-      <InputField
-        label="Full name"
-        value={identity.fullName}
-        onChangeText={(value) => {
-          setIdentity((current) => ({ ...current, fullName: value }));
-          setIdentityErrors((current) => ({ ...current, fullName: undefined }));
-        }}
-        placeholder="Enter your full name"
-        autoCapitalize="words"
-        textContentType="name"
-        autoComplete="name"
-        returnKeyType="next"
-        errorText={identityErrors.fullName}
-        placeholderTextColor={inputPlaceholderColor}
-        styles={styles}
-      />
+      <View style={styles.nameRow}>
+        <InputField
+          label="First name"
+          required
+          value={identity.firstName}
+          onChangeText={(value) => {
+            setIdentity((current) => ({ ...current, firstName: value }));
+            setIdentityErrors((current) => ({ ...current, firstName: undefined }));
+          }}
+          placeholder="Enter first name"
+          autoCapitalize="words"
+          textContentType="givenName"
+          autoComplete="name-given"
+          returnKeyType="next"
+          errorText={identityErrors.firstName}
+          placeholderTextColor={inputPlaceholderColor}
+          styles={styles}
+          containerStyle={[styles.nameField, styles.nameFieldFirst]}
+        />
+        <InputField
+          label="Last name"
+          value={identity.lastName}
+          onChangeText={(value) => {
+            setIdentity((current) => ({ ...current, lastName: value }));
+          }}
+          placeholder="Enter last name"
+          autoCapitalize="words"
+          textContentType="familyName"
+          autoComplete="name-family"
+          returnKeyType="next"
+          placeholderTextColor={inputPlaceholderColor}
+          styles={styles}
+          containerStyle={styles.nameField}
+        />
+      </View>
       <InputField
         label="Email address"
+        required
         value={identity.email}
         onChangeText={(value) => {
           setIdentity((current) => ({ ...current, email: value }));
@@ -676,7 +708,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         <Text style={styles.otpInfoMeta}>{otpExpiryText}</Text>
       </View>
 
-      <Text style={styles.fieldLabel}>Verification code</Text>
+      <Text style={styles.fieldLabel}>
+        Verification code
+        <Text style={styles.requiredMark}> *</Text>
+      </Text>
       <OtpCodeInput
         value={otp}
         onChange={handleOtpInputChange}
@@ -711,6 +746,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       {renderStepHint(activeStepMeta.hint)}
       <InputField
         label="Mobile number"
+        required
         value={contact.phone}
         onChangeText={(value) => {
           setContact({ phone: value });
@@ -734,6 +770,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       {renderStepHint(activeStepMeta.hint)}
       <InputField
         label="Password"
+        required
         value={account.password}
         onChangeText={(value) => {
           setAccount((current) => ({ ...current, password: value }));
@@ -760,7 +797,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const renderBusinessStep = () => (
     <View>
       {renderStepHint(activeStepMeta.hint)}
-      <Text style={styles.sectionLabel}>Account type</Text>
+      <Text style={styles.sectionLabel}>
+        Account type
+        <Text style={styles.requiredMark}> *</Text>
+      </Text>
       <View style={styles.accountTypeRow}>
         {BUSINESS_ACCOUNT_TYPES.map((type) => {
           const isActive = account.accountType === type;
@@ -783,6 +823,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         <View>
           <InputField
             label="Company name"
+            required
             value={account.companyName}
             onChangeText={(value) => {
               setAccount((current) => ({ ...current, companyName: value }));
@@ -797,7 +838,10 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           />
 
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionLabel, styles.sectionLabelTight]}>Business categories</Text>
+            <Text style={[styles.sectionLabel, styles.sectionLabelTight]}>
+              Business categories
+              <Text style={styles.requiredMark}> *</Text>
+            </Text>
             <Text style={styles.sectionMetaText}>
               {businessCategoryLoading ? "Loading..." : `${account.categories.length} selected`}
             </Text>
@@ -977,6 +1021,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
 
 type InputFieldProps = {
   label: string;
+  required?: boolean;
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -1000,6 +1045,7 @@ type InputFieldProps = {
 
 const InputField = ({
   label,
+  required = false,
   value,
   onChangeText,
   placeholder,
@@ -1013,7 +1059,10 @@ const InputField = ({
   ...rest
 }: InputFieldProps) => (
   <View style={[styles.inputFieldWrap, containerStyle]}>
-    <Text style={styles.fieldLabel}>{label}</Text>
+    <Text style={styles.fieldLabel}>
+      {label}
+      {required ? <Text style={styles.requiredMark}> *</Text> : null}
+    </Text>
     <View style={[styles.inputWrapper, errorText ? styles.inputWrapperError : null]}>
       <TextInput
         style={[styles.input, rightAccessory ? styles.inputWithAccessory : null, inputStyle]}
@@ -1125,11 +1174,25 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     inputFieldWrap: {
       marginBottom: 16,
     },
+    nameRow: {
+      flexDirection: "row",
+    },
+    nameField: {
+      flex: 1,
+      minWidth: 0,
+    },
+    nameFieldFirst: {
+      marginRight: 10,
+    },
     fieldLabel: {
       fontSize: 13,
       fontWeight: "700",
       color: colors.text,
       marginBottom: 8,
+    },
+    requiredMark: {
+      color: colors.error,
+      fontWeight: "800",
     },
     inputWrapper: {
       borderRadius: 18,

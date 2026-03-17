@@ -15,6 +15,7 @@ const notificationRouter = require('../modules/notifications/routes/notification
 const accountingRouter = require('../modules/accounting/routes/accounting.routes');
 const quoteRouter = require('../modules/quotes/routes/quote.routes');
 const businessSetupRouter = require('../modules/businessSetup/routes/businessSetup.routes');
+const adsRouter = require('../modules/ads/routes/ad.routes');
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use('/notifications', notificationRouter);
 router.use('/accounting', accountingRouter);
 router.use('/quotes', quoteRouter);
 router.use('/business-setup-requests', businessSetupRouter);
+router.use('/ads', adsRouter);
 
 module.exports = router;

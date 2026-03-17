@@ -21,14 +21,8 @@ const preferenceSummaryQueryValidation = [
   query('companyId').optional().custom(isObjectId).withMessage('Invalid companyId')
 ];
 
-const homeFeedQueryValidation = [
-  query('campaignLimit').optional().isInt({ min: 1, max: 20 }).toInt(),
-  query('recommendationLimit').optional().isInt({ min: 1, max: 30 }).toInt()
-];
-
 module.exports = {
   logEventValidation,
   userIdParamValidation,
-  preferenceSummaryQueryValidation,
-  homeFeedQueryValidation
+  preferenceSummaryQueryValidation
 };

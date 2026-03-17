@@ -38,6 +38,7 @@ export const SystemHealthSection = ({ stats, overview }: SystemHealthSectionProp
 
   const activeMfg = stats?.companies?.active ?? 0;
   const pendingCount = overview?.servicesQueue?.pending ?? stats?.verifications?.pending ?? 0;
+  const dispatchVolume = overview?.notificationDispatchHealth?.last24h ?? 0;
 
   return (
     <View style={styles.container}>
@@ -70,7 +71,7 @@ export const SystemHealthSection = ({ stats, overview }: SystemHealthSectionProp
         <Text style={[styles.volumeLabel, { color: colors.textSecondary }]}>TOTAL VOLUME (24H)</Text>
         <View style={styles.volumeRow}>
           <Text style={[styles.volumeValue, { color: colors.text }]}>
-            ${((overview?.campaigns?.total ?? 0) * 0.1).toFixed(1)}M
+            {dispatchVolume.toLocaleString("en-IN")}
           </Text>
           <View style={[styles.stableBadge, { backgroundColor: colors.success + "16", borderColor: colors.success, borderWidth: 1 }]}>
             <Text style={[styles.stableBadgeText, { color: colors.success }]}>STABLE</Text>

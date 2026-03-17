@@ -10,6 +10,7 @@ const {
   CONTRACT_TYPES,
   TRANSPORT_MODES
 } = require('../../../constants/services');
+const { AD_TARGETING_MODES } = require('../../../constants/ad');
 
 const serviceIdParamValidation = [param('serviceId').isMongoId().withMessage('Valid service id is required')];
 
@@ -133,12 +134,50 @@ const transportValidation = [
   body('transportDetails.insuranceNeeded').optional().isBoolean()
 ];
 
+const advertisementValidation = [
+  body('advertisementDetails')
+    .if(body('serviceType').equals('advertisement'))
+    .notEmpty()
+    .withMessage('Advertisement details are required'),
+  body('advertisementDetails.product')
+    .if(body('serviceType').equals('advertisement'))
+    .isMongoId()
+    .withMessage('A valid product is required for advertisement'),
+  body('advertisementDetails.objective').optional().isString().isLength({ max: 500 }),
+  body('advertisementDetails.targetingMode').optional().isIn(AD_TARGETING_MODES),
+  body('advertisementDetails.targetUserIds').optional().isArray(),
+  body('advertisementDetails.targetUserIds.*').optional().isMongoId(),
+  body('advertisementDetails.shopperCategories').optional().isArray(),
+  body('advertisementDetails.shopperCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.shopperSubCategories').optional().isArray(),
+  body('advertisementDetails.shopperSubCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.buyIntentCategories').optional().isArray(),
+  body('advertisementDetails.buyIntentCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.buyIntentSubCategories').optional().isArray(),
+  body('advertisementDetails.buyIntentSubCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.listedProductCategories').optional().isArray(),
+  body('advertisementDetails.listedProductCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.listedProductSubCategories').optional().isArray(),
+  body('advertisementDetails.listedProductSubCategories.*').optional().isString().isLength({ max: 120 }),
+  body('advertisementDetails.requireListedProductInSameCategory').optional().isBoolean(),
+  body('advertisementDetails.lookbackDays').optional().isInt({ min: 1, max: 365 }),
+  body('advertisementDetails.startAt').optional().isISO8601().toDate(),
+  body('advertisementDetails.endAt').optional().isISO8601().toDate(),
+  body('advertisementDetails.headline').optional().isString().isLength({ max: 140 }),
+  body('advertisementDetails.subtitle').optional().isString().isLength({ max: 220 }),
+  body('advertisementDetails.ctaLabel').optional().isString().isLength({ max: 60 }),
+  body('advertisementDetails.badge').optional().isString().isLength({ max: 40 }),
+  body('advertisementDetails.frequencyCapPerDay').optional().isInt({ min: 1, max: 50 }),
+  body('advertisementDetails.priority').optional().isInt({ min: 1, max: 100 })
+];
+
 const createServiceRequestValidation = [
   body('serviceType').isIn(SERVICE_TYPES).withMessage('Service type is required'),
   ...baseServiceFields,
   ...machineRepairValidation,
   ...workerValidation,
-  ...transportValidation
+  ...transportValidation,
+  ...advertisementValidation
 ];
 
 const updateServiceRequestValidation = [
@@ -146,7 +185,8 @@ const updateServiceRequestValidation = [
   ...baseServiceFields,
   ...machineRepairValidation,
   ...workerValidation,
-  ...transportValidation
+  ...transportValidation,
+  ...advertisementValidation
 ];
 
 const updateServiceStatusValidation = [

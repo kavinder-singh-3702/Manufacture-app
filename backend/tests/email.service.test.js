@@ -7,6 +7,7 @@ const loadEmailService = ({ configOverrides = {}, sendMailImpl, verifyImpl } = {
 
   jest.doMock('nodemailer', () => ({ createTransport }));
   jest.doMock('../src/config/env', () => ({
+    node: 'development',
     smtpHost: 'smtp.gmail.com',
     smtpPort: 587,
     smtpSecure: false,
@@ -43,7 +44,7 @@ describe('email service', () => {
     jest.dontMock('../src/config/env');
   });
 
-  test('returns deterministic mock success when SMTP config is missing', async () => {
+  test('returns deterministic mock success when SMTP config is missing in non-production', async () => {
     const { emailService, createTransport } = loadEmailService({
       configOverrides: { smtpUser: '', smtpPass: '' }
     });
@@ -57,6 +58,24 @@ describe('email service', () => {
     expect(result.success).toBe(true);
     expect(result.mock).toBe(true);
     expect(result.providerMessageId).toContain('mock-');
+    expect(createTransport).not.toHaveBeenCalled();
+  });
+
+  test('returns structured failure when SMTP config is missing in production', async () => {
+    const { emailService, createTransport } = loadEmailService({
+      configOverrides: { node: 'production', smtpUser: '', smtpPass: '' }
+    });
+
+    const result = await emailService.sendEmail({
+      to: 'owner@example.com',
+      subject: 'Hello',
+      text: 'Test email'
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.mock).toBe(false);
+    expect(result.errorCode).toBe('smtp_not_configured');
+    expect(result.errorMessage).toContain('SMTP credentials are not configured');
     expect(createTransport).not.toHaveBeenCalled();
   });
 

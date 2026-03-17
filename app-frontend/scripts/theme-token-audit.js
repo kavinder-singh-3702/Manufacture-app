@@ -27,9 +27,6 @@ const STRICT_FILES = new Set([
   "src/navigation/components/MainTabs/components/ProfileAvatar.tsx",
   "src/components/navigation/SidebarMenu.tsx",
   "src/screens/DashboardScreen.tsx",
-  "src/screens/dashboard/components/CampaignSlide.tsx",
-  "src/screens/dashboard/components/RecommendedProductsRail.tsx",
-  "src/screens/admin/CampaignStudioScreen.tsx",
   "src/screens/admin/UserPreferenceScreen.tsx",
 ]);
 

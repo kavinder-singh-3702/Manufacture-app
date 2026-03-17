@@ -5,7 +5,6 @@ const Company = require('../../../models/company.model');
 const CompanyVerificationRequest = require('../../../models/companyVerificationRequest.model');
 const Activity = require('../../../models/activity.model');
 const Notification = require('../../../models/notification.model');
-const { UserPersonalizedOffer } = require('../../../models/userPersonalizedOffer.model');
 const Product = require('../../../models/product.model');
 const ProductVariant = require('../../../models/productVariant.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
@@ -180,11 +179,7 @@ const getAdminOverview = async () => {
     unresolvedServices,
     recentConversations,
     recentCalls,
-    totalCallDurationSeconds,
-    activeCampaigns,
-    draftCampaigns,
-    expiredCampaigns,
-    archivedCampaigns
+    totalCallDurationSeconds
   ] = await Promise.all([
     CompanyVerificationRequest.countDocuments({ status: 'pending', createdAt: { $gte: twentyFourHoursAgo } }),
     CompanyVerificationRequest.countDocuments({
@@ -214,11 +209,7 @@ const getAdminOverview = async () => {
     CallLog.aggregate([
       { $match: { startedAt: { $gte: twentyFourHoursAgo } } },
       { $group: { _id: null, totalDuration: { $sum: '$durationSeconds' } } }
-    ]).then((rows) => rows[0]?.totalDuration || 0),
-    UserPersonalizedOffer.countDocuments({ status: 'active' }),
-    UserPersonalizedOffer.countDocuments({ status: 'draft' }),
-    UserPersonalizedOffer.countDocuments({ status: 'expired' }),
-    UserPersonalizedOffer.countDocuments({ status: 'archived' })
+    ]).then((rows) => rows[0]?.totalDuration || 0)
   ]);
 
   return {
@@ -234,13 +225,6 @@ const getAdminOverview = async () => {
       failed: failedNotifications,
       successRate:
         recentNotifications > 0 ? Number(((deliveredNotifications / recentNotifications) * 100).toFixed(2)) : 0
-    },
-    campaigns: {
-      active: activeCampaigns,
-      draft: draftCampaigns,
-      expired: expiredCampaigns,
-      archived: archivedCampaigns,
-      total: activeCampaigns + draftCampaigns + expiredCampaigns + archivedCampaigns
     },
     servicesQueue: {
       pending: pendingServices,
@@ -360,7 +344,7 @@ const getAdminUserOverview = async ({ userId, limit = 6 } = {}) => {
 
   const cappedLimit = clamp(parseNumber(limit, 6), 3, 25);
 
-  const [recentActivities, recentServices, campaignSummary, conversations, callLogs] = await Promise.all([
+  const [recentActivities, recentServices, conversations, callLogs] = await Promise.all([
     Activity.find({ user: userObjectId })
       .sort({ createdAt: -1 })
       .limit(cappedLimit)
@@ -372,10 +356,6 @@ const getAdminUserOverview = async ({ userId, limit = 6 } = {}) => {
       .populate('assignedTo', 'displayName email role')
       .populate('company', 'displayName status')
       .lean(),
-    UserPersonalizedOffer.aggregate([
-      { $match: { user: userObjectId } },
-      { $group: { _id: '$status', count: { $sum: 1 } } }
-    ]),
     ChatConversation.find({ 'participants.user': userObjectId })
       .sort({ updatedAt: -1 })
       .limit(cappedLimit)
@@ -389,15 +369,6 @@ const getAdminUserOverview = async ({ userId, limit = 6 } = {}) => {
       .populate('callee', 'displayName email role')
       .lean()
   ]);
-
-  const campaignTotals = campaignSummary.reduce(
-    (acc, row) => {
-      acc.total += row.count;
-      acc.byStatus[row._id || 'unknown'] = row.count;
-      return acc;
-    },
-    { total: 0, byStatus: {} }
-  );
 
   return {
     user: shapeUserSummary(user),
@@ -438,7 +409,6 @@ const getAdminUserOverview = async ({ userId, limit = 6 } = {}) => {
       })),
       total: await ServiceRequest.countDocuments({ createdBy: userObjectId, deletedAt: { $exists: false } })
     },
-    campaigns: campaignTotals,
     communications: {
       conversations: {
         total: conversations.length,
@@ -549,7 +519,6 @@ const cleanupCompanyDataHardDelete = async ({ companyId }) => {
     Party.deleteMany({ company: companyObjectId }),
     AccountingVoucher.deleteMany({ company: companyObjectId }),
     AccountingSequence.deleteMany({ company: companyObjectId }),
-    UserPersonalizedOffer.deleteMany({ company: companyObjectId }),
     Notification.deleteMany({ company: companyObjectId }),
     Activity.updateMany(
       { company: companyObjectId },

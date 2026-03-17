@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -58,13 +58,6 @@ export const AdminUserDetailScreen = () => {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
-
-  const campaignSummary = useMemo(() => {
-    const byStatus = overview?.campaigns?.byStatus || {};
-    return Object.entries(byStatus)
-      .map(([status, count]) => `${status}: ${count}`)
-      .join(" • ");
-  }, [overview?.campaigns?.byStatus]);
 
   if (loading && !refreshing) {
     return (
@@ -145,6 +138,18 @@ export const AdminUserDetailScreen = () => {
                 <Ionicons name="time-outline" size={14} color={colors.primary} />
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Audit Trail</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated, borderRadius: radius.md }]}
+                onPress={() =>
+                  navigation.navigate("AdStudio", {
+                    prefillTargetUserId: userId,
+                    prefillUserName: overview.user.displayName || overview.user.email,
+                  })
+                }
+              >
+                <Ionicons name="megaphone-outline" size={14} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Run Ad</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -165,18 +170,6 @@ export const AdminUserDetailScreen = () => {
             ) : (
               <Text style={[styles.metaText, { color: colors.textMuted }]}>No service requests.</Text>
             )}
-          </View>
-
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
-            <Text style={[styles.metaText, { color: colors.textMuted }]}>Total campaigns: {overview.campaigns.total}</Text>
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{campaignSummary || "No campaign activity"}</Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: colors.primary, borderRadius: radius.md, marginTop: spacing.sm }]}
-              onPress={() => navigation.navigate("CampaignStudio")}
-            >
-              <Text style={{ color: colors.textOnPrimary, fontWeight: "700", fontSize: 12 }}>Open Campaign Studio</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>

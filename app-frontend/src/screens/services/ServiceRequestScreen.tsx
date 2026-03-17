@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +25,7 @@ import {
   ServiceType,
   serviceRequestService,
 } from "../../services/serviceRequest.service";
+import { productService, Product } from "../../services/product.service";
 import type { RootStackParamList } from "../../navigation/types";
 import { routes } from "../../navigation/routes";
 import {
@@ -111,6 +112,27 @@ type FormState = {
   transportEnd: string;
   transportFlexible: boolean;
   availabilityNotes: string;
+
+  advertisementProductId: string;
+  advertisementObjective: string;
+  adTargetingMode: "any" | "all";
+  adTargetUserIds: string;
+  adShopperCategories: string;
+  adShopperSubCategories: string;
+  adBuyIntentCategories: string;
+  adBuyIntentSubCategories: string;
+  adListedProductCategories: string;
+  adListedProductSubCategories: string;
+  adRequireSameCategory: boolean;
+  adLookbackDays: string;
+  adStartAt: string;
+  adEndAt: string;
+  adHeadline: string;
+  adSubtitle: string;
+  adCtaLabel: string;
+  adBadge: string;
+  adFrequencyCap: string;
+  adPriority: string;
 };
 
 const defaultTitleFor = (serviceType: ServiceType | null) => {
@@ -191,6 +213,27 @@ const initialForm = (serviceType?: ServiceType): FormState => ({
   transportEnd: "",
   transportFlexible: true,
   availabilityNotes: "",
+
+  advertisementProductId: "",
+  advertisementObjective: "",
+  adTargetingMode: "any",
+  adTargetUserIds: "",
+  adShopperCategories: "",
+  adShopperSubCategories: "",
+  adBuyIntentCategories: "",
+  adBuyIntentSubCategories: "",
+  adListedProductCategories: "",
+  adListedProductSubCategories: "",
+  adRequireSameCategory: false,
+  adLookbackDays: "60",
+  adStartAt: "",
+  adEndAt: "",
+  adHeadline: "",
+  adSubtitle: "",
+  adCtaLabel: "",
+  adBadge: "",
+  adFrequencyCap: "3",
+  adPriority: "50",
 });
 
 const splitList = (value: string) =>
@@ -258,6 +301,8 @@ export const ServiceRequestScreen = () => {
   const [form, setForm] = useState<FormState>(() => initialForm(route.params?.serviceType));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
 
   useEffect(() => {
     if (!route.params?.serviceType) return;
@@ -266,8 +311,37 @@ export const ServiceRequestScreen = () => {
       ...prev,
       serviceType: route.params?.serviceType || prev.serviceType,
       title: prev.title.trim() ? prev.title : defaultTitleFor(route.params?.serviceType || null),
+      advertisementProductId: route.params?.prefillProductId || prev.advertisementProductId,
+      advertisementObjective: route.params?.prefillObjective || prev.advertisementObjective,
     }));
-  }, [route.params?.serviceType]);
+  }, [route.params?.prefillObjective, route.params?.prefillProductId, route.params?.serviceType]);
+
+  const loadOwnProducts = useCallback(async () => {
+    if (!user || user.role === "guest" || !user.activeCompany) {
+      setMyProducts([]);
+      return;
+    }
+    try {
+      setProductsLoading(true);
+      const response = await productService.getAll({
+        scope: "company",
+        visibility: "public",
+        status: "active",
+        limit: 40,
+        offset: 0,
+      });
+      setMyProducts(response.products || []);
+    } catch {
+      setMyProducts([]);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (form.serviceType !== "advertisement") return;
+    loadOwnProducts();
+  }, [form.serviceType, loadOwnProducts]);
 
   const setField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -299,6 +373,12 @@ export const ServiceRequestScreen = () => {
     if (form.serviceType === "transport") {
       if (!form.pickupCity.trim()) nextErrors.pickupCity = "Pickup city is required";
       if (!form.dropCity.trim()) nextErrors.dropCity = "Drop city is required";
+    }
+
+    if (form.serviceType === "advertisement") {
+      if (!form.advertisementProductId.trim()) {
+        nextErrors.advertisementProductId = "Pick a product to promote";
+      }
     }
 
     setFieldErrors(nextErrors);
@@ -391,6 +471,31 @@ export const ServiceRequestScreen = () => {
         availability: buildAvailability(form.transportStart, form.transportEnd, form.transportFlexible, form.availabilityNotes),
         specialHandling: form.specialHandling.trim() || undefined,
         insuranceNeeded: form.insuranceNeeded,
+      };
+    }
+
+    if (form.serviceType === "advertisement") {
+      base.advertisementDetails = {
+        product: form.advertisementProductId.trim(),
+        objective: form.advertisementObjective.trim() || undefined,
+        targetingMode: form.adTargetingMode,
+        targetUserIds: splitList(form.adTargetUserIds),
+        shopperCategories: splitList(form.adShopperCategories),
+        shopperSubCategories: splitList(form.adShopperSubCategories),
+        buyIntentCategories: splitList(form.adBuyIntentCategories),
+        buyIntentSubCategories: splitList(form.adBuyIntentSubCategories),
+        listedProductCategories: splitList(form.adListedProductCategories),
+        listedProductSubCategories: splitList(form.adListedProductSubCategories),
+        requireListedProductInSameCategory: form.adRequireSameCategory,
+        lookbackDays: Number(form.adLookbackDays) || 60,
+        startAt: parseDate(form.adStartAt),
+        endAt: parseDate(form.adEndAt),
+        headline: form.adHeadline.trim() || undefined,
+        subtitle: form.adSubtitle.trim() || undefined,
+        ctaLabel: form.adCtaLabel.trim() || undefined,
+        badge: form.adBadge.trim() || undefined,
+        frequencyCapPerDay: Math.max(1, Math.min(50, Number(form.adFrequencyCap) || 3)),
+        priority: Math.max(1, Math.min(100, Number(form.adPriority) || 50)),
       };
     }
 
@@ -619,6 +724,98 @@ export const ServiceRequestScreen = () => {
                 </>
               ) : null}
 
+              {form.serviceType === "advertisement" ? (
+                <>
+                  <View style={{ gap: 8 }}>
+                    <Text style={[styles.label, { color: colors.textMuted }]}>
+                      Product to promote <Text style={{ color: colors.error }}>*</Text>
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {myProducts.slice(0, 8).map((product) => {
+                        const active = form.advertisementProductId === product._id;
+                        return (
+                          <TouchableOpacity
+                            key={product._id}
+                            onPress={() => setField("advertisementProductId", product._id)}
+                            activeOpacity={0.85}
+                            style={[
+                              styles.pill,
+                              {
+                                borderRadius: radius.pill,
+                                borderColor: active ? colors.primary : colors.border,
+                                backgroundColor: active ? `${colors.primary}16` : colors.surfaceElevated,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.pillText,
+                                { color: active ? colors.primary : colors.textMuted, textTransform: "none" },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {product.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {productsLoading ? (
+                      <Text style={[styles.fieldHelper, { color: colors.textMuted }]}>Loading products...</Text>
+                    ) : null}
+                    <Field
+                      label="Or enter product ID"
+                      value={form.advertisementProductId}
+                      onChangeText={(value) => setField("advertisementProductId", value)}
+                      placeholder="Paste product id"
+                      errorText={fieldErrors.advertisementProductId}
+                    />
+                  </View>
+
+                  <Field
+                    label="Goal / objective"
+                    value={form.advertisementObjective}
+                    onChangeText={(value) => setField("advertisementObjective", value)}
+                    placeholder="What should this ad achieve?"
+                  />
+
+                  <View>
+                    <Text style={[styles.label, { color: colors.textMuted }]}>Targeting logic</Text>
+                    <View style={styles.pillRow}>
+                      {(["any", "all"] as const).map((mode) => {
+                        const active = form.adTargetingMode === mode;
+                        return (
+                          <TouchableOpacity
+                            key={mode}
+                            onPress={() => setField("adTargetingMode", mode)}
+                            activeOpacity={0.85}
+                            style={[
+                              styles.pill,
+                              {
+                                borderRadius: radius.md,
+                                borderColor: active ? colors.primary : colors.border,
+                                backgroundColor: active ? `${colors.primary}14` : colors.surface,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.pillText, { color: active ? colors.primary : colors.textMuted }]}>
+                              {mode.toUpperCase()}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <Field
+                    label="Shopper categories (comma separated)"
+                    value={form.adShopperCategories}
+                    onChangeText={(value) => setField("adShopperCategories", value)}
+                    placeholder="metal-steel-industry, packaging"
+                  />
+                </>
+              ) : null}
+
               <QuickAdvancedToggle
                 advanced={form.advancedOpen}
                 onToggle={() => setField("advancedOpen", !form.advancedOpen)}
@@ -812,6 +1009,81 @@ export const ServiceRequestScreen = () => {
                   </>
                 ) : null}
 
+                {form.serviceType === "advertisement" ? (
+                  <>
+                    <Field
+                      label="Target user IDs (comma separated)"
+                      value={form.adTargetUserIds}
+                      onChangeText={(value) => setField("adTargetUserIds", value)}
+                      placeholder="Optional explicit users"
+                    />
+                    <Field
+                      label="Shopper subcategories"
+                      value={form.adShopperSubCategories}
+                      onChangeText={(value) => setField("adShopperSubCategories", value)}
+                    />
+                    <Field
+                      label="Buy-intent categories"
+                      value={form.adBuyIntentCategories}
+                      onChangeText={(value) => setField("adBuyIntentCategories", value)}
+                    />
+                    <Field
+                      label="Buy-intent subcategories"
+                      value={form.adBuyIntentSubCategories}
+                      onChangeText={(value) => setField("adBuyIntentSubCategories", value)}
+                    />
+                    <Field
+                      label="Listed-product categories"
+                      value={form.adListedProductCategories}
+                      onChangeText={(value) => setField("adListedProductCategories", value)}
+                    />
+                    <Field
+                      label="Listed-product subcategories"
+                      value={form.adListedProductSubCategories}
+                      onChangeText={(value) => setField("adListedProductSubCategories", value)}
+                    />
+                    <Toggle
+                      label={form.adRequireSameCategory ? "Must have listed product in same category" : "Same-category listing optional"}
+                      value={form.adRequireSameCategory}
+                      onPress={() => setField("adRequireSameCategory", !form.adRequireSameCategory)}
+                    />
+                    <Field
+                      label="Lookback days"
+                      value={form.adLookbackDays}
+                      onChangeText={(value) => setField("adLookbackDays", value.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                    />
+                    <Field
+                      label="Ad start date"
+                      value={form.adStartAt}
+                      onChangeText={(value) => setField("adStartAt", value)}
+                      placeholder="YYYY-MM-DD"
+                    />
+                    <Field
+                      label="Ad end date"
+                      value={form.adEndAt}
+                      onChangeText={(value) => setField("adEndAt", value)}
+                      placeholder="YYYY-MM-DD"
+                    />
+                    <Field label="Headline" value={form.adHeadline} onChangeText={(value) => setField("adHeadline", value)} />
+                    <Field label="Subtitle" value={form.adSubtitle} onChangeText={(value) => setField("adSubtitle", value)} />
+                    <Field label="CTA label" value={form.adCtaLabel} onChangeText={(value) => setField("adCtaLabel", value)} />
+                    <Field label="Badge" value={form.adBadge} onChangeText={(value) => setField("adBadge", value)} />
+                    <Field
+                      label="Frequency cap / day"
+                      value={form.adFrequencyCap}
+                      onChangeText={(value) => setField("adFrequencyCap", value.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                    />
+                    <Field
+                      label="Priority (1-100)"
+                      value={form.adPriority}
+                      onChangeText={(value) => setField("adPriority", value.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                    />
+                  </>
+                ) : null}
+
                 <Field label="Notes" value={form.notes} onChangeText={(value) => setField("notes", value)} multiline />
               </View>
             </View>
@@ -907,6 +1179,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   fieldError: { marginTop: 5, fontSize: 11, fontWeight: "700" },
+  fieldHelper: { fontSize: 11, fontWeight: "600" },
   submitHint: { fontSize: 12, fontWeight: "600", lineHeight: 17, marginBottom: 6 },
   pillRow: { flexDirection: "row", gap: 8 },
   pill: {

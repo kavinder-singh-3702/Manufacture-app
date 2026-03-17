@@ -3,29 +3,13 @@ const { authenticate, authorizeRoles } = require('../../../middleware/authMiddle
 const validate = require('../../../middleware/validate');
 const {
   logPreferenceEventController,
-  getUserPreferenceSummaryController,
-  getHomeFeedController
+  getUserPreferenceSummaryController
 } = require('../controllers/preference.controller');
-const {
-  createPersonalizedOfferController,
-  listUserOffersAdminController,
-  listCampaignsAdminController,
-  updateCampaignController,
-  duplicateCampaignController,
-  listMyOffersController
-} = require('../controllers/personalizedOffer.controller');
 const {
   logEventValidation,
   userIdParamValidation,
-  preferenceSummaryQueryValidation,
-  homeFeedQueryValidation
+  preferenceSummaryQueryValidation
 } = require('../validators/preference.validators');
-const {
-  createOfferValidation,
-  updateCampaignValidation,
-  listOffersQueryValidation,
-  campaignIdParamValidation
-} = require('../validators/personalizedOffer.validators');
 
 const router = Router();
 
@@ -34,7 +18,6 @@ router.use(authenticate);
 
 // User event ingestion
 router.post('/events', validate(logEventValidation), logPreferenceEventController);
-router.get('/home-feed', validate(homeFeedQueryValidation), getHomeFeedController);
 
 // Admin-only summary for a user
 router.get(
@@ -43,48 +26,5 @@ router.get(
   validate([...userIdParamValidation, ...preferenceSummaryQueryValidation]),
   getUserPreferenceSummaryController
 );
-
-// Personalized offers (admin)
-router.post(
-  '/admin/users/:userId/offers',
-  authorizeRoles('admin'),
-  validate(createOfferValidation),
-  createPersonalizedOfferController
-);
-router.post(
-  '/admin/users/:userId/campaigns',
-  authorizeRoles('admin'),
-  validate(createOfferValidation),
-  createPersonalizedOfferController
-);
-router.get(
-  '/admin/users/:userId/offers',
-  authorizeRoles('admin'),
-  validate([...userIdParamValidation, ...listOffersQueryValidation]),
-  listUserOffersAdminController
-);
-router.get(
-  '/admin/users/:userId/campaigns',
-  authorizeRoles('admin'),
-  validate([...userIdParamValidation, ...listOffersQueryValidation]),
-  listUserOffersAdminController
-);
-router.patch(
-  '/admin/users/:userId/campaigns/:campaignId',
-  authorizeRoles('admin'),
-  validate(updateCampaignValidation),
-  updateCampaignController
-);
-router.get('/admin/campaigns', authorizeRoles('admin'), validate(listOffersQueryValidation), listCampaignsAdminController);
-router.post(
-  '/admin/campaigns/:campaignId/duplicate',
-  authorizeRoles('admin'),
-  validate(campaignIdParamValidation),
-  duplicateCampaignController
-);
-
-// Personalized offers for current user
-router.get('/my-offers', listMyOffersController);
-router.get('/my-campaigns', listMyOffersController);
 
 module.exports = router;
