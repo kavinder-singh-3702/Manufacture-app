@@ -104,7 +104,7 @@ export const AnimatedInput = forwardRef<TextInput, AnimatedInputProps>(
 
     const animatedShadowOpacity = shadowOpacity.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, 0.15],
+      outputRange: [0, 0.08],
     });
 
     return (
@@ -423,10 +423,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     paddingHorizontal: 16,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
     elevation: 0,
   },
   input: {
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   floatingInputContainer: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     position: "relative",
   },
   floatingLabel: {

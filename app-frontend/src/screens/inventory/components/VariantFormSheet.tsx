@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -77,8 +76,10 @@ export const VariantFormSheet = ({
   }, [optionsRows]);
 
   const handleSubmit = async () => {
-    if (!title.trim() && !Object.keys(optionsPayload).length) {
-      setError("Enter a title or at least one option (example: Size = 500ml).");
+    const hasOptions = Object.keys(optionsPayload).length > 0;
+
+    if (!hasOptions) {
+      setError("Please add at least one option (e.g. Size = 500ml). Options are required to create a variant.");
       return;
     }
     const parsedPrice = Number(priceAmount);
@@ -101,7 +102,11 @@ export const VariantFormSheet = ({
     };
 
     setError(null);
-    await onSubmit(payload);
+    try {
+      await onSubmit(payload);
+    } catch (err: any) {
+      setError(err?.message || "Could not save variant. Please check your inputs and try again.");
+    }
   };
 
   return (
@@ -110,7 +115,7 @@ export const VariantFormSheet = ({
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              behavior="padding"
               style={[
                 styles.sheet,
                 {
@@ -129,7 +134,7 @@ export const VariantFormSheet = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
                 {error ? (
                   <View style={[styles.errorBox, { borderColor: colors.error + "55", backgroundColor: colors.error + "14", borderRadius: radius.md }]}>
                     <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>

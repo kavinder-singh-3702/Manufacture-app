@@ -30,7 +30,7 @@ export const CompanyEditorModal = ({ visible, section, form, onChange, onClose, 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <View
             style={[
               styles.modalHeader,
@@ -53,6 +53,7 @@ export const CompanyEditorModal = ({ visible, section, form, onChange, onClose, 
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
             contentContainerStyle={{
               paddingHorizontal: layout.edgePadding,
               paddingTop: spacing.md,

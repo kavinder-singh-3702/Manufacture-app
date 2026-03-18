@@ -360,6 +360,8 @@ export const AdStudioScreen = () => {
         contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md }}
         refreshControl={<RefreshControl refreshing={campaignsRefreshing} onRefresh={() => loadCampaigns(true)} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         {createMode ? (
           <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>

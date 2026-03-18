@@ -42,6 +42,7 @@ export const ResponsiveScreen = ({
     <ScrollView
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
+      automaticallyAdjustKeyboardInsets
       contentContainerStyle={[
         {
           paddingHorizontal: horizontal,
@@ -72,7 +73,7 @@ export const ResponsiveScreen = ({
   return (
     <SafeAreaView edges={safeAreaEdges} style={[{ flex: 1, backgroundColor: colors.background }, style]}>
       {keyboardAware ? (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           {content}
         </KeyboardAvoidingView>
       ) : (

@@ -34,6 +34,7 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
   const route = useRoute<ScreenRoute>();
   const params = route.params as { productId: string; productName?: string; scope?: "company" | "marketplace" };
   const { productId, productName, scope = "company" } = params;
+  const isReadOnly = scope === "marketplace";
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +108,7 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
       closeForm();
       await loadVariants();
     } catch (err: any) {
-      toastError("Save failed", err?.message || "Could not save variant");
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -150,10 +151,12 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
             {productName || "Product"} • {variants.length} total
           </Text>
         </View>
-        <TouchableOpacity onPress={openCreate} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
-          <Ionicons name="add" size={18} color={colors.textOnPrimary} />
-          <Text style={[styles.addBtnText, { color: colors.textOnPrimary }]}>Add</Text>
-        </TouchableOpacity>
+        {!isReadOnly && (
+          <TouchableOpacity onPress={openCreate} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
+            <Ionicons name="add" size={18} color={colors.textOnPrimary} />
+            <Text style={[styles.addBtnText, { color: colors.textOnPrimary }]}>Add</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -170,6 +173,7 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
               variant={item}
               onEdit={() => openEdit(item)}
               onDelete={() => deleteVariant(item)}
+              readOnly={isReadOnly}
             />
           )}
           contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, paddingBottom: 120 }}
@@ -179,11 +183,15 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
               <Ionicons name="albums-outline" size={32} color={colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>No variants yet</Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                Add options like size, weight, or packaging to manage pricing precisely.
+                {isReadOnly
+                  ? "This product has no variants."
+                  : "Add options like size, weight, or packaging to manage pricing precisely."}
               </Text>
-              <TouchableOpacity onPress={openCreate} style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
-                <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary }]}>Create first variant</Text>
-              </TouchableOpacity>
+              {!isReadOnly && (
+                <TouchableOpacity onPress={openCreate} style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
+                  <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary }]}>Create first variant</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
           ListHeaderComponent={

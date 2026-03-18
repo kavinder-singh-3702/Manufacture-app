@@ -34,7 +34,7 @@ export const ProfileEditorModal = ({ title, visible, onClose, onSubmit, saving, 
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
         </View>
-        <KeyboardAvoidingView behavior={Platform.select({ ios: "padding", android: undefined })} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
             {children}
             {error ? <Text style={[styles.errorText, { marginTop: spacing.md, color: colors.error }]}>{error}</Text> : null}

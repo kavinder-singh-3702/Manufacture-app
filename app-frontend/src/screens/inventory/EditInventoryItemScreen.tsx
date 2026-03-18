@@ -12,7 +12,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
@@ -133,17 +133,19 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
     }
   }, [mode, navigation, productId]);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        setFetching(true);
-        await Promise.all([fetchCategories(), fetchItem()]);
-      } finally {
-        setFetching(false);
-      }
-    };
-    init();
-  }, [fetchCategories, fetchItem]);
+  useFocusEffect(
+    useCallback(() => {
+      const init = async () => {
+        try {
+          setFetching(true);
+          await Promise.all([fetchCategories(), fetchItem()]);
+        } finally {
+          setFetching(false);
+        }
+      };
+      init();
+    }, [fetchCategories, fetchItem])
+  );
 
   const filteredCategories = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();

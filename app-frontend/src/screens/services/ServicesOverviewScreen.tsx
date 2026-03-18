@@ -189,7 +189,7 @@ export const ServicesOverviewScreen = () => {
           <RecentRequestRow
             key={request._id}
             request={request}
-            onPress={() => navigation.navigate("ServiceRequest", { serviceType: request.serviceType })}
+            onPress={() => navigation.push("ServiceRequest", { serviceType: request.serviceType, serviceId: request._id })}
             onQuickAction={() => navigation.navigate("ServiceRequest", { serviceType: request.serviceType })}
           />
         ))}

@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { TextInput, TextInputProps, View, Text, StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../hooks/useTheme";
 
 type InputFieldProps = TextInputProps & {
@@ -20,7 +19,7 @@ export const InputField = ({
   onBlur,
   ...rest
 }: InputFieldProps) => {
-  const { colors, spacing, radius, nativeGradients } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const hasError = Boolean(errorText);
 
@@ -46,12 +45,6 @@ export const InputField = ({
     return colors.border;
   };
 
-  const getGlowColor = () => {
-    if (hasError) return colors.errorBg;
-    if (isFocused) return colors.badgePrimary;
-    return "transparent";
-  };
-
   return (
     <View style={{ marginBottom: spacing.md }}>
       <Text
@@ -65,15 +58,7 @@ export const InputField = ({
         {label}
         {required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
-      <View
-        style={[
-          styles.inputWrapper,
-          {
-            borderRadius: radius.md,
-            backgroundColor: getGlowColor(),
-          },
-        ]}
-      >
+      <View style={styles.inputWrapper}>
         <TextInput
           {...rest}
           onFocus={handleFocus}
@@ -86,24 +71,12 @@ export const InputField = ({
               borderRadius: radius.md,
               padding: spacing.md,
               color: colors.text,
-              shadowColor: isFocused ? colors.primary : colors.shadow,
-              shadowOpacity: isFocused ? 0.24 : 0.1,
             },
             style,
           ]}
           placeholderTextColor={colors.textTertiary}
           selectionColor={colors.primary}
         />
-        {isFocused && (
-          <LinearGradient
-            colors={[nativeGradients.ctaPrimary[0], nativeGradients.statusInfo[1], "transparent"]}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.focusGlow, { borderRadius: radius.md }]}
-            pointerEvents="none"
-          />
-        )}
       </View>
       {helperText && !hasError ? (
         <Text style={[styles.helper, { color: colors.textTertiary }]}>{helperText}</Text>
@@ -127,20 +100,10 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   input: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     fontSize: 16,
     fontWeight: "500",
     minHeight: 44,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  focusGlow: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
   },
   helper: {
     marginTop: 6,

@@ -77,6 +77,7 @@ export type RootStackParamList = {
   ServiceRequest:
     | {
         serviceType?: ServiceType;
+        serviceId?: string;
         prefillProductId?: string;
         prefillProductName?: string;
         sourceRequestId?: string;

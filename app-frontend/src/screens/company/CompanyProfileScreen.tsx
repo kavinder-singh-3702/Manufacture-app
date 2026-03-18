@@ -20,6 +20,7 @@ import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLine
 import { AdaptiveTwoLineText } from "../../components/text/AdaptiveTwoLineText";
 import { RootStackParamList } from "../../navigation/types";
 import { companyService } from "../../services/company.service";
+import { productService } from "../../services/product.service";
 import { ApiError } from "../../services/http";
 import { Company } from "../../types/company";
 import { CompanyHero } from "./components/CompanyHero";
@@ -120,10 +121,26 @@ export const CompanyProfileScreen = () => {
     }
   }, [targetCompanyId]);
 
+  const loadProductCount = useCallback(async () => {
+    if (!targetCompanyId) return;
+    try {
+      const response = await productService.getAll({
+        scope: isReadOnly ? "marketplace" : "company",
+        companyId: isReadOnly ? targetCompanyId : undefined,
+        limit: 1,
+        offset: 0,
+      });
+      setProductsTotal(response.pagination?.total || 0);
+    } catch {
+      // silently ignore — count will update when products tab is opened
+    }
+  }, [targetCompanyId, isReadOnly]);
+
   useFocusEffect(
     useCallback(() => {
       loadCompany();
-    }, [loadCompany])
+      loadProductCount();
+    }, [loadCompany, loadProductCount])
   );
 
   useEffect(() => {

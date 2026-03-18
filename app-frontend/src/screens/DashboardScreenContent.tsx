@@ -212,8 +212,8 @@ const AdminDashboardContent = () => {
   const fetchStats = useCallback(async (isRefresh = false) => {
     try {
       setError(null);
-      if (!isRefresh && !stats) {
-        setLoading(true);
+      if (!isRefresh) {
+        setLoading((prev) => prev);
       }
       const data = await adminService.getStats();
       setStats(data);
@@ -224,13 +224,13 @@ const AdminDashboardContent = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [stats]);
+  }, []);
 
   // Refetch stats whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchStats();
-    }, [])
+    }, [fetchStats])
   );
 
   useEffect(() => {

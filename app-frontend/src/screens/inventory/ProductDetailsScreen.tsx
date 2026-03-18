@@ -11,12 +11,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
-import { isAdminRole } from "../../constants/roles";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { ProductVariant, productVariantService } from "../../services/productVariant.service";
@@ -117,9 +116,11 @@ export const ProductDetailsScreen = () => {
     }
   }, [productId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const selectedVariant = useMemo(
     () => variants.find((variant) => variant._id === selectedVariantId) || null,
@@ -133,7 +134,7 @@ export const ProductDetailsScreen = () => {
     if (product.company?._id && user.activeCompany && String(product.company._id) === String(user.activeCompany)) return true;
     return false;
   }, [product, user]);
-  const canManageVariants = isOwnProduct || isAdminRole(user?.role);
+  const canManageVariants = isOwnProduct;
 
   const images = useMemo(() => {
     if (product?.images?.length) return product.images;
@@ -387,10 +388,72 @@ export const ProductDetailsScreen = () => {
                     );
                   })}
                 </ScrollView>
+
+                {selectedVariant && (
+                  <View style={[styles.variantDetails, { borderColor: colors.border }]}>
+                    <Text style={[styles.variantDetailsTitle, { color: colors.text }]}>
+                      Variant details
+                    </Text>
+                    <View style={styles.variantDetailsGrid}>
+                      {selectedVariant.sku ? (
+                        <View style={styles.variantDetailItem}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>SKU</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>{selectedVariant.sku}</Text>
+                        </View>
+                      ) : null}
+                      {selectedVariant.barcode ? (
+                        <View style={styles.variantDetailItem}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Barcode</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>{selectedVariant.barcode}</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.variantDetailItem}>
+                        <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Available</Text>
+                        <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                          {selectedVariant.availableQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
+                        </Text>
+                      </View>
+                      <View style={styles.variantDetailItem}>
+                        <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Min Stock</Text>
+                        <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                          {selectedVariant.minStockQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
+                        </Text>
+                      </View>
+                      {selectedVariant.price?.unit ? (
+                        <View style={styles.variantDetailItem}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Price Unit</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>per {selectedVariant.price.unit}</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.variantDetailItem}>
+                        <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Status</Text>
+                        <Text style={[styles.variantDetailValue, { color: selectedVariant.status === "active" ? colors.success : colors.textMuted }]}>
+                          {selectedVariant.status}
+                        </Text>
+                      </View>
+                      {selectedVariant.options && Object.keys(selectedVariant.options).length > 0 ? (
+                        <View style={[styles.variantDetailItem, { flexBasis: "100%" }]}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Options</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                            {Object.entries(selectedVariant.options).map(([k, v]) => `${k}: ${String(v)}`).join(" • ")}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {selectedVariant.attributes && Object.keys(selectedVariant.attributes).length > 0 ? (
+                        <View style={[styles.variantDetailItem, { flexBasis: "100%" }]}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Attributes</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                            {Object.entries(selectedVariant.attributes).map(([k, v]) => `${k}: ${String(v)}`).join(" • ")}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                )}
               </View>
             ) : null}
 
-            <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+            <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Product details</Text>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
@@ -664,6 +727,35 @@ const styles = StyleSheet.create({
   variantStock: {
     fontSize: 11,
     fontWeight: "700",
+  },
+  variantDetails: {
+    borderTopWidth: 1,
+    paddingTop: 12,
+    marginTop: 2,
+  },
+  variantDetailsTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  variantDetailsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  variantDetailItem: {
+    flexBasis: "46%",
+    gap: 2,
+  },
+  variantDetailLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  variantDetailValue: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   detailRow: {
     flexDirection: "row",

@@ -114,7 +114,7 @@ export const QuickAdjustStockSheet = ({
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              behavior="padding"
               style={[
                 styles.sheet,
                 {

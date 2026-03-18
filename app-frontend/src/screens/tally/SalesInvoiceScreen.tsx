@@ -254,7 +254,7 @@ export const SalesInvoiceScreen = () => {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         {/* Customer Details */}
         <View
           style={[

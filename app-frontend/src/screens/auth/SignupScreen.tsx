@@ -890,7 +890,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
+      behavior="padding"
       style={styles.slide}
       keyboardVerticalOffset={32}
     >
@@ -925,6 +925,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
           ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.scrollContent}
         >
           <Animated.View

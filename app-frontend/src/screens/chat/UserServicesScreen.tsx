@@ -929,7 +929,7 @@ export const UserServicesScreen = () => {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>

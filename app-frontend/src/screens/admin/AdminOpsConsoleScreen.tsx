@@ -690,16 +690,7 @@ export const AdminOpsConsoleScreen = () => {
               </Text>
 
               {modalRequest.kind === "service" ? (
-                <View style={{ gap: 6 }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700" }}>SERVICE TYPE</Text>
-                  <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19 }}>
-                    {modalRequest.serviceType?.replace(/_/g, " ") || "-"}
-                  </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700", marginTop: 6 }}>DESCRIPTION</Text>
-                  <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19 }}>
-                    {("description" in modalRequest ? modalRequest.description : undefined) || modalPreview?.description || "No description provided."}
-                  </Text>
-                </View>
+                <ServiceRequestDetailSection request={modalRequest as any} textColor={colors.text} />
               ) : (
                 <View style={{ gap: 8 }}>
                   <InfoRow label="Reference" value={("referenceCode" in modalRequest ? modalRequest.referenceCode : undefined) || "-"} color={colors.text} />
@@ -829,6 +820,107 @@ const InfoRow = ({ label, value, color }: { label: string; value: string; color:
     <Text style={{ color, fontSize: 13, lineHeight: 18 }}>{value}</Text>
   </View>
 );
+
+const ServiceRequestDetailSection = ({ request, textColor }: { request: any; textColor: string }) => {
+  const sr = request;
+  const mr = sr.machineRepairDetails;
+  const wr = sr.workerDetails;
+  const tr = sr.transportDetails;
+  const ad = sr.advertisementDetails;
+  const ct = sr.contact;
+  const loc = sr.location;
+  const sched = sr.schedule;
+  const bud = sr.budget;
+
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Service type", value: sr.serviceType?.replace(/_/g, " ") || "-" },
+    { label: "Description", value: sr.description || "-" },
+    { label: "Notes", value: sr.notes || "-" },
+  ];
+
+  // Contact
+  if (ct) {
+    if (ct.name) rows.push({ label: "Contact name", value: ct.name });
+    if (ct.email) rows.push({ label: "Contact email", value: ct.email });
+    if (ct.phone) rows.push({ label: "Contact phone", value: ct.phone });
+    if (ct.preferredChannel) rows.push({ label: "Preferred channel", value: ct.preferredChannel });
+  }
+
+  // Location
+  if (loc) {
+    const parts = [loc.line1, loc.city, loc.state, loc.country, loc.postalCode].filter(Boolean);
+    if (parts.length) rows.push({ label: "Location", value: parts.join(", ") });
+  }
+
+  // Schedule
+  if (sched) {
+    if (sched.startDate) rows.push({ label: "Schedule start", value: String(sched.startDate) });
+    if (sched.endDate) rows.push({ label: "Schedule end", value: String(sched.endDate) });
+    if (sched.isFlexible != null) rows.push({ label: "Flexible schedule", value: sched.isFlexible ? "Yes" : "No" });
+    if (sched.notes) rows.push({ label: "Schedule notes", value: sched.notes });
+  }
+
+  // Budget
+  if (bud) {
+    if (bud.estimatedCost != null) rows.push({ label: "Budget", value: `${bud.currency || "INR"} ${bud.estimatedCost}` });
+  }
+
+  // Machine repair details
+  if (mr) {
+    rows.push({ label: "Machine type", value: mr.machineType || "-" });
+    if (mr.machineName) rows.push({ label: "Machine name", value: mr.machineName });
+    if (mr.manufacturer) rows.push({ label: "Manufacturer", value: mr.manufacturer });
+    if (mr.model) rows.push({ label: "Model", value: mr.model });
+    rows.push({ label: "Issue summary", value: mr.issueSummary || "-" });
+    if (mr.issueDetails) rows.push({ label: "Issue details", value: mr.issueDetails });
+    if (mr.severity) rows.push({ label: "Severity", value: mr.severity });
+    if (mr.requiresDowntime != null) rows.push({ label: "Requires downtime", value: mr.requiresDowntime ? "Yes" : "No" });
+    if (mr.warrantyStatus) rows.push({ label: "Warranty", value: mr.warrantyStatus.replace(/_/g, " ") });
+  }
+
+  // Worker details
+  if (wr) {
+    rows.push({ label: "Industry", value: wr.industry || "-" });
+    rows.push({ label: "Headcount", value: String(wr.headcount || "-") });
+    if (wr.roles?.length) rows.push({ label: "Roles", value: wr.roles.join(", ") });
+    if (wr.experienceLevel) rows.push({ label: "Experience", value: wr.experienceLevel });
+    if (wr.shiftType) rows.push({ label: "Shift type", value: wr.shiftType });
+    if (wr.contractType) rows.push({ label: "Contract", value: wr.contractType.replace(/_/g, " ") });
+    if (wr.skills?.length) rows.push({ label: "Skills", value: wr.skills.join(", ") });
+    if (wr.certifications?.length) rows.push({ label: "Certifications", value: wr.certifications.join(", ") });
+  }
+
+  // Transport details
+  if (tr) {
+    if (tr.mode) rows.push({ label: "Transport mode", value: tr.mode });
+    const pickup = [tr.pickupLocation?.city, tr.pickupLocation?.state].filter(Boolean).join(", ");
+    const drop = [tr.dropLocation?.city, tr.dropLocation?.state].filter(Boolean).join(", ");
+    if (pickup) rows.push({ label: "Pickup", value: pickup });
+    if (drop) rows.push({ label: "Drop", value: drop });
+    if (tr.loadType) rows.push({ label: "Load type", value: tr.loadType });
+    if (tr.loadWeightTons) rows.push({ label: "Weight (tons)", value: String(tr.loadWeightTons) });
+    if (tr.vehicleType) rows.push({ label: "Vehicle type", value: tr.vehicleType });
+    if (tr.requiresReturnTrip != null) rows.push({ label: "Return trip", value: tr.requiresReturnTrip ? "Yes" : "No" });
+    if (tr.specialHandling) rows.push({ label: "Special handling", value: tr.specialHandling });
+  }
+
+  // Advertisement details
+  if (ad) {
+    if (ad.product) rows.push({ label: "Product ID", value: ad.product });
+    if (ad.objective) rows.push({ label: "Objective", value: ad.objective });
+    if (ad.headline) rows.push({ label: "Headline", value: ad.headline });
+    if (ad.subtitle) rows.push({ label: "Subtitle", value: ad.subtitle });
+    if (ad.ctaLabel) rows.push({ label: "CTA label", value: ad.ctaLabel });
+  }
+
+  return (
+    <View style={{ gap: 8 }}>
+      {rows.map((row, i) => (
+        <InfoRow key={`${row.label}-${i}`} label={row.label} value={row.value} color={textColor} />
+      ))}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

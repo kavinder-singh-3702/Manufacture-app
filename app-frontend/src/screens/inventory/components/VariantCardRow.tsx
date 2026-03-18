@@ -15,10 +15,12 @@ export const VariantCardRow = ({
   variant,
   onEdit,
   onDelete,
+  readOnly = false,
 }: {
   variant: ProductVariant;
   onEdit: () => void;
   onDelete: () => void;
+  readOnly?: boolean;
 }) => {
   const { colors, radius } = useTheme();
 
@@ -38,21 +40,73 @@ export const VariantCardRow = ({
       <View style={styles.metaRow}>
         <Text style={[styles.meta, { color: colors.textMuted }]}>
           Price: {variant.price?.currency || "INR"} {Number(variant.price?.amount || 0).toLocaleString("en-IN")}
+          {variant.price?.unit ? ` / ${variant.price.unit}` : ""}
         </Text>
         <Text style={[styles.meta, { color: colors.textMuted }]}>Status: {variant.status}</Text>
       </View>
 
-      <View style={styles.actionsRow}>
-        <TouchableOpacity onPress={onEdit} style={[styles.actionBtn, { borderColor: colors.border, borderRadius: radius.sm }]}>
-          <Ionicons name="create-outline" size={14} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.primary }]}>Edit</Text>
-        </TouchableOpacity>
+      {readOnly && (
+        <View style={[styles.detailsGrid, { borderColor: colors.border }]}>
+          {variant.sku ? (
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>SKU</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{variant.sku}</Text>
+            </View>
+          ) : null}
+          {variant.barcode ? (
+            <View style={styles.detailItem}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Barcode</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>{variant.barcode}</Text>
+            </View>
+          ) : null}
+          <View style={styles.detailItem}>
+            <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Available Stock</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
+              {variant.availableQuantity ?? 0}{variant.unit ? ` ${variant.unit}` : ""}
+            </Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Min Stock</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
+              {variant.minStockQuantity ?? 0}{variant.unit ? ` ${variant.unit}` : ""}
+            </Text>
+          </View>
+          {variant.attributes && Object.keys(variant.attributes).length > 0 ? (
+            <View style={[styles.detailItem, { flexBasis: "100%" }]}>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Attributes</Text>
+              <Text style={[styles.detailValue, { color: colors.text }]}>
+                {Object.entries(variant.attributes).map(([k, v]) => `${k}: ${String(v)}`).join(" • ")}
+              </Text>
+            </View>
+          ) : null}
+          <View style={styles.detailItem}>
+            <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Created</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
+              {new Date(variant.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Updated</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>
+              {new Date(variant.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </Text>
+          </View>
+        </View>
+      )}
 
-        <TouchableOpacity onPress={onDelete} style={[styles.actionBtn, { borderColor: colors.error + "55", borderRadius: radius.sm }]}>
-          <Ionicons name="trash-outline" size={14} color={colors.error} />
-          <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
-        </TouchableOpacity>
-      </View>
+      {!readOnly && (
+        <View style={styles.actionsRow}>
+          <TouchableOpacity onPress={onEdit} style={[styles.actionBtn, { borderColor: colors.border, borderRadius: radius.sm }]}>
+            <Ionicons name="create-outline" size={14} color={colors.primary} />
+            <Text style={[styles.actionText, { color: colors.primary }]}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={onDelete} style={[styles.actionBtn, { borderColor: colors.error + "55", borderRadius: radius.sm }]}>
+            <Ionicons name="trash-outline" size={14} color={colors.error} />
+            <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -85,6 +139,27 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  detailsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    borderTopWidth: 1,
+    paddingTop: 10,
+  },
+  detailItem: {
+    flexBasis: "46%",
+    gap: 2,
+  },
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   actionsRow: {
     flexDirection: "row",

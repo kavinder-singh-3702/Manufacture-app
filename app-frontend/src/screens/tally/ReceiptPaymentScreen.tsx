@@ -138,7 +138,7 @@ export const ReceiptPaymentScreen = () => {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         {/* Party Details */}
         <View
           style={[

@@ -150,7 +150,6 @@ export const CartProvider = ({ children }: CartProviderProps) => {
               includeVariantSummary: true,
             });
 
-            let availableQty = Number(updatedProduct.availableQuantity || 0);
             let updatedVariant = ci.variant || null;
 
             if (ci.variant?.id) {
@@ -158,7 +157,6 @@ export const CartProvider = ({ children }: CartProviderProps) => {
                 const variant = await productVariantService.getById(ci.item._id, ci.variant.id, {
                   scope: "marketplace",
                 });
-                availableQty = Number(variant.availableQuantity || 0);
                 updatedVariant = {
                   ...ci.variant,
                   id: variant._id,
@@ -172,19 +170,14 @@ export const CartProvider = ({ children }: CartProviderProps) => {
               }
             }
 
-            const adjustedQuantity = Math.min(ci.quantity, Number.isFinite(availableQty) ? availableQty : ci.quantity);
-            if (Number.isFinite(availableQty) && availableQty <= 0) {
-              return null;
-            }
-            const finalQuantity = adjustedQuantity > 0 ? adjustedQuantity : 1;
-            return { ...ci, item: updatedProduct, variant: updatedVariant, quantity: finalQuantity };
+            return { ...ci, item: updatedProduct, variant: updatedVariant };
           } catch {
             return ci;
           }
         })
       );
 
-      setItems(updatedItems.filter((item): item is CartItem => Boolean(item)));
+      setItems(updatedItems);
     } catch (error) {
       console.error("Error refreshing cart items:", error);
     }

@@ -114,7 +114,7 @@ export const CompanyCreateScreen = () => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.sm }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { borderColor: colors.border }]}>
             <Text style={{ color: colors.text, fontSize: 18 }}>‹</Text>

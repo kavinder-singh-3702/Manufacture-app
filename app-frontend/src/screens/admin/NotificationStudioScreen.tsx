@@ -142,6 +142,8 @@ export const NotificationStudioScreen = () => {
       <ScrollView
         contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Compose Notification</Text>

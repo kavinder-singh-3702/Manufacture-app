@@ -157,7 +157,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
+      behavior="padding"
       style={styles.slide}
     >
       <ScrollView
@@ -165,6 +165,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
         contentContainerStyle={[styles.scrollContent, { paddingHorizontal: contentPadding }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
       >
         <View
           style={[

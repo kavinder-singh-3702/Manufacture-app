@@ -107,7 +107,7 @@ export const QuoteRequestSheet = ({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior="padding"
           style={styles.keyboardWrap}
         >
           <View style={styles.sheet}>
@@ -128,6 +128,8 @@ export const QuoteRequestSheet = ({
               style={styles.scroll}
               contentContainerStyle={{ paddingBottom: spacing.md }}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
             >
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Quantity *</Text>

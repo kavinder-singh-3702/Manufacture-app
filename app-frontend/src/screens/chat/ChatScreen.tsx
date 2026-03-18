@@ -226,12 +226,32 @@ export const ChatScreen = () => {
                 key={key}
                 {...bubbleProps}
                 wrapperStyle={{
-                  right: { backgroundColor: colors.primary },
-                  left: { backgroundColor: colors.surface },
+                  right: {
+                    backgroundColor: colors.primary,
+                    borderRadius: 18,
+                    borderBottomRightRadius: 4,
+                    marginRight: 8,
+                    marginLeft: 60,
+                    marginVertical: 2,
+                    paddingRight: 2,
+                  },
+                  left: {
+                    backgroundColor: colors.surface,
+                    borderRadius: 18,
+                    borderBottomLeftRadius: 4,
+                    marginLeft: 8,
+                    marginRight: 60,
+                    marginVertical: 2,
+                    paddingLeft: 2,
+                  },
                 }}
                 textStyle={{
-                  right: { color: "#fff" },
-                  left: { color: colors.text },
+                  right: { color: "#fff", fontSize: 15, lineHeight: 20 },
+                  left: { color: colors.text, fontSize: 15, lineHeight: 20 },
+                }}
+                timeTextStyle={{
+                  right: { color: "rgba(255,255,255,0.6)", fontSize: 11 },
+                  left: { color: colors.textMuted, fontSize: 11 },
                 }}
               />
             );
@@ -243,11 +263,15 @@ export const ChatScreen = () => {
                 key={key}
                 {...toolbarProps}
                 containerStyle={{
-                  backgroundColor: colors.surface,
+                  backgroundColor: colors.background,
                   borderTopWidth: 1,
                   borderTopColor: colors.border,
-                  paddingVertical: 8,
-                  paddingHorizontal: 10,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                  paddingHorizontal: 8,
+                }}
+                primaryStyle={{
+                  alignItems: "center",
                 }}
               />
             );
@@ -257,32 +281,28 @@ export const ChatScreen = () => {
             return (
               <View style={{
                 flex: 1,
-                backgroundColor: '#1E1E1E',
-                borderRadius: 20,
+                backgroundColor: colors.surface,
+                borderRadius: 22,
+                borderWidth: 1,
+                borderColor: colors.border,
                 marginRight: 8,
-                paddingHorizontal: 4,
               }}>
                 <Composer
                   key={key}
                   {...composerProps}
                   textInputStyle={{
-                    color: '#FFFFFF',
-                    backgroundColor: 'transparent',
+                    color: colors.text,
+                    backgroundColor: "transparent",
                     paddingTop: 10,
                     paddingBottom: 10,
-                    paddingLeft: 10,
-                    paddingRight: 10,
+                    paddingLeft: 14,
+                    paddingRight: 14,
                     fontSize: 15,
+                    lineHeight: 20,
                     marginTop: 0,
                     marginBottom: 0,
                   }}
-                  placeholderTextColor="#888888"
-                  textInputProps={{
-                    style: {
-                      color: '#FFFFFF',
-                      fontSize: 15,
-                    }
-                  }}
+                  placeholderTextColor={colors.textMuted}
                 />
               </View>
             );

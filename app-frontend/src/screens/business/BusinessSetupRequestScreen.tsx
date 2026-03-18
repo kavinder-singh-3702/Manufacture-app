@@ -228,7 +228,7 @@ export const BusinessSetupRequestScreen = () => {
         />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
@@ -237,6 +237,8 @@ export const BusinessSetupRequestScreen = () => {
             gap: spacing.md,
           }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
         >
           <View style={styles.headerRow}>
             <TouchableOpacity

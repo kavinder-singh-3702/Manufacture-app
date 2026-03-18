@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -189,6 +190,17 @@ export const CompanyProductsSection = ({
     [navigation]
   );
 
+  const handleViewVariants = useCallback(
+    (product: Product) => {
+      navigation.navigate("ProductVariants", {
+        productId: product._id,
+        productName: product.name,
+        scope: isReadOnly ? "marketplace" : "company",
+      });
+    },
+    [navigation, isReadOnly]
+  );
+
   return (
     <View style={styles.container}>
       <View style={[styles.sectionHeader, isCompact && styles.sectionHeaderCompact]}>
@@ -367,15 +379,40 @@ export const CompanyProductsSection = ({
           data={products}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <AmazonStyleProductCard
-              product={item}
-              onPress={openProduct}
-              onMessagePress={handleMessage}
-              onCallPress={handleCall}
-              showPrimaryAction={!isReadOnly}
-              primaryActionLabel="Edit"
-              onPrimaryActionPress={handleEdit}
-            />
+            <View>
+              <AmazonStyleProductCard
+                product={item}
+                onPress={openProduct}
+                onMessagePress={handleMessage}
+                onCallPress={handleCall}
+                showPrimaryAction={!isReadOnly}
+                primaryActionLabel="Edit"
+                onPrimaryActionPress={handleEdit}
+              />
+              {isReadOnly && item.variantSummary?.totalVariants ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => handleViewVariants(item)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    marginTop: 6,
+                    paddingVertical: 10,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.surface,
+                  }}
+                >
+                  <Ionicons name="layers-outline" size={15} color={colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: colors.primary }}>
+                    View {item.variantSummary.totalVariants} Variant{item.variantSummary.totalVariants > 1 ? "s" : ""}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           )}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           contentContainerStyle={{ paddingBottom: 24 }}

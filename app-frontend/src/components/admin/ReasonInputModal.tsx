@@ -46,7 +46,7 @@ export const ReasonInputModal = ({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 

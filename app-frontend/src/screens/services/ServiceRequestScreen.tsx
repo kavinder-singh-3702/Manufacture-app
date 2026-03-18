@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -22,6 +23,7 @@ import { Button } from "../../components/common/Button";
 import {
   CreateServiceRequestInput,
   ServicePriority,
+  ServiceRequest,
   ServiceType,
   serviceRequestService,
 } from "../../services/serviceRequest.service";
@@ -236,6 +238,113 @@ const initialForm = (serviceType?: ServiceType): FormState => ({
   adPriority: "50",
 });
 
+const serviceRequestToForm = (sr: ServiceRequest): FormState => {
+  const mr = sr.machineRepairDetails;
+  const wr = sr.workerDetails;
+  const tr = sr.transportDetails;
+  const ad = sr.advertisementDetails;
+  const sched = sr.schedule;
+  const loc = sr.location;
+  const ct = sr.contact;
+  const bud = sr.budget;
+
+  return {
+    serviceType: sr.serviceType,
+    title: sr.title || "",
+    description: sr.description || "",
+    priority: sr.priority || "normal",
+
+    machineType: mr?.machineType || "cnc",
+    issueSummary: mr?.issueSummary || "",
+    workerIndustry: wr?.industry || "general",
+    headcount: wr?.headcount != null ? String(wr.headcount) : "1",
+    pickupCity: tr?.pickupLocation?.city || "",
+    dropCity: tr?.dropLocation?.city || "",
+
+    advancedOpen: false,
+
+    contactName: ct?.name || "",
+    contactEmail: ct?.email || "",
+    contactPhone: ct?.phone || "",
+    preferredChannel: ct?.preferredChannel || "phone",
+
+    locationLine1: loc?.line1 || "",
+    locationCity: loc?.city || "",
+    locationState: loc?.state || "",
+    locationCountry: loc?.country || "",
+    locationPostal: loc?.postalCode || "",
+
+    scheduleStart: sched?.startDate ? String(sched.startDate) : "",
+    scheduleEnd: sched?.endDate ? String(sched.endDate) : "",
+    scheduleFlexible: sched?.isFlexible ?? true,
+    scheduleNotes: sched?.notes || "",
+
+    budgetEstimate: bud?.estimatedCost != null ? String(bud.estimatedCost) : "",
+    budgetCurrency: bud?.currency || "INR",
+    notes: sr.notes || "",
+
+    machineName: mr?.machineName || "",
+    machineManufacturer: mr?.manufacturer || "",
+    machineModel: mr?.model || "",
+    issueDetails: mr?.issueDetails || "",
+    severity: mr?.severity || "medium",
+    requiresDowntime: mr?.requiresDowntime ?? true,
+    warrantyStatus: mr?.warrantyStatus || "unknown",
+    machineStart: mr?.preferredSchedule?.startDate ? String(mr.preferredSchedule.startDate) : "",
+    machineEnd: mr?.preferredSchedule?.endDate ? String(mr.preferredSchedule.endDate) : "",
+    machineFlexible: mr?.preferredSchedule?.isFlexible ?? true,
+    machineScheduleNotes: mr?.preferredSchedule?.notes || "",
+
+    workerRoles: wr?.roles?.join(", ") || "",
+    experienceLevel: wr?.experienceLevel || "mid",
+    shiftType: wr?.shiftType || "day",
+    contractType: wr?.contractType || "short_term",
+    workerStart: wr?.startDate ? String(wr.startDate) : "",
+    durationWeeks: wr?.durationWeeks != null ? String(wr.durationWeeks) : "",
+    workerSkills: wr?.skills?.join(", ") || "",
+    workerCertifications: wr?.certifications?.join(", ") || "",
+    workerLanguages: wr?.languagePreferences?.join(", ") || "",
+    workerSafety: wr?.safetyClearances?.join(", ") || "",
+    perWorkerBudget: wr?.budgetPerWorker?.amount != null ? String(wr.budgetPerWorker.amount) : "",
+    perWorkerCurrency: wr?.budgetPerWorker?.currency || "INR",
+
+    transportMode: tr?.mode || "road",
+    pickupState: tr?.pickupLocation?.state || "",
+    dropState: tr?.dropLocation?.state || "",
+    loadType: tr?.loadType || "",
+    loadWeightTons: tr?.loadWeightTons != null ? String(tr.loadWeightTons) : "",
+    vehicleType: tr?.vehicleType || "",
+    requiresReturnTrip: tr?.requiresReturnTrip ?? false,
+    specialHandling: tr?.specialHandling || "",
+    insuranceNeeded: tr?.insuranceNeeded ?? false,
+    transportStart: tr?.availability?.startDate ? String(tr.availability.startDate) : "",
+    transportEnd: tr?.availability?.endDate ? String(tr.availability.endDate) : "",
+    transportFlexible: tr?.availability?.isFlexible ?? true,
+    availabilityNotes: tr?.availability?.notes || "",
+
+    advertisementProductId: ad?.product || "",
+    advertisementObjective: ad?.objective || "",
+    adTargetingMode: ad?.targetingMode || "any",
+    adTargetUserIds: ad?.targetUserIds?.join(", ") || "",
+    adShopperCategories: ad?.shopperCategories?.join(", ") || "",
+    adShopperSubCategories: ad?.shopperSubCategories?.join(", ") || "",
+    adBuyIntentCategories: ad?.buyIntentCategories?.join(", ") || "",
+    adBuyIntentSubCategories: ad?.buyIntentSubCategories?.join(", ") || "",
+    adListedProductCategories: ad?.listedProductCategories?.join(", ") || "",
+    adListedProductSubCategories: ad?.listedProductSubCategories?.join(", ") || "",
+    adRequireSameCategory: ad?.requireListedProductInSameCategory ?? false,
+    adLookbackDays: ad?.lookbackDays != null ? String(ad.lookbackDays) : "60",
+    adStartAt: ad?.startAt ? String(ad.startAt) : "",
+    adEndAt: ad?.endAt ? String(ad.endAt) : "",
+    adHeadline: ad?.headline || "",
+    adSubtitle: ad?.subtitle || "",
+    adCtaLabel: ad?.ctaLabel || "",
+    adBadge: ad?.badge || "",
+    adFrequencyCap: ad?.frequencyCapPerDay != null ? String(ad.frequencyCapPerDay) : "3",
+    adPriority: ad?.priority != null ? String(ad.priority) : "50",
+  };
+};
+
 const splitList = (value: string) =>
   value
     .split(",")
@@ -298,14 +407,56 @@ export const ServiceRequestScreen = () => {
   const route = useRoute<ServiceRequestRoute>();
   const insets = useSafeAreaInsets();
 
+  const existingServiceId = route.params?.serviceId;
   const [form, setForm] = useState<FormState>(() => initialForm(route.params?.serviceType));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [isViewing, setIsViewing] = useState(Boolean(existingServiceId));
+  const [loadingExisting, setLoadingExisting] = useState(Boolean(existingServiceId));
+  const loadedIdRef = useRef<string | null>(null);
+
+  // Load existing service request when serviceId is provided
+  useEffect(() => {
+    if (!existingServiceId) {
+      setIsViewing(false);
+      setLoadingExisting(false);
+      setForm(initialForm(route.params?.serviceType));
+      loadedIdRef.current = null;
+      return;
+    }
+
+    // Skip if we already loaded this exact request
+    if (loadedIdRef.current === existingServiceId) return;
+
+    // Reset state for new load
+    setLoadingExisting(true);
+    setIsViewing(true);
+    setForm(initialForm()); // clear stale form data immediately
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const sr = await serviceRequestService.getById(existingServiceId);
+        if (cancelled) return;
+        loadedIdRef.current = existingServiceId;
+        setForm(serviceRequestToForm(sr));
+      } catch (err: any) {
+        if (!cancelled) {
+          error("Could not load request", err?.message || "Please try again.");
+          setIsViewing(false);
+        }
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [existingServiceId]);
 
   useEffect(() => {
-    if (!route.params?.serviceType) return;
+    if (!route.params?.serviceType || route.params?.serviceId) return;
 
     setForm((prev) => ({
       ...prev,
@@ -591,7 +742,7 @@ export const ServiceRequestScreen = () => {
         />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
@@ -600,6 +751,8 @@ export const ServiceRequestScreen = () => {
             gap: spacing.md,
           }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
         >
           <View style={styles.headerRow}>
             <TouchableOpacity
@@ -610,16 +763,25 @@ export const ServiceRequestScreen = () => {
               <Ionicons name="arrow-back" size={16} color={colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>Service Request</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>{isViewing ? "Request Details" : "Service Request"}</Text>
               <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-                {selectedMeta ? selectedMeta.subtitle : "Choose service type and submit quickly"}
+                {isViewing ? "Viewing submitted request" : selectedMeta ? selectedMeta.subtitle : "Choose service type and submit quickly"}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+          {loadingExisting ? (
+            <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 }}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "600" }}>Loading request...</Text>
+            </View>
+          ) : null}
+          {loadingExisting ? null : (
+          <>
+          {isViewing ? null : (
+          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}>
             <SectionHeader title="Service Type" subtitle="Pick one to continue" />
-            <View style={[styles.stack, { marginTop: spacing.sm }]}> 
+            <View style={[styles.stack, { marginTop: spacing.sm }]}>
               {Object.values(SERVICE_META).map((service) => (
                 <ServiceTypeCard
                   key={service.type}
@@ -634,6 +796,7 @@ export const ServiceRequestScreen = () => {
             </View>
             {fieldErrors.serviceType ? <Text style={[styles.fieldError, { color: colors.error }]}>{fieldErrors.serviceType}</Text> : null}
           </View>
+          )}
 
           <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
             <SectionHeader title="Quick Request" subtitle="Required fields first" />
@@ -1089,10 +1252,18 @@ export const ServiceRequestScreen = () => {
             </View>
           ) : null}
 
-          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
-            <Text style={[styles.submitHint, { color: colors.textMuted }]}>Review required fields and submit. You can add more details later if needed.</Text>
-            <Button label={user?.role === "guest" ? "Login to submit" : "Submit request"} onPress={submit} loading={submitting} />
+          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}>
+            {isViewing ? (
+              <Text style={[styles.submitHint, { color: colors.textMuted }]}>This request has already been submitted.</Text>
+            ) : (
+              <>
+                <Text style={[styles.submitHint, { color: colors.textMuted }]}>Review required fields and submit. You can add more details later if needed.</Text>
+                <Button label={user?.role === "guest" ? "Login to submit" : "Submit request"} onPress={submit} loading={submitting} />
+              </>
+            )}
           </View>
+          </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

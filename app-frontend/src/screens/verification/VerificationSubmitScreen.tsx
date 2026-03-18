@@ -119,6 +119,7 @@ export const VerificationSubmitScreen = () => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets
           >
             <View style={styles.content}>
               <Text style={styles.subtitle}>
