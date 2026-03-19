@@ -61,11 +61,9 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
   const updateField = useCallback(
     (field: keyof CreateProductInput, value: any) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
-      if (errors[field]) {
-        setErrors((prev) => ({ ...prev, [field]: "" }));
-      }
+      setErrors((prev) => (prev[field] ? { ...prev, [field]: "" } : prev));
     },
-    [errors]
+    []
   );
 
   const updatePriceField = useCallback((field: "amount" | "currency" | "unit", value: any) => {
@@ -319,8 +317,10 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
             label="SKU / Item Code"
             placeholder="Enter SKU (optional)"
             value={formData.sku}
-            onChangeText={(text) => updateField("sku", text.toUpperCase())}
-            autoCapitalize="characters"
+            onChangeText={(text) => updateField("sku", text)}
+            onBlur={() => { if (formData.sku) updateField("sku", formData.sku.toUpperCase()); }}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: spacing.lg, marginBottom: spacing.md }]}>Classification</Text>
@@ -455,8 +455,10 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
                 label="Currency"
                 placeholder="INR"
                 value={formData.price.currency || "INR"}
-                onChangeText={(text) => updatePriceField("currency", text.toUpperCase())}
-                autoCapitalize="characters"
+                onChangeText={(text) => updatePriceField("currency", text)}
+                onBlur={() => { if (formData.price.currency) updatePriceField("currency", formData.price.currency.toUpperCase()); }}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
           </View>
