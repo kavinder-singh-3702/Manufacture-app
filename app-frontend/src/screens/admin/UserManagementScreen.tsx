@@ -187,8 +187,8 @@ export const UserManagementScreen = () => {
         onPress: () => {
           if (!selectedUser) return;
           navigation.navigate("AdStudio", {
-            prefillTargetUserId: selectedUser.id,
-            prefillUserName: selectedUser.displayName || selectedUser.email,
+            prefillOwnerUserId: selectedUser.id,
+            prefillOwnerUserName: selectedUser.displayName || selectedUser.email,
           });
         },
       },

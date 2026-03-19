@@ -63,6 +63,8 @@ export type RootStackParamList = {
   NotificationStudio: undefined;
   AdStudio:
     | {
+        prefillOwnerUserId?: string;
+        prefillOwnerUserName?: string;
         prefillTargetUserId?: string;
         prefillUserName?: string;
         prefillServiceRequestId?: string;

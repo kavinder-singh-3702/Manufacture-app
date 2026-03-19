@@ -235,6 +235,7 @@ const getAllProducts = async (
     visibility,
     userId,
     createdByRole,
+    createdBy,
     minPrice,
     maxPrice,
     sort,
@@ -254,6 +255,9 @@ const getAllProducts = async (
     } else {
       andFilters.push({ createdByRole });
     }
+  }
+  if (createdBy) {
+    andFilters.push({ createdBy: new mongoose.Types.ObjectId(createdBy) });
   }
   if (category) {
     andFilters.push({ category });

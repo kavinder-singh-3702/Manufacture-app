@@ -31,8 +31,18 @@ const AdScheduleSchema = new Schema(
   { _id: false }
 );
 
+const AdPriceOverrideSchema = new Schema(
+  {
+    amount: { type: Number, min: 0 },
+    currency: { type: String, trim: true, uppercase: true, default: 'INR' },
+    unit: { type: String, trim: true, maxlength: 60 }
+  },
+  { _id: false }
+);
+
 const AdCreativeSchema = new Schema(
   {
+    priceOverride: { type: AdPriceOverrideSchema, default: undefined },
     title: { type: String, trim: true, maxlength: 140 },
     subtitle: { type: String, trim: true, maxlength: 220 },
     ctaLabel: { type: String, trim: true, maxlength: 60 },

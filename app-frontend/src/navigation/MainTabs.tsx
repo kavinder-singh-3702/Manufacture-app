@@ -371,6 +371,16 @@ export const MainTabs = () => {
     stackNavigation.navigate("Notifications");
   }, [isAuthenticated, requestLogin, stackNavigation]);
 
+  const handleAddProductFromTopBar = useCallback(() => {
+    if (!isAuthenticated) {
+      requestLogin();
+      return;
+    }
+    stackNavigation.navigate("AddProduct");
+  }, [isAuthenticated, requestLogin, stackNavigation]);
+
+  const shouldShowAddProductAction = !isAdmin && activeRouteForNav === routes.DASHBOARD;
+
   const navigationItems = useMemo(
     () =>
       tabs
@@ -448,6 +458,8 @@ export const MainTabs = () => {
           onSearchPress={handleSearchPress}
           onNotificationsPress={handleOpenNotifications}
           notificationCount={notificationUnreadCount}
+          showAddProductAction={shouldShowAddProductAction}
+          onAddProductPress={handleAddProductFromTopBar}
           activeCompany={activeCompany}
           onAvatarLongPress={handleOpenCompanySwitcher}
           onAvatarPress={handleOpenPersonalProfile}

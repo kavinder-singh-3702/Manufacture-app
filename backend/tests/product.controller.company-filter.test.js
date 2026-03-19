@@ -45,6 +45,22 @@ describe('Product controller companyId filter rules', () => {
     expect(productService.getAllProducts).not.toHaveBeenCalled();
   });
 
+  test('rejects createdBy filter for non-admin list requests', async () => {
+    const req = {
+      query: { scope: 'marketplace', createdBy: '507f1f77bcf86cd799439011' },
+      user: { id: 'user1', role: 'user', activeCompany: 'ownCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await listProductsController(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const error = next.mock.calls[0][0];
+    expect(error.statusCode || error.status).toBe(403);
+    expect(productService.getAllProducts).not.toHaveBeenCalled();
+  });
+
   test('requires active company when scope=company on list endpoint', async () => {
     const req = {
       query: { scope: 'company', includeVariantSummary: 'true' },
@@ -83,6 +99,39 @@ describe('Product controller companyId filter rules', () => {
         limit: 20,
         includeVariantSummary: true,
         userId: 'admin1'
+      })
+    );
+    expect(res.json).toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('allows admin to query list by explicit createdBy filter', async () => {
+    productService.getAllProducts.mockResolvedValue({
+      products: [],
+      pagination: { total: 0, limit: 20, offset: 0, hasMore: false }
+    });
+
+    const req = {
+      query: {
+        scope: 'marketplace',
+        createdBy: '507f1f77bcf86cd799439011',
+        limit: '20',
+        includeVariantSummary: 'true'
+      },
+      user: { id: 'admin1', role: 'admin', activeCompany: 'adminCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await listProductsController(req, res, next);
+
+    expect(productService.getAllProducts).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        limit: 20,
+        includeVariantSummary: true,
+        userId: 'admin1',
+        createdBy: '507f1f77bcf86cd799439011'
       })
     );
     expect(res.json).toHaveBeenCalled();

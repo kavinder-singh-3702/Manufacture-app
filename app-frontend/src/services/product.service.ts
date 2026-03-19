@@ -159,6 +159,7 @@ class ProductService {
       scope?: ProductListScope;
       companyId?: string;
       createdByRole?: "admin" | "user";
+      createdBy?: string;
       sort?: ProductSort;
       minPrice?: number;
       maxPrice?: number;

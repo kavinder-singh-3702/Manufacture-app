@@ -15,7 +15,23 @@ const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
 const { sendSignupOtpEmail } = require('../../../services/email.service');
 
-const TEST_OTP_CODE = config.signupTestOtp || config.signupOtp;
+const OTP_FORMAT_REGEX = /^[0-9]{6}$/;
+const resolveFixedOtpCode = () => {
+  const configuredOtp = config.signupTestOtp || config.signupOtp;
+  if (!configuredOtp) {
+    return null;
+  }
+
+  const normalizedOtp = String(configuredOtp).trim();
+  if (!OTP_FORMAT_REGEX.test(normalizedOtp)) {
+    console.warn('[SignupService] Ignoring invalid SIGNUP_TEST_OTP. Expected exactly 6 numeric digits.');
+    return null;
+  }
+
+  return normalizedOtp;
+};
+
+const FIXED_OTP_CODE = resolveFixedOtpCode();
 const OTP_TTL_MS = Math.max(Number(config.signupOtpTtlMs) || 5 * 60 * 1000, 1);
 const OTP_RESEND_COOLDOWN_MS = Math.max(Number(config.signupOtpResendCooldownMs) || 30 * 1000, 1);
 const OTP_MAX_VERIFY_ATTEMPTS = Math.max(Number(config.signupOtpMaxVerifyAttempts) || 5, 1);
@@ -34,8 +50,8 @@ const normalizeEmail = (value) => value.trim().toLowerCase();
 const normalizePhone = (value) => value.trim();
 
 const generateSignupOtp = () => {
-  if (TEST_OTP_CODE) {
-    return String(TEST_OTP_CODE).trim();
+  if (FIXED_OTP_CODE) {
+    return FIXED_OTP_CODE;
   }
   return crypto.randomInt(0, 1000000).toString().padStart(6, '0');
 };

@@ -23,6 +23,8 @@ type HomeToolbarProps = {
   onSearchPress?: () => void;
   onNotificationsPress?: () => void;
   notificationCount?: number;
+  showAddProductAction?: boolean;
+  onAddProductPress?: () => void;
   activeCompany?: Company | null;
   onAvatarLongPress?: () => void;
   onAvatarPress?: () => void;
@@ -39,6 +41,8 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   onSearchPress,
   onNotificationsPress,
   notificationCount = 0,
+  showAddProductAction = false,
+  onAddProductPress,
   activeCompany,
   onAvatarLongPress,
   onAvatarPress,
@@ -135,6 +139,27 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
         </View>
 
         <View style={styles.trailingActions}>
+          {showAddProductAction ? (
+            <Pressable
+              onPress={onAddProductPress}
+              style={[
+                styles.iconButton,
+                {
+                  width: tokens.topBar.iconButtonSize,
+                  height: tokens.topBar.iconButtonSize,
+                  borderColor: tokens.colors.topBarIconBorder,
+                  backgroundColor: tokens.colors.topBarIconBackground,
+                  borderRadius: tokens.topBar.iconButtonSize / 2.75,
+                  marginRight: tokens.topBar.density === "xCompact" ? 6 : 8,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Add new product"
+            >
+              <Ionicons name="add" size={21} color={tokens.colors.topBarIcon} />
+            </Pressable>
+          ) : null}
+
           <Pressable
             onPress={onNotificationsPress}
             style={[

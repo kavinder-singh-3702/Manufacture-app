@@ -64,8 +64,8 @@ export const TAB_CONFIG: RouteConfig[] = [
   },
   {
     route: routes.CART,
-    label: "Cart",
-    tabLabel: "Cart",
+    label: "Shop",
+    tabLabel: "Shop",
     icon: "🛒",
     activeIcon: "bag-handle",
     inactiveIcon: "bag-handle-outline",

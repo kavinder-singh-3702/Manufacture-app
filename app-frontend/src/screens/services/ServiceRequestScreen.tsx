@@ -129,6 +129,8 @@ type FormState = {
   adLookbackDays: string;
   adStartAt: string;
   adEndAt: string;
+  adPriceOverrideAmount: string;
+  adPriceOverrideCurrency: string;
   adHeadline: string;
   adSubtitle: string;
   adCtaLabel: string;
@@ -230,6 +232,8 @@ const initialForm = (serviceType?: ServiceType): FormState => ({
   adLookbackDays: "60",
   adStartAt: "",
   adEndAt: "",
+  adPriceOverrideAmount: "",
+  adPriceOverrideCurrency: "INR",
   adHeadline: "",
   adSubtitle: "",
   adCtaLabel: "",
@@ -336,6 +340,8 @@ const serviceRequestToForm = (sr: ServiceRequest): FormState => {
     adLookbackDays: ad?.lookbackDays != null ? String(ad.lookbackDays) : "60",
     adStartAt: ad?.startAt ? String(ad.startAt) : "",
     adEndAt: ad?.endAt ? String(ad.endAt) : "",
+    adPriceOverrideAmount: ad?.priceOverride?.amount != null ? String(ad.priceOverride.amount) : "",
+    adPriceOverrideCurrency: ad?.priceOverride?.currency || "INR",
     adHeadline: ad?.headline || "",
     adSubtitle: ad?.subtitle || "",
     adCtaLabel: ad?.ctaLabel || "",
@@ -530,6 +536,12 @@ export const ServiceRequestScreen = () => {
       if (!form.advertisementProductId.trim()) {
         nextErrors.advertisementProductId = "Pick a product to promote";
       }
+      if (form.adPriceOverrideAmount.trim()) {
+        const parsed = Number(form.adPriceOverrideAmount);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          nextErrors.adPriceOverrideAmount = "Discounted ad price must be greater than 0";
+        }
+      }
     }
 
     setFieldErrors(nextErrors);
@@ -626,8 +638,20 @@ export const ServiceRequestScreen = () => {
     }
 
     if (form.serviceType === "advertisement") {
+      const adPriceOverrideAmount = Number(form.adPriceOverrideAmount);
+      const hasAdPriceOverride =
+        form.adPriceOverrideAmount.trim().length > 0 &&
+        Number.isFinite(adPriceOverrideAmount) &&
+        adPriceOverrideAmount > 0;
+
       base.advertisementDetails = {
         product: form.advertisementProductId.trim(),
+        priceOverride: hasAdPriceOverride
+          ? {
+              amount: Number(adPriceOverrideAmount.toFixed(2)),
+              currency: form.adPriceOverrideCurrency.trim().toUpperCase() || undefined,
+            }
+          : undefined,
         objective: form.advertisementObjective.trim() || undefined,
         targetingMode: form.adTargetingMode,
         targetUserIds: splitList(form.adTargetUserIds),
@@ -1227,6 +1251,20 @@ export const ServiceRequestScreen = () => {
                       value={form.adEndAt}
                       onChangeText={(value) => setField("adEndAt", value)}
                       placeholder="YYYY-MM-DD"
+                    />
+                    <Field
+                      label="Discounted ad price (optional)"
+                      value={form.adPriceOverrideAmount}
+                      onChangeText={(value) => setField("adPriceOverrideAmount", value.replace(/[^0-9.]/g, ""))}
+                      keyboardType="decimal-pad"
+                      placeholder="Enter lower promoted price"
+                      errorText={fieldErrors.adPriceOverrideAmount}
+                    />
+                    <Field
+                      label="Ad price currency"
+                      value={form.adPriceOverrideCurrency}
+                      onChangeText={(value) => setField("adPriceOverrideCurrency", value.toUpperCase())}
+                      placeholder="INR"
                     />
                     <Field label="Headline" value={form.adHeadline} onChangeText={(value) => setField("adHeadline", value)} />
                     <Field label="Subtitle" value={form.adSubtitle} onChangeText={(value) => setField("adSubtitle", value)} />

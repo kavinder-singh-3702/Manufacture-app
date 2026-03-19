@@ -1,5 +1,5 @@
 process.env.NODE_ENV = 'test';
-delete process.env.SIGNUP_TEST_OTP;
+process.env.SIGNUP_TEST_OTP = 'AB12CD';
 process.env.SIGNUP_OTP_TTL_MS = '500';
 process.env.SIGNUP_OTP_RESEND_COOLDOWN_MS = '100';
 process.env.SIGNUP_OTP_MAX_VERIFY_ATTEMPTS = '2';
@@ -124,6 +124,33 @@ describe('signup auth flow', () => {
     const verifyResponse = await agent.post('/api/auth/signup/verify').send({ otp: sentOtp });
     expect(verifyResponse.status).toBe(200);
     expect(verifyResponse.body.message).toBe('OTP verification successful');
+  });
+
+  test('invalid SIGNUP_TEST_OTP does not override runtime OTP generation', async () => {
+    const agent = request.agent(app);
+
+    const startResponse = await agent.post('/api/auth/signup/start').send({
+      fullName: 'Invalid Env OTP',
+      email: 'invalid-env-otp@example.com'
+    });
+
+    expect(startResponse.status).toBe(200);
+    expect(sendSignupOtpEmail).toHaveBeenCalledTimes(1);
+
+    const sentOtp = sendSignupOtpEmail.mock.calls[0][0].otp;
+    expect(sentOtp).toMatch(/^\d{6}$/);
+    expect(sentOtp).not.toBe('AB12CD');
+  });
+
+  test('verify endpoint accepts only 6-digit numeric OTP format', async () => {
+    const agent = request.agent(app);
+    const invalidOtps = ['1234', '1234567', '12ab56'];
+
+    for (const otp of invalidOtps) {
+      const verifyResponse = await agent.post('/api/auth/signup/verify').send({ otp });
+      expect(verifyResponse.status).toBe(422);
+      expect(verifyResponse.body.errors?.[0]?.msg).toBe('OTP must be a 6-digit numeric code');
+    }
   });
 
   test('resend respects cooldown and issues a fresh OTP', async () => {

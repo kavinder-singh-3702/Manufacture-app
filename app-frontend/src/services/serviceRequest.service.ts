@@ -72,6 +72,11 @@ export type TransportDetails = {
 
 export type AdvertisementDetails = {
   product: string;
+  priceOverride?: {
+    amount?: number;
+    currency?: string;
+    unit?: string;
+  };
   objective?: string;
   targetingMode?: "any" | "all";
   targetUserIds?: string[];

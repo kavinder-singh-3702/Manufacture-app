@@ -107,6 +107,11 @@ const TransportDetailsSchema = new Schema(
 const AdvertisementDetailsSchema = new Schema(
   {
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    priceOverride: {
+      amount: { type: Number, min: 0 },
+      currency: { type: String, trim: true, uppercase: true, default: 'INR' },
+      unit: { type: String, trim: true, maxlength: 60 }
+    },
     objective: { type: String, trim: true, maxlength: 500 },
     targetingMode: { type: String, enum: AD_TARGETING_MODES, default: 'any' },
     targetUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],

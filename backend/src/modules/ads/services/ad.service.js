@@ -100,21 +100,74 @@ const normalizeTargeting = (targeting) => {
   };
 };
 
-const normalizeCreative = (creative) => {
-  if (!creative || typeof creative !== 'object') return {};
+const normalizePriceOverride = (priceOverride, fallbackPrice = {}) => {
+  if (!priceOverride || typeof priceOverride !== 'object') return undefined;
+
+  const amount = Number(priceOverride.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return undefined;
+
+  const currency = typeof priceOverride.currency === 'string' && priceOverride.currency.trim()
+    ? priceOverride.currency.trim().toUpperCase()
+    : (typeof fallbackPrice.currency === 'string' && fallbackPrice.currency.trim()
+      ? fallbackPrice.currency.trim().toUpperCase()
+      : 'INR');
+
+  const unit = typeof priceOverride.unit === 'string' && priceOverride.unit.trim()
+    ? priceOverride.unit.trim()
+    : (typeof fallbackPrice.unit === 'string' ? fallbackPrice.unit : undefined);
+
   return {
+    amount: Number(amount.toFixed(2)),
+    currency,
+    unit
+  };
+};
+
+const normalizeCreative = (creative, fallbackPrice = {}) => {
+  if (!creative || typeof creative !== 'object') return {};
+
+  const normalized = {
     title: typeof creative.title === 'string' ? creative.title.trim() : undefined,
     subtitle: typeof creative.subtitle === 'string' ? creative.subtitle.trim() : undefined,
     ctaLabel: typeof creative.ctaLabel === 'string' ? creative.ctaLabel.trim() : undefined,
     badge: typeof creative.badge === 'string' ? creative.badge.trim() : undefined
   };
+
+  if (Object.prototype.hasOwnProperty.call(creative, 'priceOverride')) {
+    if (creative.priceOverride === null) {
+      normalized.priceOverride = null;
+    } else {
+      normalized.priceOverride = normalizePriceOverride(creative.priceOverride, fallbackPrice);
+    }
+  }
+
+  return normalized;
+};
+
+const assertPriceOverrideWithinListedPrice = (priceOverride, product) => {
+  if (!priceOverride || typeof priceOverride !== 'object') return;
+
+  const listedAmount = Number(product?.price?.amount);
+  const overrideAmount = Number(priceOverride.amount);
+
+  if (!Number.isFinite(listedAmount) || listedAmount <= 0) {
+    throw createError(400, 'Promoted product must include a valid listed price');
+  }
+
+  if (!Number.isFinite(overrideAmount) || overrideAmount <= 0) {
+    throw createError(400, 'Ad price override must be greater than 0');
+  }
+
+  if (overrideAmount > listedAmount) {
+    throw createError(400, 'Ad price override must be less than or equal to listed product price');
+  }
 };
 
 const ensureProductIsEligible = async (productId) => {
   const product = await Product.findOne({
     _id: toObjectId(productId),
     deletedAt: { $exists: false },
-    createdByRole: 'user',
+    createdByRole: { $in: ['user', 'admin'] },
     status: 'active',
     visibility: 'public'
   })
@@ -122,7 +175,7 @@ const ensureProductIsEligible = async (productId) => {
     .lean();
 
   if (!product) {
-    throw createError(400, 'Promoted product must be an active public user listing');
+    throw createError(400, 'Promoted product must be an active public user/admin listing');
   }
 
   return product;
@@ -224,6 +277,8 @@ const listAdminCampaigns = async (filters = {}) => {
 
 const createCampaign = async ({ payload, actorId }) => {
   const product = await ensureProductIsEligible(payload.productId);
+  const creative = normalizeCreative(payload.creative, product.price || {});
+  assertPriceOverrideWithinListedPrice(creative.priceOverride, product);
 
   const status = AD_CAMPAIGN_STATUSES.includes(payload.status) ? payload.status : 'draft';
   const targeting = normalizeTargeting(payload.targeting);
@@ -243,7 +298,7 @@ const createCampaign = async ({ payload, actorId }) => {
     schedule,
     frequencyCapPerDay: Math.min(Math.max(parseNumber(payload.frequencyCapPerDay, 3), 1), 50),
     priority: Math.min(Math.max(parseNumber(payload.priority, 50), 1), 100),
-    creative: normalizeCreative(payload.creative),
+    creative,
     sourceServiceRequest: toObjectId(payload.sourceServiceRequest),
     createdBy: toObjectId(actorId),
     lastUpdatedBy: toObjectId(actorId),
@@ -271,11 +326,18 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
   const campaign = await AdCampaign.findById(toObjectId(campaignId));
   if (!campaign) return null;
 
+  let resolvedProduct = null;
+  const shouldHandlePriceOverride = Boolean(
+    payload?.creative &&
+    Object.prototype.hasOwnProperty.call(payload.creative, 'priceOverride') &&
+    payload.creative.priceOverride !== null
+  );
+
   if (payload.productId) {
-    const product = await ensureProductIsEligible(payload.productId);
-    campaign.product = product._id;
-    campaign.advertiserUser = product.createdBy;
-    campaign.advertiserCompany = product.company?._id || product.company;
+    resolvedProduct = await ensureProductIsEligible(payload.productId);
+    campaign.product = resolvedProduct._id;
+    campaign.advertiserUser = resolvedProduct.createdBy;
+    campaign.advertiserCompany = resolvedProduct.company?._id || resolvedProduct.company;
   }
 
   if (payload.name !== undefined) campaign.name = String(payload.name || '').trim();
@@ -314,11 +376,32 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
   }
 
   if (payload.creative) {
-    const creative = normalizeCreative(payload.creative);
-    campaign.creative = {
+    if (!resolvedProduct && (shouldHandlePriceOverride || payload.productId)) {
+      resolvedProduct = await ensureProductIsEligible(campaign.product);
+    }
+
+    const creative = normalizeCreative(payload.creative, resolvedProduct?.price || {});
+    const nextCreative = {
       ...campaign.creative,
-      ...Object.fromEntries(Object.entries(creative).filter(([, value]) => value !== undefined))
+      ...Object.fromEntries(
+        Object.entries(creative).filter(([key, value]) => key !== 'priceOverride' && value !== undefined)
+      )
     };
+
+    if (Object.prototype.hasOwnProperty.call(creative, 'priceOverride')) {
+      if (creative.priceOverride) {
+        assertPriceOverrideWithinListedPrice(creative.priceOverride, resolvedProduct);
+        nextCreative.priceOverride = creative.priceOverride;
+      } else {
+        delete nextCreative.priceOverride;
+      }
+    }
+
+    campaign.creative = nextCreative;
+  }
+
+  if (payload.productId && campaign.creative?.priceOverride) {
+    assertPriceOverrideWithinListedPrice(campaign.creative.priceOverride, resolvedProduct);
   }
 
   if (payload.metadata && typeof payload.metadata === 'object') {
@@ -335,7 +418,8 @@ const activateCampaign = async ({ campaignId, actorId }) => {
   const campaign = await AdCampaign.findById(toObjectId(campaignId));
   if (!campaign) return null;
 
-  await ensureProductIsEligible(campaign.product);
+  const product = await ensureProductIsEligible(campaign.product);
+  assertPriceOverrideWithinListedPrice(campaign.creative?.priceOverride, product);
 
   campaign.status = 'active';
   campaign.activatedAt = new Date();
@@ -518,6 +602,26 @@ const matchTargeting = ({ campaign, userId, signals, productCategory }) => {
 };
 
 const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
+  ...(function computePricing() {
+    const listed = campaign.product?.price || undefined;
+    const override = campaign.creative?.priceOverride || undefined;
+    const listedAmount = Number(listed?.amount);
+    const overrideAmount = Number(override?.amount);
+    const hasDiscount =
+      Number.isFinite(listedAmount) &&
+      Number.isFinite(overrideAmount) &&
+      overrideAmount > 0 &&
+      overrideAmount < listedAmount;
+
+    return {
+      priceOverride: override,
+      pricing: {
+        listed,
+        advertised: override || listed,
+        isDiscounted: Boolean(hasDiscount)
+      }
+    };
+  })(),
   id: campaign._id.toString(),
   campaignId: campaign._id.toString(),
   sessionId,
@@ -588,7 +692,8 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
     if (product.deletedAt) return false;
     if (product.status !== 'active') return false;
     if (product.visibility !== 'public') return false;
-    if (product.createdByRole !== 'user') return false;
+    const creatorRole = String(product.createdByRole || 'user').toLowerCase();
+    if (!['user', 'admin'].includes(creatorRole)) return false;
     return true;
   });
 
@@ -783,6 +888,7 @@ const createCampaignFromServiceRequest = async ({ serviceRequestId, actorId, act
       endAt: details.endAt
     },
     creative: {
+      priceOverride: details.priceOverride,
       title: details.headline,
       subtitle: details.subtitle,
       ctaLabel: details.ctaLabel,

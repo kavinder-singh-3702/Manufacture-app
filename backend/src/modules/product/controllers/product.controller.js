@@ -1,4 +1,5 @@
 const createError = require('http-errors');
+const mongoose = require('mongoose');
 const {
   getCategoryStats,
   getProductsByCategory,
@@ -44,6 +45,22 @@ const resolveRequestedCompanyId = (req, fallbackCompanyId) => {
   }
 
   return requestedCompanyId;
+};
+
+const resolveRequestedCreatedBy = (req) => {
+  const requestedCreatedBy = typeof req.query?.createdBy === 'string' ? req.query.createdBy.trim() : '';
+  if (!requestedCreatedBy) return undefined;
+
+  const isAdmin = isAdminRole(req.user?.role);
+  if (!isAdmin) {
+    throw createError(403, 'createdBy filter is restricted to admin users');
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(requestedCreatedBy)) {
+    throw createError(400, 'createdBy must be a valid ObjectId');
+  }
+
+  return requestedCreatedBy;
 };
 
 const getCategoryStatsController = async (req, res, next) => {
@@ -93,6 +110,7 @@ const listProductsController = async (req, res, next) => {
     const { scope, createdByRole: createdByRoleQuery } = req.query;
     const scopeCompanyId = resolveScopeCompanyId(scope, req.user);
     const companyId = resolveRequestedCompanyId(req, scopeCompanyId);
+    const createdBy = resolveRequestedCreatedBy(req);
     const { limit, offset, category, status, search, visibility, minPrice, maxPrice, sort, includeVariantSummary } = req.query;
     const normalizedRole = normalizeCreatorRole(createdByRoleQuery);
     const createdByRole = normalizedRole;
@@ -109,7 +127,8 @@ const listProductsController = async (req, res, next) => {
       sort,
       includeVariantSummary: parseBooleanQuery(includeVariantSummary),
       userId: req.user?.id,
-      createdByRole
+      createdByRole,
+      createdBy
     });
 
     return res.json(result);

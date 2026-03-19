@@ -142,8 +142,8 @@ export const AdminUserDetailScreen = () => {
                 style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated, borderRadius: radius.md }]}
                 onPress={() =>
                   navigation.navigate("AdStudio", {
-                    prefillTargetUserId: userId,
-                    prefillUserName: overview.user.displayName || overview.user.email,
+                    prefillOwnerUserId: userId,
+                    prefillOwnerUserName: overview.user.displayName || overview.user.email,
                   })
                 }
               >

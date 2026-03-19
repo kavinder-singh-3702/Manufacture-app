@@ -117,6 +117,7 @@ describe('Product catalog services', () => {
     const response = await getAllProducts(undefined, {
       search: 'alpha',
       createdByRole: 'admin',
+      createdBy: admin._id.toString(),
       includeVariantSummary: true
     });
 
@@ -135,6 +136,14 @@ describe('Product catalog services', () => {
         currency: 'INR'
       })
     );
+
+    const mismatchOwner = await getAllProducts(undefined, {
+      search: 'alpha',
+      createdByRole: 'admin',
+      createdBy: operator._id.toString(),
+      includeVariantSummary: true
+    });
+    expect(mismatchOwner.products).toHaveLength(0);
   });
 
   test('getProductById respects marketplace/company scope and includes variant summary', async () => {

@@ -40,6 +40,19 @@ const adTargetingValidation = [
 
 const adCreativeValidation = [
   body('creative').optional().isObject(),
+  body('creative.priceOverride').optional({ nullable: true }).isObject(),
+  body('creative.priceOverride.amount')
+    .optional({ nullable: true })
+    .isFloat({ gt: 0 })
+    .withMessage('creative.priceOverride.amount must be greater than 0'),
+  body('creative.priceOverride.currency')
+    .optional({ nullable: true })
+    .isString()
+    .isLength({ min: 3, max: 8 }),
+  body('creative.priceOverride.unit')
+    .optional({ nullable: true })
+    .isString()
+    .isLength({ max: 60 }),
   body('creative.title').optional().isString().isLength({ max: 140 }),
   body('creative.subtitle').optional().isString().isLength({ max: 220 }),
   body('creative.ctaLabel').optional().isString().isLength({ max: 60 }),

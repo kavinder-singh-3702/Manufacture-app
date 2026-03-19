@@ -4,6 +4,7 @@ export type AdCampaignStatus = "draft" | "active" | "paused" | "completed" | "ar
 export type AdPlacement = "dashboard_home";
 export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
+export type AdPrice = { amount?: number; currency?: string; unit?: string };
 
 export type AdTargetingRuleSet = {
   mode?: AdTargetingMode;
@@ -24,7 +25,7 @@ export type AdProductSummary = {
   createdBy?: string;
   category?: string;
   subCategory?: string;
-  price?: { amount?: number; currency?: string; unit?: string };
+  price?: AdPrice;
   images?: Array<{ url?: string; fileName?: string }>;
   contactPreferences?: { allowChat?: boolean; allowCall?: boolean };
   company?: {
@@ -49,6 +50,7 @@ export type AdCampaign = {
   frequencyCapPerDay: number;
   priority: number;
   creative?: {
+    priceOverride?: AdPrice;
     title?: string;
     subtitle?: string;
     ctaLabel?: string;
@@ -75,6 +77,12 @@ export type AdFeedCard = {
   ctaLabel?: string;
   badge?: string;
   priority?: number;
+  priceOverride?: AdPrice;
+  pricing?: {
+    listed?: AdPrice;
+    advertised?: AdPrice;
+    isDiscounted?: boolean;
+  };
   product: AdProductSummary;
 };
 
@@ -105,6 +113,7 @@ export type UpsertAdCampaignInput = {
   frequencyCapPerDay?: number;
   priority?: number;
   creative?: {
+    priceOverride?: AdPrice;
     title?: string;
     subtitle?: string;
     ctaLabel?: string;

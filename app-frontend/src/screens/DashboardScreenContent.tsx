@@ -8,7 +8,6 @@ import {
   Text,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   Animated,
   Easing,
   useWindowDimensions,
@@ -21,7 +20,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
 import { adminService, AdminStats } from "../services/admin.service";
-import { verificationService } from "../services/verificationService";
 import { productService, Product, ProductCategory } from "../services/product.service";
 import { preferenceService } from "../services/preference.service";
 import { adService, AdFeedCard } from "../services/ad.service";
@@ -30,7 +28,6 @@ import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
 import { APP_NAME } from "../constants/brand";
 import { AdminDashboardExtras } from "./admin/components/AdminDashboardExtras";
-import { ComplianceStatus } from "../types/company";
 import { scale, moderateScale } from "../utils/responsive";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
@@ -705,32 +702,17 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
 // USER DASHBOARD CONTENT
 // ============================================================
 const UserDashboardContent = () => {
-  const { spacing, colors, radius, nativeGradients } = useTheme();
+  const { spacing, colors, radius } = useTheme();
   const { isXCompact, isCompact } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
-  const { user, requestSignup, requestLogin } = useAuth();
+  const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isGuest = user?.role === AppRole.GUEST;
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const heroFloatAnim = useRef(new Animated.Value(0)).current;
   const heroGlowAnim = useRef(new Animated.Value(0)).current;
-  const sectionReveal = useRef(Array.from({ length: 5 }, () => new Animated.Value(0))).current;
-
-  const promptSignup = useCallback(() => {
-    Alert.alert(
-      "Create an account",
-      "Create an account to use this feature.",
-      [
-        { text: "Not now", style: "cancel" },
-        { text: "Create account", onPress: requestSignup },
-      ]
-    );
-  }, [requestSignup]);
-
-  const [verificationStatus, setVerificationStatus] = useState<ComplianceStatus | null>(null);
-  const [companyName, setCompanyName] = useState<string | null>(null);
-  const [verificationLoading, setVerificationLoading] = useState(true);
+  const sectionReveal = useRef(Array.from({ length: 3 }, () => new Animated.Value(0))).current;
 
   const [categories, setCategories] = useState<CategoryItem[]>(
     fallbackCategories.map((cat) => ({
@@ -890,34 +872,6 @@ const UserDashboardContent = () => {
     []
   );
 
-  const fetchVerificationStatus = useCallback(async () => {
-    if (!user?.activeCompany) {
-      setVerificationStatus(null);
-      setVerificationLoading(false);
-      return;
-    }
-    try {
-      const response = await verificationService.getVerificationStatus(user.activeCompany);
-      if (response.request && response.request.status === "pending") {
-        setVerificationStatus("submitted");
-      } else {
-        setVerificationStatus(response.company?.complianceStatus || "pending");
-      }
-      setCompanyName(response.company?.displayName || null);
-    } catch (error) {
-      console.error("Failed to fetch verification status:", error);
-      setVerificationStatus(null);
-    } finally {
-      setVerificationLoading(false);
-    }
-  }, [user?.activeCompany]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchVerificationStatus();
-    }, [fetchVerificationStatus])
-  );
-
   const fetchCategories = useCallback(async () => {
     setCategoriesLoading(true);
     setCategoriesError(null);
@@ -981,6 +935,7 @@ const UserDashboardContent = () => {
 
   const buildContactProduct = useCallback((card: AdFeedCard): Product => {
     const product = card.product;
+    const promotedPrice = card.pricing?.advertised || card.priceOverride || product.price;
     return {
       _id: product.id,
       name: product.name || "Promoted product",
@@ -988,8 +943,9 @@ const UserDashboardContent = () => {
       subCategory: product.subCategory,
       createdBy: product.createdBy,
       price: {
-        amount: Number(product.price?.amount || 0),
-        currency: product.price?.currency || "INR",
+        amount: Number(promotedPrice?.amount || 0),
+        currency: promotedPrice?.currency || product.price?.currency || "INR",
+        unit: promotedPrice?.unit || product.price?.unit,
       },
       minStockQuantity: 0,
       availableQuantity: 1,
@@ -1082,55 +1038,6 @@ const UserDashboardContent = () => {
 
   const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
 
-  const getVerificationConfig = () => {
-    switch (verificationStatus) {
-      case "approved":
-        return {
-          icon: "checkmark-circle",
-          title: "Verified",
-          message: companyName ? `${companyName} is verified` : "Your company is verified",
-          gradient: [colors.success, colors.primary] as [string, string],
-          showAction: false,
-        };
-      case "submitted":
-        return {
-          icon: "time",
-          title: "Pending Approval",
-          message: "Your verification is under review",
-          gradient: [colors.warning, colors.accentEmber] as [string, string],
-          showAction: true,
-          actionLabel: "View Status",
-        };
-      case "rejected":
-        return {
-          icon: "close-circle",
-          title: "Verification Rejected",
-          message: "Please resubmit your documents",
-          gradient: [colors.errorStrong, colors.accent] as [string, string],
-          showAction: true,
-          actionLabel: "Resubmit",
-        };
-      case "pending":
-      default:
-        return {
-          icon: "shield",
-          title: "Get Verified",
-          message: "Unlock premium features and build trust",
-          gradient: nativeGradients.ctaPrimary as [string, string],
-          showAction: true,
-          actionLabel: "Start Verification",
-        };
-    }
-  };
-
-  const handleVerificationPress = () => {
-    if (user?.activeCompany) {
-      navigation.navigate("CompanyVerification", { companyId: user.activeCompany });
-    }
-  };
-
-  const verificationConfig = getVerificationConfig();
-
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={StyleSheet.absoluteFill}>
@@ -1163,60 +1070,6 @@ const UserDashboardContent = () => {
       >
         <View style={{ padding: spacing.lg, gap: spacing.lg }}>
           <Animated.View style={revealStyle(0)}>
-            <LinearGradient
-              colors={[colors.surface, colors.surfaceElevated, colors.surface]}
-              locations={[0, 0.6, 1]}
-              style={[
-                styles.userHeroCard,
-                {
-                  borderRadius: radius.lg,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={[colors.primary + "2b", "transparent"]}
-                style={styles.userHeroDecorTop}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <LinearGradient
-                colors={[colors.accent + "24", "transparent"]}
-                style={styles.userHeroDecorBottom}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <Animated.View
-                style={[
-                  styles.userHeroContentWrap,
-                  { transform: [{ translateY: reduceMotionEnabled ? 0 : heroFloatTranslate }] },
-                ]}
-              >
-                <Text style={[styles.userHeroGreeting, { color: colors.textMuted }]}>
-                  {getGreeting()}, {firstName}
-                </Text>
-                <Text style={[styles.userHeroTitle, { color: colors.text }]}>
-                  Welcome to {APP_NAME}
-                </Text>
-                <Text style={[styles.userHeroSubtitle, { color: colors.textSecondary }]}>
-                  Your industrial operations command center for sourcing, services, and business growth.
-                </Text>
-                <View style={styles.userHeroTags}>
-                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgePrimary }]}>
-                    <Text style={[styles.userHeroTagText, { color: colors.primary }]}>Marketplace</Text>
-                  </View>
-                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeWarning }]}>
-                    <Text style={[styles.userHeroTagText, { color: colors.warningStrong }]}>Operations</Text>
-                  </View>
-                  <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeInfo }]}>
-                    <Text style={[styles.userHeroTagText, { color: colors.info }]}>Growth</Text>
-                  </View>
-                </View>
-              </Animated.View>
-            </LinearGradient>
-          </Animated.View>
-
-          <Animated.View style={revealStyle(1)}>
             {adCards.length ? (
               <AdSwipeDeck
                 cards={adCards}
@@ -1228,133 +1081,61 @@ const UserDashboardContent = () => {
                 onCall={handleAdCall}
               />
             ) : (
-              <NoAdHero
-                loading={adFeedLoading}
-                onPress={() => navigation.navigate("ProductSearch")}
-                onBrowseServices={() => navigation.navigate("Main", { screen: routes.SERVICES })}
-              />
+              <LinearGradient
+                colors={[colors.surface, colors.surfaceElevated, colors.surface]}
+                locations={[0, 0.6, 1]}
+                style={[
+                  styles.userHeroCard,
+                  {
+                    borderRadius: radius.lg,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={[colors.primary + "2b", "transparent"]}
+                  style={styles.userHeroDecorTop}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+                <LinearGradient
+                  colors={[colors.accent + "24", "transparent"]}
+                  style={styles.userHeroDecorBottom}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+                <Animated.View
+                  style={[
+                    styles.userHeroContentWrap,
+                    { transform: [{ translateY: reduceMotionEnabled ? 0 : heroFloatTranslate }] },
+                  ]}
+                >
+                  <Text style={[styles.userHeroGreeting, { color: colors.textMuted }]}>
+                    {getGreeting()}, {firstName}
+                  </Text>
+                  <Text style={[styles.userHeroTitle, { color: colors.text }]}>
+                    Welcome to {APP_NAME}
+                  </Text>
+                  <Text style={[styles.userHeroSubtitle, { color: colors.textSecondary }]}>
+                    Your industrial operations command center for sourcing, services, and business growth.
+                  </Text>
+                  <View style={styles.userHeroTags}>
+                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgePrimary }]}>
+                      <Text style={[styles.userHeroTagText, { color: colors.primary }]}>Marketplace</Text>
+                    </View>
+                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeWarning }]}>
+                      <Text style={[styles.userHeroTagText, { color: colors.warningStrong }]}>Operations</Text>
+                    </View>
+                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeInfo }]}>
+                      <Text style={[styles.userHeroTagText, { color: colors.info }]}>Growth</Text>
+                    </View>
+                  </View>
+                </Animated.View>
+              </LinearGradient>
             )}
           </Animated.View>
 
-          {user?.activeCompany && !verificationLoading && verificationStatus !== "approved" && (
-            <Animated.View style={revealStyle(2)}>
-              <TouchableOpacity onPress={handleVerificationPress} activeOpacity={0.9}>
-                <LinearGradient
-                  colors={verificationConfig.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.verificationCard, { borderRadius: radius.lg }]}
-                >
-                  <View style={styles.verificationIcon}>
-                    <Ionicons name={verificationConfig.icon as any} size={28} color="#fff" />
-                  </View>
-                  <View style={styles.verificationContent}>
-                    <Text style={styles.verificationTitle}>{verificationConfig.title}</Text>
-                    <Text style={styles.verificationMessage}>{verificationConfig.message}</Text>
-                  </View>
-                  {verificationConfig.showAction && (
-                    <View style={styles.verificationArrow}>
-                      <Ionicons name="arrow-forward" size={20} color="#fff" />
-                    </View>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-
-          <Animated.View style={[revealStyle(3), styles.userActionStack]}>
-            <TouchableOpacity
-              onPress={() => {
-                if (isGuest) {
-                  promptSignup();
-                  return;
-                }
-                navigation.navigate("AddProduct");
-              }}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.surface, colors.surface]}
-                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
-              >
-                <View style={[styles.addProductIcon, { backgroundColor: colors.primary + "15" }]}>
-                  <Ionicons name="add" size={24} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.addProductText, { color: colors.text }]}>Add New Product</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
-                    Public listing for buyers to discover and contact you
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate("InternalInventoryItemCreate")}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.surface, colors.surface]}
-                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
-              >
-                <View style={[styles.addProductIcon, { backgroundColor: colors.info + "15" }]}>
-                  <Ionicons name="cube-outline" size={22} color={colors.info} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.addProductText, { color: colors.text }]}>Add Internal Stock Item</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
-                    Private stock for internal analytics and operations
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Main", { screen: routes.STATS })}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.surface, colors.surface]}
-                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
-              >
-                <View style={[styles.addProductIcon, { backgroundColor: colors.success + "15" }]}>
-                  <Ionicons name="analytics-outline" size={22} color={colors.success} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.addProductText, { color: colors.text }]}>Open Internal Inventory</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
-                    View stock health, low stock queue, and value trends
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate("BusinessSetupRequest")}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.surface, colors.surface]}
-                style={[styles.addProductButton, { borderRadius: radius.lg, borderColor: colors.border }]}
-              >
-                <View style={[styles.addProductIcon, { backgroundColor: colors.accent + "15" }]}>
-                  <Ionicons name="rocket-outline" size={22} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.addProductText, { color: colors.text }]}>Start your own business</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: moderateScale(12), marginTop: scale(2) }}>
-                    Get expert help from planning to launch
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View style={[revealStyle(4), { gap: spacing.sm }]}>
+          <Animated.View style={[revealStyle(1), { gap: spacing.sm }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (
               <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", padding: spacing.sm, borderRadius: radius.md }]}>
@@ -1394,6 +1175,13 @@ const UserDashboardContent = () => {
 // ============================================================
 // USER DASHBOARD COMPONENTS
 // ============================================================
+const formatAdPrice = (price?: { amount?: number; currency?: string }) => {
+  const amount = Number(price?.amount || 0);
+  const currency = price?.currency || "INR";
+  const symbol = currency === "INR" ? "₹" : `${currency} `;
+  return `${symbol}${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+};
+
 const AdSwipeDeck = ({
   cards,
   loading,
@@ -1415,6 +1203,7 @@ const AdSwipeDeck = ({
   const { width } = useWindowDimensions();
   const cardWidth = Math.max(260, width - spacing.lg * 2);
   const [activeIndex, setActiveIndex] = useState(0);
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     setActiveIndex(0);
@@ -1423,11 +1212,25 @@ const AdSwipeDeck = ({
     }
   }, [cards, onCardVisible]);
 
+  useEffect(() => {
+    shimmerAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 2200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmerAnim]);
+
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 12 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <View style={[styles.noAdPillPremium, { backgroundColor: colors.badgeInfo }]}>
-          <Text style={[styles.noAdPillTextPremium, { color: colors.info }]}>Sponsored products</Text>
+        <View style={[styles.noAdPillPremium, { backgroundColor: colors.badgeWarning }]}>
+          <Text style={[styles.noAdPillTextPremium, { color: colors.warningStrong }]}>Sponsored spotlight</Text>
         </View>
         <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700" }}>
           {loading ? "Loading..." : `${activeIndex + 1}/${cards.length}`}
@@ -1449,22 +1252,60 @@ const AdSwipeDeck = ({
           const imageUrl = card.product.images?.[0]?.url;
           const canMessage = Boolean(card.product.createdBy && card.product.contactPreferences?.allowChat !== false);
           const canCall = Boolean(card.product.company?.contact?.phone && card.product.contactPreferences?.allowCall !== false);
+          const listedPrice = card.pricing?.listed || card.product.price;
+          const advertisedPrice = card.pricing?.advertised || card.priceOverride || card.product.price;
+          const hasDiscount =
+            card.pricing?.isDiscounted ||
+            (Number(advertisedPrice?.amount || 0) > 0 &&
+              Number(listedPrice?.amount || 0) > 0 &&
+              Number(advertisedPrice?.amount || 0) < Number(listedPrice?.amount || 0));
+
           return (
-            <View
+            <LinearGradient
               key={card.id}
+              colors={[colors.surface, colors.surfaceElevated, colors.surface]}
+              locations={[0, 0.58, 1]}
               style={[
                 styles.adCard,
                 {
                   width: cardWidth,
                   borderRadius: radius.lg,
                   borderColor: colors.border,
-                  backgroundColor: colors.surface,
                 },
               ]}
             >
+              <LinearGradient
+                colors={[`${colors.primary}22`, "transparent"]}
+                style={styles.adHeroAuraTop}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <LinearGradient
+                colors={[`${colors.accent}20`, "transparent"]}
+                style={styles.adHeroAuraBottom}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+
               {imageUrl ? (
                 <View style={[styles.adImageWrap, { borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}>
                   <Animated.Image source={{ uri: imageUrl }} style={styles.adImage} resizeMode="cover" />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.adImageShimmer,
+                      {
+                        transform: [
+                          {
+                            translateX: shimmerAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [-90, 220],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
                 </View>
               ) : (
                 <View style={[styles.adImagePlaceholder, { borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}>
@@ -1484,6 +1325,20 @@ const AdSwipeDeck = ({
                 <Text style={[styles.adSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
                   {card.subtitle || "Recommended for you"}
                 </Text>
+                {(advertisedPrice?.amount || listedPrice?.amount) ? (
+                  <View style={styles.adPriceRow}>
+                    {hasDiscount && listedPrice?.amount ? (
+                      <Text style={[styles.adListedPrice, { color: colors.textMuted }]}>
+                        {formatAdPrice(listedPrice)}
+                      </Text>
+                    ) : null}
+                    {advertisedPrice?.amount ? (
+                      <Text style={[styles.adDiscountPrice, { color: colors.primary }]}>
+                        {formatAdPrice(advertisedPrice)}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
 
               <View style={styles.adActionRow}>
@@ -1523,78 +1378,25 @@ const AdSwipeDeck = ({
                   ) : null}
                 </View>
               ) : null}
-            </View>
+            </LinearGradient>
           );
         })}
       </ScrollView>
+
+      <View style={styles.adDotsRow}>
+        {cards.map((card, index) => (
+          <View
+            key={`dot-${card.id}`}
+            style={[
+              styles.adDot,
+              {
+                backgroundColor: index === activeIndex ? colors.primary : `${colors.textMuted}44`,
+              },
+            ]}
+          />
+        ))}
+      </View>
     </View>
-  );
-};
-
-const NoAdHero = ({
-  loading,
-  onPress,
-  onBrowseServices,
-}: {
-  loading?: boolean;
-  onPress?: () => void;
-  onBrowseServices?: () => void;
-}) => {
-  const { radius, spacing, colors } = useTheme();
-
-  return (
-    <LinearGradient
-      colors={[colors.primary, colors.accentWarm, colors.backgroundSecondary]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.noAdCard, { borderRadius: radius.lg, padding: spacing.lg }]}
-    >
-      {/* Decorative Glow Orbs - matching services stats section */}
-      <LinearGradient
-        colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.03)"]}
-        style={styles.noAdGlowOrb1}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <LinearGradient
-        colors={["rgba(0,0,0,0.06)", "rgba(0,0,0,0.02)"]}
-        style={styles.noAdGlowOrb2}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={styles.noAdRing1} />
-      <View style={styles.noAdRing2} />
-      <View style={styles.noAdSparkle1} />
-      <View style={styles.noAdSparkle2} />
-
-      <View style={{ gap: 8, position: "relative", zIndex: 1 }}>
-        <View style={styles.noAdPillPremium}>
-          <Text style={styles.noAdPillTextPremium}>No sponsored products right now</Text>
-        </View>
-        <Text style={styles.noAdTitlePremium}>What do you want to source next?</Text>
-        <Text style={styles.noAdSubtitlePremium}>
-          Search products or jump into services—we'll route your request instantly.
-        </Text>
-      </View>
-      <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md, position: "relative", zIndex: 1 }}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onPress}
-          style={styles.noAdButtonGradient}
-        >
-          <Text style={styles.noAdButtonTextPremium}>
-            {loading ? "Checking..." : "Search products"}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onBrowseServices}
-          style={styles.noAdButtonGhostPremium}
-        >
-          <Text style={styles.noAdButtonGhostTextPremium}>Browse services</Text>
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
   );
 };
 
@@ -1856,14 +1658,6 @@ const styles = StyleSheet.create({
   managementBadgeText: { color: "#fff", fontSize: moderateScale(12), fontWeight: "700" },
   managementValue: { fontSize: moderateScale(13), fontWeight: "500" },
 
-  // Verification Card (User)
-  verificationCard: { flexDirection: "row", alignItems: "center", padding: scale(20), gap: scale(16) },
-  verificationIcon: { width: scale(56), height: scale(56), borderRadius: scale(28), backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  verificationContent: { flex: 1 },
-  verificationTitle: { color: "#fff", fontSize: moderateScale(18), fontWeight: "700" },
-  verificationMessage: { color: "rgba(255,255,255,0.85)", fontSize: moderateScale(14), marginTop: scale(4) },
-  verificationArrow: { width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-
   // Add Product Button
   addProductButton: { flexDirection: "row", alignItems: "center", padding: scale(16), borderWidth: 1, gap: scale(14) },
   addProductIcon: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
@@ -1875,15 +1669,40 @@ const styles = StyleSheet.create({
     padding: scale(12),
     marginRight: scale(10),
     gap: scale(10),
+    overflow: "hidden",
+    minHeight: scale(306),
+  },
+  adHeroAuraTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: scale(124),
+  },
+  adHeroAuraBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: scale(120),
   },
   adImageWrap: {
     width: "100%",
     height: scale(150),
     overflow: "hidden",
+    position: "relative",
   },
   adImage: {
     width: "100%",
     height: "100%",
+  },
+  adImageShimmer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: scale(90),
+    height: "100%",
+    backgroundColor: "rgba(255,255,255,0.16)",
   },
   adImagePlaceholder: {
     width: "100%",
@@ -1910,6 +1729,22 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontWeight: "600",
     lineHeight: moderateScale(17),
+  },
+  adPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    marginTop: scale(2),
+  },
+  adListedPrice: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+    textDecorationLine: "line-through",
+  },
+  adDiscountPrice: {
+    fontSize: moderateScale(18),
+    fontWeight: "900",
+    letterSpacing: -0.2,
   },
   adActionRow: {
     flexDirection: "row",
@@ -1943,23 +1778,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: scale(8),
   },
+  adDotsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+  },
+  adDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+  },
 
-  // No Ad Hero - Premium Style (matching Services stats section)
-  noAdCard: { position: "relative", overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
-  noAdGlowOrb1: { position: "absolute", width: scale(200), height: scale(200), borderRadius: scale(100), top: scale(-60), right: scale(-40) },
-  noAdGlowOrb2: { position: "absolute", width: scale(160), height: scale(160), borderRadius: scale(80), bottom: scale(-40), left: scale(-40) },
-  noAdRing1: { position: "absolute", width: scale(120), height: scale(120), borderRadius: scale(60), borderWidth: 1, borderColor: "rgba(0,0,0,0.08)", top: scale(40), right: scale(60) },
-  noAdRing2: { position: "absolute", width: scale(80), height: scale(80), borderRadius: scale(40), borderWidth: 1, borderColor: "rgba(0,0,0,0.05)", bottom: scale(60), left: scale(40) },
-  noAdSparkle1: { position: "absolute", width: scale(4), height: scale(4), borderRadius: scale(2), backgroundColor: "rgba(0,0,0,0.3)", top: scale(80), right: scale(100) },
-  noAdSparkle2: { position: "absolute", width: scale(3), height: scale(3), borderRadius: scale(1.5), backgroundColor: "rgba(0,0,0,0.2)", top: scale(140), left: scale(80) },
+  // Sponsored feed label
   noAdPillPremium: { alignSelf: "flex-start", paddingHorizontal: scale(14), paddingVertical: scale(8), borderRadius: scale(20), backgroundColor: "rgba(0,0,0,0.15)", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
   noAdPillTextPremium: { fontSize: moderateScale(12), fontWeight: "700", letterSpacing: 0.3, color: "#1F2937" },
-  noAdTitlePremium: { fontSize: moderateScale(22), fontWeight: "800", letterSpacing: -0.3, color: "#111827" },
-  noAdSubtitlePremium: { fontSize: moderateScale(14), fontWeight: "500", lineHeight: moderateScale(20), color: "rgba(0,0,0,0.7)" },
-  noAdButtonGradient: { paddingVertical: scale(14), paddingHorizontal: scale(24), borderRadius: scale(16), alignItems: "center", justifyContent: "center", backgroundColor: "#1F2937" },
-  noAdButtonTextPremium: { fontSize: moderateScale(14), fontWeight: "700", color: "#fff" },
-  noAdButtonGhostPremium: { flex: 1, paddingVertical: scale(14), borderRadius: scale(16), alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.2)", backgroundColor: "rgba(0,0,0,0.08)" },
-  noAdButtonGhostTextPremium: { fontSize: moderateScale(14), fontWeight: "700", color: "#1F2937" },
 
   // Category Grid
   categoryRow: { flexDirection: "row", justifyContent: "flex-start", flexWrap: "wrap" },

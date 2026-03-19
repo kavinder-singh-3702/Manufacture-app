@@ -25,8 +25,8 @@ const signupVerifyValidation = [
     .trim()
     .notEmpty()
     .withMessage('OTP is required')
-    .matches(/^[0-9]{4,8}$/)
-    .withMessage('OTP must be numeric')
+    .matches(/^[0-9]{6}$/)
+    .withMessage('OTP must be a 6-digit numeric code')
 ];
 
 const signupContactValidation = [

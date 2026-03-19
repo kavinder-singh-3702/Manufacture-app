@@ -143,6 +143,13 @@ const advertisementValidation = [
     .if(body('serviceType').equals('advertisement'))
     .isMongoId()
     .withMessage('A valid product is required for advertisement'),
+  body('advertisementDetails.priceOverride').optional().isObject(),
+  body('advertisementDetails.priceOverride.amount')
+    .optional()
+    .isFloat({ gt: 0 })
+    .withMessage('advertisementDetails.priceOverride.amount must be greater than 0'),
+  body('advertisementDetails.priceOverride.currency').optional().isString().isLength({ min: 3, max: 8 }),
+  body('advertisementDetails.priceOverride.unit').optional().isString().isLength({ max: 60 }),
   body('advertisementDetails.objective').optional().isString().isLength({ max: 500 }),
   body('advertisementDetails.targetingMode').optional().isIn(AD_TARGETING_MODES),
   body('advertisementDetails.targetUserIds').optional().isArray(),
