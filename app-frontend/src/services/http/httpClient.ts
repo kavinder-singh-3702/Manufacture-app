@@ -103,7 +103,31 @@ export class HttpClient {
     }
 
     if (!response.ok) {
-      const body = parsedBody as { message?: string; error?: string };
+      const body = parsedBody as { message?: string; error?: string; code?: string };
+
+      // Auto-retry on ACTIVE_COMPANY_REQUIRED: restore company context and retry once
+      if (body?.code === "ACTIVE_COMPANY_REQUIRED" && !headers?.__retried) {
+        try {
+          const { companyService } = await import("../company.service");
+          const { userService } = await import("../user.service");
+          const { user } = await userService.getCurrentUser();
+          if (Array.isArray(user.companies) && user.companies.length > 0) {
+            await companyService.switchActive(user.companies[0]);
+            // Retry the original request once
+            return this.request<T>({
+              path,
+              method,
+              data,
+              params,
+              headers: { ...headers, __retried: "1" },
+              signal,
+            });
+          }
+        } catch (retryErr) {
+          console.warn("Auto-retry after ACTIVE_COMPANY_REQUIRED failed:", retryErr);
+        }
+      }
+
       const errorMessage = body?.message || body?.error || "Request failed";
       throw new ApiError(errorMessage, response.status, parsedBody, { kind: "http" });
     }

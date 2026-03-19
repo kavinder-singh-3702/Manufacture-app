@@ -525,7 +525,7 @@ export const AdminProductsScreen = () => {
       <View style={styles.cardContainer}>
         <AmazonStyleProductCard
           product={item}
-          onPress={() => handleOpenEdit(item)}
+          onPress={handleOpenDetails}
           onMessagePress={undefined}
           onCallPress={undefined}
           showPrimaryAction

@@ -346,8 +346,50 @@ export const ProductDetailsScreen = () => {
               ) : null}
             </View>
 
+            {/* Original Product Details */}
+            <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Product Info</Text>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Base Price</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>
+                  {currencyFormat(Number(product.price?.amount || 0), product.price?.currency || "INR")}
+                  {product.price?.unit ? ` / ${product.price.unit}` : ""}
+                </Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Stock</Text>
+                <Text style={[styles.detailValue, { color: Number(product.availableQuantity || 0) > 0 ? colors.success : colors.error }]}>
+                  {Number(product.availableQuantity || 0)} {product.unit || "units"}
+                </Text>
+              </View>
+              {product.category ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.category}</Text>
+                </View>
+              ) : null}
+              {product.subCategory ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Sub-category</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.subCategory}</Text>
+                </View>
+              ) : null}
+              {product.sku ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>SKU</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.sku}</Text>
+                </View>
+              ) : null}
+              {product.description ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Description</Text>
+                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.description}</Text>
+                </View>
+              ) : null}
+            </View>
+
             {variants.length > 0 ? (
-              <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+              <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
                 <View style={styles.sectionHeader}>
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose variant</Text>
                   <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{variants.length} options</Text>
@@ -453,32 +495,6 @@ export const ProductDetailsScreen = () => {
               </View>
             ) : null}
 
-            <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Product details</Text>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{product.category}</Text>
-              </View>
-              {product.subCategory ? (
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Sub-category</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.subCategory}</Text>
-                </View>
-              ) : null}
-              {product.sku ? (
-                <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>SKU</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>{product.sku}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {product.description ? (
-              <View style={[styles.sectionCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Description</Text>
-                <Text style={[styles.description, { color: colors.textSecondary }]}>{product.description}</Text>
-              </View>
-            ) : null}
           </ScrollView>
 
           <View

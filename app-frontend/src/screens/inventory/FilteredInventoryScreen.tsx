@@ -81,9 +81,9 @@ export const FilteredProductsScreen = () => {
     });
   }, [filter, navigation, title]);
 
-  const handleEditItem = useCallback(
+  const handleViewItem = useCallback(
     (productId: string) => {
-      navigation.navigate("EditProduct", { productId });
+      navigation.navigate("ProductDetails", { productId });
     },
     [navigation]
   );
@@ -95,7 +95,7 @@ export const FilteredProductsScreen = () => {
       return (
         <AmazonStyleProductCard
           product={item}
-          onPress={(productId) => handleEditItem(productId)}
+          onPress={(productId) => handleViewItem(productId)}
           onMessagePress={(product) =>
             startProductConversation({
               product,

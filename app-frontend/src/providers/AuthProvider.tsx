@@ -79,6 +79,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         const { user: currentUser } = await userService.getCurrentUser();
         if (!isMounted) return;
+
+        // Auto-restore activeCompany if missing but user has companies
+        if (!currentUser.activeCompany && Array.isArray(currentUser.companies) && currentUser.companies.length > 0) {
+          try {
+            const switchRes = await companyService.switchActive(currentUser.companies[0]);
+            currentUser.activeCompany = switchRes.activeCompany ?? currentUser.companies[0];
+          } catch (switchErr) {
+            console.warn("Auto-restore activeCompany failed:", switchErr);
+          }
+        }
+
         setUserState(normalizeUser(currentUser));
         setAuthView(null);
         setBootstrapError(null);
