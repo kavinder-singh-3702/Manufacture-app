@@ -5,18 +5,29 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Modal,
+  Pressable,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useCart } from "../../hooks/useCart";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../components/ui/Toast";
 import { CartItem } from "../../providers/CartProvider";
-import { preferenceService } from "../../services/preference.service";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { RootStackParamList } from "../../navigation/types";
+import {
+  canCallProduct,
+  canMessageProduct,
+  callProductSeller,
+  startProductConversation,
+} from "../product/utils/productContact";
 
 const useCartPalette = () => {
   const { colors } = useTheme();
@@ -220,9 +231,9 @@ const EmptyCart = () => {
         <View style={styles.emptyIconRing} />
       </View>
 
-      <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
+      <Text style={styles.emptyTitle}>Your Shortlist is Empty</Text>
       <Text style={[styles.emptySubtitle, isCompact ? { fontSize: 14, lineHeight: 20 } : null]}>
-        Discover our premium products and start building your order
+        Shortlist products and contact sellers through message or call.
       </Text>
 
       <TouchableOpacity
@@ -252,8 +263,12 @@ export const CartScreen = () => {
   const { isCompact, isXCompact, contentPadding } = useResponsiveLayout();
   const styles = useMemo(() => createStyles(COLORS), [COLORS]);
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, refreshCartItems } = useCart();
+  const { user, requestLogin } = useAuth();
+  const { error: toastError } = useToast();
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation();
+  const [sellerPickerVisible, setSellerPickerVisible] = useState(false);
+  const [contactMode, setContactMode] = useState<"message" | "call">("message");
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const itemsRef = useRef(items);
   const refreshCartItemsRef = useRef(refreshCartItems);
@@ -290,32 +305,106 @@ export const CartScreen = () => {
     return sum + price * ci.quantity;
   }, 0);
 
-  const handleCheckout = useCallback(() => {
-    const productIds = items.map((ci) => ci.item._id).filter(Boolean);
-    const categoryCounts = items.reduce<Record<string, number>>((acc, ci) => {
-      const category = ci.item.category || "other";
-      acc[category] = (acc[category] || 0) + ci.quantity;
-      return acc;
-    }, {});
-    const primaryCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  type SellerContactOption = {
+    sellerId: string;
+    sellerName: string;
+    product: CartItem["item"];
+    itemCount: number;
+  };
 
-    preferenceService
-      .logEvent({
-        type: "checkout_start",
-        category: primaryCategory,
-        quantity: totalItems,
-        meta: {
-          source: "cart_screen",
-          totalItems,
-          totalValue,
-          productIds,
-          categoryCounts,
-        },
-      })
-      .catch(() => {});
+  const sellerOptions = useMemo<SellerContactOption[]>(() => {
+    const groups = new Map<string, SellerContactOption>();
+    items.forEach((cartItem) => {
+      const product = cartItem.item;
+      const sellerId = product.createdBy ? String(product.createdBy) : product.company?._id ? String(product.company._id) : null;
+      if (!sellerId) return;
+      if (!groups.has(sellerId)) {
+        groups.set(sellerId, {
+          sellerId,
+          sellerName: product.company?.displayName || "Seller",
+          product,
+          itemCount: cartItem.quantity,
+        });
+        return;
+      }
+      const existing = groups.get(sellerId);
+      if (existing) {
+        existing.itemCount += cartItem.quantity;
+      }
+    });
 
-    Alert.alert("Checkout", "Checkout flow will be connected here.");
-  }, [items, totalItems, totalValue]);
+    return Array.from(groups.values()).sort((a, b) => a.sellerName.localeCompare(b.sellerName));
+  }, [items]);
+
+  const messageOptions = useMemo(
+    () => sellerOptions.filter((option) => canMessageProduct(option.product)),
+    [sellerOptions]
+  );
+  const callOptions = useMemo(
+    () => sellerOptions.filter((option) => canCallProduct(option.product)),
+    [sellerOptions]
+  );
+
+  const activeOptions = contactMode === "message" ? messageOptions : callOptions;
+
+  const runSellerContact = useCallback(
+    async (mode: "message" | "call", option: SellerContactOption) => {
+      if (mode === "message") {
+        await startProductConversation({
+          product: option.product,
+          isGuest: user?.role === "guest",
+          requestLogin,
+          navigation,
+          toastError,
+        });
+        return;
+      }
+      await callProductSeller({
+        product: option.product,
+        toastError,
+      });
+    },
+    [navigation, requestLogin, toastError, user?.role]
+  );
+
+  const handleOpenSellerPicker = useCallback(
+    (mode: "message" | "call") => {
+      const options = mode === "message" ? messageOptions : callOptions;
+      if (!options.length) return;
+      if (options.length === 1) {
+        runSellerContact(mode, options[0]);
+        return;
+      }
+      setContactMode(mode);
+      setSellerPickerVisible(true);
+    },
+    [callOptions, messageOptions, runSellerContact]
+  );
+
+  const handleCloseSellerPicker = useCallback(() => {
+    setSellerPickerVisible(false);
+  }, []);
+
+  const handleSelectSeller = useCallback(
+    async (option: SellerContactOption) => {
+      setSellerPickerVisible(false);
+      await runSellerContact(contactMode, option);
+    },
+    [contactMode, runSellerContact]
+  );
+
+  const contactHelperText = useMemo(() => {
+    if (!messageOptions.length && !callOptions.length) {
+      return "No seller contact options available for shortlisted items.";
+    }
+    if (!messageOptions.length) {
+      return "Messaging is unavailable for current shortlisted sellers.";
+    }
+    if (!callOptions.length) {
+      return "Calling is unavailable for current shortlisted sellers.";
+    }
+    return "Contact sellers directly to finalize pricing and order terms.";
+  }, [callOptions.length, messageOptions.length]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: CartItem; index: number }) => (
@@ -362,7 +451,7 @@ export const CartScreen = () => {
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
             <Text style={[styles.headerTitle, isCompact ? { fontSize: 20 } : null]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
-              My Cart
+              My Shortlist
             </Text>
             {refreshing && (
               <ActivityIndicator size="small" color={COLORS.accent} style={{ marginLeft: 8 }} />
@@ -414,52 +503,91 @@ export const CartScreen = () => {
           >
             {/* Summary Header */}
             <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>Order Summary</Text>
+              <Text style={styles.summaryTitle}>Shortlist Summary</Text>
               <View style={styles.summaryBadge}>
                 <Text style={styles.summaryBadgeText}>{totalItems} items</Text>
               </View>
             </View>
 
-            {/* Order Details */}
+            {/* Shortlist details */}
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryLabel}>Estimated value</Text>
                 <Text style={styles.summaryAmount}>INR {totalValue.toFixed(2)}</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Shipping</Text>
-                <Text style={styles.summaryFree}>FREE</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-                <Text style={[styles.totalAmount, isCompact ? { fontSize: 21 } : null]}>INR {totalValue.toFixed(2)}</Text>
-              </View>
+              <Text style={styles.contactHelperText}>{contactHelperText}</Text>
             </View>
 
-            {/* Checkout Button */}
-            <TouchableOpacity style={styles.checkoutButton} activeOpacity={0.9} onPress={handleCheckout}>
-              <LinearGradient
-                colors={[COLORS.success, "#4bc08f"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.checkoutGradient}
+            {/* Seller contact actions */}
+            <View style={styles.contactActionRow}>
+              <TouchableOpacity
+                style={[styles.contactActionButton, !messageOptions.length ? styles.contactActionButtonDisabled : null]}
+                activeOpacity={0.9}
+                disabled={!messageOptions.length}
+                onPress={() => handleOpenSellerPicker("message")}
               >
-                <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-                <View style={styles.checkoutArrowContainer}>
-                  <Text style={styles.checkoutArrow}>→</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Secure checkout note */}
-            <View style={styles.secureNote}>
-              <Text style={styles.secureIcon}>🔒</Text>
-              <Text style={styles.secureText}>Secure checkout with encrypted payment</Text>
+                <LinearGradient
+                  colors={messageOptions.length ? [COLORS.accent, "#6572e0"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.contactActionGradient}
+                >
+                  <Text style={styles.contactActionText}>Message Seller</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contactActionButton, !callOptions.length ? styles.contactActionButtonDisabled : null]}
+                activeOpacity={0.9}
+                disabled={!callOptions.length}
+                onPress={() => handleOpenSellerPicker("call")}
+              >
+                <LinearGradient
+                  colors={callOptions.length ? [COLORS.success, "#4bc08f"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.contactActionGradient}
+                >
+                  <Text style={styles.contactActionText}>Call Seller</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
       )}
+
+      <Modal visible={sellerPickerVisible} transparent animationType="fade" onRequestClose={handleCloseSellerPicker}>
+        <Pressable style={styles.pickerBackdrop} onPress={handleCloseSellerPicker}>
+          <Pressable style={[styles.pickerSheet, { marginHorizontal: contentPadding }]} onPress={() => {}}>
+            <Text style={styles.pickerTitle}>
+              {contactMode === "message" ? "Select Seller to Message" : "Select Seller to Call"}
+            </Text>
+            <Text style={styles.pickerSubtitle}>
+              {activeOptions.length} seller{activeOptions.length === 1 ? "" : "s"} available
+            </Text>
+            <View style={styles.pickerOptionList}>
+              {activeOptions.map((option) => (
+                <TouchableOpacity
+                  key={`${contactMode}-${option.sellerId}`}
+                  style={styles.pickerOption}
+                  activeOpacity={0.85}
+                  onPress={() => handleSelectSeller(option)}
+                >
+                  <Text style={styles.pickerOptionName}>{option.sellerName}</Text>
+                  <Text style={styles.pickerOptionMeta}>
+                    {option.itemCount} shortlisted item{option.itemCount === 1 ? "" : "s"}
+                  </Text>
+                  {contactMode === "call" && option.product.company?.contact?.phone ? (
+                    <Text style={styles.pickerOptionMeta}>{option.product.company.contact.phone}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.pickerCloseButton} activeOpacity={0.8} onPress={handleCloseSellerPicker}>
+              <Text style={styles.pickerCloseText}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -844,7 +972,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     color: COLORS.accent,
   },
   summaryDetails: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   summaryRow: {
     flexDirection: "row",
@@ -858,73 +986,100 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     color: COLORS.textMuted,
   },
   summaryAmount: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  summaryFree: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.success,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 12,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  totalAmount: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "800",
-    color: COLORS.success,
+    color: COLORS.text,
   },
-  checkoutButton: {
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  checkoutGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 12,
-  },
-  checkoutText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  checkoutArrowContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkoutArrow: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  secureNote: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  secureIcon: {
-    fontSize: 12,
-  },
-  secureText: {
+  contactHelperText: {
+    marginTop: 8,
     fontSize: 12,
     fontWeight: "500",
     color: COLORS.textSubtle,
+    lineHeight: 17,
+  },
+  contactActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  contactActionButton: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  contactActionButtonDisabled: {
+    opacity: 0.6,
+  },
+  contactActionGradient: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  contactActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+  },
+  pickerSheet: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    padding: 16,
+    maxHeight: "70%",
+  },
+  pickerTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  pickerSubtitle: {
+    marginTop: 4,
+    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: "500",
+    color: COLORS.textMuted,
+  },
+  pickerOptionList: {
+    gap: 10,
+  },
+  pickerOption: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    padding: 12,
+  },
+  pickerOptionName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  pickerOptionMeta: {
+    marginTop: 3,
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  pickerCloseButton: {
+    marginTop: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 10,
+    backgroundColor: COLORS.surfaceLight,
+  },
+  pickerCloseText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.text,
   },
   });

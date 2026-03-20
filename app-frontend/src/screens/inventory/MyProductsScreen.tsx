@@ -24,7 +24,7 @@ import { CompanyRequiredCard } from "../../components/company";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 
 const PAGE_SIZE = 25;
-type StatusFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
+type VisibilityFilter = "all" | "public" | "private";
 
 export const MyProductsScreen = () => {
   const { colors, spacing, radius } = useTheme();
@@ -43,7 +43,7 @@ export const MyProductsScreen = () => {
   const [pagination, setPagination] = useState({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
 
   const [query, setQuery] = useState<string>(route.params?.initialQuery ?? "");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(route.params?.initialStatus ?? "all");
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>(route.params?.initialVisibility ?? "all");
   const autoFocusSearch = useMemo(() => route.params?.initialQuery !== undefined, [route.params?.initialQuery]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,8 +51,8 @@ export const MyProductsScreen = () => {
   // If navigated again with params, update the local state.
   useEffect(() => {
     if (route.params?.initialQuery !== undefined) setQuery(route.params.initialQuery);
-    if (route.params?.initialStatus) setStatusFilter(route.params.initialStatus);
-  }, [route.params?.initialQuery, route.params?.initialStatus]);
+    if (route.params?.initialVisibility) setVisibilityFilter(route.params.initialVisibility);
+  }, [route.params?.initialQuery, route.params?.initialVisibility]);
 
   const fetchProducts = useCallback(
     async (offset = 0, append = false) => {
@@ -79,7 +79,7 @@ export const MyProductsScreen = () => {
           limit: PAGE_SIZE,
           offset,
           search: query.trim() ? query.trim() : undefined,
-          status: statusFilter === "all" ? undefined : statusFilter,
+          visibility: visibilityFilter === "all" ? undefined : visibilityFilter,
           includeVariantSummary: true,
         });
 
@@ -93,7 +93,7 @@ export const MyProductsScreen = () => {
         setLoadingMore(false);
       }
     },
-    [PAGE_SIZE, hasCompany, query, refreshing, statusFilter]
+    [PAGE_SIZE, hasCompany, query, refreshing, visibilityFilter]
   );
 
   useFocusEffect(
@@ -113,7 +113,7 @@ export const MyProductsScreen = () => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [fetchProducts, isFocused, query, statusFilter]);
+  }, [fetchProducts, isFocused, query, visibilityFilter]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -236,16 +236,15 @@ export const MyProductsScreen = () => {
           {(
             [
               { key: "all", label: "All" },
-              { key: "in_stock", label: "In stock" },
-              { key: "low_stock", label: "Low stock" },
-              { key: "out_of_stock", label: "Out of stock" },
+              { key: "public", label: "Public" },
+              { key: "private", label: "Private" },
             ] as const
           ).map((chip) => {
-            const isActive = statusFilter === chip.key;
+            const isActive = visibilityFilter === chip.key;
             return (
               <TouchableOpacity
                 key={chip.key}
-                onPress={() => setStatusFilter(chip.key)}
+                onPress={() => setVisibilityFilter(chip.key)}
                 activeOpacity={0.85}
                 style={[
                   styles.chip,
@@ -296,7 +295,7 @@ export const MyProductsScreen = () => {
           <Ionicons name="cube-outline" size={52} color={colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No products found</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-            {query.trim() || statusFilter !== "all" ? "Try a different search or filter." : "Start adding products to see them here."}
+            {query.trim() || visibilityFilter !== "all" ? "Try a different search or filter." : "Start adding products to see them here."}
           </Text>
           <TouchableOpacity
             style={[styles.emptyButton, { backgroundColor: colors.primary, borderRadius: radius.lg }]}

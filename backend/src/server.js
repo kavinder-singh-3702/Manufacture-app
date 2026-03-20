@@ -6,6 +6,7 @@ const { connectRedis, disconnectRedis } = require('./config/redis');
 const createLogger = require('./utils/logger');
 const { initSocket } = require('./socket');
 const { startNotificationDispatcher, stopNotificationDispatcher } = require('./modules/notifications/services/notificationDispatcher.service');
+const { assertStorageConfig } = require('./config/startupValidation');
 
 const logger = createLogger('server');
 let server;
@@ -26,6 +27,7 @@ const shouldRunNotificationDispatcher = () => {
 
 const start = async () => {
   try {
+    assertStorageConfig(config);
     await connectRedis();
     await connectDatabase(config.mongoUri);
     server = http.createServer(app);
@@ -41,7 +43,8 @@ const start = async () => {
       logger.info(`Server running on port ${config.port}`);
     });
   } catch (error) {
-    logger.error('Failed to start server', error.message);
+    const codePrefix = typeof error?.code === 'string' && error.code ? `[${error.code}] ` : '';
+    logger.error('Failed to start server', `${codePrefix}${error.message}`);
     process.exit(1);
   }
 };
@@ -59,8 +62,14 @@ const shutdown = async (signal) => {
   process.exit(0);
 };
 
-['SIGINT', 'SIGTERM'].forEach((signal) => {
-  process.on(signal, () => shutdown(signal));
-});
+if (require.main === module) {
+  ['SIGINT', 'SIGTERM'].forEach((signal) => {
+    process.on(signal, () => shutdown(signal));
+  });
+  start();
+}
 
-start();
+module.exports = {
+  start,
+  shutdown
+};

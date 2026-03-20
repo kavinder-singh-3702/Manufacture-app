@@ -327,18 +327,6 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           ? await adminService.createInhouseProduct(formData)
           : await productService.create(formData);
 
-      if (variantDrafts.length) {
-        for (const draft of variantDrafts) {
-          const { tempId: _tempId, ...payload } = draft;
-          if (mode === "inhouse") {
-            await adminService.createInhouseProductVariant(created._id, payload);
-          } else {
-            await productVariantService.create(created._id, payload);
-          }
-        }
-      }
-
-      let uploadIssue: string | null = null;
       try {
         if (coverImage) {
           if (mode === "inhouse") {
@@ -373,11 +361,34 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           }
         }
       } catch (uploadErr: any) {
-        uploadIssue = uploadErr?.message || "Product saved, but images failed to upload";
+        let rollbackFailed = false;
+        try {
+          if (mode === "inhouse") {
+            await adminService.deleteInhouseProduct(created._id);
+          } else {
+            await productService.delete(created._id);
+          }
+        } catch (rollbackError) {
+          rollbackFailed = true;
+          console.warn("Failed to rollback product after upload failure", (rollbackError as any)?.message || rollbackError);
+        }
+
+        const uploadMessage = uploadErr?.message || "Image upload failed";
+        const rollbackMessage = rollbackFailed
+          ? " Cleanup also failed. Please remove the partial product manually."
+          : " Product creation was rolled back.";
+        throw new Error(`${uploadMessage}.${rollbackMessage}`);
       }
 
-      if (uploadIssue) {
-        toastError("Image upload issue", uploadIssue);
+      if (variantDrafts.length) {
+        for (const draft of variantDrafts) {
+          const { tempId: _tempId, ...payload } = draft;
+          if (mode === "inhouse") {
+            await adminService.createInhouseProductVariant(created._id, payload);
+          } else {
+            await productVariantService.create(created._id, payload);
+          }
+        }
       }
 
       toastSuccess(

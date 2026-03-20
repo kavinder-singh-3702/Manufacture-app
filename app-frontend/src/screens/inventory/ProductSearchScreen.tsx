@@ -28,6 +28,7 @@ import { callProductSeller, startProductConversation } from "../product/utils/pr
 import { useCart } from "../../hooks/useCart";
 import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
 import { hasVariants, variantDisplayLabel } from "./components/variantDomain";
+import { isPublicListingProduct } from "./utils/publicListing";
 
 type ProductSearchRoute = RouteProp<RootStackParamList, "ProductSearch">;
 
@@ -425,6 +426,9 @@ export const ProductSearchScreen = () => {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
                 {continueRail.map((item) => {
                   const priceLabel = `${item.price?.currency || "INR"} ${item.price?.amount ?? ""}`;
+                  const metaLabel = isPublicListingProduct(item)
+                    ? item.subCategory || item.category || "Public listing"
+                    : `${item.availableQuantity} ${item.unit || item.price?.unit || "units"}`;
                   return (
                     <TouchableOpacity
                       key={item._id}
@@ -438,9 +442,7 @@ export const ProductSearchScreen = () => {
                         <AdaptiveTwoLineText style={[styles.hCardName, { color: colors.text }]}>
                           {item.name}
                         </AdaptiveTwoLineText>
-                        <Text style={[styles.hCardMeta, { color: colors.textMuted }]}>
-                          {item.availableQuantity} {item.unit || item.price?.unit || "units"}
-                        </Text>
+                        <Text style={[styles.hCardMeta, { color: colors.textMuted }]}>{metaLabel}</Text>
                         <Text style={[styles.hCardPrice, { color: colors.primary }]}>{priceLabel}</Text>
                       </View>
                       <TouchableOpacity

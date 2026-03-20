@@ -92,7 +92,7 @@ export type RootStackParamList = {
   AdminUsers: undefined;
   AdminCompanies: undefined;
   AdminVerifications: undefined;
-  MyProducts: { initialQuery?: string; initialStatus?: "all" | "in_stock" | "low_stock" | "out_of_stock" } | undefined;
+  MyProducts: { initialQuery?: string; initialVisibility?: "all" | "public" | "private" } | undefined;
   // Accounting Reports
   ProfitLoss: undefined;
   GSTSummary: undefined;

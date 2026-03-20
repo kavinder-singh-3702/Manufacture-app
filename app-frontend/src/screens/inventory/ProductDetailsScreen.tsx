@@ -24,6 +24,7 @@ import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { QuoteRequestFormSubmit, QuoteRequestSheet } from "../quotes/components/QuoteRequestSheet";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { isPublicListingProduct } from "./utils/publicListing";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
 
@@ -146,6 +147,7 @@ export const ProductDetailsScreen = () => {
   const compareAt = product ? getCompareAt(product) : null;
   const rating = product ? getRating(product) : null;
   const displayStock = selectedVariant ? Number(selectedVariant.availableQuantity || 0) : Number(product?.availableQuantity || 0);
+  const hideStockForPublicListing = isPublicListingProduct(product);
 
   const handleShare = useCallback(async () => {
     if (!product) return;
@@ -335,9 +337,11 @@ export const ProductDetailsScreen = () => {
                 {compareAt ? <Text style={[styles.compareAt, { color: colors.textMuted }]}>{currencyFormat(compareAt, displayCurrency)}</Text> : null}
               </View>
 
-              <Text style={[styles.stockLine, { color: displayStock > 0 ? colors.success : colors.error }]}> 
-                {displayStock > 0 ? `In stock (${displayStock})` : "Out of stock"}
-              </Text>
+              {!hideStockForPublicListing ? (
+                <Text style={[styles.stockLine, { color: displayStock > 0 ? colors.success : colors.error }]}>
+                  {displayStock > 0 ? `In stock (${displayStock})` : "Out of stock"}
+                </Text>
+              ) : null}
 
               {product.variantSummary?.totalVariants ? (
                 <Text style={[styles.variantSummary, { color: colors.textMuted }]}> 
@@ -356,12 +360,14 @@ export const ProductDetailsScreen = () => {
                   {product.price?.unit ? ` / ${product.price.unit}` : ""}
                 </Text>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Stock</Text>
-                <Text style={[styles.detailValue, { color: Number(product.availableQuantity || 0) > 0 ? colors.success : colors.error }]}>
-                  {Number(product.availableQuantity || 0)} {product.unit || "units"}
-                </Text>
-              </View>
+              {!hideStockForPublicListing ? (
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Stock</Text>
+                  <Text style={[styles.detailValue, { color: Number(product.availableQuantity || 0) > 0 ? colors.success : colors.error }]}>
+                    {Number(product.availableQuantity || 0)} {product.unit || "units"}
+                  </Text>
+                </View>
+              ) : null}
               {product.category ? (
                 <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Category</Text>
@@ -418,14 +424,16 @@ export const ProductDetailsScreen = () => {
                         <Text style={[styles.variantPrice, { color: colors.text }]}> 
                           {currencyFormat(Number(variant.price?.amount || 0), variant.price?.currency || displayCurrency)}
                         </Text>
-                        <Text
-                          style={[
-                            styles.variantStock,
-                            { color: Number(variant.availableQuantity || 0) > 0 ? colors.success : colors.error },
-                          ]}
-                        >
-                          {Number(variant.availableQuantity || 0) > 0 ? "In stock" : "Out of stock"}
-                        </Text>
+                        {!hideStockForPublicListing ? (
+                          <Text
+                            style={[
+                              styles.variantStock,
+                              { color: Number(variant.availableQuantity || 0) > 0 ? colors.success : colors.error },
+                            ]}
+                          >
+                            {Number(variant.availableQuantity || 0) > 0 ? "In stock" : "Out of stock"}
+                          </Text>
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}
@@ -449,18 +457,22 @@ export const ProductDetailsScreen = () => {
                           <Text style={[styles.variantDetailValue, { color: colors.text }]}>{selectedVariant.barcode}</Text>
                         </View>
                       ) : null}
-                      <View style={styles.variantDetailItem}>
-                        <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Available</Text>
-                        <Text style={[styles.variantDetailValue, { color: colors.text }]}>
-                          {selectedVariant.availableQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
-                        </Text>
-                      </View>
-                      <View style={styles.variantDetailItem}>
-                        <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Min Stock</Text>
-                        <Text style={[styles.variantDetailValue, { color: colors.text }]}>
-                          {selectedVariant.minStockQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
-                        </Text>
-                      </View>
+                      {!hideStockForPublicListing ? (
+                        <View style={styles.variantDetailItem}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Available</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                            {selectedVariant.availableQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {!hideStockForPublicListing ? (
+                        <View style={styles.variantDetailItem}>
+                          <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Min Stock</Text>
+                          <Text style={[styles.variantDetailValue, { color: colors.text }]}>
+                            {selectedVariant.minStockQuantity ?? 0}{selectedVariant.unit ? ` ${selectedVariant.unit}` : ""}
+                          </Text>
+                        </View>
+                      ) : null}
                       {selectedVariant.price?.unit ? (
                         <View style={styles.variantDetailItem}>
                           <Text style={[styles.variantDetailLabel, { color: colors.textMuted }]}>Price Unit</Text>

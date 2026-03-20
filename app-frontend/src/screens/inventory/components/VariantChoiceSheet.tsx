@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../../hooks/useTheme";
 import { Product, ProductListScope } from "../../../services/product.service";
 import { ProductVariant } from "../../../services/productVariant.service";
+import { isPublicListingProduct } from "../utils/publicListing";
 import { listAllVariants, variantDisplayLabel } from "./variantDomain";
 
 export type VariantChoiceSelection =
@@ -52,6 +53,7 @@ export const VariantChoiceSheet = ({
   const [submitting, setSubmitting] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const hideStockForPublicListing = isPublicListingProduct(product);
 
   const activeVariants = useMemo(
     () => variants.filter((variant) => variant.status === "active"),
@@ -167,7 +169,7 @@ export const VariantChoiceSheet = ({
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.baseTitle, { color: colors.text }]}>{baseActionLabel}</Text>
                     <Text style={[styles.baseSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
-                      Uses the product-level stock and price.
+                      {hideStockForPublicListing ? "Uses the product-level price." : "Uses the product-level stock and price."}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -241,26 +243,28 @@ export const VariantChoiceSheet = ({
                           <Text style={[styles.variantMeta, { color: colors.textMuted }]}>Price: {renderPrice(variant)}</Text>
                         </View>
                         <View style={{ alignItems: "flex-end", gap: 6 }}>
-                          <View
-                            style={[
-                              styles.stockBadge,
-                              {
-                                borderColor: (stock > 0 ? colors.success : colors.error) + "55",
-                                backgroundColor: (stock > 0 ? colors.success : colors.error) + "15",
-                              },
-                            ]}
-                          >
-                            <Text
+                          {!hideStockForPublicListing ? (
+                            <View
                               style={[
-                                styles.stockBadgeText,
+                                styles.stockBadge,
                                 {
-                                  color: stock > 0 ? colors.success : colors.error,
+                                  borderColor: (stock > 0 ? colors.success : colors.error) + "55",
+                                  backgroundColor: (stock > 0 ? colors.success : colors.error) + "15",
                                 },
                               ]}
                             >
-                              {stock > 0 ? `Stock ${stock}` : "Out"}
-                            </Text>
-                          </View>
+                              <Text
+                                style={[
+                                  styles.stockBadgeText,
+                                  {
+                                    color: stock > 0 ? colors.success : colors.error,
+                                  },
+                                ]}
+                              >
+                                {stock > 0 ? `Stock ${stock}` : "Out"}
+                              </Text>
+                            </View>
+                          ) : null}
                           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                         </View>
                       </TouchableOpacity>

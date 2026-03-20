@@ -14,10 +14,40 @@ import type { ChatMessage } from "../../types/chat";
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatScreenNavProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
+const PAGE_SIZE = 50;
+
+const getSenderName = (role: ChatMessage["senderRole"]): string => {
+  if (role === "admin") return "Admin";
+  if (role === "support") return "Support";
+  return "User";
+};
+
+const toGiftedMessage = (msg: ChatMessage): IMessage => ({
+  _id: msg.id,
+  text: msg.content,
+  createdAt: new Date(msg.timestamp),
+  user: {
+    _id: msg.senderId,
+    name: getSenderName(msg.senderRole),
+  },
+});
+
+const normalizeGiftedOrder = (items: IMessage[]): IMessage[] => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const id = String(item._id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+};
 
 export const ChatScreen = () => {
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [nextOffset, setNextOffset] = useState(0);
   const [sending, setSending] = useState(false);
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [recipientId, setRecipientId] = useState<string | undefined>(undefined);
@@ -42,21 +72,18 @@ export const ChatScreen = () => {
     if (recipientIdParam) setRecipientId(recipientIdParam);
   }, [recipientPhone, recipientIdParam]);
 
-  const loadMessages = useCallback(async () => {
+  const loadInitialMessages = useCallback(async () => {
     try {
-      const response = await chatService.getMessages(conversationId, { limit: 100 });
+      const response = await chatService.getMessages(conversationId, {
+        limit: PAGE_SIZE,
+        offset: 0,
+      });
       const giftedMessages: IMessage[] = response.messages
-        .map((msg: ChatMessage) => ({
-          _id: msg.id,
-          text: msg.content,
-          createdAt: new Date(msg.timestamp),
-          user: {
-            _id: msg.senderId,
-            name: msg.senderRole === "admin" ? "Admin" : msg.senderRole === "support" ? "Support" : "User",
-          },
-        }))
+        .map((msg: ChatMessage) => toGiftedMessage(msg))
         .reverse();
-      setMessages(giftedMessages);
+      setMessages(normalizeGiftedOrder(giftedMessages));
+      setNextOffset(response.messages.length);
+      setHasMoreHistory(Boolean(response.pagination?.hasMore));
       await chatService.markRead(conversationId);
     } catch (err) {
       console.error("Error loading messages:", err);
@@ -65,10 +92,33 @@ export const ChatScreen = () => {
     }
   }, [conversationId]);
 
+  const loadEarlierMessages = useCallback(async () => {
+    if (!hasMoreHistory || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const response = await chatService.getMessages(conversationId, {
+        limit: PAGE_SIZE,
+        offset: nextOffset,
+      });
+      const olderMessages = response.messages.map((msg) => toGiftedMessage(msg)).reverse();
+      setMessages((prev) => normalizeGiftedOrder([...prev, ...olderMessages]));
+      setNextOffset((prev) => prev + response.messages.length);
+      setHasMoreHistory(Boolean(response.pagination?.hasMore));
+    } catch (err) {
+      console.error("Error loading older messages:", err);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }, [conversationId, hasMoreHistory, loadingEarlier, nextOffset]);
+
   useEffect(() => {
     setLoading(true);
-    loadMessages();
-  }, [loadMessages]);
+    setLoadingEarlier(false);
+    setHasMoreHistory(false);
+    setNextOffset(0);
+    setMessages([]);
+    loadInitialMessages();
+  }, [loadInitialMessages]);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,11 +129,7 @@ export const ChatScreen = () => {
       if (payload.message.senderId === currentUser._id) return;
 
       const senderName =
-        payload.message.senderRole === "admin"
-          ? "Admin"
-          : payload.message.senderRole === "support"
-          ? "Support"
-          : "User";
+        payload.message.senderRole === "admin" ? "Admin" : payload.message.senderRole === "support" ? "Support" : "User";
 
       setMessages((prev) => {
         const exists = prev.some((msg) => String(msg._id) === payload.message.id);
@@ -97,7 +143,7 @@ export const ChatScreen = () => {
             name: senderName,
           },
         };
-        return GiftedChat.append(prev, [incoming]);
+        return normalizeGiftedOrder(GiftedChat.append(prev, [incoming]));
       });
 
       chatService.markRead(conversationId).catch((err) => {
@@ -127,29 +173,38 @@ export const ChatScreen = () => {
   const onSend = useCallback(
     async (newMessages: IMessage[] = []) => {
       if (newMessages.length === 0) return;
-      const messageText = newMessages[0].text;
+      const optimisticMessage = newMessages[0];
+      const messageText = optimisticMessage.text;
+      const optimisticId = String(optimisticMessage._id);
 
       // Optimistically add message to UI
-      setMessages((prev) => GiftedChat.append(prev, newMessages));
+      setMessages((prev) => normalizeGiftedOrder(GiftedChat.append(prev, newMessages)));
 
       // Dismiss keyboard after sending (like WhatsApp)
       Keyboard.dismiss();
 
       try {
         setSending(true);
-        await chatService.sendMessage(conversationId, messageText);
-        // Refresh messages from server
-        await loadMessages();
+        const response = await chatService.sendMessage(conversationId, messageText);
+        const delivered = response?.message ? toGiftedMessage(response.message) : null;
+        setMessages((prev) => {
+          const withoutOptimistic = prev.filter((msg) => String(msg._id) !== optimisticId);
+          if (!delivered) return withoutOptimistic;
+          return normalizeGiftedOrder(GiftedChat.append(withoutOptimistic, [delivered]));
+        });
+        chatService.markRead(conversationId).catch((err) => {
+          console.warn("Failed to mark chat as read", err?.message || err);
+        });
       } catch (err) {
         console.error("Error sending message:", err);
         Alert.alert("Error", "Failed to send message. Please try again.");
         // Remove optimistic message on error
-        setMessages((prev) => prev.filter((msg) => msg._id !== newMessages[0]._id));
+        setMessages((prev) => prev.filter((msg) => String(msg._id) !== optimisticId));
       } finally {
         setSending(false);
       }
     },
-    [conversationId, loadMessages]
+    [conversationId]
   );
 
   const handleCallUser = async () => {
@@ -218,6 +273,9 @@ export const ChatScreen = () => {
         <GiftedChat
           messages={messages}
           onSend={onSend}
+          loadEarlier={hasMoreHistory}
+          onLoadEarlier={loadEarlierMessages}
+          isLoadingEarlier={loadingEarlier}
           user={currentUser}
           renderBubble={(props) => {
             const { key, ...bubbleProps } = props as any;
