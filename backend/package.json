@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "email:verify": "node src/scripts/verifyEmailConnection.js",
     "email:smoke": "node src/scripts/sendSmokeEmail.js",
+    "storage:verify": "node src/scripts/verifyStorageConnection.js",
     "seed:paper-packaging": "node src/scripts/seedPaperPackagingProducts.js",
     "cleanup:legacy-campaigns": "node src/scripts/cleanupLegacyCampaigns.js",
     "bootstrap:accounting": "node src/modules/accounting/scripts/bootstrapCompanyBooks.js",

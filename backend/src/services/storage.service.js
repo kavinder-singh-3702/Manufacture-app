@@ -1,5 +1,5 @@
 const createError = require('http-errors');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const config = require('../config/env');
 const { assertStorageConfig, STORAGE_NOT_CONFIGURED_CODE } = require('../config/startupValidation');
 
@@ -10,7 +10,8 @@ const STORAGE_ERROR_CODES = Object.freeze({
   INVALID_CREDENTIALS: 'STORAGE_INVALID_CREDENTIALS',
   REGION_MISMATCH: 'STORAGE_REGION_MISMATCH',
   BUCKET_NOT_FOUND: 'STORAGE_BUCKET_NOT_FOUND',
-  UPLOAD_FAILED: 'STORAGE_UPLOAD_FAILED'
+  UPLOAD_FAILED: 'STORAGE_UPLOAD_FAILED',
+  DELETE_FAILED: 'STORAGE_DELETE_FAILED'
 });
 
 let s3Client;
@@ -38,7 +39,7 @@ const getS3Client = () => {
   return s3Client;
 };
 
-const normalizeStorageUploadError = (error) => {
+const normalizeStorageOperationError = (error, { operation = 'upload' } = {}) => {
   const statusCode = error?.statusCode || error?.status;
   if (statusCode === 503 && error?.code === STORAGE_ERROR_CODES.NOT_CONFIGURED) {
     return error;
@@ -70,8 +71,10 @@ const normalizeStorageUploadError = (error) => {
     });
   }
 
-  return createError(502, 'Failed to upload file to storage', {
-    code: STORAGE_ERROR_CODES.UPLOAD_FAILED
+  const failedOperation = operation === 'delete' ? 'delete storage smoke object' : 'upload file to storage';
+
+  return createError(502, `Failed to ${failedOperation}`, {
+    code: operation === 'delete' ? STORAGE_ERROR_CODES.DELETE_FAILED : STORAGE_ERROR_CODES.UPLOAD_FAILED
   });
 };
 
@@ -79,14 +82,15 @@ const sendPutObject = async (s3, putCommand) => {
   try {
     await s3.send(putCommand);
   } catch (error) {
-    throw normalizeStorageUploadError(error);
+    throw normalizeStorageOperationError(error, { operation: 'upload' });
   }
 };
 
 const sanitizeFileName = (value = '') => value.replace(/[^a-z0-9.\-]/gi, '-').replace(/-+/g, '-').toLowerCase();
+const buildStoragePrefix = () => (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
 
 const buildObjectKey = ({ companyId, documentType, fileName }) => {
-  const prefix = (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
+  const prefix = buildStoragePrefix();
   const normalizedFileName = sanitizeFileName(fileName) || `${documentType}-${Date.now()}`;
   const timeSegment = Date.now();
   return `${prefix}/company-verifications/${companyId}/${documentType}-${timeSegment}-${normalizedFileName}`;
@@ -150,17 +154,22 @@ const uploadCompanyDocument = async ({ companyId, documentType, fileName, mimeTy
 };
 
 const buildUserObjectKey = ({ userId, purpose = 'general', fileName }) => {
-  const prefix = (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
+  const prefix = buildStoragePrefix();
   const normalizedFileName = sanitizeFileName(fileName) || `${purpose}-${Date.now()}`;
   const timeSegment = Date.now();
   return `${prefix}/user-uploads/${userId}/${purpose}-${timeSegment}-${normalizedFileName}`;
 };
 
 const buildProductObjectKey = ({ companyId, productId, fileName }) => {
-  const prefix = (config.awsS3UploadsFolder || 'uploads').replace(/\/$/, '');
+  const prefix = buildStoragePrefix();
   const normalizedFileName = sanitizeFileName(fileName) || `product-${Date.now()}`;
   const timeSegment = Date.now();
   return `${prefix}/products/${companyId}/${productId}/${timeSegment}-${normalizedFileName}`;
+};
+
+const buildStorageSmokeTestKey = () => {
+  const prefix = buildStoragePrefix();
+  return `${prefix}/smoke-tests/storage-verify-${Date.now()}.txt`;
 };
 
 
@@ -240,8 +249,72 @@ const uploadProductImage = async ({ companyId, productId, userId, fileName, mime
   };
 };
 
+const verifyStorageConnection = async () => {
+  try {
+    const s3 = getS3Client();
+    const key = buildStorageSmokeTestKey();
+    const smokePayload = Buffer.from(`storage smoke test ${new Date().toISOString()}`, 'utf8');
+
+    await sendPutObject(
+      s3,
+      new PutObjectCommand({
+        Bucket: config.awsS3Bucket,
+        Key: key,
+        Body: smokePayload,
+        ContentType: 'text/plain'
+      })
+    );
+
+    try {
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: config.awsS3Bucket,
+          Key: key
+        })
+      );
+
+      return {
+        success: true,
+        key,
+        errorCode: null,
+        errorMessage: null,
+        cleanupWarning: null
+      };
+    } catch (error) {
+      const awsCode = `${error?.name || error?.Code || ''}`.trim();
+      if (awsCode === 'AccessDenied') {
+        return {
+          success: true,
+          key,
+          errorCode: null,
+          errorMessage: null,
+          cleanupWarning: 'Storage smoke object uploaded successfully but cleanup was denied.'
+        };
+      }
+
+      const normalizedError = normalizeStorageOperationError(error, { operation: 'delete' });
+      return {
+        success: false,
+        key,
+        errorCode: normalizedError.code || STORAGE_ERROR_CODES.DELETE_FAILED,
+        errorMessage: normalizedError.message || 'Failed to delete storage smoke object',
+        cleanupWarning: null
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      key: null,
+      errorCode: error.code || STORAGE_ERROR_CODES.UPLOAD_FAILED,
+      errorMessage: error.message || 'Storage verification failed',
+      cleanupWarning: null
+    };
+  }
+};
+
 module.exports = {
   uploadCompanyDocument,
   uploadUserDocument,
-  uploadProductImage
+  uploadProductImage,
+  verifyStorageConnection
 };
