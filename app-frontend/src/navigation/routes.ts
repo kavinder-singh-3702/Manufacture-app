@@ -58,7 +58,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     icon: "🏠",
     activeIcon: "home",
     inactiveIcon: "home-outline",
-    topBarMode: "two_row",
+    topBarMode: "compact",
     gradientKey: "heroCyan",
     roles: ["user", "guest"],
   },

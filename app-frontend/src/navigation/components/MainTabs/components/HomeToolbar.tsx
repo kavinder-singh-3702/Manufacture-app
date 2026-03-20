@@ -17,6 +17,7 @@ type HomeToolbarProps = {
   title?: string;
   subtitle?: string;
   showSearch?: boolean;
+  transparent?: boolean;
   onMenuPress: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -35,6 +36,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   title = "Home",
   subtitle,
   showSearch,
+  transparent = false,
   onMenuPress,
   searchValue,
   onSearchChange,
@@ -76,13 +78,19 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
   const avatarUri = typeof user?.avatarUrl === "string" && user.avatarUrl.trim().length ? user.avatarUrl : undefined;
   const isTwoRow = mode === "two_row" && showSearch !== false;
 
+  const iconColor = transparent ? "#fff" : tokens.colors.topBarIcon;
+  const iconBg = transparent ? "rgba(255,255,255,0.15)" : tokens.colors.topBarIconBackground;
+  const iconBorder = transparent ? "rgba(255,255,255,0.2)" : tokens.colors.topBarIconBorder;
+  const titleColor = transparent ? "#fff" : tokens.colors.topBarTitle;
+  const subtitleColor = transparent ? "rgba(255,255,255,0.75)" : tokens.colors.topBarSubtitle;
+
   return (
     <View
       style={[
         styles.wrapper,
         {
-          backgroundColor: tokens.colors.topBarBackground,
-          borderBottomColor: tokens.colors.topBarBorder,
+          backgroundColor: transparent ? "transparent" : tokens.colors.topBarBackground,
+          borderBottomColor: transparent ? "transparent" : tokens.colors.topBarBorder,
           minHeight: isTwoRow ? tokens.topBar.twoRowMinHeight : tokens.topBar.compactMinHeight,
           paddingHorizontal: tokens.spacing.md,
           paddingTop: tokens.spacing.sm,
@@ -98,15 +106,15 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             {
               width: tokens.topBar.iconButtonSize,
               height: tokens.topBar.iconButtonSize,
-              borderColor: tokens.colors.topBarIconBorder,
-              backgroundColor: tokens.colors.topBarIconBackground,
+              borderColor: iconBorder,
+              backgroundColor: iconBg,
               borderRadius: tokens.topBar.iconButtonSize / 2.75,
             },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={22} color={tokens.colors.topBarIcon} />
+          <Ionicons name="menu-outline" size={22} color={iconColor} />
         </Pressable>
 
         <View style={styles.headingWrap}>
@@ -115,7 +123,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             style={[
               styles.title,
               {
-                color: tokens.colors.topBarTitle,
+                color: titleColor,
                 fontSize: tokens.topBar.titleSize,
               },
             ]}
@@ -128,7 +136,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
               style={[
                 styles.subtitle,
                 {
-                  color: tokens.colors.topBarSubtitle,
+                  color: subtitleColor,
                   fontSize: tokens.topBar.subtitleSize,
                 },
               ]}
@@ -147,8 +155,8 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
                 {
                   width: tokens.topBar.iconButtonSize,
                   height: tokens.topBar.iconButtonSize,
-                  borderColor: tokens.colors.topBarIconBorder,
-                  backgroundColor: tokens.colors.topBarIconBackground,
+                  borderColor: iconBorder,
+                  backgroundColor: iconBg,
                   borderRadius: tokens.topBar.iconButtonSize / 2.75,
                   marginRight: tokens.topBar.density === "xCompact" ? 6 : 8,
                 },
@@ -156,7 +164,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
               accessibilityRole="button"
               accessibilityLabel="Add new product"
             >
-              <Ionicons name="add" size={21} color={tokens.colors.topBarIcon} />
+              <Ionicons name="add" size={21} color={iconColor} />
             </Pressable>
           ) : null}
 
@@ -167,15 +175,15 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
               {
               width: tokens.topBar.iconButtonSize,
               height: tokens.topBar.iconButtonSize,
-              borderColor: tokens.colors.topBarIconBorder,
-              backgroundColor: tokens.colors.topBarIconBackground,
+              borderColor: iconBorder,
+              backgroundColor: iconBg,
               borderRadius: tokens.topBar.iconButtonSize / 2.75,
             },
           ]}
             accessibilityRole="button"
             accessibilityLabel="Notifications"
           >
-            <Ionicons name="notifications-outline" size={20} color={tokens.colors.topBarIcon} />
+            <Ionicons name="notifications-outline" size={20} color={iconColor} />
             {notificationCount > 0 ? (
               <View style={[styles.notificationBadge, { backgroundColor: tokens.colors.unreadBadgeBackground }]}>
                 <Text style={[styles.notificationBadgeText, { color: tokens.colors.unreadBadgeText }]}>
@@ -195,7 +203,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             accessibilityLabel="Profile"
           >
             {activeCompany ? (
-              <CompanyAvatar company={activeCompany} size={avatarSize} style={{ borderWidth: 2, borderColor: colors.border }} />
+              <CompanyAvatar company={activeCompany} size={avatarSize} style={{ borderWidth: 2, borderColor: transparent ? "rgba(255,255,255,0.3)" : colors.border }} />
             ) : (
               <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
             )}

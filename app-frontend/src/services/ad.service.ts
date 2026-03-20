@@ -1,7 +1,8 @@
 import { apiClient } from "./apiClient";
 
 export type AdCampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
-export type AdPlacement = "dashboard_home";
+export type AdPlacement = "dashboard_home" | "hero_banner";
+export type AdMediaType = "image" | "video";
 export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
 export type AdPrice = { amount?: number; currency?: string; unit?: string };
@@ -55,6 +56,9 @@ export type AdCampaign = {
     subtitle?: string;
     ctaLabel?: string;
     badge?: string;
+    bannerImageUrl?: string;
+    bannerVideoUrl?: string;
+    bannerMediaType?: AdMediaType;
   };
   sourceServiceRequest?: string;
   createdBy?: string;
@@ -84,6 +88,10 @@ export type AdFeedCard = {
     isDiscounted?: boolean;
   };
   product: AdProductSummary;
+  bannerImageUrl?: string;
+  bannerVideoUrl?: string;
+  bannerMediaType?: AdMediaType;
+  deepLink?: string;
 };
 
 export type AdEventPayload = {
@@ -118,6 +126,11 @@ export type UpsertAdCampaignInput = {
     subtitle?: string;
     ctaLabel?: string;
     badge?: string;
+    bannerImageUrl?: string;
+    bannerImageBase64?: string;
+    bannerVideoUrl?: string;
+    bannerVideoBase64?: string;
+    bannerMediaType?: AdMediaType;
   };
   sourceServiceRequest?: string;
   metadata?: Record<string, unknown>;
@@ -166,6 +179,21 @@ class AdService {
 
   async createCampaign(payload: UpsertAdCampaignInput): Promise<AdCampaign> {
     const response = await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", payload);
+    return response.campaign;
+  }
+
+  async createCampaignWithMedia(
+    payload: UpsertAdCampaignInput,
+    videoFile: { uri: string; type: string; name: string },
+  ): Promise<AdCampaign> {
+    const formData = new FormData();
+    formData.append("payload", JSON.stringify(payload));
+    formData.append("bannerVideo", {
+      uri: videoFile.uri,
+      type: videoFile.type,
+      name: videoFile.name,
+    } as unknown as Blob);
+    const response = await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", formData);
     return response.campaign;
   }
 

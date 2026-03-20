@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -35,6 +36,7 @@ import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
 import { motion } from "../theme/motion";
 import { useToast } from "../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "./product/utils/productContact";
+import { HeroBannerCarousel } from "../components/home/HeroBannerCarousel";
 
 // ============================================================
 // TYPES
@@ -729,6 +731,8 @@ const UserDashboardContent = () => {
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [adCards, setAdCards] = useState<AdFeedCard[]>([]);
   const [adFeedLoading, setAdFeedLoading] = useState(false);
+  const [heroBannerCards, setHeroBannerCards] = useState<AdFeedCard[]>([]);
+  const [heroBannerLoading, setHeroBannerLoading] = useState(true);
   const seenImpressionCampaigns = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -927,10 +931,49 @@ const UserDashboardContent = () => {
     }
   }, [isGuest, trackAdImpression]);
 
+  const fetchHeroBanners = useCallback(async () => {
+    if (isGuest) {
+      setHeroBannerCards([]);
+      setHeroBannerLoading(false);
+      return;
+    }
+    try {
+      setHeroBannerLoading(true);
+      const feed = await adService.getFeed({ placement: "hero_banner", limit: 5 });
+      setHeroBannerCards(feed.cards || []);
+      if (feed.cards?.length) {
+        trackAdImpression(feed.cards[0]);
+      }
+    } catch {
+      setHeroBannerCards([]);
+    } finally {
+      setHeroBannerLoading(false);
+    }
+  }, [isGuest, trackAdImpression]);
+
   useFocusEffect(
     useCallback(() => {
       fetchAdFeed();
-    }, [fetchAdFeed])
+      fetchHeroBanners();
+    }, [fetchAdFeed, fetchHeroBanners])
+  );
+
+  const handleHeroBannerPress = useCallback(
+    (card: AdFeedCard) => {
+      adService.logEvent({
+        campaignId: card.campaignId,
+        type: "click",
+        placement: card.placement,
+        sessionId: card.sessionId,
+        metadata: { action: "banner_tap" },
+      }).catch(() => {});
+      if (card.deepLink) {
+        // Future: handle deep links
+      } else {
+        navigation.navigate("ProductDetails", { productId: card.product.id });
+      }
+    },
+    [navigation]
   );
 
   const buildContactProduct = useCallback((card: AdFeedCard): Product => {
@@ -1040,6 +1083,7 @@ const UserDashboardContent = () => {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" />
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
           colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
@@ -1068,73 +1112,24 @@ const UserDashboardContent = () => {
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-          <Animated.View style={revealStyle(0)}>
-            {adCards.length ? (
-              <AdSwipeDeck
-                cards={adCards}
-                loading={adFeedLoading}
-                onCardVisible={trackAdImpression}
-                onView={handleAdView}
-                onDismiss={handleAdDismiss}
-                onMessage={handleAdMessage}
-                onCall={handleAdCall}
-              />
-            ) : (
-              <LinearGradient
-                colors={[colors.surface, colors.surfaceElevated, colors.surface]}
-                locations={[0, 0.6, 1]}
-                style={[
-                  styles.userHeroCard,
-                  {
-                    borderRadius: radius.lg,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={[colors.primary + "2b", "transparent"]}
-                  style={styles.userHeroDecorTop}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-                <LinearGradient
-                  colors={[colors.accent + "24", "transparent"]}
-                  style={styles.userHeroDecorBottom}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-                <Animated.View
-                  style={[
-                    styles.userHeroContentWrap,
-                    { transform: [{ translateY: reduceMotionEnabled ? 0 : heroFloatTranslate }] },
-                  ]}
-                >
-                  <Text style={[styles.userHeroGreeting, { color: colors.textMuted }]}>
-                    {getGreeting()}, {firstName}
-                  </Text>
-                  <Text style={[styles.userHeroTitle, { color: colors.text }]}>
-                    Welcome to {APP_NAME}
-                  </Text>
-                  <Text style={[styles.userHeroSubtitle, { color: colors.textSecondary }]}>
-                    Your industrial operations command center for sourcing, services, and business growth.
-                  </Text>
-                  <View style={styles.userHeroTags}>
-                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgePrimary }]}>
-                      <Text style={[styles.userHeroTagText, { color: colors.primary }]}>Marketplace</Text>
-                    </View>
-                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeWarning }]}>
-                      <Text style={[styles.userHeroTagText, { color: colors.warningStrong }]}>Operations</Text>
-                    </View>
-                    <View style={[styles.userHeroTag, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.badgeInfo }]}>
-                      <Text style={[styles.userHeroTagText, { color: colors.info }]}>Growth</Text>
-                    </View>
-                  </View>
-                </Animated.View>
-              </LinearGradient>
-            )}
-          </Animated.View>
+        {/* Hero Banner — always visible (full bleed, no padding) */}
+        <Animated.View style={revealStyle(0)}>
+          <HeroBannerCarousel
+            cards={[...heroBannerCards, ...adCards]}
+            loading={heroBannerLoading}
+            greeting={getGreeting()}
+            userName={firstName}
+            appName={APP_NAME}
+            onCardPress={handleHeroBannerPress}
+            onCardVisible={trackAdImpression}
+            onSearchPress={() => navigation.navigate("ProductSearch", {})}
+            topInset={insets.top + 60}
+            onCallPress={handleAdCall}
+            onMessagePress={handleAdMessage}
+          />
+        </Animated.View>
 
+        <View style={{ padding: spacing.lg, gap: spacing.lg }}>
           <Animated.View style={[revealStyle(1), { gap: spacing.sm }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (

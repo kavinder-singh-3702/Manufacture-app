@@ -14,6 +14,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { RootStackParamList } from "../../navigation/types";
 import {
@@ -71,6 +74,13 @@ type WizardState = {
   usePriceOverride: boolean;
   priceOverrideAmount: string;
   priceOverrideCurrency: string;
+
+  selectedPlacement: "dashboard_home" | "hero_banner";
+  bannerMediaUri: string;
+  bannerMediaBase64: string;
+  bannerMediaType: "image" | "video" | "";
+  bannerMediaMimeType: string;
+  bannerMediaFileName: string;
 
   launchNow: boolean;
   sourceRequestId: string;
@@ -171,6 +181,13 @@ export const AdStudioScreen = () => {
       usePriceOverride: false,
       priceOverrideAmount: "",
       priceOverrideCurrency: "INR",
+
+      selectedPlacement: "dashboard_home",
+      bannerMediaUri: "",
+      bannerMediaBase64: "",
+      bannerMediaType: "",
+      bannerMediaMimeType: "",
+      bannerMediaFileName: "",
 
       launchNow: false,
       sourceRequestId: route.params?.prefillServiceRequestId || "",
@@ -749,7 +766,7 @@ export const AdStudioScreen = () => {
       description: wizard.description.trim() || undefined,
       productId: wizard.productId.trim(),
       status: wizard.launchNow ? "active" : "draft",
-      placements: ["dashboard_home"],
+      placements: [wizard.selectedPlacement],
       targeting: {
         mode: wizard.targetingMode,
         userIds: wizard.specificUserIds,
@@ -784,6 +801,14 @@ export const AdStudioScreen = () => {
         subtitle: wizard.creativeSubtitle.trim() || undefined,
         ctaLabel: wizard.creativeCtaLabel.trim() || undefined,
         badge: wizard.creativeBadge.trim() || undefined,
+        bannerImageBase64:
+          wizard.selectedPlacement === "hero_banner" && wizard.bannerMediaType === "image" && wizard.bannerMediaBase64
+            ? wizard.bannerMediaBase64
+            : undefined,
+        bannerMediaType:
+          wizard.selectedPlacement === "hero_banner" && wizard.bannerMediaType
+            ? (wizard.bannerMediaType as "image" | "video")
+            : undefined,
       },
       sourceServiceRequest: wizard.sourceRequestId.trim() || undefined,
     };
@@ -791,7 +816,23 @@ export const AdStudioScreen = () => {
     try {
       setSubmitting(true);
       setWizardError(null);
-      const created = await adService.createCampaign(payload);
+
+      const hasVideoFile =
+        wizard.selectedPlacement === "hero_banner" &&
+        wizard.bannerMediaType === "video" &&
+        wizard.bannerMediaUri;
+
+      let created: AdCampaign;
+      if (hasVideoFile) {
+        created = await adService.createCampaignWithMedia(payload, {
+          uri: wizard.bannerMediaUri,
+          type: wizard.bannerMediaMimeType || "video/mp4",
+          name: wizard.bannerMediaFileName || "video.mp4",
+        });
+      } else {
+        created = await adService.createCampaign(payload);
+      }
+
       setCreateMode(false);
       setWizard(initialWizardState);
       setWizardStep(0);
@@ -801,6 +842,7 @@ export const AdStudioScreen = () => {
       await loadCampaigns();
       await openCampaign(created.id);
     } catch (err: any) {
+      console.error("[AdStudio] Campaign creation failed:", err?.status, JSON.stringify(err?.data ?? err?.message ?? err, null, 2));
       setWizardError(err?.message || "Failed to create campaign");
     } finally {
       setSubmitting(false);
@@ -1339,6 +1381,128 @@ export const AdStudioScreen = () => {
 
             {wizardStep === 3 ? (
               <View style={styles.stack}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Ad placement</Text>
+                <View style={styles.row}>
+                  <SelectCard
+                    icon="grid-outline"
+                    title="Product Card"
+                    subtitle="Shows in sponsored spotlight feed"
+                    active={wizard.selectedPlacement === "dashboard_home"}
+                    onPress={() =>
+                      setWizard((prev) => ({
+                        ...prev,
+                        selectedPlacement: "dashboard_home",
+                        bannerMediaUri: "",
+                        bannerMediaBase64: "",
+                        bannerMediaType: "",
+                        bannerMediaMimeType: "",
+                        bannerMediaFileName: "",
+                      }))
+                    }
+                  />
+                  <SelectCard
+                    icon="image-outline"
+                    title="Hero Banner"
+                    subtitle="Full-width banner at top of home"
+                    active={wizard.selectedPlacement === "hero_banner"}
+                    onPress={() =>
+                      setWizard((prev) => ({ ...prev, selectedPlacement: "hero_banner" }))
+                    }
+                  />
+                </View>
+
+                {wizard.selectedPlacement === "hero_banner" && (
+                  <View style={styles.stack}>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Banner media</Text>
+                    <View style={styles.row}>
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaPickerButton,
+                          { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+                        ]}
+                        onPress={async () => {
+                          const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ["images"],
+                            quality: 0.7,
+                            base64: true,
+                          });
+                          if (!result.canceled && result.assets[0]) {
+                            const asset = result.assets[0];
+                            setWizard((prev) => ({
+                              ...prev,
+                              bannerMediaUri: asset.uri,
+                              bannerMediaBase64: asset.base64 || "",
+                              bannerMediaType: "image",
+                            }));
+                          }
+                        }}
+                      >
+                        <Ionicons name="image-outline" size={24} color={colors.primary} />
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Image</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaPickerButton,
+                          { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+                        ]}
+                        onPress={async () => {
+                          const result = await DocumentPicker.getDocumentAsync({
+                            type: "video/*",
+                            copyToCacheDirectory: true,
+                          });
+                          if (!result.canceled && result.assets[0]) {
+                            const asset = result.assets[0];
+                            setWizard((prev) => ({
+                              ...prev,
+                              bannerMediaUri: asset.uri,
+                              bannerMediaBase64: "",
+                              bannerMediaType: "video",
+                              bannerMediaMimeType: asset.mimeType || "video/mp4",
+                              bannerMediaFileName: asset.name || "video.mp4",
+                            }));
+                          }
+                        }}
+                      >
+                        <Ionicons name="videocam-outline" size={24} color={colors.primary} />
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Video</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {wizard.bannerMediaUri ? (
+                      <View style={{ alignItems: "center", gap: 8 }}>
+                        {wizard.bannerMediaType === "image" ? (
+                          <Image
+                            source={{ uri: wizard.bannerMediaUri }}
+                            style={{ width: "100%", height: 140, borderRadius: radius.md }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.videoPreview,
+                              { borderRadius: radius.md, backgroundColor: colors.surfaceElevated },
+                            ]}
+                          >
+                            <Ionicons name="videocam" size={32} color={colors.primary} />
+                            <Text style={{ color: colors.text, fontSize: 13 }}>Video selected</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          onPress={() =>
+                            setWizard((prev) => ({
+                              ...prev,
+                              bannerMediaUri: "",
+                              bannerMediaBase64: "",
+                              bannerMediaType: "",
+                            }))
+                          }
+                        >
+                          <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+
                 <Field
                   label="Creative title"
                   value={wizard.creativeTitle}
@@ -2250,6 +2414,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
+  },
+  mediaPickerButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  videoPreview: {
+    width: "100%",
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
 });
 

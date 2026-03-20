@@ -380,6 +380,7 @@ export const MainTabs = () => {
   }, [isAuthenticated, requestLogin, stackNavigation]);
 
   const shouldShowAddProductAction = !isAdmin && activeRouteForNav === routes.DASHBOARD;
+  const isTransparentToolbar = !isAdmin && activeRouteForNav === routes.DASHBOARD;
 
   const navigationItems = useMemo(
     () =>
@@ -437,7 +438,7 @@ export const MainTabs = () => {
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.container, { paddingTop: insets.top }]}
+        style={[styles.container, { paddingTop: isTransparentToolbar ? 0 : insets.top }]}
       >
         <LinearGradient
           colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlaySecondary]}
@@ -447,23 +448,25 @@ export const MainTabs = () => {
           style={StyleSheet.absoluteFill}
         />
 
-        <HomeToolbar
-          mode={topBarConfig.mode}
-          title={topBarConfig.title}
-          subtitle={topBarConfig.subtitle}
-          showSearch={topBarConfig.showSearch}
-          onMenuPress={() => setSidebarVisible(true)}
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSearchPress={handleSearchPress}
-          onNotificationsPress={handleOpenNotifications}
-          notificationCount={notificationUnreadCount}
-          showAddProductAction={shouldShowAddProductAction}
-          onAddProductPress={handleAddProductFromTopBar}
-          activeCompany={activeCompany}
-          onAvatarLongPress={handleOpenCompanySwitcher}
-          onAvatarPress={handleOpenPersonalProfile}
-        />
+        {!isTransparentToolbar && (
+          <HomeToolbar
+            mode={topBarConfig.mode}
+            title={topBarConfig.title}
+            subtitle={topBarConfig.subtitle}
+            showSearch={topBarConfig.showSearch}
+            onMenuPress={() => setSidebarVisible(true)}
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSearchPress={handleSearchPress}
+            onNotificationsPress={handleOpenNotifications}
+            notificationCount={notificationUnreadCount}
+            showAddProductAction={shouldShowAddProductAction}
+            onAddProductPress={handleAddProductFromTopBar}
+            activeCompany={activeCompany}
+            onAvatarLongPress={handleOpenCompanySwitcher}
+            onAvatarPress={handleOpenPersonalProfile}
+          />
+        )}
 
         <View style={styles.contentArea}>
           <Tab.Navigator
@@ -496,6 +499,29 @@ export const MainTabs = () => {
             ) : null}
           </Tab.Navigator>
         </View>
+
+        {isTransparentToolbar && (
+          <View style={[styles.transparentToolbarWrap, { paddingTop: insets.top + 6 }]}>
+            <HomeToolbar
+              mode={topBarConfig.mode}
+              title={topBarConfig.title}
+              subtitle={topBarConfig.subtitle}
+              showSearch={topBarConfig.showSearch}
+              transparent
+              onMenuPress={() => setSidebarVisible(true)}
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSearchPress={handleSearchPress}
+              onNotificationsPress={handleOpenNotifications}
+              notificationCount={notificationUnreadCount}
+              showAddProductAction={shouldShowAddProductAction}
+              onAddProductPress={handleAddProductFromTopBar}
+              activeCompany={activeCompany}
+              onAvatarLongPress={handleOpenCompanySwitcher}
+              onAvatarPress={handleOpenPersonalProfile}
+            />
+          </View>
+        )}
 
         {!isAdmin && !isGuest ? <FloatingCartBar /> : null}
 
@@ -618,6 +644,12 @@ export const MainTabs = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentArea: { flex: 1 },
+  transparentToolbarWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+  },
 
   modalBackdrop: { flex: 1, justifyContent: "flex-end" },
   modalContent: { maxHeight: "80%", borderWidth: 1, width: "100%" },
