@@ -68,6 +68,7 @@ module.exports = ({ config }) => {
           defaultChannel: "default",
         },
       ],
+      "./plugins/withArvannAndroidReleaseSigning",
     ],
   };
 };

@@ -44,6 +44,42 @@ Chat socket host is also derived from the same config via:
    - `c2343c00-43ee-4da9-a32a-d24b8f0f099b`
 3. Ensure Expo-managed Android keystore exists for package ids used by your profile.
 
+## Build a Signed Production APK Locally with Gradle
+
+This app also supports a local Expo CNG -> Gradle release APK flow that always targets `https://api.manufactureapp.com/api`.
+
+### One-time local setup
+
+1. Install a Java runtime / JDK that Gradle can use.
+2. Install Android SDK tools and make sure `ANDROID_SDK_ROOT` or `ANDROID_HOME` points at the SDK.
+3. Install or access EAS CLI, then download the existing production Android credentials:
+   - `cd app-frontend`
+   - `eas credentials -p android`
+4. Save the downloaded `credentials.json` in `app-frontend/`.
+5. Make sure the `keystorePath` referenced by `credentials.json` points to a keystore file available on disk.
+
+`credentials.json` is gitignored. The Gradle build script reads `android.keystore.keystorePath`, `keyAlias`, `keystorePassword`, and `keyPassword`, copies the keystore into the generated Android app, and writes transient `ARVANN_UPLOAD_*` properties into `android/gradle.properties`.
+
+### Run the local Gradle APK build
+
+From `app-frontend/`:
+
+- `npm run apk:gradle:prod`
+
+What the command does:
+
+- Forces `APP_VARIANT=prod`
+- Forces `EXPO_PUBLIC_API_URL=https://api.manufactureapp.com/api`
+- Runs `npx expo config --type public --json` validation
+- Regenerates `/android` with `npx expo prebuild --platform android --clean --no-install`
+- Verifies the generated production package id and that cleartext traffic is not enabled
+- Injects release signing properties from `credentials.json`
+- Runs `./gradlew clean app:assembleRelease --no-build-cache`
+
+Expected APK output:
+
+- `android/app/build/outputs/apk/release/app-release.apk`
+
 ## Run a Staging APK Build
 
 1. Commit and push your branch.
@@ -60,3 +96,5 @@ Each run publishes:
   - `ARVANN-<profile>-<UTC_TIMESTAMP>.apk`
   - `ARVANN-<profile>-<UTC_TIMESTAMP>.apk.sha256`
 - GitHub prerelease with the same APK and checksum assets.
+
+The existing GitHub Actions / EAS APK workflow remains unchanged and is still the recommended remote build path for staging and production artifacts.
