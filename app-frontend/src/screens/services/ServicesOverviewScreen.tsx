@@ -14,13 +14,15 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
+import { FadeInView } from "../../components/ui/AnimatedCard";
 import { chatService } from "../../services/chat.service";
 import { serviceRequestService, ServiceRequest, ServiceStatus } from "../../services/serviceRequest.service";
 import type { RootStackParamList } from "../../navigation/types";
-import { routes } from "../../navigation/routes";
 import { SERVICE_META } from "./services.constants";
+import { SERVICE_ACCENT_MAP, BUSINESS_ACCENT, neu, NEU_BG_LIGHT, NEU_BG_DARK } from "./services.palette";
 import {
   RecentRequestRow,
   SectionHeader,
@@ -33,12 +35,40 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const OPEN_STATUSES: ServiceStatus[] = ["pending", "in_review", "scheduled"];
 
+/* ─── Neumorphic wrapper (reusable) ─────────────────────────────────── */
+
+const NeuSection = ({
+  children,
+  isDark,
+  borderRadius,
+  style,
+}: {
+  children: React.ReactNode;
+  isDark: boolean;
+  borderRadius: number;
+  style?: any;
+}) => (
+  <View style={[neu.lightShadow(isDark), { borderRadius }, style]}>
+    <View style={[neu.darkShadow(isDark), { borderRadius }]}>
+      <View style={[{ borderRadius, backgroundColor: neu.cardBg(isDark), padding: 16 }]}>
+        {children}
+      </View>
+    </View>
+  </View>
+);
+
+/* ─── Screen ────────────────────────────────────────────────────────── */
+
 export const ServicesOverviewScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+
+  const pageBg = isDark ? NEU_BG_DARK : NEU_BG_LIGHT;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +78,8 @@ export const ServicesOverviewScreen = () => {
   const [supportLoading, setSupportLoading] = useState(false);
 
   const isGuest = !user || user.role === "guest";
+
+  /* ── data loading (unchanged) ──────────────────────────────────────── */
 
   const loadRequests = useCallback(
     async (opts?: { refreshing?: boolean; forceLimit?: number }) => {
@@ -129,15 +161,25 @@ export const ServicesOverviewScreen = () => {
     return { open, inProgress, completed };
   }, [requests]);
 
+  /* ── requests content ──────────────────────────────────────────────── */
+
   const renderRequestsContent = () => {
     if (isGuest) {
       return (
-        <View style={[styles.emptyCard, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+        <View
+          style={[
+            styles.emptyCard,
+            neu.pressed(isDark),
+            { borderRadius: radius.lg, backgroundColor: neu.insetBg(isDark) },
+          ]}
+        >
           <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Login to manage service requests</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Track request status, response time, and updates in one place.</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+            Track request status, response time, and updates in one place.
+          </Text>
           <TouchableOpacity
-            style={[styles.inlineButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+            style={[styles.inlineButton, neu.buttonRaised(isDark), { borderRadius: radius.md, backgroundColor: colors.primary }]}
             activeOpacity={0.85}
             onPress={requestLogin}
           >
@@ -149,7 +191,13 @@ export const ServicesOverviewScreen = () => {
 
     if (loading) {
       return (
-        <View style={[styles.emptyCard, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+        <View
+          style={[
+            styles.emptyCard,
+            neu.pressed(isDark),
+            { borderRadius: radius.lg, backgroundColor: neu.insetBg(isDark) },
+          ]}
+        >
           <ActivityIndicator size="small" color={colors.primary} />
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Loading request dashboard...</Text>
         </View>
@@ -158,12 +206,18 @@ export const ServicesOverviewScreen = () => {
 
     if (error) {
       return (
-        <View style={[styles.emptyCard, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+        <View
+          style={[
+            styles.emptyCard,
+            neu.pressed(isDark),
+            { borderRadius: radius.lg, backgroundColor: neu.insetBg(isDark) },
+          ]}
+        >
           <Ionicons name="alert-circle-outline" size={20} color={colors.error} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Unable to load requests</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{error}</Text>
           <TouchableOpacity
-            style={[styles.inlineButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+            style={[styles.inlineButton, neu.buttonRaised(isDark), { borderRadius: radius.md, backgroundColor: colors.primary }]}
             activeOpacity={0.85}
             onPress={() => loadRequests()}
           >
@@ -175,10 +229,18 @@ export const ServicesOverviewScreen = () => {
 
     if (!requests.length) {
       return (
-        <View style={[styles.emptyCard, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+        <View
+          style={[
+            styles.emptyCard,
+            neu.pressed(isDark),
+            { borderRadius: radius.lg, backgroundColor: neu.insetBg(isDark) },
+          ]}
+        >
           <Ionicons name="document-text-outline" size={20} color={colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>No requests yet</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Start with a service card above and your request will appear here.</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+            Start with a service card above and your request will appear here.
+          </Text>
         </View>
       );
     }
@@ -190,108 +252,131 @@ export const ServicesOverviewScreen = () => {
             key={request._id}
             request={request}
             onPress={() => navigation.push("ServiceRequest", { serviceType: request.serviceType, serviceId: request._id })}
-            onQuickAction={() => navigation.navigate("ServiceRequest", { serviceType: request.serviceType })}
           />
         ))}
       </View>
     );
   };
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
-          locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
-          locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
+  /* ── render ────────────────────────────────────────────────────────── */
 
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: pageBg }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
           paddingTop: spacing.md,
           paddingBottom: spacing.xxl + insets.bottom + 50,
-          gap: spacing.lg,
+          gap: 20,
         }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerWrap}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>Services</Text>
-          <Text style={[styles.pageSubtitle, { color: colors.textMuted }]}>Operations command center for support, workforce, and logistics.</Text>
-        </View>
-
-        <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
-          <SectionHeader title="My Requests" subtitle="Recent activity and status" />
-          <View style={{ marginTop: spacing.md }}>
-            <ServiceKpiStrip open={kpis.open} inProgress={kpis.inProgress} completed={kpis.completed} />
+        {/* Hero Header */}
+        <FadeInView delay={0} duration={400}>
+          <View style={styles.heroHeader}>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>Services</Text>
+            <Text style={[styles.pageSubtitle, { color: colors.textMuted }]}>
+              Operations command center for support, workforce, and logistics.
+            </Text>
           </View>
-        </View>
+        </FadeInView>
 
-        <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
-          <SectionHeader title="Service Catalog" subtitle="Start with the service you need" />
-          <View style={[styles.catalogGrid, { marginTop: spacing.md }]}> 
-            {Object.values(SERVICE_META).map((service) => (
-              <ServiceTypeCard
-                key={service.type}
-                service={service}
-                onPress={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
-                onStart={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
-              />
+        {/* KPI Dashboard — neumorphic section */}
+        <FadeInView delay={100} duration={400}>
+          <NeuSection isDark={isDark} borderRadius={radius.xl}>
+            <SectionHeader title="My Requests" subtitle="Recent activity and status" />
+            <View style={{ marginTop: spacing.md }}>
+              <ServiceKpiStrip open={kpis.open} inProgress={kpis.inProgress} completed={kpis.completed} />
+            </View>
+          </NeuSection>
+        </FadeInView>
+
+        {/* Service Catalog */}
+        <View>
+          <FadeInView delay={180} duration={400}>
+            <SectionHeader title="Service Catalog" subtitle="Start with the service you need" />
+          </FadeInView>
+
+          <View style={[styles.catalogGrid, { marginTop: spacing.md }]}>
+            {Object.values(SERVICE_META).map((service, index) => (
+              <FadeInView key={service.type} delay={250 + index * 100} duration={450}>
+                <ServiceTypeCard
+                  service={service}
+                  accent={SERVICE_ACCENT_MAP[service.type]}
+                  onPress={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
+                  onStart={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
+                />
+              </FadeInView>
             ))}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate("BusinessSetupRequest")}
-              style={[
-                styles.businessCard,
-                {
-                  borderRadius: radius.lg,
-                  borderColor: colors.border,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-            >
-              <View style={styles.businessHeader}>
-                <View
-                  style={[
-                    styles.businessIcon,
-                    {
-                      borderRadius: radius.md,
-                      borderColor: colors.border,
-                      backgroundColor: `${colors.accent}14`,
-                    },
-                  ]}
-                >
-                  <Ionicons name="rocket-outline" size={18} color={colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.businessTitle, { color: colors.text }]}>Start your own business</Text>
-                  <Text style={[styles.businessSubtitle, { color: colors.textMuted }]}>
-                    Tell us your idea and get launch support from our team.
-                  </Text>
+
+            {/* Business Setup Card — neumorphic */}
+            <FadeInView delay={650} duration={450}>
+              <View style={[neu.lightShadow(isDark), { borderRadius: radius.xl }]}>
+                <View style={[neu.darkShadow(isDark), { borderRadius: radius.xl }]}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate("BusinessSetupRequest")}
+                    style={[
+                      styles.businessCard,
+                      {
+                        borderRadius: radius.xl,
+                        backgroundColor: neu.cardBg(isDark),
+                      },
+                    ]}
+                  >
+                    <View style={styles.businessHeader}>
+                      <View
+                        style={[
+                          styles.businessIcon,
+                          neu.pressed(isDark),
+                          {
+                            borderRadius: 24,
+                            backgroundColor: isDark ? `${BUSINESS_ACCENT.color}18` : BUSINESS_ACCENT.soft,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.businessEmoji}>{BUSINESS_ACCENT.emoji}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.businessTitle, { color: colors.text }]}>Start your own business</Text>
+                        <Text style={[styles.businessSubtitle, { color: colors.textMuted }]}>
+                          Tell us your idea and get launch support from our team.
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => navigation.navigate("BusinessSetupRequest")}
+                      style={[
+                        styles.businessCtaOuter,
+                        neu.buttonRaised(isDark),
+                        { borderRadius: radius.lg },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={[BUSINESS_ACCENT.color, `${BUSINESS_ACCENT.color}DD`]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.businessCtaGradient, { borderRadius: radius.lg }]}
+                      >
+                        <Text style={styles.businessCtaText}>Start request</Text>
+                        <View style={styles.businessCtaArrow}>
+                          <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                        </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View
-                style={[
-                  styles.businessCta,
-                  { borderRadius: radius.md, borderColor: colors.border, backgroundColor: colors.surfaceElevated },
-                ]}
-              >
-                <Text style={[styles.businessCtaText, { color: colors.text }]}>Start request</Text>
-                <Ionicons name="arrow-forward" size={14} color={colors.textMuted} />
-              </View>
-            </TouchableOpacity>
+            </FadeInView>
           </View>
         </View>
 
-        <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+        {/* Recent Requests — neumorphic section */}
+        <NeuSection isDark={isDark} borderRadius={radius.xl}>
           <SectionHeader
             title="Recent Requests"
             subtitle="Latest request submissions"
@@ -299,7 +384,7 @@ export const ServicesOverviewScreen = () => {
             onAction={requests.length >= 5 || showAllRequests ? handleToggleRequests : undefined}
           />
           <View style={{ marginTop: spacing.md }}>{renderRequestsContent()}</View>
-        </View>
+        </NeuSection>
       </ScrollView>
 
       <SupportFab loading={supportLoading} onPress={handleSupport} style={{ bottom: insets.bottom + 76 }} />
@@ -310,58 +395,51 @@ export const ServicesOverviewScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
-  headerWrap: { gap: 4 },
+
+  heroHeader: { gap: 4, paddingHorizontal: 4 },
   pageTitle: { fontSize: 28, fontWeight: "900", letterSpacing: -0.4 },
   pageSubtitle: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
-  card: {
-    borderWidth: 1,
-    padding: 14,
-    gap: 2,
-  },
-  catalogGrid: { gap: 10 },
+
+  catalogGrid: { gap: 14 },
+
+  // Business card
   businessCard: {
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    gap: 14,
+    overflow: "hidden",
   },
-  businessHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  businessHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   businessIcon: {
-    width: 38,
-    height: 38,
-    borderWidth: 1,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },
-  businessTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  businessSubtitle: {
-    marginTop: 2,
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
-  },
-  businessCta: {
-    marginTop: 4,
-    borderWidth: 1,
+  businessEmoji: { fontSize: 22 },
+  businessTitle: { fontSize: 16, fontWeight: "800", letterSpacing: -0.2 },
+  businessSubtitle: { marginTop: 3, fontSize: 12, fontWeight: "500", lineHeight: 17 },
+  businessCtaOuter: { overflow: "hidden" },
+  businessCtaGradient: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  businessCtaText: {
-    fontSize: 12,
-    fontWeight: "800",
+  businessCtaText: { fontSize: 13, fontWeight: "800", color: "#FFFFFF", letterSpacing: 0.3 },
+  businessCtaArrow: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
   },
+
+  // Requests
   requestList: { gap: 10 },
   emptyCard: {
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,

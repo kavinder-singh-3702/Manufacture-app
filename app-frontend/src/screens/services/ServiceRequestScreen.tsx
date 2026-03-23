@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
 import { Button } from "../../components/common/Button";
@@ -36,6 +37,7 @@ import {
   QUICK_WORKER_INDUSTRIES,
   SERVICE_META,
 } from "./services.constants";
+import { SERVICE_ACCENT_MAP, neu, NEU_BG_LIGHT, NEU_BG_DARK, type ServiceAccent } from "./services.palette";
 import { QuickAdvancedToggle, SectionHeader, ServiceTypeCard } from "./components";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -405,8 +407,34 @@ const choose = <T extends string>(
   return fallback;
 };
 
+/* ─── Neumorphic helpers ─────────────────────────────────────────────── */
+
+const NeuSection = ({
+  children,
+  isDark,
+  borderRadius,
+}: {
+  children: React.ReactNode;
+  isDark: boolean;
+  borderRadius: number;
+}) => (
+  <View style={[neu.lightShadow(isDark), { borderRadius }]}>
+    <View style={[neu.darkShadow(isDark), { borderRadius }]}>
+      <View style={{ borderRadius, backgroundColor: neu.cardBg(isDark), padding: 16, gap: 10 }}>
+        {children}
+      </View>
+    </View>
+  </View>
+);
+
+/* ─── Screen ─────────────────────────────────────────────────────────── */
+
 export const ServiceRequestScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const pageBg = isDark ? NEU_BG_DARK : NEU_BG_LIGHT;
+
   const { user, requestLogin } = useAuth();
   const { success, error } = useToast();
   const navigation = useNavigation<Nav>();
@@ -423,6 +451,10 @@ export const ServiceRequestScreen = () => {
   const [loadingExisting, setLoadingExisting] = useState(Boolean(existingServiceId));
   const loadedIdRef = useRef<string | null>(null);
 
+  const accent: ServiceAccent | null = form.serviceType ? SERVICE_ACCENT_MAP[form.serviceType] : null;
+  const accentColor = accent?.color ?? colors.primary;
+  const selectedMeta = form.serviceType ? SERVICE_META[form.serviceType] : null;
+
   // Load existing service request when serviceId is provided
   useEffect(() => {
     if (!existingServiceId) {
@@ -433,13 +465,11 @@ export const ServiceRequestScreen = () => {
       return;
     }
 
-    // Skip if we already loaded this exact request
     if (loadedIdRef.current === existingServiceId) return;
 
-    // Reset state for new load
     setLoadingExisting(true);
     setIsViewing(true);
-    setForm(initialForm()); // clear stale form data immediately
+    setForm(initialForm());
 
     let cancelled = false;
     const load = async () => {
@@ -698,32 +728,44 @@ export const ServiceRequestScreen = () => {
     }
   };
 
-  const selectedMeta = form.serviceType ? SERVICE_META[form.serviceType] : null;
+  /* ── Inline sub-components ─────────────────────────────────────────── */
 
-  const PriorityPills = () => (
-    <View style={styles.pillRow}>
-      {(["normal", "high", "urgent"] as const).map((priority) => {
-        const active = form.priority === priority;
-        return (
-          <TouchableOpacity
-            key={priority}
-            onPress={() => setField("priority", priority)}
-            activeOpacity={0.8}
-            style={[
-              styles.pill,
-              {
-                borderRadius: radius.md,
-                borderColor: active ? colors.primary : colors.border,
-                backgroundColor: active ? `${colors.primary}14` : colors.surface,
-              },
-            ]}
-          >
-            <Text style={[styles.pillText, { color: active ? colors.primary : colors.textMuted }]}>{priority.toUpperCase()}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
+  const PriorityPills = () => {
+    const priorities: { key: ServicePriority; label: string; pillColor: string }[] = [
+      { key: "normal", label: "NORMAL", pillColor: "#059669" },
+      { key: "high", label: "HIGH", pillColor: "#D97706" },
+      { key: "urgent", label: "URGENT", pillColor: "#DC2626" },
+    ];
+
+    return (
+      <View style={styles.pillRow}>
+        {priorities.map(({ key, label, pillColor }) => {
+          const active = form.priority === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setField("priority", key)}
+              activeOpacity={0.85}
+              style={[
+                styles.pill,
+                neu.pressed(isDark),
+                {
+                  borderRadius: radius.lg,
+                  backgroundColor: neu.insetBg(isDark),
+                  borderColor: "transparent",
+                },
+              ]}
+            >
+              <View style={[styles.pillDot, { backgroundColor: active ? pillColor : colors.textDisabled }]} />
+              <Text style={[styles.pillText, { color: active ? colors.text : colors.textMuted }]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
 
   const Toggle = ({
     label,
@@ -736,110 +778,186 @@ export const ServiceRequestScreen = () => {
   }) => (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       style={[
         styles.toggle,
+        neu.pressed(isDark),
         {
-          borderRadius: radius.md,
-          borderColor: value ? colors.primary : colors.border,
-          backgroundColor: value ? `${colors.primary}14` : colors.surface,
+          borderRadius: radius.lg,
+          backgroundColor: neu.insetBg(isDark),
+          borderColor: "transparent",
         },
       ]}
     >
-      <Ionicons name={value ? "checkmark-circle" : "ellipse-outline"} size={16} color={value ? colors.primary : colors.textMuted} />
-      <Text style={[styles.toggleLabel, { color: colors.text }]}>{label}</Text>
+      <Ionicons
+        name={value ? "checkmark-circle" : "ellipse-outline"}
+        size={18}
+        color={value ? colors.success : colors.textDisabled}
+      />
+      <Text style={[styles.toggleLabel, { color: value ? colors.text : colors.textMuted }]}>{label}</Text>
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
-          locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
-          locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
+  /* ── Service type selector (compact pills when a type is already chosen) ── */
 
+  const ServiceTypeSelector = () => {
+    if (isViewing) return null;
+
+    return (
+      <NeuSection isDark={isDark} borderRadius={radius.xl}>
+        <SectionHeader title="Service Type" subtitle="Pick one to continue" />
+
+        {/* Compact selector row when a type is pre-selected */}
+        {form.serviceType ? (
+          <View style={styles.typeSelectorRow}>
+            {Object.values(SERVICE_META).map((service) => {
+              const a = SERVICE_ACCENT_MAP[service.type];
+              const active = form.serviceType === service.type;
+              return (
+                <TouchableOpacity
+                  key={service.type}
+                  onPress={() => {
+                    setField("serviceType", service.type);
+                    if (!form.title.trim()) setField("title", defaultTitleFor(service.type));
+                  }}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.typeChip,
+                    active ? neu.buttonRaised(isDark) : neu.pressed(isDark),
+                    {
+                      borderRadius: radius.lg,
+                      backgroundColor: active
+                        ? (isDark ? `${a.color}22` : a.soft)
+                        : neu.insetBg(isDark),
+                      borderColor: active ? `${a.color}40` : "transparent",
+                    },
+                  ]}
+                >
+                  <Text style={styles.typeChipEmoji}>{a.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.typeChipLabel,
+                      { color: active ? a.color : colors.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {service.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.stack}>
+            {Object.values(SERVICE_META).map((service) => (
+              <ServiceTypeCard
+                key={service.type}
+                service={service}
+                accent={SERVICE_ACCENT_MAP[service.type]}
+                selected={form.serviceType === service.type}
+                onPress={() => {
+                  setField("serviceType", service.type);
+                  if (!form.title.trim()) setField("title", defaultTitleFor(service.type));
+                }}
+              />
+            ))}
+          </View>
+        )}
+
+        {fieldErrors.serviceType ? (
+          <Text style={[styles.fieldError, { color: colors.error }]}>{fieldErrors.serviceType}</Text>
+        ) : null}
+      </NeuSection>
+    );
+  };
+
+  /* ── Render ────────────────────────────────────────────────────────── */
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: pageBg }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
             paddingTop: spacing.sm,
             paddingBottom: spacing.xxl + insets.bottom,
-            gap: spacing.md,
+            gap: 16,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
         >
+          {/* Header with accent-colored back button */}
           <View style={styles.headerRow}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
-              activeOpacity={0.8}
-              style={[styles.backButton, { borderRadius: radius.md, borderColor: colors.border, backgroundColor: colors.surface }]}
+              activeOpacity={0.85}
+              style={[
+                styles.backButton,
+                neu.buttonRaised(isDark),
+                {
+                  borderRadius: radius.lg,
+                  backgroundColor: neu.cardBg(isDark),
+                },
+              ]}
             >
               <Ionicons name="arrow-back" size={16} color={colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>{isViewing ? "Request Details" : "Service Request"}</Text>
+              <View style={styles.headerTitleRow}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>
+                  {isViewing ? "Request Details" : "Service Request"}
+                </Text>
+                {accent ? (
+                  <View style={[styles.headerBadge, { backgroundColor: isDark ? `${accentColor}22` : accent.soft, borderRadius: radius.sm }]}>
+                    <Text style={styles.headerBadgeEmoji}>{accent.emoji}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
                 {isViewing ? "Viewing submitted request" : selectedMeta ? selectedMeta.subtitle : "Choose service type and submit quickly"}
               </Text>
             </View>
           </View>
 
+          {/* Accent bar under header */}
+          {accent ? (
+            <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+          ) : null}
+
           {loadingExisting ? (
             <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 }}>
-              <ActivityIndicator color={colors.primary} />
+              <ActivityIndicator color={accentColor} />
               <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: "600" }}>Loading request...</Text>
             </View>
           ) : null}
           {loadingExisting ? null : (
           <>
-          {isViewing ? null : (
-          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <SectionHeader title="Service Type" subtitle="Pick one to continue" />
-            <View style={[styles.stack, { marginTop: spacing.sm }]}>
-              {Object.values(SERVICE_META).map((service) => (
-                <ServiceTypeCard
-                  key={service.type}
-                  service={service}
-                  selected={form.serviceType === service.type}
-                  onPress={() => {
-                    setField("serviceType", service.type);
-                    if (!form.title.trim()) setField("title", defaultTitleFor(service.type));
-                  }}
-                />
-              ))}
-            </View>
-            {fieldErrors.serviceType ? <Text style={[styles.fieldError, { color: colors.error }]}>{fieldErrors.serviceType}</Text> : null}
-          </View>
-          )}
+          <ServiceTypeSelector />
 
-          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+          {/* Quick Request form */}
+          <NeuSection isDark={isDark} borderRadius={radius.xl}>
             <SectionHeader title="Quick Request" subtitle="Required fields first" />
-            <View style={[styles.stack, { marginTop: spacing.sm }]}> 
-              <Field
+            <View style={styles.stack}>
+              <NeuField
                 label="Title"
                 required
                 value={form.title}
                 onChangeText={(value) => setField("title", value)}
                 placeholder="Brief request title"
                 errorText={fieldErrors.title}
+                isDark={isDark}
+                accentColor={accentColor}
               />
 
-              <Field
+              <NeuField
                 label="Description (optional)"
                 value={form.description}
                 onChangeText={(value) => setField("description", value)}
                 placeholder="Context, urgency, or constraints"
                 multiline
+                isDark={isDark}
+                accentColor={accentColor}
               />
 
               <View>
@@ -849,36 +967,42 @@ export const ServiceRequestScreen = () => {
 
               {form.serviceType === "machine_repair" ? (
                 <>
-                  <Field
+                  <NeuField
                     label="Machine type"
                     required
                     value={form.machineType}
                     onChangeText={(value) => setField("machineType", value)}
                     placeholder="cnc, press, packaging"
                     errorText={fieldErrors.machineType}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
-                  <Field
+                  <NeuField
                     label="Issue summary"
                     required
                     value={form.issueSummary}
                     onChangeText={(value) => setField("issueSummary", value)}
                     placeholder="What is failing right now?"
                     errorText={fieldErrors.issueSummary}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
                 </>
               ) : null}
 
               {form.serviceType === "worker" ? (
                 <>
-                  <Field
+                  <NeuField
                     label="Industry"
                     required
                     value={form.workerIndustry}
                     onChangeText={(value) => setField("workerIndustry", value)}
                     placeholder="automotive, textile, packaging"
                     errorText={fieldErrors.workerIndustry}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
-                  <Field
+                  <NeuField
                     label="Headcount"
                     required
                     value={form.headcount}
@@ -886,27 +1010,33 @@ export const ServiceRequestScreen = () => {
                     keyboardType="number-pad"
                     placeholder="1"
                     errorText={fieldErrors.headcount}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
                 </>
               ) : null}
 
               {form.serviceType === "transport" ? (
                 <>
-                  <Field
+                  <NeuField
                     label="Pickup city"
                     required
                     value={form.pickupCity}
                     onChangeText={(value) => setField("pickupCity", value)}
                     placeholder="Where from?"
                     errorText={fieldErrors.pickupCity}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
-                  <Field
+                  <NeuField
                     label="Drop city"
                     required
                     value={form.dropCity}
                     onChangeText={(value) => setField("dropCity", value)}
                     placeholder="Where to?"
                     errorText={fieldErrors.dropCity}
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
                 </>
               ) : null}
@@ -927,18 +1057,17 @@ export const ServiceRequestScreen = () => {
                             activeOpacity={0.85}
                             style={[
                               styles.pill,
+                              neu.pressed(isDark),
                               {
                                 borderRadius: radius.pill,
-                                borderColor: active ? colors.primary : colors.border,
-                                backgroundColor: active ? `${colors.primary}16` : colors.surfaceElevated,
+                                backgroundColor: neu.insetBg(isDark),
+                                borderColor: "transparent",
                               },
                             ]}
                           >
+                            {active ? <View style={[styles.pillDot, { backgroundColor: colors.success }]} /> : null}
                             <Text
-                              style={[
-                                styles.pillText,
-                                { color: active ? colors.primary : colors.textMuted, textTransform: "none" },
-                              ]}
+                              style={[styles.pillText, { color: active ? colors.text : colors.textMuted, textTransform: "none" }]}
                               numberOfLines={1}
                             >
                               {product.name}
@@ -950,20 +1079,24 @@ export const ServiceRequestScreen = () => {
                     {productsLoading ? (
                       <Text style={[styles.fieldHelper, { color: colors.textMuted }]}>Loading products...</Text>
                     ) : null}
-                    <Field
+                    <NeuField
                       label="Or enter product ID"
                       value={form.advertisementProductId}
                       onChangeText={(value) => setField("advertisementProductId", value)}
                       placeholder="Paste product id"
                       errorText={fieldErrors.advertisementProductId}
+                      isDark={isDark}
+                      accentColor={accentColor}
                     />
                   </View>
 
-                  <Field
+                  <NeuField
                     label="Goal / objective"
                     value={form.advertisementObjective}
                     onChangeText={(value) => setField("advertisementObjective", value)}
                     placeholder="What should this ad achieve?"
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
 
                   <View>
@@ -978,14 +1111,16 @@ export const ServiceRequestScreen = () => {
                             activeOpacity={0.85}
                             style={[
                               styles.pill,
+                              neu.pressed(isDark),
                               {
-                                borderRadius: radius.md,
-                                borderColor: active ? colors.primary : colors.border,
-                                backgroundColor: active ? `${colors.primary}14` : colors.surface,
+                                borderRadius: radius.lg,
+                                backgroundColor: neu.insetBg(isDark),
+                                borderColor: "transparent",
                               },
                             ]}
                           >
-                            <Text style={[styles.pillText, { color: active ? colors.primary : colors.textMuted }]}>
+                            <View style={[styles.pillDot, { backgroundColor: active ? colors.success : colors.textDisabled }]} />
+                            <Text style={[styles.pillText, { color: active ? colors.text : colors.textMuted }]}>
                               {mode.toUpperCase()}
                             </Text>
                           </TouchableOpacity>
@@ -994,11 +1129,13 @@ export const ServiceRequestScreen = () => {
                     </View>
                   </View>
 
-                  <Field
+                  <NeuField
                     label="Shopper categories (comma separated)"
                     value={form.adShopperCategories}
                     onChangeText={(value) => setField("adShopperCategories", value)}
                     placeholder="metal-steel-industry, packaging"
+                    isDark={isDark}
+                    accentColor={accentColor}
                   />
                 </>
               ) : null}
@@ -1008,298 +1145,141 @@ export const ServiceRequestScreen = () => {
                 onToggle={() => setField("advancedOpen", !form.advancedOpen)}
               />
             </View>
-          </View>
+          </NeuSection>
 
           {form.advancedOpen ? (
-            <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}> 
+            <NeuSection isDark={isDark} borderRadius={radius.xl}>
               <SectionHeader title="Advanced Details" subtitle="Optional fields for better assignment" />
 
-              <View style={[styles.stack, { marginTop: spacing.sm }]}> 
-                <Field label="Contact name" value={form.contactName} onChangeText={(value) => setField("contactName", value)} />
-                <Field
-                  label="Contact email"
-                  value={form.contactEmail}
-                  onChangeText={(value) => setField("contactEmail", value)}
-                  keyboardType="email-address"
-                />
-                <Field
-                  label="Contact phone"
-                  value={form.contactPhone}
-                  onChangeText={(value) => setField("contactPhone", value)}
-                  keyboardType="phone-pad"
-                />
-                <Field
-                  label="Preferred channel"
-                  value={form.preferredChannel}
-                  onChangeText={(value) => setField("preferredChannel", value as FormState["preferredChannel"])}
-                  placeholder="phone | email | chat"
-                />
+              <View style={styles.stack}>
+                <NeuField label="Contact name" value={form.contactName} onChangeText={(value) => setField("contactName", value)} isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Contact email" value={form.contactEmail} onChangeText={(value) => setField("contactEmail", value)} keyboardType="email-address" isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Contact phone" value={form.contactPhone} onChangeText={(value) => setField("contactPhone", value)} keyboardType="phone-pad" isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Preferred channel" value={form.preferredChannel} onChangeText={(value) => setField("preferredChannel", value as FormState["preferredChannel"])} placeholder="phone | email | chat" isDark={isDark} accentColor={accentColor} />
 
-                <Field label="Address line" value={form.locationLine1} onChangeText={(value) => setField("locationLine1", value)} />
-                <Field label="City" value={form.locationCity} onChangeText={(value) => setField("locationCity", value)} />
-                <Field label="State" value={form.locationState} onChangeText={(value) => setField("locationState", value)} />
-                <Field label="Country" value={form.locationCountry} onChangeText={(value) => setField("locationCountry", value)} />
-                <Field label="Postal code" value={form.locationPostal} onChangeText={(value) => setField("locationPostal", value)} />
+                <NeuField label="Address line" value={form.locationLine1} onChangeText={(value) => setField("locationLine1", value)} isDark={isDark} accentColor={accentColor} />
+                <NeuField label="City" value={form.locationCity} onChangeText={(value) => setField("locationCity", value)} isDark={isDark} accentColor={accentColor} />
+                <NeuField label="State" value={form.locationState} onChangeText={(value) => setField("locationState", value)} isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Country" value={form.locationCountry} onChangeText={(value) => setField("locationCountry", value)} isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Postal code" value={form.locationPostal} onChangeText={(value) => setField("locationPostal", value)} isDark={isDark} accentColor={accentColor} />
 
-                <Field
-                  label="Schedule start"
-                  value={form.scheduleStart}
-                  onChangeText={(value) => setField("scheduleStart", value)}
-                  placeholder="YYYY-MM-DD"
-                />
-                <Field
-                  label="Schedule end"
-                  value={form.scheduleEnd}
-                  onChangeText={(value) => setField("scheduleEnd", value)}
-                  placeholder="YYYY-MM-DD"
-                />
-                <Toggle
-                  label={form.scheduleFlexible ? "Flexible schedule" : "Fixed schedule"}
-                  value={form.scheduleFlexible}
-                  onPress={() => setField("scheduleFlexible", !form.scheduleFlexible)}
-                />
-                <Field
-                  label="Schedule notes"
-                  value={form.scheduleNotes}
-                  onChangeText={(value) => setField("scheduleNotes", value)}
-                />
+                <NeuField label="Schedule start" value={form.scheduleStart} onChangeText={(value) => setField("scheduleStart", value)} placeholder="YYYY-MM-DD" isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Schedule end" value={form.scheduleEnd} onChangeText={(value) => setField("scheduleEnd", value)} placeholder="YYYY-MM-DD" isDark={isDark} accentColor={accentColor} />
+                <Toggle label={form.scheduleFlexible ? "Flexible schedule" : "Fixed schedule"} value={form.scheduleFlexible} onPress={() => setField("scheduleFlexible", !form.scheduleFlexible)} />
+                <NeuField label="Schedule notes" value={form.scheduleNotes} onChangeText={(value) => setField("scheduleNotes", value)} isDark={isDark} accentColor={accentColor} />
 
-                <Field
-                  label="Budget estimate"
-                  value={form.budgetEstimate}
-                  onChangeText={(value) => setField("budgetEstimate", value.replace(/[^0-9.]/g, ""))}
-                  keyboardType="decimal-pad"
-                />
-                <Field
-                  label="Budget currency"
-                  value={form.budgetCurrency}
-                  onChangeText={(value) => setField("budgetCurrency", value.toUpperCase())}
-                />
+                <NeuField label="Budget estimate" value={form.budgetEstimate} onChangeText={(value) => setField("budgetEstimate", value.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" isDark={isDark} accentColor={accentColor} />
+                <NeuField label="Budget currency" value={form.budgetCurrency} onChangeText={(value) => setField("budgetCurrency", value.toUpperCase())} isDark={isDark} accentColor={accentColor} />
 
                 {form.serviceType === "machine_repair" ? (
                   <>
-                    <Field label="Machine name" value={form.machineName} onChangeText={(value) => setField("machineName", value)} />
-                    <Field
-                      label="Manufacturer"
-                      value={form.machineManufacturer}
-                      onChangeText={(value) => setField("machineManufacturer", value)}
-                    />
-                    <Field label="Model" value={form.machineModel} onChangeText={(value) => setField("machineModel", value)} />
-                    <Field
-                      label="Issue details"
-                      value={form.issueDetails}
-                      onChangeText={(value) => setField("issueDetails", value)}
-                      multiline
-                    />
-                    <Field
-                      label="Severity"
-                      value={form.severity}
-                      onChangeText={(value) => setField("severity", value as FormState["severity"])}
-                      placeholder="low | medium | high | critical"
-                    />
-                    <Field
-                      label="Warranty"
-                      value={form.warrantyStatus}
-                      onChangeText={(value) => setField("warrantyStatus", value as FormState["warrantyStatus"])}
-                      placeholder="in_warranty | out_of_warranty | unknown"
-                    />
-                    <Toggle
-                      label={form.requiresDowntime ? "Downtime required" : "No downtime required"}
-                      value={form.requiresDowntime}
-                      onPress={() => setField("requiresDowntime", !form.requiresDowntime)}
-                    />
+                    <NeuField label="Machine name" value={form.machineName} onChangeText={(value) => setField("machineName", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Manufacturer" value={form.machineManufacturer} onChangeText={(value) => setField("machineManufacturer", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Model" value={form.machineModel} onChangeText={(value) => setField("machineModel", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Issue details" value={form.issueDetails} onChangeText={(value) => setField("issueDetails", value)} multiline isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Severity" value={form.severity} onChangeText={(value) => setField("severity", value as FormState["severity"])} placeholder="low | medium | high | critical" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Warranty" value={form.warrantyStatus} onChangeText={(value) => setField("warrantyStatus", value as FormState["warrantyStatus"])} placeholder="in_warranty | out_of_warranty | unknown" isDark={isDark} accentColor={accentColor} />
+                    <Toggle label={form.requiresDowntime ? "Downtime required" : "No downtime required"} value={form.requiresDowntime} onPress={() => setField("requiresDowntime", !form.requiresDowntime)} />
                   </>
                 ) : null}
 
                 {form.serviceType === "worker" ? (
                   <>
-                    <Field
-                      label="Roles (comma separated)"
-                      value={form.workerRoles}
-                      onChangeText={(value) => setField("workerRoles", value)}
-                    />
-                    <Field
-                      label="Experience"
-                      value={form.experienceLevel}
-                      onChangeText={(value) => setField("experienceLevel", value as FormState["experienceLevel"])}
-                    />
-                    <Field
-                      label="Shift"
-                      value={form.shiftType}
-                      onChangeText={(value) => setField("shiftType", value as FormState["shiftType"])}
-                    />
-                    <Field
-                      label="Contract"
-                      value={form.contractType}
-                      onChangeText={(value) => setField("contractType", value as FormState["contractType"])}
-                    />
-                    <Field
-                      label="Start date"
-                      value={form.workerStart}
-                      onChangeText={(value) => setField("workerStart", value)}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <Field
-                      label="Duration weeks"
-                      value={form.durationWeeks}
-                      onChangeText={(value) => setField("durationWeeks", value.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                    />
-                    <Field label="Skills" value={form.workerSkills} onChangeText={(value) => setField("workerSkills", value)} />
-                    <Field
-                      label="Certifications"
-                      value={form.workerCertifications}
-                      onChangeText={(value) => setField("workerCertifications", value)}
-                    />
-                    <Field
-                      label="Languages"
-                      value={form.workerLanguages}
-                      onChangeText={(value) => setField("workerLanguages", value)}
-                    />
-                    <Field label="Safety clearances" value={form.workerSafety} onChangeText={(value) => setField("workerSafety", value)} />
+                    <NeuField label="Roles (comma separated)" value={form.workerRoles} onChangeText={(value) => setField("workerRoles", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Experience" value={form.experienceLevel} onChangeText={(value) => setField("experienceLevel", value as FormState["experienceLevel"])} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Shift" value={form.shiftType} onChangeText={(value) => setField("shiftType", value as FormState["shiftType"])} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Contract" value={form.contractType} onChangeText={(value) => setField("contractType", value as FormState["contractType"])} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Start date" value={form.workerStart} onChangeText={(value) => setField("workerStart", value)} placeholder="YYYY-MM-DD" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Duration weeks" value={form.durationWeeks} onChangeText={(value) => setField("durationWeeks", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Skills" value={form.workerSkills} onChangeText={(value) => setField("workerSkills", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Certifications" value={form.workerCertifications} onChangeText={(value) => setField("workerCertifications", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Languages" value={form.workerLanguages} onChangeText={(value) => setField("workerLanguages", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Safety clearances" value={form.workerSafety} onChangeText={(value) => setField("workerSafety", value)} isDark={isDark} accentColor={accentColor} />
                   </>
                 ) : null}
 
                 {form.serviceType === "transport" ? (
                   <>
-                    <Field
-                      label="Mode"
-                      value={form.transportMode}
-                      onChangeText={(value) => setField("transportMode", value as FormState["transportMode"])}
-                    />
-                    <Field label="Pickup state" value={form.pickupState} onChangeText={(value) => setField("pickupState", value)} />
-                    <Field label="Drop state" value={form.dropState} onChangeText={(value) => setField("dropState", value)} />
-                    <Field label="Load type" value={form.loadType} onChangeText={(value) => setField("loadType", value)} />
-                    <Field
-                      label="Load weight tons"
-                      value={form.loadWeightTons}
-                      onChangeText={(value) => setField("loadWeightTons", value.replace(/[^0-9.]/g, ""))}
-                      keyboardType="decimal-pad"
-                    />
-                    <Field label="Vehicle type" value={form.vehicleType} onChangeText={(value) => setField("vehicleType", value)} />
-                    <Field
-                      label="Special handling"
-                      value={form.specialHandling}
-                      onChangeText={(value) => setField("specialHandling", value)}
-                      multiline
-                    />
-                    <Toggle
-                      label={form.requiresReturnTrip ? "Return trip required" : "One-way"}
-                      value={form.requiresReturnTrip}
-                      onPress={() => setField("requiresReturnTrip", !form.requiresReturnTrip)}
-                    />
-                    <Toggle
-                      label={form.insuranceNeeded ? "Insurance needed" : "No insurance"}
-                      value={form.insuranceNeeded}
-                      onPress={() => setField("insuranceNeeded", !form.insuranceNeeded)}
-                    />
+                    <NeuField label="Mode" value={form.transportMode} onChangeText={(value) => setField("transportMode", value as FormState["transportMode"])} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Pickup state" value={form.pickupState} onChangeText={(value) => setField("pickupState", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Drop state" value={form.dropState} onChangeText={(value) => setField("dropState", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Load type" value={form.loadType} onChangeText={(value) => setField("loadType", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Load weight tons" value={form.loadWeightTons} onChangeText={(value) => setField("loadWeightTons", value.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Vehicle type" value={form.vehicleType} onChangeText={(value) => setField("vehicleType", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Special handling" value={form.specialHandling} onChangeText={(value) => setField("specialHandling", value)} multiline isDark={isDark} accentColor={accentColor} />
+                    <Toggle label={form.requiresReturnTrip ? "Return trip required" : "One-way"} value={form.requiresReturnTrip} onPress={() => setField("requiresReturnTrip", !form.requiresReturnTrip)} />
+                    <Toggle label={form.insuranceNeeded ? "Insurance needed" : "No insurance"} value={form.insuranceNeeded} onPress={() => setField("insuranceNeeded", !form.insuranceNeeded)} />
                   </>
                 ) : null}
 
                 {form.serviceType === "advertisement" ? (
                   <>
-                    <Field
-                      label="Target user IDs (comma separated)"
-                      value={form.adTargetUserIds}
-                      onChangeText={(value) => setField("adTargetUserIds", value)}
-                      placeholder="Optional explicit users"
-                    />
-                    <Field
-                      label="Shopper subcategories"
-                      value={form.adShopperSubCategories}
-                      onChangeText={(value) => setField("adShopperSubCategories", value)}
-                    />
-                    <Field
-                      label="Buy-intent categories"
-                      value={form.adBuyIntentCategories}
-                      onChangeText={(value) => setField("adBuyIntentCategories", value)}
-                    />
-                    <Field
-                      label="Buy-intent subcategories"
-                      value={form.adBuyIntentSubCategories}
-                      onChangeText={(value) => setField("adBuyIntentSubCategories", value)}
-                    />
-                    <Field
-                      label="Listed-product categories"
-                      value={form.adListedProductCategories}
-                      onChangeText={(value) => setField("adListedProductCategories", value)}
-                    />
-                    <Field
-                      label="Listed-product subcategories"
-                      value={form.adListedProductSubCategories}
-                      onChangeText={(value) => setField("adListedProductSubCategories", value)}
-                    />
-                    <Toggle
-                      label={form.adRequireSameCategory ? "Must have listed product in same category" : "Same-category listing optional"}
-                      value={form.adRequireSameCategory}
-                      onPress={() => setField("adRequireSameCategory", !form.adRequireSameCategory)}
-                    />
-                    <Field
-                      label="Lookback days"
-                      value={form.adLookbackDays}
-                      onChangeText={(value) => setField("adLookbackDays", value.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                    />
-                    <Field
-                      label="Ad start date"
-                      value={form.adStartAt}
-                      onChangeText={(value) => setField("adStartAt", value)}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <Field
-                      label="Ad end date"
-                      value={form.adEndAt}
-                      onChangeText={(value) => setField("adEndAt", value)}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <Field
-                      label="Discounted ad price (optional)"
-                      value={form.adPriceOverrideAmount}
-                      onChangeText={(value) => setField("adPriceOverrideAmount", value.replace(/[^0-9.]/g, ""))}
-                      keyboardType="decimal-pad"
-                      placeholder="Enter lower promoted price"
-                      errorText={fieldErrors.adPriceOverrideAmount}
-                    />
-                    <Field
-                      label="Ad price currency"
-                      value={form.adPriceOverrideCurrency}
-                      onChangeText={(value) => setField("adPriceOverrideCurrency", value.toUpperCase())}
-                      placeholder="INR"
-                    />
-                    <Field label="Headline" value={form.adHeadline} onChangeText={(value) => setField("adHeadline", value)} />
-                    <Field label="Subtitle" value={form.adSubtitle} onChangeText={(value) => setField("adSubtitle", value)} />
-                    <Field label="CTA label" value={form.adCtaLabel} onChangeText={(value) => setField("adCtaLabel", value)} />
-                    <Field label="Badge" value={form.adBadge} onChangeText={(value) => setField("adBadge", value)} />
-                    <Field
-                      label="Frequency cap / day"
-                      value={form.adFrequencyCap}
-                      onChangeText={(value) => setField("adFrequencyCap", value.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                    />
-                    <Field
-                      label="Priority (1-100)"
-                      value={form.adPriority}
-                      onChangeText={(value) => setField("adPriority", value.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                    />
+                    <NeuField label="Target user IDs (comma separated)" value={form.adTargetUserIds} onChangeText={(value) => setField("adTargetUserIds", value)} placeholder="Optional explicit users" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Shopper subcategories" value={form.adShopperSubCategories} onChangeText={(value) => setField("adShopperSubCategories", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Buy-intent categories" value={form.adBuyIntentCategories} onChangeText={(value) => setField("adBuyIntentCategories", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Buy-intent subcategories" value={form.adBuyIntentSubCategories} onChangeText={(value) => setField("adBuyIntentSubCategories", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Listed-product categories" value={form.adListedProductCategories} onChangeText={(value) => setField("adListedProductCategories", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Listed-product subcategories" value={form.adListedProductSubCategories} onChangeText={(value) => setField("adListedProductSubCategories", value)} isDark={isDark} accentColor={accentColor} />
+                    <Toggle label={form.adRequireSameCategory ? "Must have listed product in same category" : "Same-category listing optional"} value={form.adRequireSameCategory} onPress={() => setField("adRequireSameCategory", !form.adRequireSameCategory)} />
+                    <NeuField label="Lookback days" value={form.adLookbackDays} onChangeText={(value) => setField("adLookbackDays", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Ad start date" value={form.adStartAt} onChangeText={(value) => setField("adStartAt", value)} placeholder="YYYY-MM-DD" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Ad end date" value={form.adEndAt} onChangeText={(value) => setField("adEndAt", value)} placeholder="YYYY-MM-DD" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Discounted ad price (optional)" value={form.adPriceOverrideAmount} onChangeText={(value) => setField("adPriceOverrideAmount", value.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="Enter lower promoted price" errorText={fieldErrors.adPriceOverrideAmount} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Ad price currency" value={form.adPriceOverrideCurrency} onChangeText={(value) => setField("adPriceOverrideCurrency", value.toUpperCase())} placeholder="INR" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Headline" value={form.adHeadline} onChangeText={(value) => setField("adHeadline", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Subtitle" value={form.adSubtitle} onChangeText={(value) => setField("adSubtitle", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="CTA label" value={form.adCtaLabel} onChangeText={(value) => setField("adCtaLabel", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Badge" value={form.adBadge} onChangeText={(value) => setField("adBadge", value)} isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Frequency cap / day" value={form.adFrequencyCap} onChangeText={(value) => setField("adFrequencyCap", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Priority (1-100)" value={form.adPriority} onChangeText={(value) => setField("adPriority", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
                   </>
                 ) : null}
 
-                <Field label="Notes" value={form.notes} onChangeText={(value) => setField("notes", value)} multiline />
+                <NeuField label="Notes" value={form.notes} onChangeText={(value) => setField("notes", value)} multiline isDark={isDark} accentColor={accentColor} />
               </View>
-            </View>
+            </NeuSection>
           ) : null}
 
-          <View style={[styles.card, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}>
+          {/* Submit section */}
+          <NeuSection isDark={isDark} borderRadius={radius.xl}>
             {isViewing ? (
               <Text style={[styles.submitHint, { color: colors.textMuted }]}>This request has already been submitted.</Text>
             ) : (
               <>
                 <Text style={[styles.submitHint, { color: colors.textMuted }]}>Review required fields and submit. You can add more details later if needed.</Text>
-                <Button label={user?.role === "guest" ? "Login to submit" : "Submit request"} onPress={submit} loading={submitting} />
+                <TouchableOpacity
+                  onPress={submit}
+                  disabled={submitting}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.submitOuter,
+                    neu.buttonRaised(isDark),
+                    { borderRadius: radius.xl, opacity: submitting ? 0.7 : 1 },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={[accentColor, `${accentColor}CC`]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.submitGradient, { borderRadius: radius.xl }]}
+                  >
+                    {submitting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Text style={styles.submitText}>
+                          {user?.role === "guest" ? "Login to submit" : "Submit request"}
+                        </Text>
+                        <View style={styles.submitArrow}>
+                          <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        </View>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
               </>
             )}
-          </View>
+          </NeuSection>
           </>
           )}
         </ScrollView>
@@ -1308,7 +1288,9 @@ export const ServiceRequestScreen = () => {
   );
 };
 
-const Field = ({
+/* ─── Neumorphic Field ───────────────────────────────────────────────── */
+
+const NeuField = ({
   label,
   value,
   onChangeText,
@@ -1317,6 +1299,8 @@ const Field = ({
   required,
   multiline,
   keyboardType,
+  isDark,
+  accentColor,
 }: {
   label: string;
   value: string;
@@ -1326,9 +1310,12 @@ const Field = ({
   required?: boolean;
   multiline?: boolean;
   keyboardType?: "default" | "number-pad" | "decimal-pad" | "email-address" | "phone-pad";
+  isDark: boolean;
+  accentColor: string;
 }) => {
   const { colors, radius } = useTheme();
   const hasError = Boolean(errorText);
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.fieldWrap}>
@@ -1336,25 +1323,38 @@ const Field = ({
         {label}
         {required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textTertiary}
-        keyboardType={keyboardType}
-        multiline={multiline}
+      <View
         style={[
-          styles.input,
+          neu.pressed(isDark),
           {
-            borderRadius: radius.md,
-            borderColor: hasError ? colors.error : colors.border,
-            backgroundColor: colors.surfaceElevated,
-            color: colors.text,
-            minHeight: multiline ? 84 : 48,
-            textAlignVertical: multiline ? "top" : "center",
+            borderRadius: radius.lg,
+            borderWidth: focused ? 1.5 : 0,
+            borderColor: focused ? `${accentColor}60` : "transparent",
           },
         ]}
-      />
+      >
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textTertiary}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={[
+            styles.input,
+            {
+              borderRadius: radius.lg,
+              backgroundColor: neu.insetBg(isDark),
+              color: colors.text,
+              minHeight: multiline ? 84 : 48,
+              textAlignVertical: multiline ? "top" : "center",
+            },
+            hasError && { borderWidth: 1, borderColor: colors.error },
+          ]}
+        />
+      </View>
       {hasError ? <Text style={[styles.fieldError, { color: colors.error }]}>{errorText}</Text> : null}
     </View>
   );
@@ -1362,48 +1362,100 @@ const Field = ({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  headerTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   backButton: {
-    width: 36,
-    height: 36,
-    borderWidth: 1,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: { fontSize: 20, fontWeight: "900", letterSpacing: -0.2 },
   headerSubtitle: { marginTop: 2, fontSize: 12, fontWeight: "600" },
-  card: {
-    borderWidth: 1,
-    padding: 14,
+  headerBadge: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerBadgeEmoji: { fontSize: 15 },
+  accentBar: {
+    height: 3,
+    borderRadius: 1.5,
+    width: 50,
+    marginLeft: 52,
+    marginTop: -8,
+  },
+
+  // Type selector
+  typeSelectorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
-  stack: { gap: 10 },
+  typeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  typeChipEmoji: { fontSize: 16 },
+  typeChipLabel: { fontSize: 12, fontWeight: "800" },
+
+  stack: { gap: 12 },
   label: { fontSize: 12, fontWeight: "700", marginBottom: 5 },
   fieldWrap: { gap: 2 },
   input: {
-    borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
     fontWeight: "600",
   },
   fieldError: { marginTop: 5, fontSize: 11, fontWeight: "700" },
   fieldHelper: { fontSize: 11, fontWeight: "600" },
-  submitHint: { fontSize: 12, fontWeight: "600", lineHeight: 17, marginBottom: 6 },
-  pillRow: { flexDirection: "row", gap: 8 },
-  pill: {
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  pillText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3 },
-  toggle: {
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+  submitHint: { fontSize: 12, fontWeight: "600", lineHeight: 17, marginBottom: 4 },
+
+  submitOuter: { overflow: "hidden" },
+  submitGradient: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
-  toggleLabel: { fontSize: 12, fontWeight: "700" },
+  submitText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF", letterSpacing: 0.3 },
+  submitArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  pillRow: { flexDirection: "row", gap: 8 },
+  pill: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pillDot: { width: 6, height: 6, borderRadius: 3 },
+  pillText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3 },
+
+  toggle: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+  },
+  toggleLabel: { fontSize: 13, fontWeight: "700" },
 });
