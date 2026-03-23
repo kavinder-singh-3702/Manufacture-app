@@ -63,14 +63,13 @@ export const AdminListCard = ({
         styles.card,
         {
           backgroundColor: colors.surface,
-          borderColor: colors.border,
           borderRadius: radius.lg,
           padding: isCompact ? spacing.md : spacing.lg,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 6,
-          elevation: 3,
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
         },
         style,
       ]}
@@ -82,30 +81,30 @@ export const AdminListCard = ({
               styles.avatar,
               {
                 backgroundColor: avatarColor || colors.primary,
-                width: isCompact ? 44 : 50,
-                height: isCompact ? 44 : 50,
-                borderRadius: isCompact ? 14 : 16,
-                marginRight: isCompact ? 12 : 16,
+                width: isCompact ? 42 : 46,
+                height: isCompact ? 42 : 46,
+                borderRadius: isCompact ? 12 : 14,
+                marginRight: isCompact ? 12 : 14,
               },
             ]}
           >
-            <Text style={[styles.avatarText, { color: colors.textOnPrimary, fontSize: isCompact ? 16 : 20 }]}>{avatarText}</Text>
+            <Text style={[styles.avatarText, { color: "#FFFFFF", fontSize: isCompact ? 16 : 18 }]}>{avatarText}</Text>
           </View>
         )}
 
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text
-              style={[styles.title, { color: colors.text, fontSize: isCompact ? 15 : 16 }]}
+              style={[styles.title, { color: colors.text, fontSize: isCompact ? 14 : 15 }]}
               numberOfLines={2}
             >
               {title}
             </Text>
             {status && (
-              <View style={[styles.statusPill, { backgroundColor: getStatusColor(status.type) + "16", borderWidth: 1, borderColor: getStatusColor(status.type) + "30" }]}>
+              <View style={[styles.statusPill, { backgroundColor: `${getStatusColor(status.type)}14` }]}>
                 <View style={[styles.statusDot, { backgroundColor: getStatusColor(status.type) }]} />
                 <Text
-                  style={[styles.statusText, { color: getStatusColor(status.type), fontSize: isCompact ? 11 : 12 }]}
+                  style={[styles.statusText, { color: getStatusColor(status.type), fontSize: isCompact ? 10 : 11 }]}
                 >
                   {status.label}
                 </Text>
@@ -115,7 +114,7 @@ export const AdminListCard = ({
 
           {subtitle && (
             <Text
-              style={[styles.subtitle, { color: colors.textSecondary, fontSize: isCompact ? 13 : 14 }]}
+              style={[styles.subtitle, { color: colors.textMuted, fontSize: isCompact ? 12 : 13 }]}
               numberOfLines={2}
             >
               {subtitle}
@@ -123,7 +122,7 @@ export const AdminListCard = ({
           )}
 
           {meta && (
-            <Text style={[styles.meta, { color: colors.textMuted, fontSize: isCompact ? 12 : 13 }]}>
+            <Text style={[styles.meta, { color: colors.textTertiary, fontSize: isCompact ? 11 : 12 }]}>
               {meta}
             </Text>
           )}
@@ -138,9 +137,7 @@ export const AdminListCard = ({
 };
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1.5,
-  },
+  card: {},
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -150,7 +147,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
   },
   content: {
@@ -171,15 +168,15 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   statusText: {
     fontWeight: "700",

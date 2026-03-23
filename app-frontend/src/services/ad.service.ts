@@ -217,6 +217,11 @@ class AdService {
     return response.campaign;
   }
 
+  async stopCampaign(campaignId: string): Promise<AdCampaign> {
+    const response = await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, { status: "archived" });
+    return response.campaign;
+  }
+
   async getInsights(campaignId: string): Promise<AdInsights> {
     const response = await apiClient.get<{ insights: AdInsights }>(`/ads/admin/campaigns/${campaignId}/insights`);
     return response.insights;

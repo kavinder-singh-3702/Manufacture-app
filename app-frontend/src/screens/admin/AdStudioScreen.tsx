@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { RootStackParamList } from "../../navigation/types";
 import {
   adService,
@@ -142,8 +143,33 @@ const categoryTitle = (category: ProductCategory) => category.title || category.
 
 const stepLabels = ["Source & Owner", "Select Product", "Audience", "Creative", "Schedule & Launch"];
 
+// Ad Studio accent color
+const AD_ACCENT = "#7C3AED"; // violet — matches ad/promotion branding
+const AD_ACCENT_SOFT = "#EDE9FE";
+const AD_ACCENT_WASH = "#F5F3FF";
+
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+
 export const AdStudioScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<Nav>();
   const route = useRoute<StudioRoute>();
 
@@ -208,6 +234,13 @@ export const AdStudioScreen = () => {
   const [selectedCampaign, setSelectedCampaign] = useState<AdCampaign | null>(null);
   const [selectedInsights, setSelectedInsights] = useState<AdInsights | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const [actionModalCampaign, setActionModalCampaign] = useState<AdCampaign | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailModalCampaign, setDetailModalCampaign] = useState<AdCampaign | null>(null);
+  const [detailModalInsights, setDetailModalInsights] = useState<AdInsights | null>(null);
+  const [detailModalLoading, setDetailModalLoading] = useState(false);
 
   const [createMode, setCreateMode] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -406,24 +439,49 @@ export const AdStudioScreen = () => {
     }
   }, []);
 
-  const onActivatePause = useCallback(
-    async (campaign: AdCampaign) => {
+  const onCampaignAction = useCallback(
+    async (campaign: AdCampaign, action: "activate" | "pause" | "stop") => {
       try {
-        if (campaign.status === "active") {
+        setActionLoading(true);
+        if (action === "activate") {
+          await adService.activateCampaign(campaign.id);
+        } else if (action === "pause") {
           await adService.pauseCampaign(campaign.id);
         } else {
-          await adService.activateCampaign(campaign.id);
+          await adService.stopCampaign(campaign.id);
         }
+        setActionModalCampaign(null);
         await loadCampaigns();
         if (selectedCampaign?.id === campaign.id) {
           openCampaign(campaign.id);
         }
       } catch {
         // Preserve UI state.
+      } finally {
+        setActionLoading(false);
       }
     },
     [loadCampaigns, openCampaign, selectedCampaign?.id]
   );
+
+  const openDetailModal = useCallback(async (campaignId: string) => {
+    setActionModalCampaign(null);
+    setDetailModalVisible(true);
+    setDetailModalLoading(true);
+    try {
+      const [campaign, insights] = await Promise.all([
+        adService.getCampaign(campaignId),
+        adService.getInsights(campaignId),
+      ]);
+      setDetailModalCampaign(campaign);
+      setDetailModalInsights(insights);
+    } catch {
+      setDetailModalCampaign(null);
+      setDetailModalInsights(null);
+    } finally {
+      setDetailModalLoading(false);
+    }
+  }, []);
 
   const usersById = useMemo(() => {
     const map = new Map<string, AdminUser>();
@@ -892,16 +950,20 @@ export const AdStudioScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { borderBottomColor: colors.border }]}> 
+    <SafeAreaView style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
+      <View style={[styles.header, { borderBottomColor: "transparent" }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.backButton, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface }]}
+          activeOpacity={0.85}
+          style={[styles.backButton, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: neuCardBg(isDark) }]}
         >
           <Ionicons name="arrow-back" size={18} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>Ad Studio</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={[styles.title, { color: colors.text }]}>Ad Studio</Text>
+            <Text style={{ fontSize: 18 }}>📢</Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Build targeted product ads in guided steps</Text>
         </View>
         <TouchableOpacity
@@ -913,9 +975,11 @@ export const AdStudioScreen = () => {
             setCreateMode(true);
             setWizardError(null);
           }}
-          style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+          activeOpacity={0.85}
+          style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: createMode ? colors.error : AD_ACCENT }]}
         >
-          <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>{createMode ? "Close" : "New Ad"}</Text>
+          <Ionicons name={createMode ? "close" : "add"} size={16} color="#FFFFFF" />
+          <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>{createMode ? "Close" : "New Ad"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -927,7 +991,7 @@ export const AdStudioScreen = () => {
         automaticallyAdjustKeyboardInsets
       >
         {createMode ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Create Campaign</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Step {wizardStep + 1} of {stepLabels.length}</Text>
 
@@ -1725,52 +1789,66 @@ export const AdStudioScreen = () => {
           </View>
         ) : null}
 
-        <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+        <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{campaigns.length} total</Text>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginTop: 2 }]}>{campaigns.length} total</Text>
+            </View>
           </View>
 
           {campaignsLoading ? (
             <View style={styles.inlineLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={AD_ACCENT} />
             </View>
           ) : campaignError ? (
             <Text style={[styles.errorText, { color: colors.error }]}>{campaignError}</Text>
           ) : campaigns.length === 0 ? (
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>No campaigns yet.</Text>
+            <View style={[styles.emptyCampaign, neuPressed(isDark), { borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
+              <Ionicons name="megaphone-outline" size={22} color={colors.textMuted} />
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>No campaigns yet. Tap "New Ad" to create one.</Text>
+            </View>
           ) : (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 10 }}>
               {campaigns.map((campaign) => {
                 const tone = statusTone(campaign.status);
+                const isActive = campaign.status === "active";
+                const isDone = campaign.status === "completed" || campaign.status === "archived";
                 return (
                   <TouchableOpacity
                     key={campaign.id}
-                    onPress={() => openCampaign(campaign.id)}
-                    style={[styles.optionCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                    onPress={() => setActionModalCampaign(campaign)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.campaignCard,
+                      neuRaised(isDark),
+                      {
+                        borderRadius: radius.lg,
+                        backgroundColor: neuCardBg(isDark),
+                        borderLeftWidth: 4,
+                        borderLeftColor: tone.fg,
+                        opacity: isDone ? 0.75 : 1,
+                      },
+                    ]}
                   >
-                    <View style={styles.rowBetween}>
-                      <Text style={[styles.optionTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
-                        {campaign.name}
-                      </Text>
-                      <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: tone.bg }]}>
-                        <Text style={[styles.statusChipText, { color: tone.fg }]}>{campaign.status}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.optionMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                      {campaign.product?.name || "Product unavailable"}
-                    </Text>
-                    <View style={styles.rowBetween}>
-                      <Text style={[styles.optionMeta, { color: colors.textMuted }]}>Priority {campaign.priority}</Text>
-                      <TouchableOpacity
-                        onPress={() => onActivatePause(campaign)}
-                        style={[styles.smallAction, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.surface }]}
-                      >
-                        <Text style={[styles.smallActionText, { color: colors.text }]}>
-                          {campaign.status === "active" ? "Pause" : "Activate"}
+                    <View style={styles.campaignContent}>
+                      <View style={styles.rowBetween}>
+                        <Text style={[styles.campaignName, { color: colors.text }]} numberOfLines={1}>
+                          {campaign.name}
                         </Text>
-                      </TouchableOpacity>
+                        <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: tone.bg }]}>
+                          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: tone.fg }} />
+                          <Text style={[styles.statusChipText, { color: tone.fg }]}>{campaign.status}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.optionMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                        {campaign.product?.name || "Product unavailable"}
+                      </Text>
+                      <Text style={[styles.optionMeta, { color: colors.textTertiary }]}>
+                        Priority {campaign.priority} • Cap {campaign.frequencyCapPerDay}/day
+                      </Text>
                     </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
                 );
               })}
@@ -1801,6 +1879,162 @@ export const AdStudioScreen = () => {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Campaign Action Modal */}
+      <Modal
+        visible={actionModalCampaign !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !actionLoading && setActionModalCampaign(null)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => !actionLoading && setActionModalCampaign(null)}
+          style={styles.modalBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalSheet, neuRaised(isDark), { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl }]}>
+            {actionModalCampaign ? (
+              <>
+                {/* Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>{actionModalCampaign.name}</Text>
+                  <TouchableOpacity onPress={() => !actionLoading && setActionModalCampaign(null)}>
+                    <Ionicons name="close" size={22} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Info */}
+                <Text style={[styles.modalMeta, { color: colors.textMuted }]}>
+                  {actionModalCampaign.product?.name || "Product unavailable"} • Priority {actionModalCampaign.priority}
+                </Text>
+                <View style={[styles.modalStatusRow, { backgroundColor: statusTone(actionModalCampaign.status).bg, borderRadius: radius.pill, alignSelf: "flex-start" }]}>
+                  <Text style={[styles.modalStatusText, { color: statusTone(actionModalCampaign.status).fg }]}>
+                    {actionModalCampaign.status.toUpperCase()}
+                  </Text>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.modalActions}>
+                  {actionModalCampaign.status !== "active" && actionModalCampaign.status !== "archived" && actionModalCampaign.status !== "completed" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "activate")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#059669", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Activate</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {actionModalCampaign.status === "active" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "pause")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#D97706", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="pause-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Pause</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {actionModalCampaign.status !== "archived" && actionModalCampaign.status !== "completed" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "stop")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#DC2626", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="stop-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Stop</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* View details link */}
+                <TouchableOpacity
+                  onPress={() => openDetailModal(actionModalCampaign.id)}
+                  activeOpacity={0.8}
+                  style={[styles.modalDetailLink, { borderColor: colors.border, borderRadius: radius.lg }]}
+                >
+                  <Text style={[styles.modalDetailText, { color: colors.primary }]}>View full details</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Campaign Detail Modal */}
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}
+          style={styles.modalBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalSheet, neuRaised(isDark), { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl }]}>
+            {detailModalLoading ? (
+              <View style={{ paddingVertical: 30, alignItems: "center" }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.modalMeta, { color: colors.textMuted, marginTop: 8 }]}>Loading details...</Text>
+              </View>
+            ) : detailModalCampaign ? (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>{detailModalCampaign.name}</Text>
+                  <TouchableOpacity onPress={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}>
+                    <Ionicons name="close" size={22} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.modalStatusRow, { backgroundColor: statusTone(detailModalCampaign.status).bg, borderRadius: radius.pill, alignSelf: "flex-start" }]}>
+                  <Text style={[styles.modalStatusText, { color: statusTone(detailModalCampaign.status).fg }]}>
+                    {detailModalCampaign.status.toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={[styles.detailSection, neuPressed(isDark), { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg }]}>
+                  <InfoLine label="Product" value={detailModalCampaign.product?.name || "N/A"} />
+                  <InfoLine label="Priority" value={String(detailModalCampaign.priority)} />
+                  <InfoLine label="Targeting" value={detailModalCampaign.targeting?.mode?.toUpperCase() || "ANY"} />
+                  <InfoLine label="Freq. cap" value={`${detailModalCampaign.frequencyCapPerDay}/day`} />
+                </View>
+
+                {detailModalInsights ? (
+                  <View style={[styles.detailSection, neuPressed(isDark), { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg }]}>
+                    <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Insights</Text>
+                    <InfoLine label="Impressions" value={String(detailModalInsights.summary.impression.count)} />
+                    <InfoLine label="Clicks" value={String(detailModalInsights.summary.click.count)} />
+                    <InfoLine label="Dismissed" value={String(detailModalInsights.summary.dismiss.count)} />
+                    <InfoLine label="CTR" value={`${detailModalInsights.ctr}%`} />
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Text style={[styles.modalMeta, { color: colors.textMuted, textAlign: "center", paddingVertical: 20 }]}>Could not load details.</Text>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -2254,17 +2488,40 @@ const styles = StyleSheet.create({
   optionCard: { borderWidth: 1, padding: 10, gap: 4 },
   optionTitle: { fontSize: 13, fontWeight: "800" },
   optionMeta: { fontSize: 11, fontWeight: "600" },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 4 },
+  statusChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
   statusChipText: { fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
   inlineLoading: { paddingVertical: 10, alignItems: "center", justifyContent: "center" },
   primaryBtn: {
     minHeight: 40,
     minWidth: 100,
     paddingHorizontal: 14,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 5,
   },
   primaryBtnText: { fontSize: 12, fontWeight: "900" },
+  emptyCampaign: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  campaignCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+  },
+  campaignContent: {
+    flex: 1,
+    gap: 4,
+  },
+  campaignName: {
+    fontSize: 14,
+    fontWeight: "800",
+    flex: 1,
+  },
   ghostBtn: {
     minHeight: 40,
     borderWidth: 1,
@@ -2429,6 +2686,85 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+  },
+
+  // Campaign action modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalSheet: {
+    width: "100%",
+    maxWidth: 400,
+    padding: 20,
+    gap: 12,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    flex: 1,
+  },
+  modalMeta: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  modalStatusRow: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  modalStatusText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  modalActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+  },
+  modalActionText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  modalDetailLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 10,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  modalDetailText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  detailSection: {
+    padding: 12,
+    gap: 6,
+  },
+  detailSectionTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 2,
   },
 });
 

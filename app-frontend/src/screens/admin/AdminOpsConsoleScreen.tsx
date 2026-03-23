@@ -449,13 +449,17 @@ export const AdminOpsConsoleScreen = () => {
     []
   );
 
-  const getPriorityTint = useCallback(
-    (priority: string) => {
-      if (priority === "critical") return { backgroundColor: colors.error + "0A", borderColor: colors.error + "25" };
-      if (priority === "high") return { backgroundColor: colors.warning + "08", borderColor: colors.warning + "20" };
+  const getCardTint = useCallback(
+    (priority: string, status: string) => {
+      if (status === "completed" || status === "launched" || status === "closed")
+        return { backgroundColor: colors.success + "10", borderWidth: 1.5, borderColor: colors.success + "45", opacity: 0.85 };
+      if (status === "cancelled" || status === "rejected")
+        return { backgroundColor: colors.error + "10", borderWidth: 1.5, borderColor: colors.error + "45", opacity: 0.75 };
+      if (priority === "critical") return { backgroundColor: colors.error + "0A" };
+      if (priority === "high") return { backgroundColor: colors.warning + "08" };
       return {};
     },
-    [colors.error, colors.warning]
+    [colors.error, colors.success, colors.textMuted, colors.warning]
   );
 
   const renderOpsItem = useCallback(
@@ -468,7 +472,7 @@ export const AdminOpsConsoleScreen = () => {
           : `${item.preview?.businessType || "Startup request"} • ${item.preview?.location || "No location"}`;
 
       const kindLabel = toKindLabel(item.kind);
-      const priorityTint = getPriorityTint(item.priority);
+      const cardTint = getCardTint(item.priority, item.status);
 
       return (
         <AdminListCard
@@ -479,7 +483,7 @@ export const AdminOpsConsoleScreen = () => {
           status={{ label: toStatusLabel(item.status), type: getRequestTone(item.status) }}
           meta={`${kindLabel} • Priority: ${item.priority} • Updated ${formatDate(item.updatedAt)}`}
           onPress={() => openRequestDetail(item)}
-          style={priorityTint}
+          style={cardTint}
           rightContent={
             nextStatus ? (
               <TouchableOpacity
@@ -501,7 +505,7 @@ export const AdminOpsConsoleScreen = () => {
         />
       );
     },
-    [colors.border, colors.error, colors.primary, colors.surfaceElevated, colors.warning, getPriorityTint, openRequestDetail, openWorkflowModal, radius.md]
+    [colors.border, colors.error, colors.primary, colors.surfaceElevated, colors.warning, getCardTint, openRequestDetail, openWorkflowModal, radius.md]
   );
 
   const renderConversationItem = useCallback(

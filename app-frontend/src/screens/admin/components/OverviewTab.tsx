@@ -97,7 +97,7 @@ export const OverviewTab = () => {
 
   const handleReview = useCallback(
     (item: AdminOpsRequest) => {
-      navigation.navigate("ServiceDetail", { serviceType: item.serviceType as any });
+      navigation.navigate("ServiceRequest", { serviceType: item.serviceType as any, serviceId: item.id });
     },
     [navigation]
   );

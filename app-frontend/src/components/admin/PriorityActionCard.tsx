@@ -7,10 +7,20 @@ type PriorityActionCardProps = {
   onReview?: (item: AdminOpsRequest) => void;
 };
 
-const getAccentColorKey = (item: AdminOpsRequest): "error" | "warning" | "primary" | "success" => {
-  if (item.priority === "critical") return "error";
-  if (item.status === "pending" || item.priority === "high") return "warning";
-  return "primary";
+const SERVICE_TYPE_ACCENT: Record<string, { color: string; emoji: string }> = {
+  machine_repair: { color: "#D97706", emoji: "🔧" },
+  worker: { color: "#059669", emoji: "👷" },
+  transport: { color: "#2563EB", emoji: "🚚" },
+  advertisement: { color: "#DC2626", emoji: "📢" },
+};
+
+const getAccentColor = (item: AdminOpsRequest): string => {
+  if (item.serviceType && SERVICE_TYPE_ACCENT[item.serviceType]) {
+    return SERVICE_TYPE_ACCENT[item.serviceType].color;
+  }
+  if (item.priority === "critical") return "#DC2626";
+  if (item.priority === "high") return "#D97706";
+  return "#2563EB";
 };
 
 const getStatusDisplay = (status: string, priority: string) => {
@@ -26,7 +36,8 @@ const getStatusDisplay = (status: string, priority: string) => {
 export const PriorityActionCard = ({ item, onReview }: PriorityActionCardProps) => {
   const { colors, radius } = useTheme();
 
-  const accentColor = colors[getAccentColorKey(item)];
+  const accent = getAccentColor(item);
+  const serviceInfo = item.serviceType ? SERVICE_TYPE_ACCENT[item.serviceType] : null;
   const statusDisplay = getStatusDisplay(item.status, item.priority);
   const statusColor = colors[statusDisplay.colorKey];
 
@@ -40,22 +51,28 @@ export const PriorityActionCard = ({ item, onReview }: PriorityActionCardProps) 
         {
           backgroundColor: colors.surface,
           borderRadius: radius.lg,
-          borderWidth: 1.5,
-          borderColor: colors.border,
           borderLeftWidth: 4,
-          borderLeftColor: accentColor,
-          shadowColor: accentColor,
+          borderLeftColor: accent,
+          shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          elevation: 3,
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
         },
       ]}
     >
+      {/* Service type indicator */}
+      {serviceInfo ? (
+        <View style={[styles.typeIndicator, { backgroundColor: `${accent}12`, borderRadius: radius.md }]}>
+          <Text style={styles.typeEmoji}>{serviceInfo.emoji}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={[styles.refCode, { color: colors.textSecondary }]}>{refCode}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + "18", borderWidth: 1, borderColor: statusColor + "30" }]}>
+          <Text style={[styles.refCode, { color: colors.textTertiary }]}>{refCode}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}14`, borderRadius: radius.pill }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
             <Text style={[styles.statusText, { color: statusColor }]}>
               {statusDisplay.label}
             </Text>
@@ -66,7 +83,7 @@ export const PriorityActionCard = ({ item, onReview }: PriorityActionCardProps) 
           {companyName}
         </Text>
 
-        <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={1}>
+        <Text style={[styles.description, { color: colors.textMuted }]} numberOfLines={1}>
           {item.title}
         </Text>
       </View>
@@ -74,10 +91,10 @@ export const PriorityActionCard = ({ item, onReview }: PriorityActionCardProps) 
       {onReview && (
         <TouchableOpacity
           onPress={() => onReview(item)}
-          style={[styles.reviewButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
-          activeOpacity={0.8}
+          style={[styles.reviewButton, { backgroundColor: accent, borderRadius: radius.pill }]}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.reviewText, { color: colors.textOnPrimary }]}>REVIEW</Text>
+          <Text style={styles.reviewText}>REVIEW</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -90,7 +107,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 14,
     marginBottom: 10,
+    gap: 12,
   },
+  typeIndicator: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  typeEmoji: { fontSize: 18 },
   content: {
     flex: 1,
     gap: 4,
@@ -107,9 +132,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
+    paddingVertical: 3,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   statusText: {
     fontSize: 10,
@@ -117,7 +149,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   companyName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
   },
   description: {
@@ -125,18 +157,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   reviewButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
-    marginLeft: 12,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    marginLeft: 4,
   },
   reviewText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.3,
+    color: "#FFFFFF",
   },
 });
