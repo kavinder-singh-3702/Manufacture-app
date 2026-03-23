@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import {
   adminService,
   AdminOpsRequest,
@@ -58,6 +59,21 @@ const PIPELINE_COLUMNS: PipelineColumn[] = [
   },
 ];
 
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+
 const formatDate = (value?: string) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -72,6 +88,8 @@ const getPriorityColor = (priority: string, colors: any) => {
 
 export const AdminOrdersScreen = () => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -124,12 +142,11 @@ export const AdminOrdersScreen = () => {
         style={[
           styles.orderCard,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: neuCardBg(isDark),
             borderRadius: radius.lg,
-            borderWidth: 1.5,
-            borderColor: colors.text + "15",
             borderLeftWidth: 4,
             borderLeftColor: color,
+            ...neuRaised(isDark),
           },
         ]}
       >
@@ -162,7 +179,7 @@ export const AdminOrdersScreen = () => {
 
   if (loading && requests.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
         <View style={styles.headerSection}>
           <AdminHeader title="Orders" subtitle="Kanban pipeline view" />
           <AdminSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Search orders..." />
@@ -173,14 +190,14 @@ export const AdminOrdersScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => fetchOrders(true)} tintColor={colors.primary} />
         }
         stickyHeaderIndices={[0]}
       >
-        <View style={[styles.headerSection, { backgroundColor: colors.background }]}>
+        <View style={[styles.headerSection, { backgroundColor: neuCardBg(isDark) }]}>
           <AdminHeader title="Orders" subtitle="Kanban pipeline view" />
           <AdminSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Search orders..." />
         </View>
@@ -203,9 +220,9 @@ export const AdminOrdersScreen = () => {
                 style={[
                   styles.pipelineTab,
                   {
-                    backgroundColor: isActive ? color + "12" : colors.surface,
-                    borderColor: isActive ? color + "40" : colors.text + "15",
+                    backgroundColor: isActive ? color + "12" : neuCardBg(isDark),
                     borderRadius: radius.lg,
+                    ...(isActive ? neuPressed(isDark) : neuRaised(isDark)),
                   },
                 ]}
               >
@@ -240,7 +257,7 @@ export const AdminOrdersScreen = () => {
               return (
                 <View key={col.key} style={[styles.kanbanColumn, { width: activeColumn ? width - 32 : columnWidth }]}>
                   {/* Column Header */}
-                  <View style={[styles.columnHeader, { backgroundColor: color + "0C", borderColor: color + "25", borderRadius: radius.md }]}>
+                  <View style={[styles.columnHeader, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.md, ...neuRaised(isDark) }]}>
                     <Ionicons name={col.icon} size={16} color={color} />
                     <Text style={[styles.columnTitle, { color }]}>{col.label}</Text>
                     <View style={[styles.columnCount, { backgroundColor: color + "20" }]}>
@@ -250,7 +267,7 @@ export const AdminOrdersScreen = () => {
 
                   {/* Cards */}
                   {orders.length === 0 ? (
-                    <View style={[styles.emptyColumn, { borderColor: colors.text + "10", borderRadius: radius.lg }]}>
+                    <View style={[styles.emptyColumn, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg, ...neuPressed(isDark) }]}>
                       <Text style={[styles.emptyText, { color: colors.textMuted }]}>No orders</Text>
                     </View>
                   ) : (
@@ -275,7 +292,6 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderWidth: 1.5,
   },
   pipelineTabLabel: { fontSize: 13, fontWeight: "700" },
   pipelineCount: { minWidth: 22, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
@@ -288,7 +304,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderWidth: 1,
     marginBottom: 4,
   },
   columnTitle: { fontSize: 14, fontWeight: "800", flex: 1 },
@@ -304,6 +319,6 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: 12, fontWeight: "600" },
   statusChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   statusChipText: { fontSize: 11, fontWeight: "700", textTransform: "capitalize" },
-  emptyColumn: { padding: 24, borderWidth: 1, borderStyle: "dashed", alignItems: "center" },
+  emptyColumn: { padding: 24, alignItems: "center" },
   emptyText: { fontSize: 13, fontWeight: "600" },
 });

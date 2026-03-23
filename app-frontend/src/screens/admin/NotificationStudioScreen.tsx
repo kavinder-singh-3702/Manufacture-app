@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { RootStackParamList } from "../../navigation/types";
 import {
   notificationService,
@@ -35,9 +36,20 @@ const defaultComposer = {
 
 const priorityOptions: NotificationPriority[] = ["low", "normal", "high", "critical"];
 
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => isDark ? NEU_DARK : NEU_LIGHT;
+const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT;
+
 export const NotificationStudioScreen = () => {
   const { colors, spacing, radius } = useTheme();
-  const styles = useMemo(() => createStyles(colors, spacing, radius), [colors, spacing, radius]);
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const styles = useMemo(() => createStyles(colors, spacing, radius, isDark), [colors, spacing, radius, isDark]);
   const navigation = useNavigation<Nav>();
 
   const [composer, setComposer] = useState(defaultComposer);
@@ -271,10 +283,11 @@ export const NotificationStudioScreen = () => {
 const createStyles = (
   colors: ReturnType<typeof useTheme>["colors"],
   spacing: ReturnType<typeof useTheme>["spacing"],
-  radius: ReturnType<typeof useTheme>["radius"]
+  radius: ReturnType<typeof useTheme>["radius"],
+  isDark: boolean
 ) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: neuCardBg(isDark) },
     header: {
       flexDirection: "row",
       alignItems: "center",
@@ -287,34 +300,32 @@ const createStyles = (
     backBtn: {
       width: 36,
       height: 36,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceElevated,
+      borderRadius: radius.lg,
+      backgroundColor: neuCardBg(isDark),
       alignItems: "center",
       justifyContent: "center",
+      ...neuRaised(isDark),
     },
     title: { color: colors.text, fontSize: 17, fontWeight: "900" },
     subtitle: { color: colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: 2 },
     card: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.lg,
-      backgroundColor: colors.surface,
+      ...neuRaised(isDark),
+      borderColor: "transparent",
+      borderRadius: radius.xl,
+      backgroundColor: neuCardBg(isDark),
       padding: spacing.md,
       gap: spacing.sm,
     },
     cardTitle: { color: colors.text, fontSize: 14, fontWeight: "900" },
     input: {
       minHeight: 44,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      backgroundColor: colors.surfaceElevated,
+      borderRadius: radius.lg,
+      backgroundColor: neuInsetBg(isDark),
       color: colors.text,
       paddingHorizontal: 12,
       fontSize: 13,
       fontWeight: "600",
+      ...neuPressed(isDark),
     },
     textArea: {
       minHeight: 96,
@@ -334,28 +345,29 @@ const createStyles = (
     errorText: { color: colors.error, fontSize: 12, fontWeight: "700" },
     submitBtn: {
       minHeight: 44,
-      borderRadius: radius.md,
+      borderRadius: radius.lg,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 14,
+      ...neuRaised(isDark),
     },
     submitBtnText: { color: colors.textOnPrimary, fontSize: 13, fontWeight: "900" },
     loadingState: { paddingVertical: spacing.md, alignItems: "center" },
     emptyState: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      backgroundColor: colors.surfaceElevated,
+      ...neuRaised(isDark),
+      borderColor: "transparent",
+      borderRadius: radius.lg,
+      backgroundColor: neuCardBg(isDark),
       padding: spacing.md,
       alignItems: "center",
     },
     emptyStateText: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
     historyCard: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      backgroundColor: colors.surfaceElevated,
+      ...neuRaised(isDark),
+      borderColor: "transparent",
+      borderRadius: radius.lg,
+      backgroundColor: neuCardBg(isDark),
       padding: spacing.sm,
       gap: 4,
     },
@@ -365,13 +377,12 @@ const createStyles = (
     historyActions: { flexDirection: "row", gap: 8, marginTop: 4 },
     smallBtn: {
       minHeight: 30,
-      borderWidth: 1,
-      borderColor: colors.border,
       borderRadius: radius.pill,
-      backgroundColor: colors.surface,
+      backgroundColor: neuInsetBg(isDark),
       paddingHorizontal: 11,
       alignItems: "center",
       justifyContent: "center",
+      ...neuPressed(isDark),
     },
     smallBtnText: { color: colors.text, fontSize: 11, fontWeight: "700" },
   });

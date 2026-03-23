@@ -9,12 +9,32 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../../../hooks/useTheme";
+import { useThemeMode } from "../../../hooks/useThemeMode";
 import {
   adminService,
   AdminAuditEvent,
   AdminCallLog,
 } from "../../../services/admin.service";
 import { AdminFilterTabs, AdminListCard } from "../../../components/admin";
+
+/* ── Neumorphic helpers ── */
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
 
 type LogView = "audit" | "calls";
 
@@ -46,6 +66,8 @@ const formatDuration = (seconds?: number) => {
 
 export const LogsTab = () => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
 
   const [activeView, setActiveView] = useState<LogView>("audit");
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
@@ -106,27 +128,31 @@ export const LogsTab = () => {
   };
 
   const renderAuditItem = ({ item }: { item: AdminAuditEvent }) => (
-    <AdminListCard
-      title={item.label ?? item.action}
-      subtitle={item.description ?? item.action}
-      meta={formatDate(item.createdAt)}
-      avatarText={item.actor?.displayName?.[0] ?? "S"}
-      status={item.category ? { label: item.category, type: "neutral" } : undefined}
-    />
+    <View style={[styles.cardWrapper, { backgroundColor: neuCardBg(isDark), borderRadius: 14, ...neuRaised(isDark) }]}>
+      <AdminListCard
+        title={item.label ?? item.action}
+        subtitle={item.description ?? item.action}
+        meta={formatDate(item.createdAt)}
+        avatarText={item.actor?.displayName?.[0] ?? "S"}
+        status={item.category ? { label: item.category, type: "neutral" } : undefined}
+      />
+    </View>
   );
 
   const renderCallItem = ({ item }: { item: AdminCallLog }) => (
-    <AdminListCard
-      title={item.caller?.displayName ?? "Unknown"}
-      subtitle={`Called ${item.callee?.displayName ?? "Unknown"} - ${formatDuration(item.durationSeconds)}`}
-      meta={formatDate(item.startedAt)}
-      avatarText={item.caller?.displayName?.[0] ?? "?"}
-      status={{ label: item.durationSeconds > 0 ? "completed" : "missed", type: item.durationSeconds > 0 ? "success" : "error" }}
-    />
+    <View style={[styles.cardWrapper, { backgroundColor: neuCardBg(isDark), borderRadius: 14, ...neuRaised(isDark) }]}>
+      <AdminListCard
+        title={item.caller?.displayName ?? "Unknown"}
+        subtitle={`Called ${item.callee?.displayName ?? "Unknown"} - ${formatDuration(item.durationSeconds)}`}
+        meta={formatDate(item.startedAt)}
+        avatarText={item.caller?.displayName?.[0] ?? "?"}
+        status={{ label: item.durationSeconds > 0 ? "completed" : "missed", type: item.durationSeconds > 0 ? "success" : "error" }}
+      />
+    </View>
   );
 
   const ListHeader = (
-    <View style={styles.headerContainer}>
+    <View style={[styles.headerContainer, { backgroundColor: neuInsetBg(isDark), borderRadius: 14, ...neuPressed(isDark) }]}>
       <AdminFilterTabs tabs={VIEW_TABS} activeTab={activeView} onTabChange={handleViewChange} />
     </View>
   );
@@ -171,11 +197,17 @@ export const LogsTab = () => {
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
+    paddingTop: 16,
+  },
+  cardWrapper: {
+    marginBottom: 10,
+    overflow: "hidden",
   },
   emptyText: {
     textAlign: "center",

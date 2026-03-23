@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTheme } from "../../../hooks/useTheme";
+import { useThemeMode } from "../../../hooks/useThemeMode";
 import {
   adminService,
   AdminOpsRequest,
@@ -18,6 +19,25 @@ import {
   AdminFilterTabs,
   AdminListCard,
 } from "../../../components/admin";
+
+/* ── Neumorphic helpers ── */
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
 
 type KindFilter = "all" | "service" | "business_setup";
 type StatusBucket = "all" | "open" | "closed" | "rejected";
@@ -57,6 +77,8 @@ const formatDate = (value?: string) => {
 
 export const TradesTab = () => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
 
   const [requests, setRequests] = useState<AdminOpsRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,13 +129,15 @@ export const TradesTab = () => {
   };
 
   const renderItem = ({ item }: { item: AdminOpsRequest }) => (
-    <AdminListCard
-      title={item.company?.displayName ?? item.title}
-      subtitle={item.title}
-      status={{ label: item.status?.replace(/_/g, " ") ?? "-", type: getRequestTone(item.status) }}
-      meta={formatDate(item.updatedAt)}
-      avatarText={item.company?.displayName?.[0] ?? "?"}
-    />
+    <View style={[styles.cardWrapper, { backgroundColor: neuCardBg(isDark), borderRadius: 14, ...neuRaised(isDark) }]}>
+      <AdminListCard
+        title={item.company?.displayName ?? item.title}
+        subtitle={item.title}
+        status={{ label: item.status?.replace(/_/g, " ") ?? "-", type: getRequestTone(item.status) }}
+        meta={formatDate(item.updatedAt)}
+        avatarText={item.company?.displayName?.[0] ?? "?"}
+      />
+    </View>
   );
 
   const combinedTabs = [
@@ -136,7 +160,7 @@ export const TradesTab = () => {
   };
 
   const ListHeader = (
-    <View style={styles.listHeader}>
+    <View style={[styles.listHeader, { backgroundColor: neuInsetBg(isDark), borderRadius: 14, ...neuPressed(isDark) }]}>
       <AdminSearchBar
         value={searchQuery}
         onChangeText={setSearchQuery}
@@ -184,11 +208,17 @@ export const TradesTab = () => {
 const styles = StyleSheet.create({
   listHeader: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
+    paddingTop: 16,
+  },
+  cardWrapper: {
+    marginBottom: 10,
+    overflow: "hidden",
   },
   centered: {
     flex: 1,

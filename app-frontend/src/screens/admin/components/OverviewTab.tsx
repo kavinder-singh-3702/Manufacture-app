@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "rea
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../../hooks/useTheme";
+import { useThemeMode } from "../../../hooks/useThemeMode";
 import {
   adminService,
   AdminOpsRequest,
@@ -21,6 +22,25 @@ import {
 } from "../../../components/admin";
 import { RootStackParamList } from "../../../navigation/types";
 
+/* ── Neumorphic helpers ── */
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+
 type FilterKey = "all" | "high_urgency" | "manufacturers" | "approvals";
 
 const FILTER_TABS: { key: FilterKey; label: string }[] = [
@@ -32,6 +52,8 @@ const FILTER_TABS: { key: FilterKey; label: string }[] = [
 
 export const OverviewTab = () => {
   const { colors } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -119,12 +141,12 @@ export const OverviewTab = () => {
       <PendingApprovalsBar overview={overview} />
 
       {/* Weekly Volume Chart */}
-      <View style={styles.chartSection}>
+      <View style={[styles.chartSection, { backgroundColor: neuCardBg(isDark), borderRadius: 16, ...neuRaised(isDark) }]}>
         <VolumeChart />
       </View>
 
       {/* Priority Actions */}
-      <View style={styles.actionsSection}>
+      <View style={[styles.actionsSection, { backgroundColor: neuCardBg(isDark), borderRadius: 16, ...neuRaised(isDark) }]}>
         <AdminSearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -150,7 +172,10 @@ export const OverviewTab = () => {
         )}
 
         {totalRequests > requests.length && (
-          <TouchableOpacity style={styles.viewAllButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[styles.viewAllButton, { backgroundColor: neuInsetBg(isDark), borderRadius: 12, ...neuPressed(isDark) }]}
+            activeOpacity={0.7}
+          >
             <Text style={[styles.viewAllText, { color: colors.textMuted }]}>
               VIEW ALL PRIORITY TASKS ({totalRequests})
             </Text>
@@ -178,12 +203,14 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   chartSection: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    marginHorizontal: 16,
+    marginTop: 20,
+    padding: 16,
   },
   actionsSection: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    marginHorizontal: 16,
+    marginTop: 20,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 12,

@@ -12,12 +12,22 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { adminService, AdminUserOverview } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AdminHeader } from "../../components/admin";
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 
 type RouteProps = RouteProp<RootStackParamList, "AdminUserDetail">;
+
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => isDark ? NEU_DARK : NEU_LIGHT;
+const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT;
 
 const formatDate = (value?: string) => {
   if (!value) return "-";
@@ -33,6 +43,8 @@ const formatDate = (value?: string) => {
 
 export const AdminUserDetailScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProps>();
   const { userId } = route.params;
@@ -61,7 +73,7 @@ export const AdminUserDetailScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: neuCardBg(isDark) }]}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading user overview...</Text>
       </View>
@@ -70,7 +82,7 @@ export const AdminUserDetailScreen = () => {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}
       contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
       refreshControl={
         <RefreshControl
@@ -94,10 +106,10 @@ export const AdminUserDetailScreen = () => {
             styles.errorBanner,
             {
               backgroundColor: colors.error + "15",
-              borderColor: colors.error + "40",
               borderRadius: radius.md,
               padding: spacing.md,
               marginBottom: spacing.md,
+              ...neuRaised(isDark),
             },
           ]}
         >
@@ -107,7 +119,7 @@ export const AdminUserDetailScreen = () => {
 
       {overview ? (
         <>
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>
+          <View style={[styles.sectionCard, { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl, padding: spacing.md, ...neuRaised(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Email: {overview.user.email}</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Role: {overview.user.role}</Text>
@@ -115,7 +127,7 @@ export const AdminUserDetailScreen = () => {
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined: {formatDate(overview.user.createdAt)}</Text>
             <View style={[styles.inlineActions, { marginTop: spacing.sm }]}>
               <TouchableOpacity
-                style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated, borderRadius: radius.md }]}
+                style={[styles.actionButton, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.md, ...neuPressed(isDark) }]}
                 onPress={() =>
                   navigation.navigate("UserPreferences", {
                     userId,
@@ -127,7 +139,7 @@ export const AdminUserDetailScreen = () => {
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Preferences</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated, borderRadius: radius.md }]}
+                style={[styles.actionButton, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.md, ...neuPressed(isDark) }]}
                 onPress={() =>
                   navigation.navigate("UserActivity", {
                     userId,
@@ -139,7 +151,7 @@ export const AdminUserDetailScreen = () => {
                 <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Audit Trail</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionButton, { borderColor: colors.border, backgroundColor: colors.surfaceElevated, borderRadius: radius.md }]}
+                style={[styles.actionButton, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.md, ...neuPressed(isDark) }]}
                 onPress={() =>
                   navigation.navigate("AdStudio", {
                     prefillOwnerUserId: userId,
@@ -153,12 +165,12 @@ export const AdminUserDetailScreen = () => {
             </View>
           </View>
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>
+          <View style={[styles.sectionCard, { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl, padding: spacing.md, ...neuRaised(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Services</Text>
             <Text style={[styles.metaText, { color: colors.textMuted }]}>Total requests: {overview.services.total}</Text>
             {overview.services.recent.length ? (
               overview.services.recent.slice(0, 5).map((service) => (
-                <View key={service.id} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+                <View key={service.id} style={[styles.itemRow, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg, ...neuPressed(isDark) }]}>
                   <AdaptiveSingleLineText style={[styles.itemTitle, { color: colors.text }]}>
                     {service.title}
                   </AdaptiveSingleLineText>
@@ -172,7 +184,7 @@ export const AdminUserDetailScreen = () => {
             )}
           </View>
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>
+          <View style={[styles.sectionCard, { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl, padding: spacing.md, ...neuRaised(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Communications</Text>
             <Text style={[styles.metaText, { color: colors.textMuted }]}>
               Conversations: {overview.communications.conversations.total}
@@ -180,7 +192,7 @@ export const AdminUserDetailScreen = () => {
             <Text style={[styles.metaText, { color: colors.textMuted }]}>Calls: {overview.communications.calls.total}</Text>
 
             {overview.communications.conversations.recent.slice(0, 3).map((conversation) => (
-              <View key={conversation.id} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+              <View key={conversation.id} style={[styles.itemRow, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg, ...neuPressed(isDark) }]}>
                 <AdaptiveSingleLineText style={[styles.itemTitle, { color: colors.text }]}>
                   {conversation.lastMessage || "No last message"}
                 </AdaptiveSingleLineText>
@@ -189,11 +201,11 @@ export const AdminUserDetailScreen = () => {
             ))}
           </View>
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md }]}>
+          <View style={[styles.sectionCard, { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl, padding: spacing.md, ...neuRaised(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
             {overview.activity.recent.length ? (
               overview.activity.recent.slice(0, 6).map((entry) => (
-                <View key={entry.id} style={[styles.itemRow, { borderBottomColor: colors.border }]}>
+                <View key={entry.id} style={[styles.itemRow, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg, ...neuPressed(isDark) }]}>
                   <AdaptiveSingleLineText style={[styles.itemTitle, { color: colors.text }]}>
                     {entry.label || entry.action || "Activity"}
                   </AdaptiveSingleLineText>
@@ -225,11 +237,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  errorBanner: {
-    borderWidth: 1,
-  },
+  errorBanner: {},
   sectionCard: {
-    borderWidth: 1,
     marginBottom: 12,
   },
   sectionTitle: {
@@ -248,7 +257,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    borderWidth: 1,
     minHeight: 36,
     minWidth: 120,
     flexDirection: "row",
@@ -264,8 +272,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   itemRow: {
-    borderBottomWidth: 1,
     paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginVertical: 3,
   },
   itemTitle: {
     fontSize: 12,

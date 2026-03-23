@@ -991,7 +991,7 @@ export const AdStudioScreen = () => {
         automaticallyAdjustKeyboardInsets
       >
         {createMode ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
+          <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Create Campaign</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Step {wizardStep + 1} of {stepLabels.length}</Text>
 
@@ -1004,14 +1004,19 @@ export const AdStudioScreen = () => {
                     <View
                       style={[
                         styles.stepDot,
+                        done ? neuRaised(isDark) : neuPressed(isDark),
                         {
                           borderRadius: radius.pill,
-                          borderColor: active || done ? colors.primary : colors.border,
-                          backgroundColor: done ? `${colors.primary}20` : active ? `${colors.primary}12` : colors.surfaceElevated,
+                          borderColor: "transparent",
+                          backgroundColor: done ? `${AD_ACCENT}20` : active ? `${AD_ACCENT}14` : neuInsetBg(isDark),
                         },
                       ]}
                     >
-                      <Text style={[styles.stepDotText, { color: active || done ? colors.primary : colors.textMuted }]}>{index + 1}</Text>
+                      {done ? (
+                        <Ionicons name="checkmark" size={13} color={AD_ACCENT} />
+                      ) : (
+                        <Text style={[styles.stepDotText, { color: active ? AD_ACCENT : colors.textMuted }]}>{index + 1}</Text>
+                      )}
                     </View>
                     <Text style={[styles.stepLabel, { color: active ? colors.text : colors.textMuted }]}>{label}</Text>
                   </View>
@@ -1102,9 +1107,9 @@ export const AdStudioScreen = () => {
                               style={[
                                 styles.optionCard,
                                 {
-                                  borderColor: active ? colors.primary : colors.border,
-                                  borderRadius: radius.md,
-                                  backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                                  borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                                  borderRadius: radius.lg,
+                                  backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                                 },
                               ]}
                             >
@@ -1208,7 +1213,7 @@ export const AdStudioScreen = () => {
 
                 <TouchableOpacity
                   onPress={loadProducts}
-                  style={[styles.ghostBtn, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                  style={[styles.ghostBtn, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}
                 >
                   <Text style={[styles.ghostBtnText, { color: colors.text }]}>Refresh products</Text>
                 </TouchableOpacity>
@@ -1241,7 +1246,7 @@ export const AdStudioScreen = () => {
                         >
                           <View style={styles.rowBetween}>
                             <Text style={[styles.optionTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>{product.name}</Text>
-                            {active ? <Ionicons name="checkmark-circle" size={16} color={colors.primary} /> : null}
+                            {active ? <Ionicons name="checkmark-circle" size={16} color={AD_ACCENT} /> : null}
                           </View>
                           <Text style={[styles.optionMeta, { color: colors.textMuted }]}>
                             {product.category}{product.subCategory ? ` • ${product.subCategory}` : ""}
@@ -1254,7 +1259,7 @@ export const AdStudioScreen = () => {
                 )}
 
                 {selectedProduct ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <Text style={[styles.previewTitle, { color: colors.text }]}>Selected product</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>{selectedProduct.name}</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>
@@ -1284,14 +1289,14 @@ export const AdStudioScreen = () => {
                         style={[
                           styles.presetCard,
                           {
-                            borderColor: active ? colors.primary : colors.border,
-                            borderRadius: radius.md,
-                            backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                            borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                            borderRadius: radius.lg,
+                            backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                           },
                         ]}
                       >
-                        <Ionicons name={preset.icon} size={14} color={active ? colors.primary : colors.textMuted} />
-                        <Text style={[styles.presetText, { color: active ? colors.primary : colors.text }]}>{preset.label}</Text>
+                        <Ionicons name={preset.icon} size={14} color={active ? AD_ACCENT : colors.textMuted} />
+                        <Text style={[styles.presetText, { color: active ? AD_ACCENT : colors.text }]}>{preset.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -1320,15 +1325,15 @@ export const AdStudioScreen = () => {
                               style={[
                                 styles.optionCard,
                                 {
-                                  borderColor: active ? colors.primary : colors.border,
-                                  borderRadius: radius.md,
-                                  backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                                  borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                                  borderRadius: radius.lg,
+                                  backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                                 },
                               ]}
                             >
                               <View style={styles.rowBetween}>
                                 <Text style={[styles.optionTitle, { color: colors.text }]}>{entry.displayName || "Unnamed user"}</Text>
-                                {active ? <Ionicons name="checkmark-circle" size={16} color={colors.primary} /> : null}
+                                {active ? <Ionicons name="checkmark-circle" size={16} color={AD_ACCENT} /> : null}
                               </View>
                               <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{entry.email}</Text>
                             </TouchableOpacity>
@@ -1376,7 +1381,7 @@ export const AdStudioScreen = () => {
                 ) : null}
 
                 {wizard.audiencePreset === "same_category_listers" ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <Text style={[styles.previewTitle, { color: colors.text }]}>Same-category listing rule</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Users who have active public listings in the same category as this promoted product.</Text>
                   </View>
@@ -1384,7 +1389,7 @@ export const AdStudioScreen = () => {
 
                 <TouchableOpacity
                   onPress={() => setWizard((prev) => ({ ...prev, advancedTargeting: !prev.advancedTargeting }))}
-                  style={[styles.ghostBtn, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                  style={[styles.ghostBtn, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}
                 >
                   <Text style={[styles.ghostBtnText, { color: colors.text }]}>
                     {wizard.advancedTargeting ? "Hide advanced rules" : "Show advanced rules"}
@@ -1392,7 +1397,7 @@ export const AdStudioScreen = () => {
                 </TouchableOpacity>
 
                 {wizard.advancedTargeting ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <View style={styles.row}>
                       {(["any", "all"] as const).map((mode) => {
                         const active = wizard.targetingMode === mode;
@@ -1651,7 +1656,7 @@ export const AdStudioScreen = () => {
                   </View>
                 ) : null}
 
-                <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Live preview</Text>
                   {wizard.creativeBadge.trim() ? (
                     <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: colors.badgeWarning, alignSelf: "flex-start" }]}> 
@@ -1720,7 +1725,7 @@ export const AdStudioScreen = () => {
                   onPress={() => setWizard((prev) => ({ ...prev, launchNow: !prev.launchNow }))}
                 />
 
-                <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Review</Text>
                   <InfoLine label="Campaign" value={wizard.name || "-"} />
                   <InfoLine
@@ -1756,11 +1761,12 @@ export const AdStudioScreen = () => {
                 disabled={wizardStep === 0 || submitting}
                 style={[
                   styles.ghostBtn,
+                  neuPressed(isDark),
                   {
                     opacity: wizardStep === 0 ? 0.5 : 1,
-                    borderColor: colors.border,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.surfaceElevated,
+                    borderColor: "transparent",
+                    borderRadius: radius.lg,
+                    backgroundColor: neuInsetBg(isDark),
                   },
                 ]}
               >
@@ -1770,17 +1776,20 @@ export const AdStudioScreen = () => {
               {wizardStep < stepLabels.length - 1 ? (
                 <TouchableOpacity
                   onPress={goNext}
-                  style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                  style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: AD_ACCENT }]}
                 >
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>Next</Text>
+                  <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>Next</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
                   onPress={submitCampaign}
                   disabled={submitting}
-                  style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                  style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: AD_ACCENT, opacity: submitting ? 0.7 : 1 }]}
                 >
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>
+                  <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>
                     {submitting ? "Saving..." : wizard.launchNow ? "Create & Launch" : "Create Draft"}
                   </Text>
                 </TouchableOpacity>
@@ -1789,7 +1798,25 @@ export const AdStudioScreen = () => {
           </View>
         ) : null}
 
-        <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
+        {/* Quick Stats */}
+        {!createMode && !campaignsLoading && campaigns.length > 0 ? (
+          <View style={styles.statsRow}>
+            {[
+              { label: "Active", count: campaigns.filter((c) => c.status === "active").length, color: "#0E8F62" },
+              { label: "Paused", count: campaigns.filter((c) => c.status === "paused").length, color: "#B26A00" },
+              { label: "Draft", count: campaigns.filter((c) => c.status === "draft").length, color: "#3B4B63" },
+              { label: "Done", count: campaigns.filter((c) => c.status === "completed" || c.status === "archived").length, color: "#1D4ED8" },
+            ].map((stat) => (
+              <View key={stat.label} style={[styles.statCard, neuPressed(isDark), { borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
+                <View style={[styles.statDot, { backgroundColor: stat.color }]} />
+                <Text style={[styles.statCount, { color: colors.text }]}>{stat.count}</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {createMode ? null : <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
           <View style={styles.sectionHeader}>
             <View>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
@@ -1854,30 +1881,8 @@ export const AdStudioScreen = () => {
               })}
             </View>
           )}
-        </View>
+        </View>}
 
-        {detailsLoading ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
-            <View style={styles.inlineLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          </View>
-        ) : selectedCampaign ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedCampaign.name}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{selectedCampaign.product?.name || "Missing product"}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-              {selectedCampaign.targeting?.mode?.toUpperCase() || "ANY"} targeting • cap {selectedCampaign.frequencyCapPerDay}/day
-            </Text>
-            {selectedInsights ? (
-              <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
-                <Text style={[styles.previewTitle, { color: colors.text }]}>Insights</Text>
-                <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Impressions: {selectedInsights.summary.impression.count} • Clicks: {selectedInsights.summary.click.count}</Text>
-                <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Dismiss: {selectedInsights.summary.dismiss.count} • CTR: {selectedInsights.ctr}%</Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
       </ScrollView>
 
       {/* Campaign Action Modal */}
@@ -2063,19 +2068,23 @@ const SelectCard = ({
   onPress: () => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.85}
       style={[
         styles.selectCard,
+        active ? neuRaised(dk) : neuPressed(dk),
         {
-          borderColor: active ? colors.primary : colors.border,
-          borderRadius: radius.md,
-          backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+          borderColor: active ? `${AD_ACCENT}40` : "transparent",
+          borderRadius: radius.lg,
+          backgroundColor: active ? (dk ? `${AD_ACCENT}18` : AD_ACCENT_WASH) : neuInsetBg(dk),
         },
       ]}
     >
-      <Ionicons name={icon} size={16} color={active ? colors.primary : colors.textMuted} />
+      <Ionicons name={icon} size={16} color={active ? AD_ACCENT : colors.textMuted} />
       <Text style={[styles.optionTitle, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{subtitle}</Text>
     </TouchableOpacity>
@@ -2370,9 +2379,11 @@ const Field = ({
   keyboardType?: "default" | "number-pad";
 }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const dk = resolvedMode === "dark";
   return (
     <View style={styles.fieldWrap}>
-      <Text style={[styles.fieldLabel, { color: colors.textMuted }]}> 
+      <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
         {label}
         {required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
@@ -2385,10 +2396,11 @@ const Field = ({
         multiline={multiline}
         style={[
           styles.fieldInput,
+          neuPressed(dk),
           {
-            borderRadius: radius.md,
-            borderColor: colors.border,
-            backgroundColor: colors.surfaceElevated,
+            borderRadius: radius.lg,
+            borderColor: "transparent",
+            backgroundColor: neuInsetBg(dk),
             color: colors.text,
             minHeight: multiline ? 78 : 44,
             textAlignVertical: multiline ? "top" : "center",
@@ -2401,20 +2413,24 @@ const Field = ({
 
 const Toggle = ({ label, value, onPress }: { label: string; value: boolean; onPress: () => void }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.85}
       style={[
         styles.toggle,
+        neuPressed(dk),
         {
-          borderRadius: radius.md,
-          borderColor: value ? colors.primary : colors.border,
-          backgroundColor: value ? `${colors.primary}12` : colors.surfaceElevated,
+          borderRadius: radius.lg,
+          borderColor: "transparent",
+          backgroundColor: neuInsetBg(dk),
         },
       ]}
     >
-      <Ionicons name={value ? "checkmark-circle" : "ellipse-outline"} size={16} color={value ? colors.primary : colors.textMuted} />
-      <Text style={[styles.toggleText, { color: colors.text }]}>{label}</Text>
+      <Ionicons name={value ? "checkmark-circle" : "ellipse-outline"} size={16} color={value ? colors.success : colors.textDisabled} />
+      <Text style={[styles.toggleText, { color: value ? colors.text : colors.textMuted }]}>{label}</Text>
     </TouchableOpacity>
   );
 };
@@ -2521,6 +2537,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     flex: 1,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 3,
+  },
+  statDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 2,
+  },
+  statCount: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: "700",
   },
   ghostBtn: {
     minHeight: 40,

@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import {
   adminService,
   AdminBusinessSetupRequest,
@@ -41,6 +42,15 @@ type OpsStatusBucket = "all" | "open" | "closed" | "rejected";
 type RequestDetail =
   | (AdminServiceRequest & { kind: "service" })
   | (AdminBusinessSetupRequest & { kind: "business_setup" });
+
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => isDark ? NEU_DARK : NEU_LIGHT;
+const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT;
 
 const PAGE_SIZE = 25;
 
@@ -140,6 +150,8 @@ const mapBusinessToOps = (request: AdminBusinessSetupRequest): AdminOpsRequest =
 
 export const AdminOpsConsoleScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [activeView, setActiveView] = useState<OpsView>("services");
@@ -493,8 +505,9 @@ export const AdminOpsConsoleScreen = () => {
                   styles.quickAction,
                   {
                     borderColor: colors.border,
-                    backgroundColor: colors.surfaceElevated,
+                    backgroundColor: neuCardBg(isDark),
                     borderRadius: radius.md,
+                    ...neuRaised(isDark),
                   },
                 ]}
               >
@@ -566,7 +579,7 @@ export const AdminOpsConsoleScreen = () => {
   }, [modalRequest]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <View style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
       <FlatList
         data={data as any[]}
         key={activeView}
@@ -627,7 +640,7 @@ export const AdminOpsConsoleScreen = () => {
           ) : null
         }
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl, backgroundColor: 'transparent' }}
         onEndReachedThreshold={0.35}
         onEndReached={() => {
           if (loadingMore || !pagination.hasMore) return;
@@ -660,7 +673,7 @@ export const AdminOpsConsoleScreen = () => {
       ) : null}
 
       <Modal visible={requestModalVisible} animationType="slide" onRequestClose={() => setRequestModalVisible(false)}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}> 
+        <View style={[styles.modalContainer, { backgroundColor: neuCardBg(isDark), ...neuRaised(isDark) }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
             <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={2}>
               {modalRequest?.title || "Request"}
@@ -754,9 +767,10 @@ export const AdminOpsConsoleScreen = () => {
                       style={[
                         styles.workflowButton,
                         {
-                          backgroundColor: colors.surface,
+                          backgroundColor: neuCardBg(isDark),
                           borderColor: colors.border,
                           borderRadius: radius.md,
+                          ...neuRaised(isDark),
                         },
                       ]}
                     >
