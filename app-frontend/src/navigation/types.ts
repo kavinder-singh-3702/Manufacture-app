@@ -93,6 +93,22 @@ export type RootStackParamList = {
   AdminCompanies: undefined;
   AdminVerifications: undefined;
   MyProducts: { initialQuery?: string; initialVisibility?: "all" | "public" | "private" } | undefined;
+  // Payment
+  Checkout: {
+    amountInRupees: number;
+    description?: string;
+    quoteId?: string;
+    productName?: string;
+    quantity?: number;
+    unitPrice?: number;
+  };
+  OrderConfirmation: {
+    success: boolean;
+    paymentId?: string;
+    amount?: number;
+    productName?: string;
+    errorMessage?: string;
+  };
   // Accounting Reports
   ProfitLoss: undefined;
   GSTSummary: undefined;

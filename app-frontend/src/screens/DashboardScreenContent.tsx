@@ -1082,7 +1082,7 @@ const UserDashboardContent = () => {
   const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
 
   return (
-    <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
@@ -1091,7 +1091,7 @@ const UserDashboardContent = () => {
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlayAccent]}
+          colors={[colors.surfaceOverlayPrimary, "transparent", "transparent"]}
           locations={[0, 0.56, 1]}
           style={StyleSheet.absoluteFill}
         />

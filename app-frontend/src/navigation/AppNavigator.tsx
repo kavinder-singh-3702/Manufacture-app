@@ -49,6 +49,7 @@ import { withAdminGuard } from "./components/AdminOnlyScreen";
 import { UserManagementScreen, VerificationsScreen, CompaniesScreen, AdStudioScreen } from "../screens/admin";
 import { withCompanyContextGuard } from "./components/CompanyContextGuard";
 import { InternalInventoryItemFormScreen } from "../screens/internalInventory/InternalInventoryItemFormScreen";
+import { CheckoutScreen, OrderConfirmationScreen } from "../screens/payment";
 
 enableScreens(true);
 
@@ -394,6 +395,16 @@ export const AppNavigator = () => {
               name="TransactionList"
               component={TransactionListScreen}
               options={{ presentation: "modal", animation: "slide_from_right", title: "Transactions" }}
+            />
+            <RootStack.Screen
+              name="Checkout"
+              component={CheckoutScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="OrderConfirmation"
+              component={OrderConfirmationScreen}
+              options={{ animation: "fade", gestureEnabled: false }}
             />
           </>
         )}

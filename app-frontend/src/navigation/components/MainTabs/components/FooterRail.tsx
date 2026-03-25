@@ -58,7 +58,6 @@ export const FooterRail: FC<FooterRailProps> = ({
           styles.container,
           {
             backgroundColor: tokens.colors.footerBackground,
-            borderTopColor: tokens.colors.footerBorder,
             paddingHorizontal: tokens.footer.horizontalPadding,
             paddingTop: tokens.footer.topPadding,
             paddingBottom: tokens.footer.bottomPadding,
@@ -172,7 +171,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 0,
   },
   tab: {
     flex: 1,
