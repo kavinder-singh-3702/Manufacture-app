@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, Keyboard } from "react-native";
 import { GiftedChat, IMessage, Bubble, Send, InputToolbar } from "react-native-gifted-chat";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
@@ -56,6 +56,7 @@ export const ChatScreen = () => {
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
   const { refresh: refreshUnread } = useUnreadMessages();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatScreenNavProp>();
   const route = useRoute<ChatScreenRouteProp>();
 
@@ -255,7 +256,6 @@ export const ChatScreen = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
@@ -280,6 +280,7 @@ export const ChatScreen = () => {
           onLoadEarlier={loadEarlierMessages}
           isLoadingEarlier={loadingEarlier}
           user={currentUser}
+          bottomOffset={insets.bottom}
           renderBubble={(props) => {
             const { key, ...bubbleProps } = props as any;
             return (
@@ -403,7 +404,6 @@ export const ChatScreen = () => {
             keyboardShouldPersistTaps: 'handled',
           }}
         />
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
