@@ -129,7 +129,8 @@ export const CategoryProductsScreen = () => {
           scope: "marketplace",
           includeVariantSummary: true,
         });
-        setItems((prev) => (append ? [...prev, ...response.products] : response.products));
+        const validProducts = (response.products || []).filter((p) => p._id && p.name);
+        setItems((prev) => (append ? [...prev, ...validProducts] : validProducts));
         setPagination(response.pagination);
       } catch (err: any) {
         setError(err.message || "Failed to load products");
