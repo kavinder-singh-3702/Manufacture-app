@@ -381,18 +381,11 @@ export const CategoryProductsScreen = () => {
           </View>
         ) : (
           filteredItems.map((item) => (
-            <View key={item._id} style={{ marginBottom: 12 }}>
-              <AmazonStyleProductCard
-                product={item}
-                onPress={openDetails}
-                onMessagePress={(product) =>
-                  startProductConversation({ product, isGuest, requestLogin, navigation, toastError })
-                }
-                onCallPress={(product) =>
-                  callProductSeller({ product, toastError })
-                }
-              />
-            </View>
+            <TouchableOpacity key={item._id} onPress={() => openDetails(item._id)} style={{ marginBottom: 12, backgroundColor: "#1a2233", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#334455" }}>
+              <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700", marginBottom: 4 }}>{item.name || "Unnamed Product"}</Text>
+              <Text style={{ color: "#94A3B8", fontSize: 13 }}>{item.category}</Text>
+              <Text style={{ color: "#19B8E6", fontSize: 15, fontWeight: "600", marginTop: 8 }}>₹{item.price?.amount || 0}</Text>
+            </TouchableOpacity>
           ))
         )}
         {loadingMore && (
