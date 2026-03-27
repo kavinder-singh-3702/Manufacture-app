@@ -101,13 +101,6 @@ export const CategoryProductsScreen = () => {
 
   const loadProducts = useCallback(
     async (offset = 0, append = false, overrides?: { sort?: typeof appliedSort; minPrice?: number; maxPrice?: number }) => {
-      if (isGuest) {
-        setItems([]);
-        setPagination({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
-        setLoading(false);
-        return;
-      }
-
       if (append) {
         setLoadingMore(true);
       } else {
@@ -142,7 +135,7 @@ export const CategoryProductsScreen = () => {
         }
       }
     },
-    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId, isGuest]
+    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId]
   );
 
   // Refresh list whenever screen comes into focus
@@ -164,6 +157,12 @@ export const CategoryProductsScreen = () => {
     loadProducts(nextOffset, true);
   }, [loading, loadingMore, pagination.hasMore, pagination.limit, pagination.offset, loadProducts]);
 
+  const totalProductsLabel = useMemo(() => {
+    if (pagination.total === 0) return "No products";
+    if (pagination.total === 1) return "1 product";
+    return `${pagination.total} products`;
+  }, [pagination.total]);
+
   const subCategories = useMemo(() => {
     const base = new Set<string>(["All"]);
     items.forEach((item) => {
@@ -180,14 +179,6 @@ export const CategoryProductsScreen = () => {
       return label === activeSubCategory;
     });
   }, [activeSubCategory, items]);
-
-  const totalProductsLabel = useMemo(() => {
-    if (loading) return "";
-    const count = filteredItems.length;
-    if (count === 0) return "No products";
-    if (count === 1) return "1 product";
-    return `${count} products`;
-  }, [filteredItems.length, loading]);
 
   const openDetails = useCallback(
     (productId: string) => {
