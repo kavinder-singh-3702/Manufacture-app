@@ -157,13 +157,6 @@ export const CategoryProductsScreen = () => {
     loadProducts(nextOffset, true);
   }, [loading, loadingMore, pagination.hasMore, pagination.limit, pagination.offset, loadProducts]);
 
-  const totalProductsLabel = useMemo(() => {
-    const count = filteredItems.length;
-    if (count === 0) return "No products";
-    if (count === 1) return "1 product";
-    return `${count} products`;
-  }, [filteredItems.length]);
-
   const subCategories = useMemo(() => {
     const base = new Set<string>(["All"]);
     items.forEach((item) => {
@@ -180,6 +173,13 @@ export const CategoryProductsScreen = () => {
       return label === activeSubCategory;
     });
   }, [activeSubCategory, items]);
+
+  const totalProductsLabel = useMemo(() => {
+    const count = filteredItems.length;
+    if (count === 0) return "No products";
+    if (count === 1) return "1 product";
+    return `${count} products`;
+  }, [filteredItems.length]);
 
   const openDetails = useCallback(
     (productId: string) => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, Keyboard } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
 import { GiftedChat, IMessage, Bubble, Send, InputToolbar } from "react-native-gifted-chat";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -255,7 +255,7 @@ export const ChatScreen = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
@@ -403,7 +403,7 @@ export const ChatScreen = () => {
             keyboardShouldPersistTaps: 'handled',
           }}
         />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
