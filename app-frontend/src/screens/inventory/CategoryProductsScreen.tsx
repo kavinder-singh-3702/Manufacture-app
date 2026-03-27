@@ -384,11 +384,10 @@ export const CategoryProductsScreen = () => {
 
       {/* Product List - Single column like Amazon */}
       <FlatList
-        style={{ flex: 1 }}
         data={filteredItems}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        contentContainerStyle={[styles.productList, { paddingHorizontal: contentPadding }]}
+        contentContainerStyle={styles.productList}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
