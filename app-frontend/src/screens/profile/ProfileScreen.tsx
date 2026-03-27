@@ -26,7 +26,7 @@ import { EditorType } from "./types";
 export const ProfileScreen = () => {
   const { spacing, colors } = useTheme();
   const { mode } = useThemeMode();
-  const { user, setUser } = useAuth();
+  const { user, setUser, refreshUser } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
@@ -80,8 +80,9 @@ export const ProfileScreen = () => {
     try {
       setSaving(true);
       setEditorError(null);
-      const { user: updatedUser } = await userService.updateCurrentUser(payload);
-      setUser(updatedUser);
+      await userService.updateCurrentUser(payload);
+      // Refresh user from server to get the latest state
+      await refreshUser();
       setBanner({ type: "success", message: "Profile updated successfully." });
       closeEditor();
     } catch (error) {

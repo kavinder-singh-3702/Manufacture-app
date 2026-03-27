@@ -37,6 +37,9 @@ module.exports = ({ config }) => {
                 NSAllowsLocalNetworking: true,
               },
             }),
+        NSLocalNetworkUsageDescription:
+          "ARVANN needs local network access to connect to the development server.",
+        NSBonjourServices: ["_http._tcp"],
         NSCameraUsageDescription: "ARVANN needs camera access to take product photos.",
         NSPhotoLibraryUsageDescription: "ARVANN needs photo library access to upload product images.",
       },
@@ -79,6 +82,7 @@ module.exports = ({ config }) => {
           defaultChannel: "default",
         },
       ],
+      "expo-video",
     ],
   };
 };

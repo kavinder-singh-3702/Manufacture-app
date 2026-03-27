@@ -158,10 +158,11 @@ export const CategoryProductsScreen = () => {
   }, [loading, loadingMore, pagination.hasMore, pagination.limit, pagination.offset, loadProducts]);
 
   const totalProductsLabel = useMemo(() => {
-    if (pagination.total === 0) return "No products";
-    if (pagination.total === 1) return "1 product";
-    return `${pagination.total} products`;
-  }, [pagination.total]);
+    const count = filteredItems.length;
+    if (count === 0) return "No products";
+    if (count === 1) return "1 product";
+    return `${count} products`;
+  }, [filteredItems.length]);
 
   const subCategories = useMemo(() => {
     const base = new Set<string>(["All"]);

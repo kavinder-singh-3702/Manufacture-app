@@ -146,7 +146,7 @@ const PlaceholderScreen = ({ title, icon }: { title: string; icon: string }) => 
 
   return (
     <View style={[placeholderStyles.container, { backgroundColor: colors.background }]}> 
-      <LinearGradient colors={[colors.surfaceOverlayPrimary, "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[colors.surfaceOverlayPrimary, "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <View style={placeholderStyles.content}>
         <Text style={placeholderStyles.icon}>{icon}</Text>
         <Text style={[placeholderStyles.title, { color: colors.text }]}>{title}</Text>
@@ -535,7 +535,7 @@ export const MainTabs = () => {
               handleOpenCompanySwitcher();
             }
           }}
-          unreadByRoute={isAdmin ? { [routes.DASHBOARD]: totalUnread } : undefined}
+          unreadByRoute={totalUnread > 0 ? { [isAdmin ? routes.CHAT : routes.DASHBOARD]: totalUnread } : undefined}
           getSvgIconXml={getTabIconXml}
         />
       </LinearGradient>

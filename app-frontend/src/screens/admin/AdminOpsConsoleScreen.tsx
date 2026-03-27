@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -26,6 +27,7 @@ import {
   AdminServiceRequest,
 } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
+import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import {
   AdminHeader,
   AdminSearchBar,
@@ -152,7 +154,9 @@ export const AdminOpsConsoleScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { totalUnread, refresh: refreshUnread } = useUnreadMessages();
 
   const [activeView, setActiveView] = useState<OpsView>("services");
   const [opsKindFilter, setOpsKindFilter] = useState<OpsKindFilter>("all");
@@ -291,6 +295,7 @@ export const AdminOpsConsoleScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      refreshUnread();
       if (activeView === "services") {
         fetchOpsRequests({ reset: true });
       } else if (activeView === "messages") {
@@ -298,7 +303,7 @@ export const AdminOpsConsoleScreen = () => {
       } else {
         fetchCallLogs({ reset: true });
       }
-    }, [activeView, fetchCallLogs, fetchConversations, fetchOpsRequests])
+    }, [activeView, fetchCallLogs, fetchConversations, fetchOpsRequests, refreshUnread])
   );
 
   useEffect(() => {
@@ -436,10 +441,10 @@ export const AdminOpsConsoleScreen = () => {
   const viewTabs = useMemo(
     () => [
       { key: "services" as OpsView, label: "Services" },
-      { key: "messages" as OpsView, label: "Messages" },
+      { key: "messages" as OpsView, label: "Messages", badge: totalUnread },
       { key: "calls" as OpsView, label: "Calls" },
     ],
-    []
+    [totalUnread]
   );
 
   const kindTabs = useMemo(
@@ -532,6 +537,7 @@ export const AdminOpsConsoleScreen = () => {
         onPress={() => openChat(item)}
         rightContent={
           <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() => callUser(item.otherParticipant?.phone)}
             style={[styles.callButton, { backgroundColor: colors.badgePrimary, borderRadius: radius.pill }]}
           >
@@ -673,19 +679,21 @@ export const AdminOpsConsoleScreen = () => {
       ) : null}
 
       <Modal visible={requestModalVisible} animationType="slide" onRequestClose={() => setRequestModalVisible(false)}>
-        <View style={[styles.modalContainer, { backgroundColor: neuCardBg(isDark), ...neuRaised(isDark) }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
+        <View style={[styles.modalContainer, { backgroundColor: neuCardBg(isDark), paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, padding: spacing.lg }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={2}>
               {modalRequest?.title || "Request"}
             </Text>
             <TouchableOpacity
+              activeOpacity={0.6}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={() => {
                 setRequestModalVisible(false);
                 setSelectedRequestSummary(null);
                 setSelectedRequestDetail(null);
               }}
             >
-              <Ionicons name="close" size={22} color={colors.textMuted} />
+              <Ionicons name="close" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -763,6 +771,7 @@ export const AdminOpsConsoleScreen = () => {
                   .map((status) => (
                     <TouchableOpacity
                       key={status}
+                      activeOpacity={0.7}
                       onPress={() => openWorkflowModal(toOpsRequest(modalRequest), status)}
                       style={[
                         styles.workflowButton,
@@ -795,29 +804,29 @@ export const AdminOpsConsoleScreen = () => {
               ) : null}
             </ScrollView>
           ) : null}
+
+          <ReasonInputModal
+            visible={!!workflowTarget}
+            title={workflowTarget ? `Move to ${toStatusLabel(workflowTarget.targetStatus)}` : "Update workflow"}
+            subtitle="Reason is stored in immutable admin audit history."
+            value={workflowReason}
+            onChangeValue={(value) => {
+              setWorkflowReason(value);
+              if (workflowError) setWorkflowError(null);
+            }}
+            onClose={() => {
+              if (workflowLoading) return;
+              setWorkflowTarget(null);
+              setWorkflowReason("");
+              setWorkflowError(null);
+            }}
+            onSubmit={submitWorkflow}
+            submitLabel="Apply"
+            loading={workflowLoading}
+            error={workflowError}
+          />
         </View>
       </Modal>
-
-      <ReasonInputModal
-        visible={!!workflowTarget}
-        title={workflowTarget ? `Move to ${toStatusLabel(workflowTarget.targetStatus)}` : "Update workflow"}
-        subtitle="Reason is stored in immutable admin audit history."
-        value={workflowReason}
-        onChangeValue={(value) => {
-          setWorkflowReason(value);
-          if (workflowError) setWorkflowError(null);
-        }}
-        onClose={() => {
-          if (workflowLoading) return;
-          setWorkflowTarget(null);
-          setWorkflowReason("");
-          setWorkflowError(null);
-        }}
-        onSubmit={submitWorkflow}
-        submitLabel="Apply"
-        loading={workflowLoading}
-        error={workflowError}
-      />
     </View>
   );
 };

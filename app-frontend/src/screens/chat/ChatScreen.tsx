@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, KeyboardAvoidingView, Keyboard } from "react-native";
-import { GiftedChat, IMessage, Bubble, Send, Composer, InputToolbar } from "react-native-gifted-chat";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking, Platform, Keyboard } from "react-native";
+import { GiftedChat, IMessage, Bubble, Send, InputToolbar } from "react-native-gifted-chat";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -9,6 +9,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
 import { getChatSocket, ChatMessageEvent } from "../../services/chatSocket";
+import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
 
@@ -54,6 +55,7 @@ export const ChatScreen = () => {
 
   const { colors, spacing } = useTheme();
   const { user } = useAuth();
+  const { refresh: refreshUnread } = useUnreadMessages();
   const navigation = useNavigation<ChatScreenNavProp>();
   const route = useRoute<ChatScreenRouteProp>();
 
@@ -85,6 +87,7 @@ export const ChatScreen = () => {
       setNextOffset(response.messages.length);
       setHasMoreHistory(Boolean(response.pagination?.hasMore));
       await chatService.markRead(conversationId);
+      refreshUnread();
     } catch (err) {
       console.error("Error loading messages:", err);
     } finally {
@@ -146,7 +149,7 @@ export const ChatScreen = () => {
         return normalizeGiftedOrder(GiftedChat.append(prev, [incoming]));
       });
 
-      chatService.markRead(conversationId).catch((err) => {
+      chatService.markRead(conversationId).then(() => refreshUnread()).catch((err) => {
         console.warn("Failed to mark chat as read", err?.message || err);
       });
     };
@@ -192,7 +195,7 @@ export const ChatScreen = () => {
           if (!delivered) return withoutOptimistic;
           return normalizeGiftedOrder(GiftedChat.append(withoutOptimistic, [delivered]));
         });
-        chatService.markRead(conversationId).catch((err) => {
+        chatService.markRead(conversationId).then(() => refreshUnread()).catch((err) => {
           console.warn("Failed to mark chat as read", err?.message || err);
         });
       } catch (err) {
@@ -251,8 +254,8 @@ export const ChatScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <View style={{ flex: 1 }}>
         <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
@@ -325,7 +328,7 @@ export const ChatScreen = () => {
                   borderTopWidth: 1,
                   borderTopColor: colors.border,
                   paddingTop: 6,
-                  paddingBottom: 6,
+                  paddingBottom: Platform.OS === "ios" ? 12 : 6,
                   paddingHorizontal: 8,
                 }}
                 primaryStyle={{
@@ -334,36 +337,19 @@ export const ChatScreen = () => {
               />
             );
           }}
-          renderComposer={(props) => {
-            const { key, ...composerProps } = props as any;
-            return (
-              <View style={{
-                flex: 1,
-                backgroundColor: colors.surface,
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: colors.border,
-                marginRight: 8,
-              }}>
-                <Composer
-                  key={key}
-                  {...composerProps}
-                  textInputStyle={{
-                    color: colors.text,
-                    backgroundColor: "transparent",
-                    paddingTop: 10,
-                    paddingBottom: 10,
-                    paddingLeft: 14,
-                    paddingRight: 14,
-                    fontSize: 15,
-                    lineHeight: 20,
-                    marginTop: 0,
-                    marginBottom: 0,
-                  }}
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
-            );
+          textInputStyle={{
+            color: colors.text,
+            backgroundColor: colors.surface,
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: colors.border,
+            paddingTop: 10,
+            paddingBottom: 10,
+            paddingHorizontal: 14,
+            fontSize: 15,
+          }}
+          textInputProps={{
+            placeholderTextColor: colors.textMuted,
           }}
           renderSend={(props) => {
             const { key, ...sendProps } = props as any;
@@ -417,7 +403,7 @@ export const ChatScreen = () => {
             keyboardShouldPersistTaps: 'handled',
           }}
         />
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };

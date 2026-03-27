@@ -223,7 +223,7 @@ export const AccountingDashboardScreen = () => {
   if (loading) {
     return (
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <View style={[styles.centered, { flex: 1 }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted, marginTop: 12 }]}>
@@ -236,7 +236,7 @@ export const AccountingDashboardScreen = () => {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <ScrollView
         style={{ flex: 1 }}
