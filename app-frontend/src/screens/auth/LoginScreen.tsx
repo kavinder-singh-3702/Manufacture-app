@@ -31,7 +31,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
   const { login } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
-  const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
+  const { isCompact, isXCompact, contentPadding, clamp, fs, sp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const headingColor = isDark ? colors.textOnDarkSurface : colors.textPrimary;
   const subheadingColor = isDark ? colors.subtextOnDarkSurface : colors.textSecondary;
@@ -128,12 +128,12 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                 end={{ x: 1, y: 1 }}
                 style={styles.toggleButtonGradient}
               >
-                <Text style={[styles.toggleTextActive, { color: colors.textOnPrimary }]}>
+                <Text style={[styles.toggleTextActive, { color: colors.textOnPrimary, fontSize: fs(14) }]}>
                   {mode === "email" ? "Email" : "Mobile"}
                 </Text>
               </LinearGradient>
             ) : (
-              <Text style={[styles.toggleText, { color: colors.textMuted }]}>
+              <Text style={[styles.toggleText, { color: colors.textMuted, fontSize: fs(14) }]}>
                 {mode === "email" ? "Email" : "Mobile"}
               </Text>
             )}
@@ -145,7 +145,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   const renderIdentifierInput = () => (
     <TextInput
-      style={[styles.input, { borderColor: colors.border, color: fieldTextColor, backgroundColor: colors.surfaceElevated }]}
+      style={[styles.input, { borderColor: colors.border, color: fieldTextColor, backgroundColor: colors.surfaceElevated, fontSize: fs(16) }]}
       placeholder={identifierPlaceholder}
       placeholderTextColor={colors.textMuted}
       value={identifierValue}
@@ -157,7 +157,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.slide}
     >
       <ScrollView
@@ -199,7 +199,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
           ]}
           onPress={onBack}
         >
-          <Text style={[styles.backIcon, { color: headingColor }]}>‹</Text>
+          <Text style={[styles.backIcon, { color: headingColor, fontSize: fs(22) }]}>‹</Text>
         </TouchableOpacity>
 
           <Animated.View
@@ -217,10 +217,10 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
           >
             <BrandLockup showSubtitle style={styles.brandStrip} textColor={headingColor} subtitleColor={brandSubtitleColor} />
             <View style={styles.headerBlock}>
-              <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>
+              <Text style={[styles.heading, { color: headingColor, fontSize: fs(isXCompact ? 24 : 28) }]}>
                 Welcome Back!
               </Text>
-              <Text style={[styles.subheading, { color: subheadingColor }]}>
+              <Text style={[styles.subheading, { color: subheadingColor, fontSize: fs(14), lineHeight: fs(20) }]}>
                 Enter your email or mobile number to continue
               </Text>
             </View>
@@ -253,6 +253,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                     borderColor: colors.border,
                     color: fieldTextColor,
                     backgroundColor: colors.surfaceElevated,
+                    fontSize: fs(16),
                   },
                 ]}
                 placeholder="Password"
@@ -297,16 +298,16 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryButton}
                 >
-                  {loading ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>LOGIN</Text>}
+                  {loading ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary, fontSize: fs(16) }]}>LOGIN</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
 
             <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
-              <Text style={[styles.helperText, { color: subheadingColor }]}>Forgotten your password?</Text>
+              <Text style={[styles.helperText, { color: subheadingColor, fontSize: fs(13) }]}>Forgotten your password?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onSignup}>
-              <Text style={[styles.helperText, styles.signupLink, { color: colors.primary }]}>Or Create a New Account</Text>
+              <Text style={[styles.helperText, styles.signupLink, { color: colors.primary, fontSize: fs(13) }]}>Or Create a New Account</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>

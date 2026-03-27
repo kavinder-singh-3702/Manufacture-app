@@ -1,6 +1,7 @@
 // Legacy shell kept for backward compatibility. Active app navigation uses src/navigation/MainTabs.tsx.
 import { useState, useCallback } from "react";
 import { View, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SidebarMenu } from "../../../components/navigation/SidebarMenu";
@@ -82,7 +83,7 @@ export const MainTabs = () => {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
         <HomeToolbar
           onMenuPress={() => setSidebarVisible(true)}
           searchValue={searchQuery}
@@ -97,7 +98,7 @@ export const MainTabs = () => {
           onTabPress={handleNavigate}
           tabs={bottomTabs}
         />
-      </View>
+      </SafeAreaView>
       <SidebarMenu
         visible={sidebarVisible}
         onClose={() => setSidebarVisible(false)}

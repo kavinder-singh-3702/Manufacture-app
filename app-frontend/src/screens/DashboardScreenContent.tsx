@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   AccessibilityInfo,
   ScrollView,
@@ -29,7 +29,7 @@ import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
 import { APP_NAME } from "../constants/brand";
 import { AdminDashboardExtras } from "./admin/components/AdminDashboardExtras";
-import { scale, moderateScale } from "../utils/responsive";
+import { scale } from "../utils/responsive";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { AdaptiveSingleLineText } from "../components/text/AdaptiveSingleLineText";
 import { AdaptiveTwoLineText } from "../components/text/AdaptiveTwoLineText";
@@ -193,7 +193,8 @@ const AnimatedCounter = ({ value, duration = 1000, style }: { value: number; dur
 const AdminDashboardContent = () => {
   const { colors, spacing, radius } = useTheme();
   const { width } = useWindowDimensions();
-  const { isXCompact, isCompact } = useResponsiveLayout();
+  const { isXCompact, isCompact, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -570,6 +571,8 @@ type StatCardProps = {
 
 const StatCard = ({ icon, label, value, trend, gradient, cardWidth, fullWidth }: StatCardProps) => {
   const { colors, radius, spacing } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -618,6 +621,8 @@ type ActionCardProps = {
 
 const ActionCard = ({ icon, label, color, badge, onPress, cardWidth }: ActionCardProps) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -667,6 +672,8 @@ type ManagementCardProps = {
 
 const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPress }: ManagementCardProps) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
 
   return (
     <TouchableOpacity
@@ -705,7 +712,8 @@ const ManagementCard = ({ icon, title, subtitle, badge, badgeColor, value, onPre
 // ============================================================
 const UserDashboardContent = () => {
   const { spacing, colors, radius } = useTheme();
-  const { isXCompact, isCompact } = useResponsiveLayout();
+  const { isXCompact, isCompact, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const insets = useSafeAreaInsets();
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
@@ -1195,6 +1203,8 @@ const AdSwipeDeck = ({
   onCall?: (card: AdFeedCard) => void;
 }) => {
   const { colors, radius, spacing } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const { width } = useWindowDimensions();
   const cardWidth = Math.max(260, width - spacing.lg * 2);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1227,7 +1237,7 @@ const AdSwipeDeck = ({
         <View style={[styles.noAdPillPremium, { backgroundColor: colors.badgeWarning }]}>
           <Text style={[styles.noAdPillTextPremium, { color: colors.warningStrong }]}>Sponsored spotlight</Text>
         </View>
-        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700" }}>
+        <Text style={{ color: colors.textMuted, fontSize: fs(12), fontWeight: "700" }}>
           {loading ? "Loading..." : `${activeIndex + 1}/${cards.length}`}
         </Text>
       </View>
@@ -1405,12 +1415,13 @@ const CategoryGrid = ({
   onCategoryPress?: (category: CategoryItem) => void;
 }) => {
   const { colors, spacing } = useTheme();
-  const { isXCompact, isCompact } = useResponsiveLayout();
+  const { isXCompact, isCompact, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const effectiveColumns = isCompact ? Math.min(columns, 2) : columns;
   const circleSize = isXCompact ? scale(62) : isCompact ? scale(68) : scale(80);
-  const iconFontSize = isXCompact ? moderateScale(24) : isCompact ? moderateScale(28) : moderateScale(32);
-  const titleFontSize = isXCompact ? moderateScale(10) : isCompact ? moderateScale(10.5) : moderateScale(12);
-  const titleLineHeight = isXCompact ? moderateScale(13) : isCompact ? moderateScale(14) : moderateScale(16);
+  const iconFontSize = isXCompact ? fs(24) : isCompact ? fs(28) : fs(32);
+  const titleFontSize = isXCompact ? fs(10) : isCompact ? fs(10.5) : fs(12);
+  const titleLineHeight = isXCompact ? fs(13) : isCompact ? fs(14) : fs(16);
   const titleMinimumScale = isCompact ? 0.52 : 0.62;
 
   const rows = items.reduce<CategoryItem[][]>((acc, item, index) => {
@@ -1494,7 +1505,7 @@ const CategoryGrid = ({
 // ============================================================
 // STYLES
 // ============================================================
-const styles = StyleSheet.create({
+const createStyles = (fs: (size: number) => number) => StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
@@ -1507,12 +1518,12 @@ const styles = StyleSheet.create({
   // Loader
   loaderContainer: { alignItems: "center", gap: scale(16) },
   loaderGradient: { width: scale(80), height: scale(80), borderRadius: scale(40), alignItems: "center", justifyContent: "center" },
-  loadingText: { fontSize: moderateScale(16), fontWeight: "500" },
+  loadingText: { fontSize: fs(16), fontWeight: "500" },
 
   // Header
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  greeting: { fontSize: moderateScale(16), fontWeight: "600" },
-  userName: { fontSize: moderateScale(32), fontWeight: "800", letterSpacing: -0.5 },
+  greeting: { fontSize: fs(16), fontWeight: "600" },
+  userName: { fontSize: fs(32), fontWeight: "800", letterSpacing: -0.5 },
   userAmbientOrb: {
     position: "absolute",
     width: scale(260),
@@ -1551,17 +1562,17 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   userHeroGreeting: {
-    fontSize: moderateScale(14),
+    fontSize: fs(14),
     fontWeight: "600",
   },
   userHeroTitle: {
-    fontSize: moderateScale(26),
+    fontSize: fs(26),
     fontWeight: "800",
     letterSpacing: -0.5,
   },
   userHeroSubtitle: {
-    fontSize: moderateScale(13),
-    lineHeight: moderateScale(18),
+    fontSize: fs(13),
+    lineHeight: fs(18),
     fontWeight: "500",
     maxWidth: "92%",
   },
@@ -1577,7 +1588,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(6),
   },
   userHeroTagText: {
-    fontSize: moderateScale(11),
+    fontSize: fs(11),
     fontWeight: "700",
     letterSpacing: 0.2,
   },
@@ -1586,13 +1597,13 @@ const styles = StyleSheet.create({
   },
   profileButton: { width: scale(50), height: scale(50), borderRadius: scale(25), padding: scale(3) },
   profileGradient: { flex: 1, borderRadius: scale(22), alignItems: "center", justifyContent: "center" },
-  profileInitial: { color: "#fff", fontSize: moderateScale(20), fontWeight: "700" },
+  profileInitial: { color: "#fff", fontSize: fs(20), fontWeight: "700" },
 
   // Error
   errorBanner: { flexDirection: "row", alignItems: "center", gap: scale(10) },
-  errorText: { flex: 1, fontSize: moderateScale(14) },
+  errorText: { flex: 1, fontSize: fs(14) },
   retryButton: { paddingHorizontal: scale(12), paddingVertical: scale(6), borderRadius: scale(6) },
-  retryText: { color: "#fff", fontSize: moderateScale(12), fontWeight: "600" },
+  retryText: { color: "#fff", fontSize: fs(12), fontWeight: "600" },
 
   // Hero Card
   heroCard: { padding: scale(24), overflow: "hidden" },
@@ -1600,29 +1611,29 @@ const styles = StyleSheet.create({
   heroDecor2: { position: "absolute", width: scale(120), height: scale(120), borderRadius: scale(60), backgroundColor: "rgba(255,255,255,0.08)", bottom: scale(-40), left: scale(20) },
   heroDecor3: { position: "absolute", width: scale(80), height: scale(80), borderRadius: scale(40), backgroundColor: "rgba(255,255,255,0.05)", top: scale(60), left: scale(-20) },
   heroContent: { position: "relative", zIndex: 1 },
-  heroTitle: { color: "#fff", fontSize: moderateScale(22), fontWeight: "800", letterSpacing: -0.3 },
-  heroSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: moderateScale(14), marginTop: scale(4) },
+  heroTitle: { color: "#fff", fontSize: fs(22), fontWeight: "800", letterSpacing: -0.3 },
+  heroSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: fs(14), marginTop: scale(4) },
   heroStatsRow: { flexDirection: "row", marginTop: scale(24), gap: scale(12) },
   heroStatBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: scale(16), padding: scale(16), alignItems: "center" },
   heroStatIconBg: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: scale(8) },
   heroStatIconBgWarning: { backgroundColor: "#FEF3C7" },
-  heroStatValue: { color: "#fff", fontSize: moderateScale(28), fontWeight: "800" },
-  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: moderateScale(12), fontWeight: "600", marginTop: scale(4) },
+  heroStatValue: { color: "#fff", fontSize: fs(28), fontWeight: "800" },
+  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: fs(12), fontWeight: "600", marginTop: scale(4) },
 
   // Alert Card
   alertCard: { flexDirection: "row", alignItems: "center", padding: scale(16), gap: scale(12) },
   alertPulse: { width: scale(12), height: scale(12), borderRadius: scale(6), backgroundColor: "rgba(245, 158, 11, 0.3)", alignItems: "center", justifyContent: "center" },
   alertDot: { width: scale(8), height: scale(8), borderRadius: scale(4) },
   alertContent: { flex: 1 },
-  alertTitle: { color: "#92400E", fontSize: moderateScale(15), fontWeight: "700" },
-  alertSubtitle: { color: "#A16207", fontSize: moderateScale(13), marginTop: scale(2) },
+  alertTitle: { color: "#92400E", fontSize: fs(15), fontWeight: "700" },
+  alertSubtitle: { color: "#A16207", fontSize: fs(13), marginTop: scale(2) },
   alertArrow: { width: scale(32), height: scale(32), borderRadius: scale(16), backgroundColor: "rgba(146, 64, 14, 0.1)", alignItems: "center", justifyContent: "center" },
 
   // Section
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: scale(16) },
-  sectionTitle: { fontSize: moderateScale(18), fontWeight: "700" },
+  sectionTitle: { fontSize: fs(18), fontWeight: "700" },
   sectionBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12), gap: scale(4) },
-  sectionBadgeText: { fontSize: moderateScale(12), fontWeight: "700" },
+  sectionBadgeText: { fontSize: fs(12), fontWeight: "700" },
 
   // Stats Grid
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: scale(12) },
@@ -1631,32 +1642,32 @@ const styles = StyleSheet.create({
   statCardIcon: { width: scale(40), height: scale(40), borderRadius: scale(12), alignItems: "center", justifyContent: "center" },
   statCardContent: { flex: 1 },
   statCardValueRow: { flexDirection: "row", alignItems: "center", gap: scale(6) },
-  statCardValue: { fontSize: moderateScale(24), fontWeight: "800" },
-  statCardLabel: { fontSize: moderateScale(12), marginTop: scale(2) },
+  statCardValue: { fontSize: fs(24), fontWeight: "800" },
+  statCardLabel: { fontSize: fs(12), marginTop: scale(2) },
   trendBadge: { paddingHorizontal: scale(6), paddingVertical: scale(2), borderRadius: scale(8) },
 
   // Actions Grid
   actionsScrollContent: { paddingHorizontal: scale(20), gap: scale(12) },
   actionCard: { width: scale(85), padding: scale(14), borderWidth: 1, alignItems: "center", gap: scale(8) },
   actionIconBg: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
-  actionLabel: { fontSize: moderateScale(13), fontWeight: "600" },
+  actionLabel: { fontSize: fs(13), fontWeight: "600" },
   actionBadge: { position: "absolute", top: scale(8), right: scale(8), minWidth: scale(20), height: scale(20), borderRadius: scale(10), alignItems: "center", justifyContent: "center" },
-  actionBadgeText: { color: "#fff", fontSize: moderateScale(11), fontWeight: "700" },
+  actionBadgeText: { color: "#fff", fontSize: fs(11), fontWeight: "700" },
 
   // Management Card
   managementCard: { flexDirection: "row", alignItems: "center", padding: scale(16), borderWidth: 1, gap: scale(14) },
   managementIcon: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
   managementContent: { flex: 1, minWidth: 0 },
-  managementTitle: { fontSize: moderateScale(16), fontWeight: "600" },
-  managementSubtitle: { fontSize: moderateScale(13), marginTop: scale(2) },
+  managementTitle: { fontSize: fs(16), fontWeight: "600" },
+  managementSubtitle: { fontSize: fs(13), marginTop: scale(2) },
   managementBadge: { minWidth: scale(24), height: scale(24), borderRadius: scale(12), alignItems: "center", justifyContent: "center", paddingHorizontal: scale(8) },
-  managementBadgeText: { color: "#fff", fontSize: moderateScale(12), fontWeight: "700" },
-  managementValue: { fontSize: moderateScale(13), fontWeight: "500" },
+  managementBadgeText: { color: "#fff", fontSize: fs(12), fontWeight: "700" },
+  managementValue: { fontSize: fs(13), fontWeight: "500" },
 
   // Add Product Button
   addProductButton: { flexDirection: "row", alignItems: "center", padding: scale(16), borderWidth: 1, gap: scale(14) },
   addProductIcon: { width: scale(48), height: scale(48), borderRadius: scale(24), alignItems: "center", justifyContent: "center" },
-  addProductText: { flex: 1, fontSize: moderateScale(16), fontWeight: "600" },
+  addProductText: { flex: 1, fontSize: fs(16), fontWeight: "600" },
 
   // Ad Swipe Deck
   adCard: {
@@ -1711,19 +1722,19 @@ const styles = StyleSheet.create({
     paddingVertical: scale(4),
   },
   adBadgeText: {
-    fontSize: moderateScale(10),
+    fontSize: fs(10),
     fontWeight: "800",
     textTransform: "uppercase",
   },
   adTitle: {
-    fontSize: moderateScale(16),
+    fontSize: fs(16),
     fontWeight: "800",
-    lineHeight: moderateScale(22),
+    lineHeight: fs(22),
   },
   adSubtitle: {
-    fontSize: moderateScale(12),
+    fontSize: fs(12),
     fontWeight: "600",
-    lineHeight: moderateScale(17),
+    lineHeight: fs(17),
   },
   adPriceRow: {
     flexDirection: "row",
@@ -1732,12 +1743,12 @@ const styles = StyleSheet.create({
     marginTop: scale(2),
   },
   adListedPrice: {
-    fontSize: moderateScale(12),
+    fontSize: fs(12),
     fontWeight: "700",
     textDecorationLine: "line-through",
   },
   adDiscountPrice: {
-    fontSize: moderateScale(18),
+    fontSize: fs(18),
     fontWeight: "900",
     letterSpacing: -0.2,
   },
@@ -1753,7 +1764,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(12),
   },
   adPrimaryBtnText: {
-    fontSize: moderateScale(12),
+    fontSize: fs(12),
     fontWeight: "900",
   },
   adGhostBtn: {
@@ -1766,7 +1777,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
   },
   adGhostBtnText: {
-    fontSize: moderateScale(12),
+    fontSize: fs(12),
     fontWeight: "800",
   },
   adContactRow: {
@@ -1787,7 +1798,7 @@ const styles = StyleSheet.create({
 
   // Sponsored feed label
   noAdPillPremium: { alignSelf: "flex-start", paddingHorizontal: scale(14), paddingVertical: scale(8), borderRadius: scale(20), backgroundColor: "rgba(0,0,0,0.15)", borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
-  noAdPillTextPremium: { fontSize: moderateScale(12), fontWeight: "700", letterSpacing: 0.3, color: "#1F2937" },
+  noAdPillTextPremium: { fontSize: fs(12), fontWeight: "700", letterSpacing: 0.3, color: "#1F2937" },
 
   // Category Grid
   categoryRow: { flexDirection: "row", justifyContent: "flex-start", flexWrap: "wrap" },
@@ -1795,9 +1806,9 @@ const styles = StyleSheet.create({
   categoryItemSafe: { flexShrink: 1 },
   categoryCircleOuter: { position: "relative", marginBottom: scale(10) },
   categoryCircleSolid: { width: scale(80), height: scale(80), borderRadius: scale(40), alignItems: "center", justifyContent: "center" },
-  categoryIcon: { fontSize: moderateScale(32) },
+  categoryIcon: { fontSize: fs(32) },
   countBadgeSolid: { position: "absolute", top: scale(-4), right: scale(-4), backgroundColor: "#148DB2", paddingHorizontal: scale(8), paddingVertical: scale(4), borderRadius: scale(12), zIndex: 1 },
-  countBadgeTextSolid: { color: "#FFFFFF", fontSize: moderateScale(10), fontWeight: "700" },
+  countBadgeTextSolid: { color: "#FFFFFF", fontSize: fs(10), fontWeight: "700" },
   categoryTitleWrap: { width: "100%", minWidth: 0, alignItems: "center", paddingHorizontal: scale(2) },
-  categoryTitleCircle: { fontSize: moderateScale(12), fontWeight: "600", textAlign: "center", lineHeight: moderateScale(16), width: "100%" },
+  categoryTitleCircle: { fontSize: fs(12), fontWeight: "600", textAlign: "center", lineHeight: fs(16), width: "100%" },
 });

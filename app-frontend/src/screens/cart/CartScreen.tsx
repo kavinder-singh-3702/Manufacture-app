@@ -66,8 +66,8 @@ type CartItemCardProps = {
 
 const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemCardProps) => {
   const COLORS = useCartPalette();
-  const { isCompact, isXCompact } = useResponsiveLayout();
-  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const { isCompact, isXCompact, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(COLORS, fs), [COLORS, fs]);
   const { item, variant, quantity, lineKey } = cartItem;
 
   const handleIncrement = () => {
@@ -206,8 +206,8 @@ const CartItemCard = ({ cartItem, onUpdateQuantity, onRemove, index }: CartItemC
 // ============================================================
 const EmptyCart = () => {
   const COLORS = useCartPalette();
-  const { isCompact } = useResponsiveLayout();
-  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const { isCompact, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(COLORS, fs), [COLORS, fs]);
   const navigation = useNavigation();
 
   return (
@@ -232,7 +232,7 @@ const EmptyCart = () => {
       </View>
 
       <Text style={styles.emptyTitle}>Your Shortlist is Empty</Text>
-      <Text style={[styles.emptySubtitle, isCompact ? { fontSize: 14, lineHeight: 20 } : null]}>
+      <Text style={[styles.emptySubtitle, isCompact ? { fontSize: fs(14), lineHeight: fs(20) } : null]}>
         Shortlist products and contact sellers through message or call.
       </Text>
 
@@ -260,8 +260,8 @@ const EmptyCart = () => {
 // ============================================================
 export const CartScreen = () => {
   const COLORS = useCartPalette();
-  const { isCompact, isXCompact, contentPadding } = useResponsiveLayout();
-  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
+  const { isCompact, isXCompact, contentPadding, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(COLORS, fs), [COLORS, fs]);
   const { items, totalItems, updateQuantity, removeFromCart, clearCart, refreshCartItems } = useCart();
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
@@ -450,7 +450,7 @@ export const CartScreen = () => {
 
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
-            <Text style={[styles.headerTitle, isCompact ? { fontSize: 20 } : null]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
+            <Text style={[styles.headerTitle, isCompact ? { fontSize: fs(20) } : null]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
               My Shortlist
             </Text>
             {refreshing && (
@@ -466,7 +466,7 @@ export const CartScreen = () => {
 
         {items.length > 0 ? (
           <TouchableOpacity onPress={handleClearCart} style={styles.clearButton} activeOpacity={0.7}>
-            <Text style={[styles.clearButtonText, isCompact ? { fontSize: 12 } : null]}>Clear</Text>
+            <Text style={[styles.clearButtonText, isCompact ? { fontSize: fs(12) } : null]}>Clear</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 50 }} />
@@ -595,7 +595,7 @@ export const CartScreen = () => {
 // ============================================================
 // STYLES
 // ============================================================
-const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
+const createStyles = (COLORS: ReturnType<typeof useCartPalette>, fs: (size: number) => number) =>
   StyleSheet.create({
   container: {
     flex: 1,
@@ -646,7 +646,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderColor: COLORS.border,
   },
   backIcon: {
-    fontSize: 20,
+    fontSize: fs(20),
     color: COLORS.text,
     fontWeight: "600",
   },
@@ -660,7 +660,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: fs(22),
     fontWeight: "800",
     color: COLORS.text,
     letterSpacing: -0.5,
@@ -673,7 +673,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderRadius: 12,
   },
   itemCountText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: "600",
     color: COLORS.accent,
   },
@@ -684,7 +684,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderRadius: 12,
   },
   clearButtonText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: "700",
     color: COLORS.danger,
   },
@@ -724,7 +724,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     justifyContent: "center",
   },
   productIcon: {
-    fontSize: 26,
+    fontSize: fs(26),
   },
   productDetails: {
     flex: 1,
@@ -737,7 +737,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     minWidth: 0,
   },
   productName: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "700",
     color: COLORS.text,
     flex: 1,
@@ -754,7 +754,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     justifyContent: "center",
   },
   removeIcon: {
-    fontSize: 16,
+    fontSize: fs(16),
     color: COLORS.danger,
     fontWeight: "600",
     marginTop: -1,
@@ -773,19 +773,19 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderRadius: 8,
   },
   categoryText: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: "600",
     color: COLORS.accent,
     textTransform: "capitalize",
   },
   skuText: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: "500",
     color: COLORS.textSubtle,
   },
   variantText: {
     marginTop: 6,
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: "600",
     color: COLORS.textMuted,
   },
@@ -816,7 +816,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     backgroundColor: COLORS.accent,
   },
   qtyBtnText: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "600",
     color: COLORS.textMuted,
   },
@@ -827,7 +827,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     paddingHorizontal: 16,
   },
   qtyValue: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: "700",
     color: COLORS.text,
   },
@@ -837,12 +837,12 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     flexShrink: 1,
   },
   unitPriceText: {
-    fontSize: 11,
+    fontSize: fs(11),
     fontWeight: "500",
     color: COLORS.textSubtle,
   },
   totalPriceText: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "800",
     color: COLORS.text,
     marginTop: 2,
@@ -883,7 +883,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     justifyContent: "center",
   },
   emptyIcon: {
-    fontSize: 48,
+    fontSize: fs(48),
   },
   emptyIconRing: {
     position: "absolute",
@@ -897,18 +897,18 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderStyle: "dashed",
   },
   emptyTitle: {
-    fontSize: 24,
+    fontSize: fs(24),
     fontWeight: "800",
     color: COLORS.text,
     marginBottom: 10,
   },
   emptySubtitle: {
-    fontSize: 15,
+    fontSize: fs(15),
     fontWeight: "500",
     color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: 32,
-    lineHeight: 22,
+    lineHeight: fs(22),
   },
   browseButton: {
     borderRadius: 16,
@@ -924,12 +924,12 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   },
   browseText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: "700",
   },
   browseArrow: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "700",
   },
 
@@ -956,7 +956,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     marginBottom: 16,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "800",
     color: COLORS.text,
   },
@@ -967,7 +967,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     borderRadius: 10,
   },
   summaryBadgeText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: "600",
     color: COLORS.accent,
   },
@@ -981,21 +981,21 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     marginBottom: 10,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "500",
     color: COLORS.textMuted,
   },
   summaryAmount: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: "800",
     color: COLORS.text,
   },
   contactHelperText: {
     marginTop: 8,
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: "500",
     color: COLORS.textSubtle,
-    lineHeight: 17,
+    lineHeight: fs(17),
   },
   contactActionRow: {
     flexDirection: "row",
@@ -1018,7 +1018,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
   },
   contactActionText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "700",
   },
 
@@ -1036,14 +1036,14 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     maxHeight: "70%",
   },
   pickerTitle: {
-    fontSize: 17,
+    fontSize: fs(17),
     fontWeight: "800",
     color: COLORS.text,
   },
   pickerSubtitle: {
     marginTop: 4,
     marginBottom: 12,
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: "500",
     color: COLORS.textMuted,
   },
@@ -1058,13 +1058,13 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     padding: 12,
   },
   pickerOptionName: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: "700",
     color: COLORS.text,
   },
   pickerOptionMeta: {
     marginTop: 3,
-    fontSize: 12,
+    fontSize: fs(12),
     color: COLORS.textMuted,
   },
   pickerCloseButton: {
@@ -1078,7 +1078,7 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>) =>
     backgroundColor: COLORS.surfaceLight,
   },
   pickerCloseText: {
-    fontSize: 13,
+    fontSize: fs(13),
     fontWeight: "700",
     color: COLORS.text,
   },

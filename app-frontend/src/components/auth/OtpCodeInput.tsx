@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 
 export type OtpInputChangeMeta = {
   typed: boolean;
@@ -31,8 +32,9 @@ export const OtpCodeInput = ({
 }: OtpCodeInputProps) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors, isDark, fs), [colors, isDark, fs]);
   const inputRef = useRef<TextInput | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const normalizedValue = sanitizeOtp(value || "", length);
@@ -106,7 +108,7 @@ export const OtpCodeInput = ({
   );
 };
 
-const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean, fs: (size: number) => number) =>
   StyleSheet.create({
     boxRow: {
       flexDirection: "row",
@@ -145,7 +147,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       backgroundColor: colors.errorBg,
     },
     boxText: {
-      fontSize: 22,
+      fontSize: fs(22),
       fontWeight: "800",
       color: colors.textMuted,
     },
@@ -162,7 +164,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     },
     errorText: {
       marginTop: 8,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "700",
       color: colors.error,
     },

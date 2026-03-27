@@ -79,7 +79,6 @@ module.exports = ({ config }) => {
           defaultChannel: "default",
         },
       ],
-      "react-native-razorpay",
     ],
   };
 };

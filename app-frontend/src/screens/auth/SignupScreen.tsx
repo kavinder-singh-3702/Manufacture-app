@@ -227,9 +227,9 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const { setUser } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
-  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
+  const { isCompact, isXCompact, clamp, fs } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors, isDark, fs), [colors, isDark, fs]);
   const headerIntro = useRef(new Animated.Value(0)).current;
   const formIntro = useRef(new Animated.Value(0)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
@@ -941,7 +941,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
               ],
             }}
           >
-            <Text style={[styles.heading, { color: headingColor, fontSize: clamp(isXCompact ? 22 : 26, 21, 26) }]}>
+            <Text style={[styles.heading, { color: headingColor, fontSize: fs(isXCompact ? 22 : 26) }]}>
               {activeStepMeta.title}
             </Text>
             <Text style={[styles.subheading, { color: secondaryTextColor }]}>{activeStepMeta.description}</Text>
@@ -1080,7 +1080,7 @@ const InputField = ({
   </View>
 );
 
-const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean) =>
+const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boolean, fs: (size: number) => number) =>
   StyleSheet.create({
     slide: {
       flex: 1,
@@ -1103,28 +1103,28 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       alignSelf: "flex-start",
     },
     backIcon: {
-      fontSize: 26,
+      fontSize: fs(26),
       fontWeight: "700",
       marginTop: -2,
     },
     heading: {
       fontWeight: "800",
-      lineHeight: 30,
+      lineHeight: fs(30),
     },
     subheading: {
-      fontSize: 14,
-      lineHeight: 20,
+      fontSize: fs(14),
+      lineHeight: fs(20),
       marginTop: 4,
       marginBottom: 10,
     },
     statusText: {
       marginBottom: 8,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "700",
     },
     errorText: {
       marginBottom: 8,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "700",
       color: colors.error,
     },
@@ -1139,8 +1139,8 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     },
     stepHint: {
       marginBottom: 12,
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: fs(12),
+      lineHeight: fs(18),
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -1154,7 +1154,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       paddingVertical: 10,
     },
     otpInfoLabel: {
-      fontSize: 11,
+      fontSize: fs(11),
       fontWeight: "700",
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -1162,13 +1162,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     },
     otpInfoEmail: {
       marginTop: 3,
-      fontSize: 14,
+      fontSize: fs(14),
       fontWeight: "800",
       color: colors.text,
     },
     otpInfoMeta: {
       marginTop: 3,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -1186,7 +1186,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       marginRight: 10,
     },
     fieldLabel: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "700",
       color: colors.text,
       marginBottom: 8,
@@ -1208,7 +1208,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       borderColor: colors.error,
     },
     input: {
-      fontSize: 16,
+      fontSize: fs(16),
       fontWeight: "600",
       color: colors.text,
       paddingVertical: 16,
@@ -1225,13 +1225,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     },
     fieldError: {
       marginTop: 7,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "700",
       color: colors.error,
     },
     fieldHelper: {
       marginTop: 7,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -1243,7 +1243,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       minWidth: 0,
     },
     otpEditEmail: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "800",
       color: colors.primary,
     },
@@ -1261,7 +1261,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(15,23,36,0.04)",
     },
     otpResendButtonText: {
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "800",
       color: colors.primary,
     },
@@ -1269,7 +1269,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       color: colors.textMuted,
     },
     sectionLabel: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "800",
       color: colors.text,
       textTransform: "uppercase",
@@ -1290,13 +1290,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       gap: 10,
     },
     sectionMetaText: {
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "700",
       color: colors.textSecondary,
     },
     sectionHelper: {
       marginBottom: 10,
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -1319,7 +1319,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       backgroundColor: colors.primary + "16",
     },
     accountChipText: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "700",
       color: colors.textSecondary,
     },
@@ -1335,7 +1335,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       paddingHorizontal: 14,
     },
     categorySearch: {
-      fontSize: 15,
+      fontSize: fs(15),
       color: colors.text,
       paddingVertical: 14,
     },
@@ -1379,7 +1379,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     },
     categoryRowText: {
       flex: 1,
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "700",
       color: colors.textSecondary,
     },
@@ -1387,19 +1387,19 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       color: colors.text,
     },
     categoryEmpty: {
-      fontSize: 12,
+      fontSize: fs(12),
       fontWeight: "600",
       color: colors.textMuted,
       marginTop: 6,
     },
     helperCopy: {
-      fontSize: 14,
-      lineHeight: 21,
+      fontSize: fs(14),
+      lineHeight: fs(21),
       color: colors.textSecondary,
       marginTop: 8,
     },
     eyeText: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "800",
       color: colors.primary,
     },
@@ -1418,7 +1418,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       paddingHorizontal: 18,
     },
     primaryButtonText: {
-      fontSize: 15,
+      fontSize: fs(15),
       fontWeight: "800",
       color: colors.textOnPrimary,
       letterSpacing: 0.3,
@@ -1428,7 +1428,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
       alignItems: "center",
     },
     loginLink: {
-      fontSize: 13,
+      fontSize: fs(13),
       fontWeight: "600",
       textAlign: "center",
     },

@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { PixelRatio, useWindowDimensions } from "react-native";
 import { useTheme } from "./useTheme";
 import { getResponsiveTier, type ResponsiveTier } from "../utils/responsive";
+
+const BASE_WIDTH = 375; // iPhone 11 Pro design reference
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
@@ -53,6 +55,26 @@ export const useResponsiveLayout = () => {
   const tier = getResponsiveTier(width, fontScale);
   const tierValues = getTierValues(tier);
 
+  // fs = font scale: scales font sizes based on screen width relative to design reference (375px)
+  // Usage: fs(16) returns scaled font size for current device
+  const fs = useCallback(
+    (size: number) => {
+      const ratio = width / BASE_WIDTH;
+      const scaled = size * (1 + (ratio - 1) * 0.5); // moderate scaling (50% factor)
+      return Math.round(PixelRatio.roundToNearestPixel(scaled));
+    },
+    [width]
+  );
+
+  // sp = responsive spacing: scales padding/margin based on screen width
+  const sp = useCallback(
+    (size: number) => {
+      const ratio = width / BASE_WIDTH;
+      return Math.round(size * ratio);
+    },
+    [width]
+  );
+
   return useMemo(
     () => ({
       width,
@@ -69,8 +91,10 @@ export const useResponsiveLayout = () => {
       compactHeaderHeight: tierValues.compactHeaderHeight,
       spacing,
       clamp,
+      fs,
+      sp,
     }),
-    [fontScale, height, radius.lg, radius.sm, radius.xl, spacing, tier, tierValues, width]
+    [fontScale, height, radius.sm, radius.xl, spacing, tier, tierValues, width, fs, sp]
   );
 };
 

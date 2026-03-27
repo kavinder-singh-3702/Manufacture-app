@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
@@ -80,7 +81,7 @@ export const AuthScreen = () => {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom", "left", "right"]}>
         <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />
 
         {view !== "intro" ? (
@@ -162,7 +163,7 @@ type IntroPanelProps = {
 const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
-  const { isCompact, isXCompact, clamp } = useResponsiveLayout();
+  const { isCompact, isXCompact, clamp, fs, sp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   const orbAPulse = useRef(new Animated.Value(0)).current;
@@ -174,8 +175,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const copyReveal = useRef(new Animated.Value(0)).current;
   const actionReveal = useRef(new Animated.Value(0)).current;
 
-  const heroHeight = isXCompact ? 200 : isCompact ? 220 : 250;
-  const cardPaddingHorizontal = isXCompact ? 18 : isCompact ? 22 : 28;
+  const heroHeight = sp(isXCompact ? 200 : isCompact ? 220 : 250);
+  const cardPaddingHorizontal = sp(isXCompact ? 18 : isCompact ? 22 : 28);
 
   const orbAScale = useMemo(
     () =>
@@ -425,7 +426,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
         styles.slideCard,
         {
           paddingHorizontal: cardPaddingHorizontal,
-          paddingVertical: isCompact ? 18 : 24,
+          paddingVertical: sp(isCompact ? 18 : 24),
         },
       ]}
     >
@@ -478,7 +479,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             borderColor: glassCardBorder,
             shadowColor: isDark ? colors.primary : "#0f1724",
             paddingHorizontal: cardPaddingHorizontal,
-            paddingVertical: isCompact ? 20 : 26,
+            paddingVertical: sp(isCompact ? 20 : 26),
           },
         ]}
       >
@@ -488,8 +489,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             style={[
               styles.heroHalo,
               {
-                width: isCompact ? 188 : 230,
-                height: isCompact ? 188 : 230,
+                width: sp(isCompact ? 188 : 230),
+                height: sp(isCompact ? 188 : 230),
               },
             ]}
           />
@@ -500,8 +501,8 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
               {
                 backgroundColor: isDark ? "rgba(18,25,35,0.84)" : "rgba(245,249,255,0.92)",
                 borderColor: colors.primary + (isDark ? "52" : "45"),
-                width: isXCompact ? 118 : isCompact ? 130 : 144,
-                height: isXCompact ? 118 : isCompact ? 130 : 144,
+                width: sp(isXCompact ? 118 : isCompact ? 130 : 144),
+                height: sp(isXCompact ? 118 : isCompact ? 130 : 144),
                 transform: [{ translateY: reduceMotionEnabled ? 0 : logoTranslate }],
               },
             ]}
@@ -516,10 +517,10 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             { opacity: copyReveal, transform: [{ translateY: copyTranslate }] },
           ]}
         >
-          <Text style={[styles.introHeading, { color: headingColor, fontSize: clamp(isXCompact ? 25 : 32, 23, 32) }]}>
+          <Text style={[styles.introHeading, { color: headingColor, fontSize: fs(isXCompact ? 25 : 32), lineHeight: fs(isXCompact ? 30 : 38) }]}>
             Welcome to {APP_NAME}
           </Text>
-          <Text style={[styles.introSubheading, { color: subheadingColor }]}>Built for industrial trade and operations</Text>
+          <Text style={[styles.introSubheading, { color: subheadingColor, fontSize: fs(15), lineHeight: fs(21) }]}>Built for industrial trade and operations</Text>
           <View style={[styles.introAccentBar, { backgroundColor: colors.primary + (isDark ? "66" : "3f") }]} />
         </Animated.View>
 
@@ -547,7 +548,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
                     />
                   </Animated.View>
                 )}
-                <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>JOIN NOW</Text>
+                <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary, fontSize: fs(16) }]}>JOIN NOW</Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
@@ -563,7 +564,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             ]}
             onPress={onSkip}
           >
-            <Text style={[styles.skipText, { color: skipTextColor }]}>Skip</Text>
+            <Text style={[styles.skipText, { color: skipTextColor, fontSize: fs(14) }]}>Skip</Text>
           </Pressable>
         </Animated.View>
       </View>
@@ -621,8 +622,8 @@ const styles = StyleSheet.create({
     left: -130,
   },
   glassCard: {
-    width: "100%",
-    maxWidth: 430,
+    width: "92%",
+    maxWidth: 480,
     borderRadius: 28,
     borderWidth: 1,
     overflow: "hidden",
@@ -695,16 +696,16 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   primaryButtonWrap: {
-    width: "100%",
-    maxWidth: 280,
+    width: "85%",
+    maxWidth: 320,
   },
   primaryButtonPressable: {
     width: "100%",
   },
   primaryButton: {
     borderRadius: 40,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",

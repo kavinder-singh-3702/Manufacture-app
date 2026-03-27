@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { authSharedStyles } from "./styles";
 
 type StepKey = string;
@@ -12,6 +13,7 @@ type SignupStepperProps<Step extends StepKey> = {
 
 export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles }: SignupStepperProps<Step>) => {
   const { colors } = useTheme();
+  const { fs } = useResponsiveLayout();
   const currentStepIndex = steps.indexOf(activeStep);
   const progressRatio = steps.length > 1 ? currentStepIndex / (steps.length - 1) : 1;
 
@@ -27,10 +29,10 @@ export const SignupStepper = <Step extends StepKey>({ steps, activeStep, titles 
       ]}
     >
       <View style={styles.header}>
-        <Text style={[styles.progressStep, { color: colors.textSecondary }]}>
+        <Text style={[styles.progressStep, { color: colors.textSecondary, fontSize: fs(11) }]}>
           Step {currentStepIndex + 1} of {steps.length}
         </Text>
-        <Text style={[styles.progressTitle, { color: colors.text }]}>
+        <Text style={[styles.progressTitle, { color: colors.text, fontSize: fs(12) }]}>
           {titles[activeStep]}
         </Text>
       </View>

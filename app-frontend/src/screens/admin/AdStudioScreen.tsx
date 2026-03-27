@@ -19,6 +19,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { RootStackParamList } from "../../navigation/types";
 import {
   adService,
@@ -169,6 +170,8 @@ const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIG
 export const AdStudioScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const isDark = resolvedMode === "dark";
   const navigation = useNavigation<Nav>();
   const route = useRoute<StudioRoute>();
@@ -962,7 +965,7 @@ export const AdStudioScreen = () => {
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={[styles.title, { color: colors.text }]}>Ad Studio</Text>
-            <Text style={{ fontSize: 18 }}>📢</Text>
+            <Text style={{ fontSize: fs(18) }}>📢</Text>
           </View>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Build targeted product ads in guided steps</Text>
         </View>
@@ -1507,7 +1510,7 @@ export const AdStudioScreen = () => {
                         }}
                       >
                         <Ionicons name="image-outline" size={24} color={colors.primary} />
-                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Image</Text>
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>Pick Image</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
@@ -1533,7 +1536,7 @@ export const AdStudioScreen = () => {
                         }}
                       >
                         <Ionicons name="videocam-outline" size={24} color={colors.primary} />
-                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Video</Text>
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>Pick Video</Text>
                       </TouchableOpacity>
                     </View>
                     {wizard.bannerMediaUri ? (
@@ -1552,7 +1555,7 @@ export const AdStudioScreen = () => {
                             ]}
                           >
                             <Ionicons name="videocam" size={32} color={colors.primary} />
-                            <Text style={{ color: colors.text, fontSize: 13 }}>Video selected</Text>
+                            <Text style={{ color: colors.text, fontSize: fs(13) }}>Video selected</Text>
                           </View>
                         )}
                         <TouchableOpacity
@@ -1565,7 +1568,7 @@ export const AdStudioScreen = () => {
                             }))
                           }
                         >
-                          <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Remove</Text>
+                          <Text style={{ color: colors.error, fontSize: fs(13), fontWeight: "600" }}>Remove</Text>
                         </TouchableOpacity>
                       </View>
                     ) : null}
@@ -2046,6 +2049,8 @@ export const AdStudioScreen = () => {
 
 const InfoLine = ({ label, value }: { label: string; value: string }) => {
   const { colors } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={styles.rowBetween}>
       <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{label}</Text>
@@ -2069,6 +2074,8 @@ const SelectCard = ({
 }) => {
   const { colors, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
@@ -2105,6 +2112,8 @@ const CategoryChips = ({
   onToggle: (id: string) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={styles.fieldWrap}>
       <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{label}</Text>
@@ -2151,6 +2160,8 @@ const TagEditor = ({
   onChange: (values: string[]) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const [draft, setDraft] = useState("");
 
   const addDraft = useCallback(() => {
@@ -2213,6 +2224,8 @@ const CalendarDateField = ({
   onChange: (value: string) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const parsedValue = value ? new Date(value) : null;
   const safeValueDate = parsedValue && !Number.isNaN(parsedValue.getTime()) ? parsedValue : null;
 
@@ -2380,6 +2393,8 @@ const Field = ({
 }) => {
   const { colors, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const dk = resolvedMode === "dark";
   return (
     <View style={styles.fieldWrap}>
@@ -2414,6 +2429,8 @@ const Field = ({
 const Toggle = ({ label, value, onPress }: { label: string; value: boolean; onPress: () => void }) => {
   const { colors, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
@@ -2435,377 +2452,378 @@ const Toggle = ({ label, value, onPress }: { label: string; value: boolean; onPr
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderBottomWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { fontSize: 18, fontWeight: "900" },
-  subtitle: { marginTop: 2, fontSize: 12, fontWeight: "600" },
-  card: { borderWidth: 1, padding: 12, gap: 10 },
-  stepHeader: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
-  stepItem: { flex: 1, alignItems: "center", gap: 6 },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepDotText: { fontSize: 11, fontWeight: "900" },
-  stepLabel: { fontSize: 9.5, fontWeight: "700", textAlign: "center" },
-  fieldWrap: { gap: 4 },
-  fieldLabel: { fontSize: 12, fontWeight: "700" },
-  fieldInput: {
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 10,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  dateFieldButton: {
-    minHeight: 44,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dateFieldValue: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sectionTitle: { fontSize: 14, fontWeight: "900" },
-  sectionSubtitle: { fontSize: 12, fontWeight: "600" },
-  stack: { gap: 8 },
-  row: { flexDirection: "row", gap: 8 },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  modeChip: {
-    flex: 1,
-    minHeight: 38,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modeText: { fontSize: 11, fontWeight: "900", letterSpacing: 0.3 },
-  optionCard: { borderWidth: 1, padding: 10, gap: 4 },
-  optionTitle: { fontSize: 13, fontWeight: "800" },
-  optionMeta: { fontSize: 11, fontWeight: "600" },
-  statusChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
-  statusChipText: { fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
-  inlineLoading: { paddingVertical: 10, alignItems: "center", justifyContent: "center" },
-  primaryBtn: {
-    minHeight: 40,
-    minWidth: 100,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  primaryBtnText: { fontSize: 12, fontWeight: "900" },
-  emptyCampaign: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  campaignCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-  },
-  campaignContent: {
-    flex: 1,
-    gap: 4,
-  },
-  campaignName: {
-    fontSize: 14,
-    fontWeight: "800",
-    flex: 1,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    gap: 3,
-  },
-  statDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 2,
-  },
-  statCount: {
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  ghostBtn: {
-    minHeight: 40,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ghostBtnText: { fontSize: 12, fontWeight: "800" },
-  footerActions: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 2 },
-  errorText: { fontSize: 12, fontWeight: "700" },
-  toggle: {
-    minHeight: 42,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  toggleText: { fontSize: 12, fontWeight: "700", flex: 1 },
-  previewCard: { borderWidth: 1, padding: 10, gap: 6 },
-  previewTitle: { fontSize: 12, fontWeight: "800" },
-  previewMeta: { fontSize: 11, fontWeight: "600" },
-  smallAction: {
-    minHeight: 28,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  smallActionText: { fontSize: 11, fontWeight: "800" },
-  selectCard: {
-    flex: 1,
-    borderWidth: 1,
-    padding: 10,
-    gap: 4,
-  },
-  presetWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  presetCard: {
-    minHeight: 34,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  presetText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  tagInputWrap: {
-    minHeight: 44,
-    borderWidth: 1,
-    paddingLeft: 10,
-    paddingRight: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  tagInput: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    paddingVertical: 10,
-  },
-  tagAddBtn: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarBackdrop: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  calendarCard: {
-    width: "100%",
-    maxWidth: 380,
-    borderWidth: 1,
-    padding: 12,
-    gap: 10,
-  },
-  calendarIconBtn: {
-    width: 34,
-    height: 34,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarMonthLabel: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  calendarWeekRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  calendarWeekCell: {
-    flex: 1,
-    alignItems: "center",
-  },
-  calendarWeekText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  calendarDayCell: {
-    width: "13.5%",
-    minHeight: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarDayBtn: {
-    borderWidth: 1,
-  },
-  calendarDayText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  calendarActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  mediaPickerButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    borderWidth: 1,
-    borderStyle: "dashed",
-  },
-  videoPreview: {
-    width: "100%",
-    height: 100,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
+const createStyles = (fs: (size: number) => number) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderBottomWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: { fontSize: fs(18), fontWeight: "900" },
+    subtitle: { marginTop: 2, fontSize: fs(12), fontWeight: "600" },
+    card: { borderWidth: 1, padding: 12, gap: 10 },
+    stepHeader: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
+    stepItem: { flex: 1, alignItems: "center", gap: 6 },
+    stepDot: {
+      width: 28,
+      height: 28,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepDotText: { fontSize: fs(11), fontWeight: "900" },
+    stepLabel: { fontSize: fs(9.5), fontWeight: "700", textAlign: "center" },
+    fieldWrap: { gap: 4 },
+    fieldLabel: { fontSize: fs(12), fontWeight: "700" },
+    fieldInput: {
+      borderWidth: 1,
+      paddingHorizontal: 11,
+      paddingVertical: 10,
+      fontSize: fs(13),
+      fontWeight: "600",
+    },
+    dateFieldButton: {
+      minHeight: 44,
+      borderWidth: 1,
+      paddingHorizontal: 11,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    dateFieldValue: {
+      fontSize: fs(13),
+      fontWeight: "600",
+    },
+    sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    sectionTitle: { fontSize: fs(14), fontWeight: "900" },
+    sectionSubtitle: { fontSize: fs(12), fontWeight: "600" },
+    stack: { gap: 8 },
+    row: { flexDirection: "row", gap: 8 },
+    rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+    modeChip: {
+      flex: 1,
+      minHeight: 38,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modeText: { fontSize: fs(11), fontWeight: "900", letterSpacing: 0.3 },
+    optionCard: { borderWidth: 1, padding: 10, gap: 4 },
+    optionTitle: { fontSize: fs(13), fontWeight: "800" },
+    optionMeta: { fontSize: fs(11), fontWeight: "600" },
+    statusChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
+    statusChipText: { fontSize: fs(10), fontWeight: "900", textTransform: "uppercase" },
+    inlineLoading: { paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+    primaryBtn: {
+      minHeight: 40,
+      minWidth: 100,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 5,
+    },
+    primaryBtnText: { fontSize: fs(12), fontWeight: "900" },
+    emptyCampaign: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      gap: 8,
+    },
+    campaignCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 14,
+    },
+    campaignContent: {
+      flex: 1,
+      gap: 4,
+    },
+    campaignName: {
+      fontSize: fs(14),
+      fontWeight: "800",
+      flex: 1,
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    statCard: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 12,
+      gap: 3,
+    },
+    statDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginBottom: 2,
+    },
+    statCount: {
+      fontSize: fs(20),
+      fontWeight: "900",
+    },
+    statLabel: {
+      fontSize: fs(10),
+      fontWeight: "700",
+    },
+    ghostBtn: {
+      minHeight: 40,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ghostBtnText: { fontSize: fs(12), fontWeight: "800" },
+    footerActions: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 2 },
+    errorText: { fontSize: fs(12), fontWeight: "700" },
+    toggle: {
+      minHeight: 42,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    toggleText: { fontSize: fs(12), fontWeight: "700", flex: 1 },
+    previewCard: { borderWidth: 1, padding: 10, gap: 6 },
+    previewTitle: { fontSize: fs(12), fontWeight: "800" },
+    previewMeta: { fontSize: fs(11), fontWeight: "600" },
+    smallAction: {
+      minHeight: 28,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    smallActionText: { fontSize: fs(11), fontWeight: "800" },
+    selectCard: {
+      flex: 1,
+      borderWidth: 1,
+      padding: 10,
+      gap: 4,
+    },
+    presetWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    presetCard: {
+      minHeight: 34,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    presetText: {
+      fontSize: fs(11),
+      fontWeight: "800",
+    },
+    chipWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    chip: {
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      minHeight: 30,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    chipText: {
+      fontSize: fs(11),
+      fontWeight: "700",
+    },
+    tagInputWrap: {
+      minHeight: 44,
+      borderWidth: 1,
+      paddingLeft: 10,
+      paddingRight: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    tagInput: {
+      flex: 1,
+      fontSize: fs(13),
+      fontWeight: "600",
+      paddingVertical: 10,
+    },
+    tagAddBtn: {
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarBackdrop: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20,
+    },
+    calendarCard: {
+      width: "100%",
+      maxWidth: 380,
+      borderWidth: 1,
+      padding: 12,
+      gap: 10,
+    },
+    calendarIconBtn: {
+      width: 34,
+      height: 34,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarMonthLabel: {
+      fontSize: fs(13),
+      fontWeight: "800",
+    },
+    calendarWeekRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    calendarWeekCell: {
+      flex: 1,
+      alignItems: "center",
+    },
+    calendarWeekText: {
+      fontSize: fs(11),
+      fontWeight: "700",
+    },
+    calendarGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    calendarDayCell: {
+      width: "13.5%",
+      minHeight: 32,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarDayBtn: {
+      borderWidth: 1,
+    },
+    calendarDayText: {
+      fontSize: fs(12),
+      fontWeight: "700",
+    },
+    calendarActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    mediaPickerButton: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 18,
+      borderWidth: 1,
+      borderStyle: "dashed",
+    },
+    videoPreview: {
+      width: "100%",
+      height: 100,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
 
-  // Campaign action modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  modalSheet: {
-    width: "100%",
-    maxWidth: 400,
-    padding: 20,
-    gap: 12,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    flex: 1,
-  },
-  modalMeta: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  modalStatusRow: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  modalStatusText: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  modalActionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-  },
-  modalActionText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-  modalDetailLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: 10,
-    borderWidth: 1,
-    marginTop: 2,
-  },
-  modalDetailText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  detailSection: {
-    padding: 12,
-    gap: 6,
-  },
-  detailSectionTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-});
+    // Campaign action modal
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
+    modalSheet: {
+      width: "100%",
+      maxWidth: 400,
+      padding: 20,
+      gap: 12,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    modalTitle: {
+      fontSize: fs(17),
+      fontWeight: "800",
+      flex: 1,
+    },
+    modalMeta: {
+      fontSize: fs(13),
+      fontWeight: "500",
+    },
+    modalStatusRow: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    modalStatusText: {
+      fontSize: fs(11),
+      fontWeight: "800",
+      letterSpacing: 0.3,
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 4,
+    },
+    modalActionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+    },
+    modalActionText: {
+      fontSize: fs(13),
+      fontWeight: "800",
+      color: "#FFFFFF",
+    },
+    modalDetailLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingVertical: 10,
+      borderWidth: 1,
+      marginTop: 2,
+    },
+    modalDetailText: {
+      fontSize: fs(13),
+      fontWeight: "700",
+    },
+    detailSection: {
+      padding: 12,
+      gap: 6,
+    },
+    detailSectionTitle: {
+      fontSize: fs(13),
+      fontWeight: "800",
+      marginBottom: 2,
+    },
+  });
 
 export default AdStudioScreen;
