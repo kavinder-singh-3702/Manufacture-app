@@ -396,11 +396,16 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
         String(formData.name || "Created successfully")
       );
 
-      if (mode === "inhouse") {
-        navigation.replace("AdminEditProduct", { productId: created._id });
-      } else {
-        navigation.replace("ProductDetails", { productId: created._id });
-      }
+      // On iOS, replace() on modal-presented screens causes crashes.
+      // Use goBack() first to dismiss the modal, then navigate to the new screen.
+      navigation.goBack();
+      setTimeout(() => {
+        if (mode === "inhouse") {
+          navigation.navigate("AdminEditProduct", { productId: created._id });
+        } else {
+          navigation.navigate("ProductDetails", { productId: created._id });
+        }
+      }, 100);
     } catch (error: any) {
       const apiMessage =
         (error instanceof ApiError && (error.data as any)?.error) ||

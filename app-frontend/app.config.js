@@ -46,7 +46,7 @@ module.exports = ({ config }) => {
     },
     android: {
       package: isProd ? "com.manufactureapp.frontend" : "com.manufactureapp.frontend.dev",
-      versionCode: 1,
+      versionCode: 2,
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {

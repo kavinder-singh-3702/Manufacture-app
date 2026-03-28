@@ -1,16 +1,15 @@
 import { ReactNode } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../../hooks/useTheme";
 
 type Props = {
@@ -27,26 +26,30 @@ export const ProfileEditorModal = ({ title, visible, onClose, onSubmit, saving, 
   const { colors, spacing } = useTheme();
   return (
     <Modal animationType="slide" visible={visible} onRequestClose={onClose}>
-      <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: colors.background }]}> 
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}> 
-          <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+      <SafeAreaView style={[styles.modalSafeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={onClose} style={styles.modalClose} activeOpacity={0.7}>
             <Text style={[styles.modalCloseText, { color: colors.textMuted }]}>Close</Text>
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
         </View>
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-            {children}
-            {error ? <Text style={[styles.errorText, { marginTop: spacing.md, color: colors.error }]}>{error}</Text> : null}
-            <TouchableOpacity
-              style={[styles.primaryButton, { marginTop: spacing.lg, opacity: saving ? 0.7 : 1, backgroundColor: colors.primary }]}
-              onPress={onSubmit}
-              disabled={saving}
-            >
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Save changes</Text>}
-            </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: spacing.lg }}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        >
+          {children}
+          {error ? <Text style={[styles.errorText, { marginTop: spacing.md, color: colors.error }]}>{error}</Text> : null}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.primaryButton, { marginTop: spacing.lg, opacity: saving ? 0.7 : 1, backgroundColor: colors.primary }]}
+            onPress={onSubmit}
+            disabled={saving}
+          >
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Save changes</Text>}
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
