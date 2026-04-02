@@ -145,172 +145,172 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="Help"
               component={ServicesOverviewScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Help" }}
+              options={{ animation: "slide_from_right", title: "Help" }}
             />
             <RootStack.Screen
               name="Profile"
               component={ProfileScreen}
-              options={{ presentation: "modal", animation: "fade_from_bottom" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="Appearance"
               component={AppearanceScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="NotificationPreferences"
               component={NotificationPreferencesScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="Cart"
               component={CartScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="CompanyProfile"
               component={CompanyProfileScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="CompanyCreate"
               component={CompanyCreateScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="CompanyContextPicker"
               component={CompanyContextPickerScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="CompanyVerification"
               component={CompanyVerificationScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="VerificationSubmit"
               component={VerificationSubmitScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="Notifications"
               component={NotificationsScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="AddProduct"
               component={GuardedAddProductScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="InternalInventoryItemCreate"
               component={GuardedInternalInventoryItemCreateScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="InternalInventoryItemEdit"
               component={GuardedInternalInventoryItemEditScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="AdminCatalog"
               component={GuardedAdminCatalogScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="AdminAddProduct"
               component={GuardedAdminAddProductScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="AdminEditProduct"
               component={GuardedAdminEditProductScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="AdminProductVariants"
               component={GuardedAdminProductVariantsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ProductSearch"
               component={ProductSearchScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="EditProduct"
               component={GuardedEditProductScreen}
-              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+              options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
             />
             <RootStack.Screen
               name="FilteredProducts"
               component={FilteredProductsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="CategoryProducts"
               component={CategoryProductsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ProductDetails"
               component={ProductDetailsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="QuoteCenter"
               component={QuoteCenterScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Quotes" }}
+              options={{ animation: "slide_from_right", title: "Quotes" }}
             />
             <RootStack.Screen
               name="ProductVariants"
               component={GuardedProductVariantsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="Chat"
               component={ChatScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ServiceRequest"
               component={ServiceRequestScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ServiceDetail"
               component={ServiceDetailScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="BusinessSetupRequest"
               component={BusinessSetupRequestScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="UserPreferences"
               component={GuardedUserPreferenceScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="UserActivity"
               component={GuardedUserActivityScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="AdminUserDetail"
               component={GuardedAdminUserDetailScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="NotificationStudio"
               component={GuardedNotificationStudioScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="AdStudio"
               component={GuardedAdStudioScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="AdminUsers"
@@ -354,47 +354,47 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="MyProducts"
               component={MyProductsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right" }}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="ProfitLoss"
               component={ProfitLossScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Profit & Loss" }}
+              options={{ animation: "slide_from_right", title: "Profit & Loss" }}
             />
             <RootStack.Screen
               name="GSTSummary"
               component={GSTSummaryScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "GST Summary" }}
+              options={{ animation: "slide_from_right", title: "GST Summary" }}
             />
             <RootStack.Screen
               name="PartyOutstanding"
               component={PartyOutstandingScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Party Outstanding" }}
+              options={{ animation: "slide_from_right", title: "Party Outstanding" }}
             />
             <RootStack.Screen
               name="TallyStats"
               component={TallyStatsScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Tally Stats" }}
+              options={{ animation: "slide_from_right", title: "Tally Stats" }}
             />
             <RootStack.Screen
               name="SalesInvoice"
               component={GuardedSalesInvoiceScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Sales Invoice" }}
+              options={{ animation: "slide_from_right", title: "Sales Invoice" }}
             />
             <RootStack.Screen
               name="PurchaseBill"
               component={GuardedPurchaseBillScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Purchase Bill" }}
+              options={{ animation: "slide_from_right", title: "Purchase Bill" }}
             />
             <RootStack.Screen
               name="ReceiptPayment"
               component={GuardedReceiptPaymentScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Receipt/Payment" }}
+              options={{ animation: "slide_from_right", title: "Receipt/Payment" }}
             />
             <RootStack.Screen
               name="TransactionList"
               component={TransactionListScreen}
-              options={{ presentation: "modal", animation: "slide_from_right", title: "Transactions" }}
+              options={{ animation: "slide_from_right", title: "Transactions" }}
             />
             <RootStack.Screen
               name="Checkout"

@@ -20,7 +20,7 @@ module.exports = ({ config }) => {
     newArchEnabled: false,
     icon: "./assets/brand/arvann-icon-1024.png",
     splash: {
-      backgroundColor: "#000000",
+      backgroundColor: "#FFFFFF",
       image: "./assets/brand/arvann-splash-logo.png",
       resizeMode: "contain",
     },
@@ -51,7 +51,7 @@ module.exports = ({ config }) => {
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {
         foregroundImage: "./assets/brand/arvann-icon-1024.png",
-        backgroundColor: "#454545",
+        backgroundColor: "#FFFFFF",
       },
       permissions: [
         "INTERNET",
