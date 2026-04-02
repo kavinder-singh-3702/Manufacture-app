@@ -12,10 +12,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import {
   adminService,
   AdminBusinessSetupRequest,
@@ -25,6 +27,7 @@ import {
   AdminServiceRequest,
 } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
+import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import {
   AdminHeader,
   AdminSearchBar,
@@ -41,6 +44,15 @@ type OpsStatusBucket = "all" | "open" | "closed" | "rejected";
 type RequestDetail =
   | (AdminServiceRequest & { kind: "service" })
   | (AdminBusinessSetupRequest & { kind: "business_setup" });
+
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => isDark ? NEU_DARK : NEU_LIGHT;
+const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT;
 
 const PAGE_SIZE = 25;
 
@@ -140,7 +152,11 @@ const mapBusinessToOps = (request: AdminBusinessSetupRequest): AdminOpsRequest =
 
 export const AdminOpsConsoleScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { totalUnread, refresh: refreshUnread } = useUnreadMessages();
 
   const [activeView, setActiveView] = useState<OpsView>("services");
   const [opsKindFilter, setOpsKindFilter] = useState<OpsKindFilter>("all");
@@ -279,6 +295,7 @@ export const AdminOpsConsoleScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      refreshUnread();
       if (activeView === "services") {
         fetchOpsRequests({ reset: true });
       } else if (activeView === "messages") {
@@ -286,7 +303,7 @@ export const AdminOpsConsoleScreen = () => {
       } else {
         fetchCallLogs({ reset: true });
       }
-    }, [activeView, fetchCallLogs, fetchConversations, fetchOpsRequests])
+    }, [activeView, fetchCallLogs, fetchConversations, fetchOpsRequests, refreshUnread])
   );
 
   useEffect(() => {
@@ -424,10 +441,10 @@ export const AdminOpsConsoleScreen = () => {
   const viewTabs = useMemo(
     () => [
       { key: "services" as OpsView, label: "Services" },
-      { key: "messages" as OpsView, label: "Messages" },
+      { key: "messages" as OpsView, label: "Messages", badge: totalUnread },
       { key: "calls" as OpsView, label: "Calls" },
     ],
-    []
+    [totalUnread]
   );
 
   const kindTabs = useMemo(
@@ -449,13 +466,17 @@ export const AdminOpsConsoleScreen = () => {
     []
   );
 
-  const getPriorityTint = useCallback(
-    (priority: string) => {
-      if (priority === "critical") return { backgroundColor: colors.error + "0A", borderColor: colors.error + "25" };
-      if (priority === "high") return { backgroundColor: colors.warning + "08", borderColor: colors.warning + "20" };
+  const getCardTint = useCallback(
+    (priority: string, status: string) => {
+      if (status === "completed" || status === "launched" || status === "closed")
+        return { backgroundColor: colors.success + "10", borderWidth: 1.5, borderColor: colors.success + "45", opacity: 0.85 };
+      if (status === "cancelled" || status === "rejected")
+        return { backgroundColor: colors.error + "10", borderWidth: 1.5, borderColor: colors.error + "45", opacity: 0.75 };
+      if (priority === "critical") return { backgroundColor: colors.error + "0A" };
+      if (priority === "high") return { backgroundColor: colors.warning + "08" };
       return {};
     },
-    [colors.error, colors.warning]
+    [colors.error, colors.success, colors.textMuted, colors.warning]
   );
 
   const renderOpsItem = useCallback(
@@ -468,7 +489,7 @@ export const AdminOpsConsoleScreen = () => {
           : `${item.preview?.businessType || "Startup request"} • ${item.preview?.location || "No location"}`;
 
       const kindLabel = toKindLabel(item.kind);
-      const priorityTint = getPriorityTint(item.priority);
+      const cardTint = getCardTint(item.priority, item.status);
 
       return (
         <AdminListCard
@@ -479,7 +500,7 @@ export const AdminOpsConsoleScreen = () => {
           status={{ label: toStatusLabel(item.status), type: getRequestTone(item.status) }}
           meta={`${kindLabel} • Priority: ${item.priority} • Updated ${formatDate(item.updatedAt)}`}
           onPress={() => openRequestDetail(item)}
-          style={priorityTint}
+          style={cardTint}
           rightContent={
             nextStatus ? (
               <TouchableOpacity
@@ -489,8 +510,9 @@ export const AdminOpsConsoleScreen = () => {
                   styles.quickAction,
                   {
                     borderColor: colors.border,
-                    backgroundColor: colors.surfaceElevated,
+                    backgroundColor: neuCardBg(isDark),
                     borderRadius: radius.md,
+                    ...neuRaised(isDark),
                   },
                 ]}
               >
@@ -501,7 +523,7 @@ export const AdminOpsConsoleScreen = () => {
         />
       );
     },
-    [colors.border, colors.error, colors.primary, colors.surfaceElevated, colors.warning, getPriorityTint, openRequestDetail, openWorkflowModal, radius.md]
+    [colors.border, colors.error, colors.primary, colors.surfaceElevated, colors.warning, getCardTint, openRequestDetail, openWorkflowModal, radius.md]
   );
 
   const renderConversationItem = useCallback(
@@ -515,6 +537,7 @@ export const AdminOpsConsoleScreen = () => {
         onPress={() => openChat(item)}
         rightContent={
           <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() => callUser(item.otherParticipant?.phone)}
             style={[styles.callButton, { backgroundColor: colors.badgePrimary, borderRadius: radius.pill }]}
           >
@@ -562,7 +585,7 @@ export const AdminOpsConsoleScreen = () => {
   }, [modalRequest]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <View style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
       <FlatList
         data={data as any[]}
         key={activeView}
@@ -623,7 +646,7 @@ export const AdminOpsConsoleScreen = () => {
           ) : null
         }
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl, backgroundColor: 'transparent' }}
         onEndReachedThreshold={0.35}
         onEndReached={() => {
           if (loadingMore || !pagination.hasMore) return;
@@ -656,19 +679,21 @@ export const AdminOpsConsoleScreen = () => {
       ) : null}
 
       <Modal visible={requestModalVisible} animationType="slide" onRequestClose={() => setRequestModalVisible(false)}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}> 
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
+        <View style={[styles.modalContainer, { backgroundColor: neuCardBg(isDark), paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border, padding: spacing.lg }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={2}>
               {modalRequest?.title || "Request"}
             </Text>
             <TouchableOpacity
+              activeOpacity={0.6}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPress={() => {
                 setRequestModalVisible(false);
                 setSelectedRequestSummary(null);
                 setSelectedRequestDetail(null);
               }}
             >
-              <Ionicons name="close" size={22} color={colors.textMuted} />
+              <Ionicons name="close" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -746,13 +771,15 @@ export const AdminOpsConsoleScreen = () => {
                   .map((status) => (
                     <TouchableOpacity
                       key={status}
+                      activeOpacity={0.7}
                       onPress={() => openWorkflowModal(toOpsRequest(modalRequest), status)}
                       style={[
                         styles.workflowButton,
                         {
-                          backgroundColor: colors.surface,
+                          backgroundColor: neuCardBg(isDark),
                           borderColor: colors.border,
                           borderRadius: radius.md,
+                          ...neuRaised(isDark),
                         },
                       ]}
                     >
@@ -777,29 +804,29 @@ export const AdminOpsConsoleScreen = () => {
               ) : null}
             </ScrollView>
           ) : null}
+
+          <ReasonInputModal
+            visible={!!workflowTarget}
+            title={workflowTarget ? `Move to ${toStatusLabel(workflowTarget.targetStatus)}` : "Update workflow"}
+            subtitle="Reason is stored in immutable admin audit history."
+            value={workflowReason}
+            onChangeValue={(value) => {
+              setWorkflowReason(value);
+              if (workflowError) setWorkflowError(null);
+            }}
+            onClose={() => {
+              if (workflowLoading) return;
+              setWorkflowTarget(null);
+              setWorkflowReason("");
+              setWorkflowError(null);
+            }}
+            onSubmit={submitWorkflow}
+            submitLabel="Apply"
+            loading={workflowLoading}
+            error={workflowError}
+          />
         </View>
       </Modal>
-
-      <ReasonInputModal
-        visible={!!workflowTarget}
-        title={workflowTarget ? `Move to ${toStatusLabel(workflowTarget.targetStatus)}` : "Update workflow"}
-        subtitle="Reason is stored in immutable admin audit history."
-        value={workflowReason}
-        onChangeValue={(value) => {
-          setWorkflowReason(value);
-          if (workflowError) setWorkflowError(null);
-        }}
-        onClose={() => {
-          if (workflowLoading) return;
-          setWorkflowTarget(null);
-          setWorkflowReason("");
-          setWorkflowError(null);
-        }}
-        onSubmit={submitWorkflow}
-        submitLabel="Apply"
-        loading={workflowLoading}
-        error={workflowError}
-      />
     </View>
   );
 };

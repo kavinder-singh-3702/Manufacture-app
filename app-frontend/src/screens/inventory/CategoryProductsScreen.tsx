@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -101,6 +100,13 @@ export const CategoryProductsScreen = () => {
 
   const loadProducts = useCallback(
     async (offset = 0, append = false, overrides?: { sort?: typeof appliedSort; minPrice?: number; maxPrice?: number }) => {
+      if (isGuest) {
+        setItems([]);
+        setPagination({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
+        setLoading(false);
+        return;
+      }
+
       if (append) {
         setLoadingMore(true);
       } else {
@@ -135,7 +141,7 @@ export const CategoryProductsScreen = () => {
         }
       }
     },
-    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId]
+    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId, isGuest]
   );
 
   // Refresh list whenever screen comes into focus
@@ -217,35 +223,6 @@ export const CategoryProductsScreen = () => {
   const handleClearFilters = useCallback(() => {
     resetFilters();
   }, [resetFilters]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: Product }) => {
-      return (
-        <AmazonStyleProductCard
-          product={item}
-          onPress={openDetails}
-          onMessagePress={(product) =>
-            startProductConversation({
-              product,
-              isGuest,
-              requestLogin,
-              navigation,
-              toastError,
-            })
-          }
-          onCallPress={(product) =>
-            callProductSeller({
-              product,
-              toastError,
-            })
-          }
-        />
-      );
-    },
-    [isGuest, navigation, openDetails, requestLogin, toastError]
-  );
-
-  const keyExtractor = useCallback((item: Product) => item._id, []);
 
   if (loading && !refreshing) {
     return (
@@ -372,11 +349,9 @@ export const CategoryProductsScreen = () => {
         </View>
       )}
 
-      {/* Product List - Single column like Amazon */}
-      <FlatList
-        data={filteredItems}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
+      {/* Product List */}
+      <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.productList}
         refreshControl={
           <RefreshControl
@@ -386,34 +361,47 @@ export const CategoryProductsScreen = () => {
             colors={[COLORS.accent]}
           />
         }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          pagination.hasMore ? (
-            <View style={styles.loadMoreContainer}>
-              {loadingMore && (
-                <View style={styles.loadMoreIndicator}>
-                  <ActivityIndicator color={COLORS.accent} size="small" />
-                  <Text style={styles.loadMoreText}>Loading more...</Text>
-                </View>
-              )}
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          loading ? null : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📦</Text>
-              <Text style={styles.emptyTitle}>No products found</Text>
-              <Text style={styles.emptySubtitle}>No products in this category yet</Text>
-              <TouchableOpacity onPress={handleRefresh} style={styles.emptyRefreshButton}>
-                <Text style={styles.emptyRefreshText}>Refresh</Text>
-              </TouchableOpacity>
-            </View>
-          )
-        }
         showsVerticalScrollIndicator={false}
-      />
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 200) {
+            handleLoadMore();
+          }
+        }}
+        scrollEventThrottle={400}
+      >
+        {filteredItems.length === 0 && !loading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📦</Text>
+            <Text style={styles.emptyTitle}>No products found</Text>
+            <Text style={styles.emptySubtitle}>No products in this category yet</Text>
+            <TouchableOpacity onPress={handleRefresh} style={styles.emptyRefreshButton}>
+              <Text style={styles.emptyRefreshText}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          filteredItems.map((item) => (
+            <View key={item._id} style={{ marginBottom: 12 }}>
+              <AmazonStyleProductCard
+                product={item}
+                onPress={openDetails}
+                onMessagePress={(product) =>
+                  startProductConversation({ product, isGuest, requestLogin, navigation, toastError })
+                }
+                onCallPress={(product) =>
+                  callProductSeller({ product, toastError })
+                }
+              />
+            </View>
+          ))
+        )}
+        {loadingMore && (
+          <View style={styles.loadMoreIndicator}>
+            <ActivityIndicator color={COLORS.accent} size="small" />
+            <Text style={styles.loadMoreText}>Loading more...</Text>
+          </View>
+        )}
+      </ScrollView>
 
       {/* Amazon-style Filter Modal */}
       <Modal

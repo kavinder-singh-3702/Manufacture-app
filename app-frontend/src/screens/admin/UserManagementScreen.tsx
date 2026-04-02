@@ -11,6 +11,7 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import { routes } from "../../navigation/routes";
@@ -26,8 +27,25 @@ type FilterStatus = "all" | "active" | "inactive";
 
 const PAGE_SIZE = 30;
 
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+
 export const UserManagementScreen = () => {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -257,7 +275,7 @@ export const UserManagementScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: neuCardBg(isDark) }]}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading users...</Text>
       </View>
@@ -266,23 +284,23 @@ export const UserManagementScreen = () => {
 
   if (error && !users.length && !loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.centered, { backgroundColor: neuCardBg(isDark) }]}>
         <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          style={[styles.retryButton, { backgroundColor: neuCardBg(isDark), borderRadius: radius.lg, ...neuRaised(isDark) }]}
           onPress={() => {
             setLoading(true);
             fetchUsers({ reset: true });
           }}
         >
-          <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>Retry</Text>
+          <Text style={[styles.retryButtonText, { color: colors.primary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
       <FlatList
         data={users}
         keyExtractor={(item) => item.id}

@@ -102,7 +102,7 @@ export const UserPreferenceScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <LinearGradient colors={["rgba(99, 102, 241, 0.12)", "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["rgba(99, 102, 241, 0.12)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl }}>
         <View style={[styles.header, { marginBottom: spacing.md }]}> 
           <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>

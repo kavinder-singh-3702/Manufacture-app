@@ -1,5 +1,6 @@
 import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { APP_NAME, BRAND_IMAGES } from "../../constants/brand";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 
 type BrandLockupProps = {
   compact?: boolean;
@@ -18,7 +19,8 @@ export const BrandLockup = ({
   subtitleColor = "rgba(255,255,255,0.68)",
   style,
 }: BrandLockupProps) => {
-  const logoSize = compact ? 28 : 40;
+  const { fs, sp } = useResponsiveLayout();
+  const logoSize = sp(compact ? 28 : 40);
 
   return (
     <View style={[styles.row, style]}>
@@ -38,7 +40,7 @@ export const BrandLockup = ({
           style={[
             styles.title,
             {
-              fontSize: compact ? 13 : 18,
+              fontSize: fs(compact ? 13 : 18),
               color: textColor,
               letterSpacing: compact ? 0.7 : 1.1,
             },
@@ -52,7 +54,7 @@ export const BrandLockup = ({
               styles.subtitle,
               {
                 color: subtitleColor,
-                fontSize: compact ? 10 : 12,
+                fontSize: fs(compact ? 10 : 12),
               },
             ]}
           >

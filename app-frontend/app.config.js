@@ -17,42 +17,56 @@ module.exports = ({ config }) => {
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
+    newArchEnabled: false,
     icon: "./assets/brand/arvann-icon-1024.png",
     splash: {
-      backgroundColor: "#000000",
+      backgroundColor: "#FFFFFF",
       image: "./assets/brand/arvann-splash-logo.png",
       resizeMode: "contain",
     },
     ios: {
       supportsTablet: true,
+      buildNumber: "1",
       bundleIdentifier: isProd ? PROD_BUNDLE_IDENTIFIER : DEV_BUNDLE_IDENTIFIER,
-      ...(isProd
-        ? {}
-        : {
-            infoPlist: {
+      infoPlist: {
+        ...(isProd
+          ? {}
+          : {
               NSAppTransportSecurity: {
                 NSAllowsArbitraryLoads: true,
                 NSAllowsLocalNetworking: true,
               },
-            },
-          }),
+            }),
+        NSLocalNetworkUsageDescription:
+          "ARVANN needs local network access to connect to the development server.",
+        NSBonjourServices: ["_http._tcp"],
+        NSCameraUsageDescription: "ARVANN needs camera access to take product photos.",
+        NSPhotoLibraryUsageDescription: "ARVANN needs photo library access to upload product images.",
+      },
     },
     android: {
       package: isProd ? "com.manufactureapp.frontend" : "com.manufactureapp.frontend.dev",
+      versionCode: 2,
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {
         foregroundImage: "./assets/brand/arvann-icon-1024.png",
-        backgroundColor: "#454545",
+        backgroundColor: "#FFFFFF",
       },
+      permissions: [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS",
+      ],
     },
     web: {
       bundler: "metro",
     },
     extra: {
       eas: {
-        projectId: "c2343c00-43ee-4da9-a32a-d24b8f0f099b",
+        projectId: "de0a7eeb-a054-4057-a4c0-f60640b32765",
       },
       appVariant,
       iosBundleIdentifierProd: PROD_BUNDLE_IDENTIFIER,
@@ -69,6 +83,7 @@ module.exports = ({ config }) => {
         },
       ],
       "./plugins/withArvannAndroidReleaseSigning",
+      "expo-video",
     ],
   };
 };

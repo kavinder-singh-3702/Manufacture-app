@@ -128,7 +128,7 @@ export const CompanyEditorModal = ({ visible, section, form, onChange, onClose, 
             ) : null}
 
             <View style={{ marginTop: spacing.md }}>
-              <Button label={saving ? "Saving…" : "Save changes"} onPress={onSubmit} loading={saving} />
+              <Button label={saving ? "Saving…" : "Save changes"} onPress={() => { onSubmit(); }} loading={saving} disabled={saving} />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

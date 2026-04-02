@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { APP_NAME, BRAND_COLORS } from "../../constants/brand";
+import { APP_NAME } from "../../constants/brand";
 import { BrandMark } from "./BrandMark";
 
 type AnimatedSplashScreenProps = {
@@ -17,19 +17,9 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
   const logoScale = useRef(new Animated.Value(0.82)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const glowPulse = useRef(new Animated.Value(0)).current;
-  const beamProgress = useRef(new Animated.Value(0)).current;
   const wordmarkOpacity = useRef(new Animated.Value(0)).current;
   const wordmarkLift = useRef(new Animated.Value(12)).current;
   const screenOpacity = useRef(new Animated.Value(1)).current;
-
-  const beamTranslate = useMemo(
-    () =>
-      beamProgress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-260, 260],
-      }),
-    [beamProgress]
-  );
 
   const glowScale = useMemo(
     () =>
@@ -44,7 +34,7 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
     () =>
       glowPulse.interpolate({
         inputRange: [0, 1],
-        outputRange: [0.22, 0.52],
+        outputRange: [0.08, 0.18],
       }),
     [glowPulse]
   );
@@ -67,17 +57,7 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
       ])
     );
 
-    const beamAnimation = Animated.loop(
-      Animated.timing(beamProgress, {
-        toValue: 1,
-        duration: 1450,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
     pulseAnimation.start();
-    beamAnimation.start();
 
     Animated.sequence([
       Animated.timing(ambientOpacity, {
@@ -130,21 +110,20 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
 
     return () => {
       pulseAnimation.stop();
-      beamAnimation.stop();
     };
-  }, [ambientOpacity, beamProgress, glowPulse, logoOpacity, logoScale, onFinish, screenOpacity, wordmarkLift, wordmarkOpacity]);
+  }, [ambientOpacity, glowPulse, logoOpacity, logoScale, onFinish, screenOpacity, wordmarkLift, wordmarkOpacity]);
 
   return (
     <Animated.View style={[styles.container, { opacity: screenOpacity }]}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: ambientOpacity }]}>
         <LinearGradient
-          colors={["#09090B", BRAND_COLORS.charcoalDeep, "#09090B"]}
+          colors={["#FFFFFF", "#F8F9FC", "#FFFFFF"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={["rgba(140,165,239,0.16)", "transparent", "rgba(227,72,62,0.14)"]}
+          colors={["rgba(100,130,220,0.06)", "transparent", "rgba(200,80,70,0.05)"]}
           locations={[0, 0.52, 1]}
           start={{ x: 0.1, y: 0.1 }}
           end={{ x: 0.95, y: 0.95 }}
@@ -152,13 +131,11 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
         />
       </Animated.View>
 
-      <View style={styles.noiseLayer} />
-
       <Animated.View
         style={[
           styles.glow,
           {
-            backgroundColor: BRAND_COLORS.glowBlue,
+            backgroundColor: "rgba(100,140,230,0.12)",
             transform: [{ scale: glowScale }],
             opacity: glowOpacity,
           },
@@ -168,28 +145,12 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
         style={[
           styles.redGlow,
           {
-            backgroundColor: BRAND_COLORS.glowRed,
+            backgroundColor: "rgba(230,90,90,0.10)",
             transform: [{ scale: glowScale }],
             opacity: glowOpacity,
           },
         ]}
       />
-
-      <Animated.View
-        style={[
-          styles.lightBeam,
-          {
-            transform: [{ translateX: beamTranslate }, { rotate: "-16deg" }],
-          },
-        ]}
-      >
-        <LinearGradient
-          colors={["rgba(227,72,62,0)", "rgba(227,72,62,0.22)", "rgba(227,72,62,0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
 
       <Animated.View
         style={[
@@ -200,7 +161,7 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
           },
         ]}
       >
-        <BrandMark size={188} />
+        <BrandMark size={240} />
       </Animated.View>
 
       <Animated.View
@@ -212,7 +173,6 @@ export const AnimatedSplashScreen = ({ onFinish }: AnimatedSplashScreenProps) =>
           },
         ]}
       >
-        <Text style={styles.wordmarkText}>{APP_NAME}</Text>
         <Text style={styles.wordmarkSubtext}>Industrial Commerce Platform</Text>
       </Animated.View>
     </Animated.View>
@@ -225,7 +185,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    backgroundColor: BRAND_COLORS.charcoalDeep,
+    backgroundColor: "#FFFFFF",
   },
   glow: {
     position: "absolute",
@@ -243,12 +203,6 @@ const styles = StyleSheet.create({
     right: "13%",
     bottom: "25%",
   },
-  lightBeam: {
-    position: "absolute",
-    width: 320,
-    height: 560,
-    opacity: 0.26,
-  },
   logoWrapper: {
     alignItems: "center",
     justifyContent: "center",
@@ -258,7 +212,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   wordmarkText: {
-    color: "#EAF0FF",
+    color: "#1A2138",
     fontSize: 24,
     fontWeight: "900",
     letterSpacing: 3.2,
@@ -266,15 +220,9 @@ const styles = StyleSheet.create({
   },
   wordmarkSubtext: {
     marginTop: 5,
-    color: "rgba(234,240,255,0.70)",
+    color: "rgba(26,33,56,0.55)",
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 1.1,
-  },
-  noiseLayer: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.06,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
   },
 });

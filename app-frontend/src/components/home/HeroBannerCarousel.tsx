@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Video, ResizeMode } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { AdFeedCard } from "../../services/ad.service";
 
 const AUTO_SCROLL_INTERVAL = 4000;
@@ -47,6 +47,31 @@ type HeroBannerCarouselProps = {
   onSearchPress?: () => void;
   onCallPress?: (card: AdFeedCard) => void;
   onMessagePress?: (card: AdFeedCard) => void;
+};
+
+const BannerVideo = ({ uri, shouldPlay }: { uri: string; shouldPlay: boolean }) => {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+    if (shouldPlay) p.play();
+  });
+
+  useEffect(() => {
+    if (shouldPlay) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [shouldPlay, player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
 };
 
 const isVideoMedia = (card: AdFeedCard): boolean => {
@@ -227,13 +252,9 @@ export const HeroBannerCarousel = ({
           style={{ width, height: bannerHeight }}
         >
           {isVideoMedia(card) && card.bannerVideoUrl ? (
-            <Video
-              source={{ uri: card.bannerVideoUrl }}
-              style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
+            <BannerVideo
+              uri={card.bannerVideoUrl}
               shouldPlay={index === activeIndex}
-              isLooping
-              isMuted
             />
           ) : (
             <Image

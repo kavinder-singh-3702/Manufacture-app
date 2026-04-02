@@ -193,7 +193,7 @@ export const AdminChatScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["rgba(108, 99, 255, 0.06)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <View style={[styles.header, { padding: spacing.lg, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
         <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>

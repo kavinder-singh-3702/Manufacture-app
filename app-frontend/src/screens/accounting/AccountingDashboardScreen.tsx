@@ -85,7 +85,8 @@ const getStatusTone = (status?: string) => {
 
 export const AccountingDashboardScreen = () => {
   const { colors, spacing, radius } = useTheme();
-  const { isXCompact, contentPadding } = useResponsiveLayout();
+  const { isXCompact, contentPadding, fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const { user, requestLogin } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
@@ -222,7 +223,7 @@ export const AccountingDashboardScreen = () => {
   if (loading) {
     return (
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
-        <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
         <View style={[styles.centered, { flex: 1 }]}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted, marginTop: 12 }]}>
@@ -235,7 +236,7 @@ export const AccountingDashboardScreen = () => {
 
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["rgba(108,99,255,0.10)", "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -650,6 +651,8 @@ const SectionHeader = ({
   onRightAction?: () => void;
 }) => {
   const { colors, spacing } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={[styles.sectionHeader, { marginBottom: spacing.sm }]}>
       <View style={styles.sectionHeaderRow}>
@@ -683,6 +686,8 @@ const MetricCard = ({
   cardPadding: number;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={{ width: singleColumn ? "100%" : "48%" }}>
       <View
@@ -731,6 +736,8 @@ const ActionCard = ({
   cardPadding: number;
 }) => {
   const { colors, spacing, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ width: singleColumn ? "100%" : "48%" }}>
       <View
@@ -760,6 +767,8 @@ const ActionCard = ({
 
 const VoucherRow = ({ voucher, isLast }: { voucher: Voucher; isLast: boolean }) => {
   const { colors, spacing } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const partyName =
     typeof voucher.party === "object" && voucher.party
       ? (voucher.party as any).name
@@ -824,6 +833,8 @@ const WorkingCapitalBar = ({
   accent: string;
 }) => {
   const { colors, spacing, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const widthPctValue = Math.min(100, (Number(value || 0) / Math.max(Number(max || 1), 1)) * 100);
   const widthPct = `${widthPctValue}%` as `${number}%`;
 
@@ -841,13 +852,13 @@ const WorkingCapitalBar = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (fs: (size: number) => number) => StyleSheet.create({
   centered: { justifyContent: "center", alignItems: "center" },
-  loadingText: { fontSize: 14, fontWeight: "600" },
+  loadingText: { fontSize: fs(14), fontWeight: "600" },
 
-  title: { fontSize: 30, fontWeight: "900", letterSpacing: -0.6 },
-  titleCompact: { fontSize: 24 },
-  subtitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
+  title: { fontSize: fs(30), fontWeight: "900", letterSpacing: -0.6 },
+  titleCompact: { fontSize: fs(24) },
+  subtitle: { fontSize: fs(13), fontWeight: "700", marginTop: 4 },
   modeSwitchWrap: {
     flexDirection: "row",
     borderWidth: 1,
@@ -861,7 +872,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modeSwitchText: {
-    fontSize: 12,
+    fontSize: fs(12),
     fontWeight: "800",
     letterSpacing: 0.2,
   },
@@ -873,14 +884,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
   },
-  errorText: { flex: 1, fontSize: 13, fontWeight: "600" },
-  retryText: { fontSize: 13, fontWeight: "800" },
+  errorText: { flex: 1, fontSize: fs(13), fontWeight: "600" },
+  retryText: { fontSize: fs(13), fontWeight: "800" },
 
   sectionHeader: {},
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.2 },
-  sectionSubtitle: { fontSize: 13, fontWeight: "600", marginTop: 4 },
-  linkText: { fontSize: 13, fontWeight: "800" },
+  sectionTitle: { fontSize: fs(18), fontWeight: "800", letterSpacing: -0.2 },
+  sectionSubtitle: { fontSize: fs(13), fontWeight: "600", marginTop: 4 },
+  linkText: { fontSize: fs(13), fontWeight: "800" },
 
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 12 },
 
@@ -894,8 +905,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  metricLabel: { fontSize: 12, fontWeight: "700", flex: 1 },
-  metricValue: { fontSize: 20, fontWeight: "900", marginTop: 10, letterSpacing: -0.2 },
+  metricLabel: { fontSize: fs(12), fontWeight: "700", flex: 1 },
+  metricValue: { fontSize: fs(20), fontWeight: "900", marginTop: 10, letterSpacing: -0.2 },
 
   actionCard: { borderWidth: 1 },
   actionIcon: {
@@ -907,27 +918,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  actionTitle: { fontSize: 15, fontWeight: "800" },
-  actionSubtitle: { fontSize: 12, fontWeight: "600", marginTop: 4 },
+  actionTitle: { fontSize: fs(15), fontWeight: "800" },
+  actionSubtitle: { fontSize: fs(12), fontWeight: "600", marginTop: 4 },
 
   card: { borderWidth: 1, overflow: "hidden" },
   cardHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cardTitle: { fontSize: 15, fontWeight: "800" },
-  cardHint: { fontSize: 12, fontWeight: "700" },
+  cardTitle: { fontSize: fs(15), fontWeight: "800" },
+  cardHint: { fontSize: fs(12), fontWeight: "700" },
 
   voucherRow: { flexDirection: "row", alignItems: "center" },
   voucherTopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  voucherType: { fontSize: 14, fontWeight: "800", maxWidth: 170, flex: 1 },
-  voucherNumber: { fontSize: 12, fontWeight: "700" },
-  voucherParty: { fontSize: 12, fontWeight: "700", marginTop: 4 },
-  voucherDate: { fontSize: 11, fontWeight: "600", marginTop: 4 },
-  voucherAmount: { fontSize: 13, fontWeight: "900" },
+  voucherType: { fontSize: fs(14), fontWeight: "800", maxWidth: 170, flex: 1 },
+  voucherNumber: { fontSize: fs(12), fontWeight: "700" },
+  voucherParty: { fontSize: fs(12), fontWeight: "700", marginTop: 4 },
+  voucherDate: { fontSize: fs(11), fontWeight: "600", marginTop: 4 },
+  voucherAmount: { fontSize: fs(13), fontWeight: "900" },
 
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  badgeText: { fontSize: 10, fontWeight: "900", letterSpacing: 0.3 },
+  badgeText: { fontSize: fs(10), fontWeight: "900", letterSpacing: 0.3 },
 
-  emptyTitle: { fontSize: 15, fontWeight: "800" },
-  emptySubtitle: { fontSize: 12, fontWeight: "600", marginTop: 6, textAlign: "center" },
+  emptyTitle: { fontSize: fs(15), fontWeight: "800" },
+  emptySubtitle: { fontSize: fs(12), fontWeight: "600", marginTop: 6, textAlign: "center" },
 
   rankBadge: {
     width: 30,
@@ -938,22 +949,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  rankText: { fontSize: 12, fontWeight: "900" },
+  rankText: { fontSize: fs(12), fontWeight: "900" },
 
   snapshotRow: { flexDirection: "row", alignItems: "center" },
-  snapshotName: { fontSize: 13, fontWeight: "700" },
-  snapshotMeta: { fontSize: 11, fontWeight: "600", marginTop: 4 },
-  snapshotValue: { fontSize: 13, fontWeight: "900" },
+  snapshotName: { fontSize: fs(13), fontWeight: "700" },
+  snapshotMeta: { fontSize: fs(11), fontWeight: "600", marginTop: 4 },
+  snapshotValue: { fontSize: fs(13), fontWeight: "900" },
   flexShrink: { flex: 1, minWidth: 0, flexShrink: 1 },
 
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   cashFlowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cashFlowLabel: { fontSize: 13, fontWeight: "600" },
-  cashFlowValue: { fontSize: 18, fontWeight: "900", marginTop: 2 },
+  cashFlowLabel: { fontSize: fs(13), fontWeight: "600" },
+  cashFlowValue: { fontSize: fs(18), fontWeight: "900", marginTop: 2 },
   cashFlowBar: { height: 12, overflow: "hidden" },
   cashFlowBarFill: { height: "100%", borderRadius: 6 },
 
   netPositionCard: { padding: 12, borderWidth: 1, alignItems: "center" },
-  netPositionLabel: { fontSize: 12, fontWeight: "700" },
-  netPositionValue: { fontSize: 22, fontWeight: "900", marginTop: 6 },
+  netPositionLabel: { fontSize: fs(12), fontWeight: "700" },
+  netPositionValue: { fontSize: fs(22), fontWeight: "900", marginTop: 6 },
 });

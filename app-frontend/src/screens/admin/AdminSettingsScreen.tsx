@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { RootStackParamList } from "../../navigation/types";
 
@@ -15,8 +16,19 @@ type SettingsItem = {
   tone?: "default" | "danger";
 };
 
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+const neuRaised = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+const neuPressed = (isDark: boolean) => isDark ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 } : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+const neuCardBg = (isDark: boolean) => isDark ? NEU_DARK : NEU_LIGHT;
+const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT;
+
 export const AdminSettingsScreen = () => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const isDark = resolvedMode === "dark";
   const { logout, user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -98,7 +110,7 @@ export const AdminSettingsScreen = () => {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
@@ -115,14 +127,9 @@ export const AdminSettingsScreen = () => {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{section.title}</Text>
           ) : null}
           <View style={[styles.sectionCard, {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderRadius: radius.lg,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-            elevation: 2,
+            backgroundColor: neuCardBg(isDark),
+            borderRadius: radius.xl,
+            ...neuRaised(isDark),
           }]}>
             {section.items.map((item, idx) => {
               const isDanger = item.tone === "danger";
@@ -136,13 +143,16 @@ export const AdminSettingsScreen = () => {
                   activeOpacity={0.7}
                   style={[
                     styles.settingsItem,
-                    idx < section.items.length - 1 && {
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.border,
+                    {
+                      backgroundColor: neuInsetBg(isDark),
+                      borderRadius: radius.lg,
+                      marginHorizontal: 6,
+                      marginVertical: 4,
+                      ...neuPressed(isDark),
                     },
                   ]}
                 >
-                  <View style={[styles.settingsIcon, { backgroundColor: iconColor + "14", borderWidth: 1, borderColor: iconColor + "25" }]}>
+                  <View style={[styles.settingsIcon, { backgroundColor: iconColor + "14" }]}>
                     <Ionicons name={item.icon} size={20} color={iconColor} />
                   </View>
                   <View style={styles.settingsText}>
@@ -168,7 +178,7 @@ const styles = StyleSheet.create({
   email: { fontSize: 14, fontWeight: "500", marginTop: 4 },
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginLeft: 4 },
-  sectionCard: { borderWidth: 1.5, overflow: "hidden" },
+  sectionCard: { overflow: "hidden", paddingVertical: 4 },
   settingsItem: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
   settingsIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   settingsText: { flex: 1, gap: 2 },

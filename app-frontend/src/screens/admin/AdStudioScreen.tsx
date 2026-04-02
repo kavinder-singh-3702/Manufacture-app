@@ -18,6 +18,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
+import { useThemeMode } from "../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { RootStackParamList } from "../../navigation/types";
 import {
   adService,
@@ -142,8 +144,35 @@ const categoryTitle = (category: ProductCategory) => category.title || category.
 
 const stepLabels = ["Source & Owner", "Select Product", "Audience", "Creative", "Schedule & Launch"];
 
+// Ad Studio accent color
+const AD_ACCENT = "#7C3AED"; // violet — matches ad/promotion branding
+const AD_ACCENT_SOFT = "#EDE9FE";
+const AD_ACCENT_WASH = "#F5F3FF";
+
+const NEU_LIGHT = "#EDF1F7";
+const NEU_DARK = "#1A1F2B";
+const NEU_INSET_LIGHT = "#E2E8F0";
+const NEU_INSET_DARK = "#151A24";
+
+const neuRaised = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
+
+const neuPressed = (isDark: boolean) =>
+  isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
+    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
+
+const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
+const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+
 export const AdStudioScreen = () => {
   const { colors, spacing, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
+  const isDark = resolvedMode === "dark";
   const navigation = useNavigation<Nav>();
   const route = useRoute<StudioRoute>();
 
@@ -208,6 +237,13 @@ export const AdStudioScreen = () => {
   const [selectedCampaign, setSelectedCampaign] = useState<AdCampaign | null>(null);
   const [selectedInsights, setSelectedInsights] = useState<AdInsights | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const [actionModalCampaign, setActionModalCampaign] = useState<AdCampaign | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailModalCampaign, setDetailModalCampaign] = useState<AdCampaign | null>(null);
+  const [detailModalInsights, setDetailModalInsights] = useState<AdInsights | null>(null);
+  const [detailModalLoading, setDetailModalLoading] = useState(false);
 
   const [createMode, setCreateMode] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -406,24 +442,49 @@ export const AdStudioScreen = () => {
     }
   }, []);
 
-  const onActivatePause = useCallback(
-    async (campaign: AdCampaign) => {
+  const onCampaignAction = useCallback(
+    async (campaign: AdCampaign, action: "activate" | "pause" | "stop") => {
       try {
-        if (campaign.status === "active") {
+        setActionLoading(true);
+        if (action === "activate") {
+          await adService.activateCampaign(campaign.id);
+        } else if (action === "pause") {
           await adService.pauseCampaign(campaign.id);
         } else {
-          await adService.activateCampaign(campaign.id);
+          await adService.stopCampaign(campaign.id);
         }
+        setActionModalCampaign(null);
         await loadCampaigns();
         if (selectedCampaign?.id === campaign.id) {
           openCampaign(campaign.id);
         }
       } catch {
         // Preserve UI state.
+      } finally {
+        setActionLoading(false);
       }
     },
     [loadCampaigns, openCampaign, selectedCampaign?.id]
   );
+
+  const openDetailModal = useCallback(async (campaignId: string) => {
+    setActionModalCampaign(null);
+    setDetailModalVisible(true);
+    setDetailModalLoading(true);
+    try {
+      const [campaign, insights] = await Promise.all([
+        adService.getCampaign(campaignId),
+        adService.getInsights(campaignId),
+      ]);
+      setDetailModalCampaign(campaign);
+      setDetailModalInsights(insights);
+    } catch {
+      setDetailModalCampaign(null);
+      setDetailModalInsights(null);
+    } finally {
+      setDetailModalLoading(false);
+    }
+  }, []);
 
   const usersById = useMemo(() => {
     const map = new Map<string, AdminUser>();
@@ -892,16 +953,20 @@ export const AdStudioScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.header, { borderBottomColor: colors.border }]}> 
+    <SafeAreaView style={[styles.container, { backgroundColor: neuCardBg(isDark) }]}>
+      <View style={[styles.header, { borderBottomColor: "transparent" }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={[styles.backButton, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface }]}
+          activeOpacity={0.85}
+          style={[styles.backButton, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: neuCardBg(isDark) }]}
         >
           <Ionicons name="arrow-back" size={18} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.text }]}>Ad Studio</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={[styles.title, { color: colors.text }]}>Ad Studio</Text>
+            <Text style={{ fontSize: fs(18) }}>📢</Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Build targeted product ads in guided steps</Text>
         </View>
         <TouchableOpacity
@@ -913,9 +978,11 @@ export const AdStudioScreen = () => {
             setCreateMode(true);
             setWizardError(null);
           }}
-          style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+          activeOpacity={0.85}
+          style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: createMode ? colors.error : AD_ACCENT }]}
         >
-          <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>{createMode ? "Close" : "New Ad"}</Text>
+          <Ionicons name={createMode ? "close" : "add"} size={16} color="#FFFFFF" />
+          <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>{createMode ? "Close" : "New Ad"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -927,7 +994,7 @@ export const AdStudioScreen = () => {
         automaticallyAdjustKeyboardInsets
       >
         {createMode ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+          <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Create Campaign</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Step {wizardStep + 1} of {stepLabels.length}</Text>
 
@@ -940,14 +1007,19 @@ export const AdStudioScreen = () => {
                     <View
                       style={[
                         styles.stepDot,
+                        done ? neuRaised(isDark) : neuPressed(isDark),
                         {
                           borderRadius: radius.pill,
-                          borderColor: active || done ? colors.primary : colors.border,
-                          backgroundColor: done ? `${colors.primary}20` : active ? `${colors.primary}12` : colors.surfaceElevated,
+                          borderColor: "transparent",
+                          backgroundColor: done ? `${AD_ACCENT}20` : active ? `${AD_ACCENT}14` : neuInsetBg(isDark),
                         },
                       ]}
                     >
-                      <Text style={[styles.stepDotText, { color: active || done ? colors.primary : colors.textMuted }]}>{index + 1}</Text>
+                      {done ? (
+                        <Ionicons name="checkmark" size={13} color={AD_ACCENT} />
+                      ) : (
+                        <Text style={[styles.stepDotText, { color: active ? AD_ACCENT : colors.textMuted }]}>{index + 1}</Text>
+                      )}
                     </View>
                     <Text style={[styles.stepLabel, { color: active ? colors.text : colors.textMuted }]}>{label}</Text>
                   </View>
@@ -1038,9 +1110,9 @@ export const AdStudioScreen = () => {
                               style={[
                                 styles.optionCard,
                                 {
-                                  borderColor: active ? colors.primary : colors.border,
-                                  borderRadius: radius.md,
-                                  backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                                  borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                                  borderRadius: radius.lg,
+                                  backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                                 },
                               ]}
                             >
@@ -1144,7 +1216,7 @@ export const AdStudioScreen = () => {
 
                 <TouchableOpacity
                   onPress={loadProducts}
-                  style={[styles.ghostBtn, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                  style={[styles.ghostBtn, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}
                 >
                   <Text style={[styles.ghostBtnText, { color: colors.text }]}>Refresh products</Text>
                 </TouchableOpacity>
@@ -1177,7 +1249,7 @@ export const AdStudioScreen = () => {
                         >
                           <View style={styles.rowBetween}>
                             <Text style={[styles.optionTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>{product.name}</Text>
-                            {active ? <Ionicons name="checkmark-circle" size={16} color={colors.primary} /> : null}
+                            {active ? <Ionicons name="checkmark-circle" size={16} color={AD_ACCENT} /> : null}
                           </View>
                           <Text style={[styles.optionMeta, { color: colors.textMuted }]}>
                             {product.category}{product.subCategory ? ` • ${product.subCategory}` : ""}
@@ -1190,7 +1262,7 @@ export const AdStudioScreen = () => {
                 )}
 
                 {selectedProduct ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <Text style={[styles.previewTitle, { color: colors.text }]}>Selected product</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>{selectedProduct.name}</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>
@@ -1220,14 +1292,14 @@ export const AdStudioScreen = () => {
                         style={[
                           styles.presetCard,
                           {
-                            borderColor: active ? colors.primary : colors.border,
-                            borderRadius: radius.md,
-                            backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                            borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                            borderRadius: radius.lg,
+                            backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                           },
                         ]}
                       >
-                        <Ionicons name={preset.icon} size={14} color={active ? colors.primary : colors.textMuted} />
-                        <Text style={[styles.presetText, { color: active ? colors.primary : colors.text }]}>{preset.label}</Text>
+                        <Ionicons name={preset.icon} size={14} color={active ? AD_ACCENT : colors.textMuted} />
+                        <Text style={[styles.presetText, { color: active ? AD_ACCENT : colors.text }]}>{preset.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -1256,15 +1328,15 @@ export const AdStudioScreen = () => {
                               style={[
                                 styles.optionCard,
                                 {
-                                  borderColor: active ? colors.primary : colors.border,
-                                  borderRadius: radius.md,
-                                  backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+                                  borderColor: active ? `${AD_ACCENT}40` : "transparent",
+                                  borderRadius: radius.lg,
+                                  backgroundColor: active ? (isDark ? `${AD_ACCENT}18` : `${AD_ACCENT}0C`) : neuInsetBg(isDark),
                                 },
                               ]}
                             >
                               <View style={styles.rowBetween}>
                                 <Text style={[styles.optionTitle, { color: colors.text }]}>{entry.displayName || "Unnamed user"}</Text>
-                                {active ? <Ionicons name="checkmark-circle" size={16} color={colors.primary} /> : null}
+                                {active ? <Ionicons name="checkmark-circle" size={16} color={AD_ACCENT} /> : null}
                               </View>
                               <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{entry.email}</Text>
                             </TouchableOpacity>
@@ -1312,7 +1384,7 @@ export const AdStudioScreen = () => {
                 ) : null}
 
                 {wizard.audiencePreset === "same_category_listers" ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <Text style={[styles.previewTitle, { color: colors.text }]}>Same-category listing rule</Text>
                     <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Users who have active public listings in the same category as this promoted product.</Text>
                   </View>
@@ -1320,7 +1392,7 @@ export const AdStudioScreen = () => {
 
                 <TouchableOpacity
                   onPress={() => setWizard((prev) => ({ ...prev, advancedTargeting: !prev.advancedTargeting }))}
-                  style={[styles.ghostBtn, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                  style={[styles.ghostBtn, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}
                 >
                   <Text style={[styles.ghostBtnText, { color: colors.text }]}>
                     {wizard.advancedTargeting ? "Hide advanced rules" : "Show advanced rules"}
@@ -1328,7 +1400,7 @@ export const AdStudioScreen = () => {
                 </TouchableOpacity>
 
                 {wizard.advancedTargeting ? (
-                  <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                     <View style={styles.row}>
                       {(["any", "all"] as const).map((mode) => {
                         const active = wizard.targetingMode === mode;
@@ -1438,7 +1510,7 @@ export const AdStudioScreen = () => {
                         }}
                       >
                         <Ionicons name="image-outline" size={24} color={colors.primary} />
-                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Image</Text>
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>Pick Image</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
@@ -1464,7 +1536,7 @@ export const AdStudioScreen = () => {
                         }}
                       >
                         <Ionicons name="videocam-outline" size={24} color={colors.primary} />
-                        <Text style={{ color: colors.text, marginTop: 4, fontSize: 13 }}>Pick Video</Text>
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>Pick Video</Text>
                       </TouchableOpacity>
                     </View>
                     {wizard.bannerMediaUri ? (
@@ -1483,7 +1555,7 @@ export const AdStudioScreen = () => {
                             ]}
                           >
                             <Ionicons name="videocam" size={32} color={colors.primary} />
-                            <Text style={{ color: colors.text, fontSize: 13 }}>Video selected</Text>
+                            <Text style={{ color: colors.text, fontSize: fs(13) }}>Video selected</Text>
                           </View>
                         )}
                         <TouchableOpacity
@@ -1496,7 +1568,7 @@ export const AdStudioScreen = () => {
                             }))
                           }
                         >
-                          <Text style={{ color: colors.error, fontSize: 13, fontWeight: "600" }}>Remove</Text>
+                          <Text style={{ color: colors.error, fontSize: fs(13), fontWeight: "600" }}>Remove</Text>
                         </TouchableOpacity>
                       </View>
                     ) : null}
@@ -1587,7 +1659,7 @@ export const AdStudioScreen = () => {
                   </View>
                 ) : null}
 
-                <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Live preview</Text>
                   {wizard.creativeBadge.trim() ? (
                     <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: colors.badgeWarning, alignSelf: "flex-start" }]}> 
@@ -1656,7 +1728,7 @@ export const AdStudioScreen = () => {
                   onPress={() => setWizard((prev) => ({ ...prev, launchNow: !prev.launchNow }))}
                 />
 
-                <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
+                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Review</Text>
                   <InfoLine label="Campaign" value={wizard.name || "-"} />
                   <InfoLine
@@ -1692,11 +1764,12 @@ export const AdStudioScreen = () => {
                 disabled={wizardStep === 0 || submitting}
                 style={[
                   styles.ghostBtn,
+                  neuPressed(isDark),
                   {
                     opacity: wizardStep === 0 ? 0.5 : 1,
-                    borderColor: colors.border,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.surfaceElevated,
+                    borderColor: "transparent",
+                    borderRadius: radius.lg,
+                    backgroundColor: neuInsetBg(isDark),
                   },
                 ]}
               >
@@ -1706,17 +1779,20 @@ export const AdStudioScreen = () => {
               {wizardStep < stepLabels.length - 1 ? (
                 <TouchableOpacity
                   onPress={goNext}
-                  style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                  style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: AD_ACCENT }]}
                 >
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>Next</Text>
+                  <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>Next</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
                   onPress={submitCampaign}
                   disabled={submitting}
-                  style={[styles.primaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                  style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: AD_ACCENT, opacity: submitting ? 0.7 : 1 }]}
                 >
-                  <Text style={[styles.primaryBtnText, { color: colors.textOnPrimary }]}>
+                  <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>
                     {submitting ? "Saving..." : wizard.launchNow ? "Create & Launch" : "Create Draft"}
                   </Text>
                 </TouchableOpacity>
@@ -1725,88 +1801,256 @@ export const AdStudioScreen = () => {
           </View>
         ) : null}
 
-        <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+        {/* Quick Stats */}
+        {!createMode && !campaignsLoading && campaigns.length > 0 ? (
+          <View style={styles.statsRow}>
+            {[
+              { label: "Active", count: campaigns.filter((c) => c.status === "active").length, color: "#0E8F62" },
+              { label: "Paused", count: campaigns.filter((c) => c.status === "paused").length, color: "#B26A00" },
+              { label: "Draft", count: campaigns.filter((c) => c.status === "draft").length, color: "#3B4B63" },
+              { label: "Done", count: campaigns.filter((c) => c.status === "completed" || c.status === "archived").length, color: "#1D4ED8" },
+            ].map((stat) => (
+              <View key={stat.label} style={[styles.statCard, neuPressed(isDark), { borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
+                <View style={[styles.statDot, { backgroundColor: stat.color }]} />
+                <Text style={[styles.statCount, { color: colors.text }]}>{stat.count}</Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {createMode ? null : <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{campaigns.length} total</Text>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Campaigns</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted, marginTop: 2 }]}>{campaigns.length} total</Text>
+            </View>
           </View>
 
           {campaignsLoading ? (
             <View style={styles.inlineLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={AD_ACCENT} />
             </View>
           ) : campaignError ? (
             <Text style={[styles.errorText, { color: colors.error }]}>{campaignError}</Text>
           ) : campaigns.length === 0 ? (
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>No campaigns yet.</Text>
+            <View style={[styles.emptyCampaign, neuPressed(isDark), { borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
+              <Ionicons name="megaphone-outline" size={22} color={colors.textMuted} />
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>No campaigns yet. Tap "New Ad" to create one.</Text>
+            </View>
           ) : (
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 10 }}>
               {campaigns.map((campaign) => {
                 const tone = statusTone(campaign.status);
+                const isActive = campaign.status === "active";
+                const isDone = campaign.status === "completed" || campaign.status === "archived";
                 return (
                   <TouchableOpacity
                     key={campaign.id}
-                    onPress={() => openCampaign(campaign.id)}
-                    style={[styles.optionCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}
+                    onPress={() => setActionModalCampaign(campaign)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.campaignCard,
+                      neuRaised(isDark),
+                      {
+                        borderRadius: radius.lg,
+                        backgroundColor: neuCardBg(isDark),
+                        borderLeftWidth: 4,
+                        borderLeftColor: tone.fg,
+                        opacity: isDone ? 0.75 : 1,
+                      },
+                    ]}
                   >
-                    <View style={styles.rowBetween}>
-                      <Text style={[styles.optionTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
-                        {campaign.name}
-                      </Text>
-                      <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: tone.bg }]}>
-                        <Text style={[styles.statusChipText, { color: tone.fg }]}>{campaign.status}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.optionMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                      {campaign.product?.name || "Product unavailable"}
-                    </Text>
-                    <View style={styles.rowBetween}>
-                      <Text style={[styles.optionMeta, { color: colors.textMuted }]}>Priority {campaign.priority}</Text>
-                      <TouchableOpacity
-                        onPress={() => onActivatePause(campaign)}
-                        style={[styles.smallAction, { borderRadius: radius.pill, borderColor: colors.border, backgroundColor: colors.surface }]}
-                      >
-                        <Text style={[styles.smallActionText, { color: colors.text }]}>
-                          {campaign.status === "active" ? "Pause" : "Activate"}
+                    <View style={styles.campaignContent}>
+                      <View style={styles.rowBetween}>
+                        <Text style={[styles.campaignName, { color: colors.text }]} numberOfLines={1}>
+                          {campaign.name}
                         </Text>
-                      </TouchableOpacity>
+                        <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: tone.bg }]}>
+                          <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: tone.fg }} />
+                          <Text style={[styles.statusChipText, { color: tone.fg }]}>{campaign.status}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.optionMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                        {campaign.product?.name || "Product unavailable"}
+                      </Text>
+                      <Text style={[styles.optionMeta, { color: colors.textTertiary }]}>
+                        Priority {campaign.priority} • Cap {campaign.frequencyCapPerDay}/day
+                      </Text>
                     </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
-        </View>
+        </View>}
 
-        {detailsLoading ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
-            <View style={styles.inlineLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          </View>
-        ) : selectedCampaign ? (
-          <View style={[styles.card, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedCampaign.name}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>{selectedCampaign.product?.name || "Missing product"}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-              {selectedCampaign.targeting?.mode?.toUpperCase() || "ANY"} targeting • cap {selectedCampaign.frequencyCapPerDay}/day
-            </Text>
-            {selectedInsights ? (
-              <View style={[styles.previewCard, { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceElevated }]}> 
-                <Text style={[styles.previewTitle, { color: colors.text }]}>Insights</Text>
-                <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Impressions: {selectedInsights.summary.impression.count} • Clicks: {selectedInsights.summary.click.count}</Text>
-                <Text style={[styles.previewMeta, { color: colors.textMuted }]}>Dismiss: {selectedInsights.summary.dismiss.count} • CTR: {selectedInsights.ctr}%</Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
       </ScrollView>
+
+      {/* Campaign Action Modal */}
+      <Modal
+        visible={actionModalCampaign !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !actionLoading && setActionModalCampaign(null)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => !actionLoading && setActionModalCampaign(null)}
+          style={styles.modalBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalSheet, neuRaised(isDark), { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl }]}>
+            {actionModalCampaign ? (
+              <>
+                {/* Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>{actionModalCampaign.name}</Text>
+                  <TouchableOpacity onPress={() => !actionLoading && setActionModalCampaign(null)}>
+                    <Ionicons name="close" size={22} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Info */}
+                <Text style={[styles.modalMeta, { color: colors.textMuted }]}>
+                  {actionModalCampaign.product?.name || "Product unavailable"} • Priority {actionModalCampaign.priority}
+                </Text>
+                <View style={[styles.modalStatusRow, { backgroundColor: statusTone(actionModalCampaign.status).bg, borderRadius: radius.pill, alignSelf: "flex-start" }]}>
+                  <Text style={[styles.modalStatusText, { color: statusTone(actionModalCampaign.status).fg }]}>
+                    {actionModalCampaign.status.toUpperCase()}
+                  </Text>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.modalActions}>
+                  {actionModalCampaign.status !== "active" && actionModalCampaign.status !== "archived" && actionModalCampaign.status !== "completed" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "activate")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#059669", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="play-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Activate</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {actionModalCampaign.status === "active" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "pause")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#D97706", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="pause-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Pause</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {actionModalCampaign.status !== "archived" && actionModalCampaign.status !== "completed" ? (
+                    <TouchableOpacity
+                      onPress={() => onCampaignAction(actionModalCampaign, "stop")}
+                      disabled={actionLoading}
+                      activeOpacity={0.85}
+                      style={[styles.modalActionBtn, { backgroundColor: "#DC2626", borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                    >
+                      {actionLoading ? <ActivityIndicator size="small" color="#FFF" /> : (
+                        <>
+                          <Ionicons name="stop-circle-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Stop</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* View details link */}
+                <TouchableOpacity
+                  onPress={() => openDetailModal(actionModalCampaign.id)}
+                  activeOpacity={0.8}
+                  style={[styles.modalDetailLink, { borderColor: colors.border, borderRadius: radius.lg }]}
+                >
+                  <Text style={[styles.modalDetailText, { color: colors.primary }]}>View full details</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Campaign Detail Modal */}
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}
+          style={styles.modalBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={[styles.modalSheet, neuRaised(isDark), { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl }]}>
+            {detailModalLoading ? (
+              <View style={{ paddingVertical: 30, alignItems: "center" }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.modalMeta, { color: colors.textMuted, marginTop: 8 }]}>Loading details...</Text>
+              </View>
+            ) : detailModalCampaign ? (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={1}>{detailModalCampaign.name}</Text>
+                  <TouchableOpacity onPress={() => { setDetailModalVisible(false); setDetailModalCampaign(null); setDetailModalInsights(null); }}>
+                    <Ionicons name="close" size={22} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.modalStatusRow, { backgroundColor: statusTone(detailModalCampaign.status).bg, borderRadius: radius.pill, alignSelf: "flex-start" }]}>
+                  <Text style={[styles.modalStatusText, { color: statusTone(detailModalCampaign.status).fg }]}>
+                    {detailModalCampaign.status.toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={[styles.detailSection, neuPressed(isDark), { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg }]}>
+                  <InfoLine label="Product" value={detailModalCampaign.product?.name || "N/A"} />
+                  <InfoLine label="Priority" value={String(detailModalCampaign.priority)} />
+                  <InfoLine label="Targeting" value={detailModalCampaign.targeting?.mode?.toUpperCase() || "ANY"} />
+                  <InfoLine label="Freq. cap" value={`${detailModalCampaign.frequencyCapPerDay}/day`} />
+                </View>
+
+                {detailModalInsights ? (
+                  <View style={[styles.detailSection, neuPressed(isDark), { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg }]}>
+                    <Text style={[styles.detailSectionTitle, { color: colors.text }]}>Insights</Text>
+                    <InfoLine label="Impressions" value={String(detailModalInsights.summary.impression.count)} />
+                    <InfoLine label="Clicks" value={String(detailModalInsights.summary.click.count)} />
+                    <InfoLine label="Dismissed" value={String(detailModalInsights.summary.dismiss.count)} />
+                    <InfoLine label="CTR" value={`${detailModalInsights.ctr}%`} />
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Text style={[styles.modalMeta, { color: colors.textMuted, textAlign: "center", paddingVertical: 20 }]}>Could not load details.</Text>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const InfoLine = ({ label, value }: { label: string; value: string }) => {
   const { colors } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={styles.rowBetween}>
       <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{label}</Text>
@@ -1829,19 +2073,25 @@ const SelectCard = ({
   onPress: () => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
+  const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.85}
       style={[
         styles.selectCard,
+        active ? neuRaised(dk) : neuPressed(dk),
         {
-          borderColor: active ? colors.primary : colors.border,
-          borderRadius: radius.md,
-          backgroundColor: active ? `${colors.primary}12` : colors.surfaceElevated,
+          borderColor: active ? `${AD_ACCENT}40` : "transparent",
+          borderRadius: radius.lg,
+          backgroundColor: active ? (dk ? `${AD_ACCENT}18` : AD_ACCENT_WASH) : neuInsetBg(dk),
         },
       ]}
     >
-      <Ionicons name={icon} size={16} color={active ? colors.primary : colors.textMuted} />
+      <Ionicons name={icon} size={16} color={active ? AD_ACCENT : colors.textMuted} />
       <Text style={[styles.optionTitle, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.optionMeta, { color: colors.textMuted }]}>{subtitle}</Text>
     </TouchableOpacity>
@@ -1862,6 +2112,8 @@ const CategoryChips = ({
   onToggle: (id: string) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   return (
     <View style={styles.fieldWrap}>
       <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{label}</Text>
@@ -1908,6 +2160,8 @@ const TagEditor = ({
   onChange: (values: string[]) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const [draft, setDraft] = useState("");
 
   const addDraft = useCallback(() => {
@@ -1970,6 +2224,8 @@ const CalendarDateField = ({
   onChange: (value: string) => void;
 }) => {
   const { colors, radius } = useTheme();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
   const parsedValue = value ? new Date(value) : null;
   const safeValueDate = parsedValue && !Number.isNaN(parsedValue.getTime()) ? parsedValue : null;
 
@@ -2136,9 +2392,13 @@ const Field = ({
   keyboardType?: "default" | "number-pad";
 }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
+  const dk = resolvedMode === "dark";
   return (
     <View style={styles.fieldWrap}>
-      <Text style={[styles.fieldLabel, { color: colors.textMuted }]}> 
+      <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
         {label}
         {required ? <Text style={{ color: colors.error }}> *</Text> : null}
       </Text>
@@ -2151,10 +2411,11 @@ const Field = ({
         multiline={multiline}
         style={[
           styles.fieldInput,
+          neuPressed(dk),
           {
-            borderRadius: radius.md,
-            borderColor: colors.border,
-            backgroundColor: colors.surfaceElevated,
+            borderRadius: radius.lg,
+            borderColor: "transparent",
+            backgroundColor: neuInsetBg(dk),
             color: colors.text,
             minHeight: multiline ? 78 : 44,
             textAlignVertical: multiline ? "top" : "center",
@@ -2167,269 +2428,402 @@ const Field = ({
 
 const Toggle = ({ label, value, onPress }: { label: string; value: boolean; onPress: () => void }) => {
   const { colors, radius } = useTheme();
+  const { resolvedMode } = useThemeMode();
+  const { fs } = useResponsiveLayout();
+  const styles = useMemo(() => createStyles(fs), [fs]);
+  const dk = resolvedMode === "dark";
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.85}
       style={[
         styles.toggle,
+        neuPressed(dk),
         {
-          borderRadius: radius.md,
-          borderColor: value ? colors.primary : colors.border,
-          backgroundColor: value ? `${colors.primary}12` : colors.surfaceElevated,
+          borderRadius: radius.lg,
+          borderColor: "transparent",
+          backgroundColor: neuInsetBg(dk),
         },
       ]}
     >
-      <Ionicons name={value ? "checkmark-circle" : "ellipse-outline"} size={16} color={value ? colors.primary : colors.textMuted} />
-      <Text style={[styles.toggleText, { color: colors.text }]}>{label}</Text>
+      <Ionicons name={value ? "checkmark-circle" : "ellipse-outline"} size={16} color={value ? colors.success : colors.textDisabled} />
+      <Text style={[styles.toggleText, { color: value ? colors.text : colors.textMuted }]}>{label}</Text>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderBottomWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { fontSize: 18, fontWeight: "900" },
-  subtitle: { marginTop: 2, fontSize: 12, fontWeight: "600" },
-  card: { borderWidth: 1, padding: 12, gap: 10 },
-  stepHeader: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
-  stepItem: { flex: 1, alignItems: "center", gap: 6 },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepDotText: { fontSize: 11, fontWeight: "900" },
-  stepLabel: { fontSize: 9.5, fontWeight: "700", textAlign: "center" },
-  fieldWrap: { gap: 4 },
-  fieldLabel: { fontSize: 12, fontWeight: "700" },
-  fieldInput: {
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 10,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  dateFieldButton: {
-    minHeight: 44,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dateFieldValue: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sectionTitle: { fontSize: 14, fontWeight: "900" },
-  sectionSubtitle: { fontSize: 12, fontWeight: "600" },
-  stack: { gap: 8 },
-  row: { flexDirection: "row", gap: 8 },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  modeChip: {
-    flex: 1,
-    minHeight: 38,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modeText: { fontSize: 11, fontWeight: "900", letterSpacing: 0.3 },
-  optionCard: { borderWidth: 1, padding: 10, gap: 4 },
-  optionTitle: { fontSize: 13, fontWeight: "800" },
-  optionMeta: { fontSize: 11, fontWeight: "600" },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 4 },
-  statusChipText: { fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
-  inlineLoading: { paddingVertical: 10, alignItems: "center", justifyContent: "center" },
-  primaryBtn: {
-    minHeight: 40,
-    minWidth: 100,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryBtnText: { fontSize: 12, fontWeight: "900" },
-  ghostBtn: {
-    minHeight: 40,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ghostBtnText: { fontSize: 12, fontWeight: "800" },
-  footerActions: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 2 },
-  errorText: { fontSize: 12, fontWeight: "700" },
-  toggle: {
-    minHeight: 42,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  toggleText: { fontSize: 12, fontWeight: "700", flex: 1 },
-  previewCard: { borderWidth: 1, padding: 10, gap: 6 },
-  previewTitle: { fontSize: 12, fontWeight: "800" },
-  previewMeta: { fontSize: 11, fontWeight: "600" },
-  smallAction: {
-    minHeight: 28,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  smallActionText: { fontSize: 11, fontWeight: "800" },
-  selectCard: {
-    flex: 1,
-    borderWidth: 1,
-    padding: 10,
-    gap: 4,
-  },
-  presetWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  presetCard: {
-    minHeight: 34,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  presetText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  chip: {
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  tagInputWrap: {
-    minHeight: 44,
-    borderWidth: 1,
-    paddingLeft: 10,
-    paddingRight: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  tagInput: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
-    paddingVertical: 10,
-  },
-  tagAddBtn: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarBackdrop: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  calendarCard: {
-    width: "100%",
-    maxWidth: 380,
-    borderWidth: 1,
-    padding: 12,
-    gap: 10,
-  },
-  calendarIconBtn: {
-    width: 34,
-    height: 34,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarMonthLabel: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  calendarWeekRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  calendarWeekCell: {
-    flex: 1,
-    alignItems: "center",
-  },
-  calendarWeekText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  calendarDayCell: {
-    width: "13.5%",
-    minHeight: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  calendarDayBtn: {
-    borderWidth: 1,
-  },
-  calendarDayText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  calendarActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  mediaPickerButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    borderWidth: 1,
-    borderStyle: "dashed",
-  },
-  videoPreview: {
-    width: "100%",
-    height: 100,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-});
+const createStyles = (fs: (size: number) => number) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderBottomWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    title: { fontSize: fs(18), fontWeight: "900" },
+    subtitle: { marginTop: 2, fontSize: fs(12), fontWeight: "600" },
+    card: { borderWidth: 1, padding: 12, gap: 10 },
+    stepHeader: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
+    stepItem: { flex: 1, alignItems: "center", gap: 6 },
+    stepDot: {
+      width: 28,
+      height: 28,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stepDotText: { fontSize: fs(11), fontWeight: "900" },
+    stepLabel: { fontSize: fs(9.5), fontWeight: "700", textAlign: "center" },
+    fieldWrap: { gap: 4 },
+    fieldLabel: { fontSize: fs(12), fontWeight: "700" },
+    fieldInput: {
+      borderWidth: 1,
+      paddingHorizontal: 11,
+      paddingVertical: 10,
+      fontSize: fs(13),
+      fontWeight: "600",
+    },
+    dateFieldButton: {
+      minHeight: 44,
+      borderWidth: 1,
+      paddingHorizontal: 11,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    dateFieldValue: {
+      fontSize: fs(13),
+      fontWeight: "600",
+    },
+    sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    sectionTitle: { fontSize: fs(14), fontWeight: "900" },
+    sectionSubtitle: { fontSize: fs(12), fontWeight: "600" },
+    stack: { gap: 8 },
+    row: { flexDirection: "row", gap: 8 },
+    rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+    modeChip: {
+      flex: 1,
+      minHeight: 38,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modeText: { fontSize: fs(11), fontWeight: "900", letterSpacing: 0.3 },
+    optionCard: { borderWidth: 1, padding: 10, gap: 4 },
+    optionTitle: { fontSize: fs(13), fontWeight: "800" },
+    optionMeta: { fontSize: fs(11), fontWeight: "600" },
+    statusChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4 },
+    statusChipText: { fontSize: fs(10), fontWeight: "900", textTransform: "uppercase" },
+    inlineLoading: { paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+    primaryBtn: {
+      minHeight: 40,
+      minWidth: 100,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 5,
+    },
+    primaryBtnText: { fontSize: fs(12), fontWeight: "900" },
+    emptyCampaign: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 24,
+      paddingHorizontal: 16,
+      gap: 8,
+    },
+    campaignCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 14,
+    },
+    campaignContent: {
+      flex: 1,
+      gap: 4,
+    },
+    campaignName: {
+      fontSize: fs(14),
+      fontWeight: "800",
+      flex: 1,
+    },
+    statsRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    statCard: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 12,
+      gap: 3,
+    },
+    statDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginBottom: 2,
+    },
+    statCount: {
+      fontSize: fs(20),
+      fontWeight: "900",
+    },
+    statLabel: {
+      fontSize: fs(10),
+      fontWeight: "700",
+    },
+    ghostBtn: {
+      minHeight: 40,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ghostBtnText: { fontSize: fs(12), fontWeight: "800" },
+    footerActions: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 2 },
+    errorText: { fontSize: fs(12), fontWeight: "700" },
+    toggle: {
+      minHeight: 42,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    toggleText: { fontSize: fs(12), fontWeight: "700", flex: 1 },
+    previewCard: { borderWidth: 1, padding: 10, gap: 6 },
+    previewTitle: { fontSize: fs(12), fontWeight: "800" },
+    previewMeta: { fontSize: fs(11), fontWeight: "600" },
+    smallAction: {
+      minHeight: 28,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    smallActionText: { fontSize: fs(11), fontWeight: "800" },
+    selectCard: {
+      flex: 1,
+      borderWidth: 1,
+      padding: 10,
+      gap: 4,
+    },
+    presetWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    presetCard: {
+      minHeight: 34,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    presetText: {
+      fontSize: fs(11),
+      fontWeight: "800",
+    },
+    chipWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    chip: {
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      minHeight: 30,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    chipText: {
+      fontSize: fs(11),
+      fontWeight: "700",
+    },
+    tagInputWrap: {
+      minHeight: 44,
+      borderWidth: 1,
+      paddingLeft: 10,
+      paddingRight: 6,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    tagInput: {
+      flex: 1,
+      fontSize: fs(13),
+      fontWeight: "600",
+      paddingVertical: 10,
+    },
+    tagAddBtn: {
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarBackdrop: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20,
+    },
+    calendarCard: {
+      width: "100%",
+      maxWidth: 380,
+      borderWidth: 1,
+      padding: 12,
+      gap: 10,
+    },
+    calendarIconBtn: {
+      width: 34,
+      height: 34,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarMonthLabel: {
+      fontSize: fs(13),
+      fontWeight: "800",
+    },
+    calendarWeekRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    calendarWeekCell: {
+      flex: 1,
+      alignItems: "center",
+    },
+    calendarWeekText: {
+      fontSize: fs(11),
+      fontWeight: "700",
+    },
+    calendarGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    calendarDayCell: {
+      width: "13.5%",
+      minHeight: 32,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    calendarDayBtn: {
+      borderWidth: 1,
+    },
+    calendarDayText: {
+      fontSize: fs(12),
+      fontWeight: "700",
+    },
+    calendarActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    mediaPickerButton: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 18,
+      borderWidth: 1,
+      borderStyle: "dashed",
+    },
+    videoPreview: {
+      width: "100%",
+      height: 100,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
+
+    // Campaign action modal
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
+    modalSheet: {
+      width: "100%",
+      maxWidth: 400,
+      padding: 20,
+      gap: 12,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    modalTitle: {
+      fontSize: fs(17),
+      fontWeight: "800",
+      flex: 1,
+    },
+    modalMeta: {
+      fontSize: fs(13),
+      fontWeight: "500",
+    },
+    modalStatusRow: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    modalStatusText: {
+      fontSize: fs(11),
+      fontWeight: "800",
+      letterSpacing: 0.3,
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 4,
+    },
+    modalActionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+    },
+    modalActionText: {
+      fontSize: fs(13),
+      fontWeight: "800",
+      color: "#FFFFFF",
+    },
+    modalDetailLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingVertical: 10,
+      borderWidth: 1,
+      marginTop: 2,
+    },
+    modalDetailText: {
+      fontSize: fs(13),
+      fontWeight: "700",
+    },
+    detailSection: {
+      padding: 12,
+      gap: 6,
+    },
+    detailSectionTitle: {
+      fontSize: fs(13),
+      fontWeight: "800",
+      marginBottom: 2,
+    },
+  });
 
 export default AdStudioScreen;

@@ -2,7 +2,6 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useState 
 import { useAuth } from "../hooks/useAuth";
 import { chatService } from "../services/chat.service";
 import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../services/chatSocket";
-import { isAdminRole } from "../constants/roles";
 
 type UnreadMessagesContextType = {
   totalUnread: number;
@@ -28,10 +27,8 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
   const [totalUnread, setTotalUnread] = useState(0);
   const { user } = useAuth();
 
-  const isAdmin = isAdminRole(user?.role);
-
   const loadUnreadCount = useCallback(async () => {
-    if (!isAdmin || !user?.id) {
+    if (!user?.id) {
       setTotalUnread(0);
       return;
     }
@@ -42,7 +39,7 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
     } catch (err) {
       console.warn("[UnreadMessagesProvider] Failed to load unread count", err);
     }
-  }, [isAdmin, user?.id]);
+  }, [user?.id]);
 
   // Initial load
   useEffect(() => {
@@ -51,7 +48,7 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
 
   // Socket listeners for real-time updates
   useEffect(() => {
-    if (!isAdmin || !user?.id) return;
+    if (!user?.id) return;
 
     let isMounted = true;
     let socketCleanup: (() => void) | null = null;
@@ -87,7 +84,7 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
       isMounted = false;
       if (socketCleanup) socketCleanup();
     };
-  }, [isAdmin, user?.id, loadUnreadCount]);
+  }, [user?.id, loadUnreadCount]);
 
   return (
     <UnreadMessagesContext.Provider value={{ totalUnread, refresh: loadUnreadCount }}>
