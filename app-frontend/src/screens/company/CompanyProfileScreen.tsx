@@ -207,52 +207,85 @@ export const CompanyProfileScreen = () => {
   };
 
   const handleSave = async () => {
-    if (!company?.id || !canEdit) return;
+    if (!company?.id) {
+      setError("No company found to update.");
+      setActiveEditor(null);
+      return;
+    }
+    if (!canEdit) {
+      setError("You don't have permission to edit this company.");
+      setActiveEditor(null);
+      return;
+    }
 
     try {
       setSaving(true);
       setError(null);
+      setBanner(null);
       const categories = form.categories
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
 
-      const payload = {
+      const contact = cleanObject({
+        email: form.email.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        website: form.website.trim() || undefined,
+      });
+      const socialLinks = cleanObject({
+        linkedin: form.linkedin.trim() || undefined,
+        twitter: form.twitter.trim() || undefined,
+        instagram: form.instagram.trim() || undefined,
+        youtube: form.youtube.trim() || undefined,
+      });
+      const headquarters = cleanObject({
+        line1: form.line1.trim() || undefined,
+        line2: form.line2.trim() || undefined,
+        city: form.city.trim() || undefined,
+        state: form.state.trim() || undefined,
+        postalCode: form.postalCode.trim() || undefined,
+        country: form.country.trim() || undefined,
+      });
+
+      const payload: Record<string, unknown> = {
         displayName: form.displayName.trim() || undefined,
         legalName: form.legalName.trim() || undefined,
         description: form.description.trim() || undefined,
         type: form.type,
-        categories,
         logoUrl: form.logoUrl.trim() || undefined,
-        contact: cleanObject({
-          email: form.email.trim() || undefined,
-          phone: form.phone.trim() || undefined,
-          website: form.website.trim() || undefined,
-        }),
-        socialLinks: cleanObject({
-          linkedin: form.linkedin.trim() || undefined,
-          twitter: form.twitter.trim() || undefined,
-          instagram: form.instagram.trim() || undefined,
-          youtube: form.youtube.trim() || undefined,
-        }),
-        headquarters: cleanObject({
-          line1: form.line1.trim() || undefined,
-          line2: form.line2.trim() || undefined,
-          city: form.city.trim() || undefined,
-          state: form.state.trim() || undefined,
-          postalCode: form.postalCode.trim() || undefined,
-          country: form.country.trim() || undefined,
-        }),
       };
+      // Only include categories if there are actual values
+      if (categories.length > 0) payload.categories = categories;
+      // Only include nested objects if they have actual values
+      if (Object.keys(contact).length > 0) payload.contact = contact;
+      if (Object.keys(socialLinks).length > 0) payload.socialLinks = socialLinks;
+      if (Object.keys(headquarters).length > 0) payload.headquarters = headquarters;
 
-      const response = await companyService.update(company.id, payload);
-      setCompany(response.company);
+      // Remove undefined values from top level
+      Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
+
+      console.log("[CompanyProfile] Saving payload:", JSON.stringify(payload));
+      const updateResponse = await companyService.update(company.id, payload as any);
+      console.log("[CompanyProfile] Update response:", JSON.stringify(updateResponse.company?.displayName));
+
+      // Reload fresh from server
+      const freshResponse = await companyService.get(company.id);
+      console.log("[CompanyProfile] Fresh data:", JSON.stringify(freshResponse.company?.displayName));
+      setCompany(freshResponse.company);
+      setForm(createFormState(freshResponse.company));
+
       setBanner({ type: "success", message: "Company updated successfully." });
-      await refreshUser().catch(() => null);
       setActiveEditor(null);
-    } catch (err) {
-      const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to update company.";
-      setError(message);
+      await refreshUser().catch(() => null);
+    } catch (err: any) {
+      console.error("[CompanyProfile] Save error:", err);
+      console.error("[CompanyProfile] Error status:", err?.status);
+      console.error("[CompanyProfile] Error data:", JSON.stringify(err?.data));
+      const message = err instanceof ApiError
+        ? (err.data as any)?.message || err.message
+        : err instanceof Error ? err.message : "Unable to update company.";
+      setBanner({ type: "error", message });
+      setActiveEditor(null);
     } finally {
       setSaving(false);
     }
