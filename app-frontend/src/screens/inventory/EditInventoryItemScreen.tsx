@@ -3,6 +3,7 @@ import {
   ScrollView,
   View,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   Alert,
@@ -55,6 +56,11 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
     price: { amount: 0, currency: "INR", unit: "unit" },
     unit: "units",
     visibility: "public",
+    purchaseOptions: {
+      prepaidEnabled: false,
+      paymentMode: "none",
+      provider: "none",
+    },
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,6 +76,23 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
     setFormData((prev) => ({
       ...prev,
       price: { ...prev.price, [field]: value },
+    }));
+  }, []);
+
+  const setPrepaidEnabled = useCallback((enabled: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      purchaseOptions: enabled
+        ? {
+            prepaidEnabled: true,
+            paymentMode: "full_prepay",
+            provider: "razorpay",
+          }
+        : {
+            prepaidEnabled: false,
+            paymentMode: "none",
+            provider: "none",
+          },
     }));
   }, []);
 
@@ -113,6 +136,17 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
         unit: item.unit || "units",
         visibility: item.visibility || "public",
         status: item.status,
+        purchaseOptions: item.purchaseOptions?.prepaidEnabled
+          ? {
+              prepaidEnabled: true,
+              paymentMode: "full_prepay",
+              provider: "razorpay",
+            }
+          : {
+              prepaidEnabled: false,
+              paymentMode: "none",
+              provider: "none",
+            },
       });
 
       try {
@@ -488,6 +522,48 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
             </View>
           </View>
 
+          {mode === "inhouse" ? (
+            <View
+              style={[
+                styles.paymentCard,
+                {
+                  marginTop: spacing.lg,
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.lg,
+                },
+              ]}
+            >
+              <View style={styles.paymentCardHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.paymentCardTitle, { color: colors.text }]}>Accept prepaid checkout</Text>
+                  <Text style={[styles.paymentCardSubtitle, { color: colors.textMuted }]}>
+                    Only in-house products with this enabled can go through Razorpay checkout.
+                  </Text>
+                </View>
+                <Switch
+                  value={Boolean(formData.purchaseOptions?.prepaidEnabled)}
+                  onValueChange={setPrepaidEnabled}
+                  trackColor={{ false: colors.border, true: colors.primary + "66" }}
+                  thumbColor={Boolean(formData.purchaseOptions?.prepaidEnabled) ? colors.primary : "#f4f3f4"}
+                />
+              </View>
+
+              <View style={styles.variantStatsRow}>
+                <View style={[styles.variantStatPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}>
+                  <Text style={[styles.variantStatPillText, { color: colors.text }]}>
+                    Mode {formData.purchaseOptions?.prepaidEnabled ? "FULL_PREPAY" : "NONE"}
+                  </Text>
+                </View>
+                <View style={[styles.variantStatPill, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}>
+                  <Text style={[styles.variantStatPillText, { color: colors.textMuted }]}>
+                    Provider {formData.purchaseOptions?.prepaidEnabled ? "RAZORPAY" : "NONE"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
+
           <View style={{ marginTop: spacing.xl }}>
             <Button label={loading ? "Updating..." : "Save Product"} onPress={handleSubmit} disabled={loading} loading={loading} variant="primary" />
           </View>
@@ -592,6 +668,27 @@ const styles = StyleSheet.create({
   },
   variantPanel: {
     borderWidth: 1,
+  },
+  paymentCard: {
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  paymentCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  paymentCardTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  paymentCardSubtitle: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 17,
   },
   variantPanelTop: {
     flexDirection: "row",

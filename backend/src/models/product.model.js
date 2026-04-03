@@ -6,6 +6,10 @@ const {
   DISCOUNT_TYPES,
   DEFAULT_CURRENCY
 } = require('../constants/product');
+const {
+  PURCHASE_PAYMENT_MODES,
+  PURCHASE_PROVIDERS
+} = require('../modules/product/utils/purchaseOptions.util');
 
 const { Schema } = mongoose;
 
@@ -45,6 +49,15 @@ const TargetedDiscountSchema = new Schema(
   { _id: false }
 );
 
+const PurchaseOptionsSchema = new Schema(
+  {
+    prepaidEnabled: { type: Boolean, default: false },
+    paymentMode: { type: String, enum: PURCHASE_PAYMENT_MODES, default: 'none' },
+    provider: { type: String, enum: PURCHASE_PROVIDERS, default: 'none' }
+  },
+  { _id: false }
+);
+
 const productSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 200 },
@@ -78,6 +91,10 @@ const productSchema = new Schema(
     targetedDiscounts: {
       type: [TargetedDiscountSchema],
       default: []
+    },
+    purchaseOptions: {
+      type: PurchaseOptionsSchema,
+      default: () => ({})
     },
     metadata: {
       type: Map,

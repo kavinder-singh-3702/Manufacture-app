@@ -39,6 +39,11 @@ const {
   requestDocumentsController
 } = require('../controllers/admin.controller');
 const {
+  listAdminProductOrdersController,
+  getAdminProductOrderController,
+  updateAdminProductOrderStatusController
+} = require('../../productOrders/controllers/productOrder.controller');
+const {
   listEntitiesValidation,
   setCompanyStatusValidation,
   archiveCompanyValidation,
@@ -61,6 +66,11 @@ const {
   businessSetupRequestIdParamValidation,
   userIdParamValidation
 } = require('../validators/admin.validators');
+const {
+  orderIdParamValidation,
+  listAdminOrdersValidation,
+  updateAdminOrderStatusValidation
+} = require('../../productOrders/validators/productOrder.validators');
 const {
   createProductValidation,
   updateProductValidation,
@@ -119,6 +129,15 @@ router.get('/ops-requests', validate(listAdminOpsRequestsValidation), listAdminO
 
 // GET /api/admin/inhouse-products/categories - in-house category stats
 router.get('/inhouse-products/categories', listAdminInhouseProductCategoriesController);
+
+// GET /api/admin/product-orders - paid order admin queue
+router.get('/product-orders', validate(listAdminOrdersValidation), listAdminProductOrdersController);
+
+// GET /api/admin/product-orders/:orderId - order detail
+router.get('/product-orders/:orderId', validate(orderIdParamValidation), getAdminProductOrderController);
+
+// PATCH /api/admin/product-orders/:orderId/status - fulfillment workflow status
+router.patch('/product-orders/:orderId/status', validate(updateAdminOrderStatusValidation), updateAdminProductOrderStatusController);
 
 // GET /api/admin/inhouse-products - in-house product list
 router.get('/inhouse-products', validate(listAdminInhouseProductsValidation), listAdminInhouseProductsController);

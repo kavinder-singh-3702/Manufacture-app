@@ -14,14 +14,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SvgXml } from "react-native-svg";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
 import { useToast } from "../../components/ui/Toast";
-import { paymentService, RazorpayErrorData } from "../../services/payment.service";
+import { InputField } from "../../components/common/InputField";
+import { paymentService, RazorpayErrorData, CheckoutAddressInput, CheckoutLineInput } from "../../services/payment.service";
 import { RootStackParamList } from "../../navigation/types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, "Checkout">;
-
-// ─── Icons ───────────────────────────────────────────────────────────────────
 
 const shieldIcon = (color: string) => `
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -44,62 +44,100 @@ const walletIcon = (color: string) => `
     <circle cx="17" cy="15" r="1.5"/>
   </svg>`;
 
-// ─── Component ───────────────────────────────────────────────────────────────
+const formatCurrency = (amount: number, currency: string = "INR") =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+const sanitizeAddress = (address?: Partial<CheckoutAddressInput> | null): CheckoutAddressInput => ({
+  line1: String(address?.line1 || "").trim(),
+  line2: String(address?.line2 || "").trim(),
+  city: String(address?.city || "").trim(),
+  state: String(address?.state || "").trim(),
+  postalCode: String(address?.postalCode || "").trim(),
+  country: String(address?.country || "").trim(),
+});
+
+const isCompleteAddress = (address: CheckoutAddressInput) =>
+  Boolean(address.line1 && address.city && address.state && address.postalCode && address.country);
+
+const getOrderLabel = (lines: CheckoutLineInput[], fallback?: string) => {
+  if (fallback) return fallback;
+  if (lines.length === 1) return lines[0].productName || "Order";
+  return `${lines.length} products`;
+};
 
 export const CheckoutScreen = () => {
   const { colors, spacing, nativeGradients } = useTheme();
   const { user } = useAuth();
+  const { removeManyFromCart } = useCart();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
 
-  const {
-    amountInRupees,
-    description,
-    quoteId,
-    productName,
-    quantity,
-    unitPrice,
-  } = route.params;
-
-  const displayAmount = useMemo(
-    () =>
-      new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        maximumFractionDigits: 0,
-      }).format(amountInRupees),
-    [amountInRupees]
+  const { source, lines, shippingAddress, description, productName } = route.params;
+  const [addressDraft, setAddressDraft] = useState<CheckoutAddressInput>(() =>
+    sanitizeAddress(shippingAddress || ((user?.address as Partial<CheckoutAddressInput> | undefined) ?? undefined))
   );
 
+  const payableCurrency = useMemo(
+    () => lines.find((line) => line.currency)?.currency || "INR",
+    [lines]
+  );
+  const totalAmount = useMemo(
+    () =>
+      lines.reduce((sum, line) => sum + Number(line.unitPrice || 0) * Number(line.quantity || 0), 0),
+    [lines]
+  );
+  const displayAmount = useMemo(() => formatCurrency(totalAmount, payableCurrency), [payableCurrency, totalAmount]);
+  const hasCompleteShippingAddress = useMemo(() => isCompleteAddress(addressDraft), [addressDraft]);
+  const orderLabel = useMemo(() => getOrderLabel(lines, productName), [lines, productName]);
+
+  const updateAddressField = useCallback((field: keyof CheckoutAddressInput, value: string) => {
+    setAddressDraft((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
   const handlePay = useCallback(async () => {
+    const normalizedAddress = sanitizeAddress(addressDraft);
+    if (!isCompleteAddress(normalizedAddress)) {
+      toast.error("Shipping address required", "Please complete the delivery address before paying.");
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await paymentService.checkout({
-        amountInRupees,
-        description: description ?? `Payment for ${productName ?? "order"}`,
-        quoteId,
+        source,
+        lines,
+        shippingAddress: normalizedAddress,
+        description: description ?? `Payment for ${orderLabel}`,
         prefill: {
           name: user?.displayName ?? "",
           email: user?.email ?? "",
           contact: user?.phone ?? "",
         },
-        notes: {
-          ...(quoteId ? { quoteId } : {}),
-          ...(productName ? { productName } : {}),
-        },
       });
+
+      if (source === "cart") {
+        const paidLineKeys = lines.map((line) => line.lineKey).filter((lineKey): lineKey is string => Boolean(lineKey));
+        removeManyFromCart(paidLineKeys);
+      }
 
       navigation.replace("OrderConfirmation", {
         success: true,
         paymentId: result.orderId,
-        amount: amountInRupees,
-        productName,
+        amount: result.order?.totals?.total ?? totalAmount,
+        productName: orderLabel,
+        statusMessage:
+          result.paymentStatus === "authorized"
+            ? "Payment is authorized and waiting for final capture confirmation."
+            : "Your order has been placed successfully. You'll receive a confirmation shortly.",
       });
     } catch (err: unknown) {
-      // Razorpay user-cancelled errors have code 0 or 2
       const razorpayErr = err as RazorpayErrorData | undefined;
       if (razorpayErr?.code === 0 || razorpayErr?.code === 2) {
         toast.info("Payment cancelled");
@@ -111,14 +149,14 @@ export const CheckoutScreen = () => {
         (err instanceof Error ? err.message : "Payment failed");
       navigation.replace("OrderConfirmation", {
         success: false,
-        amount: amountInRupees,
-        productName,
+        amount: totalAmount,
+        productName: orderLabel,
         errorMessage: message,
       });
     } finally {
       setLoading(false);
     }
-  }, [amountInRupees, description, navigation, productName, quoteId, toast, user]);
+  }, [addressDraft, description, lines, navigation, orderLabel, removeManyFromCart, source, toast, totalAmount, user]);
 
   return (
     <LinearGradient
@@ -128,7 +166,6 @@ export const CheckoutScreen = () => {
       end={{ x: 1, y: 1 }}
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -145,7 +182,6 @@ export const CheckoutScreen = () => {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Order Summary Card */}
         <View
           style={[
             styles.card,
@@ -157,55 +193,115 @@ export const CheckoutScreen = () => {
         >
           <Text style={[styles.cardTitle, { color: colors.text }]}>Order Summary</Text>
 
-          {productName ? (
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Product</Text>
-              <Text style={[styles.rowValue, { color: colors.text }]} numberOfLines={2}>
-                {productName}
-              </Text>
-            </View>
-          ) : null}
-
-          {quantity ? (
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Quantity</Text>
-              <Text style={[styles.rowValue, { color: colors.text }]}>{quantity}</Text>
-            </View>
-          ) : null}
-
-          {unitPrice ? (
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Unit Price</Text>
-              <Text style={[styles.rowValue, { color: colors.text }]}>
-                {new Intl.NumberFormat("en-IN", {
-                  style: "currency",
-                  currency: "INR",
-                  maximumFractionDigits: 0,
-                }).format(unitPrice)}
-              </Text>
-            </View>
-          ) : null}
-
-          {quoteId ? (
-            <View style={styles.row}>
-              <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Quote Ref</Text>
-              <Text style={[styles.rowValue, { color: colors.primary }]}>
-                #{quoteId.slice(-8)}
-              </Text>
-            </View>
-          ) : null}
+          {lines.map((line, index) => {
+            const lineTotal = Number(line.unitPrice || 0) * Number(line.quantity || 0);
+            return (
+              <View key={`${line.productId}-${line.variantId || "base"}-${index}`} style={styles.lineItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rowValue, { color: colors.text }]} numberOfLines={2}>
+                    {line.productName || `Product ${index + 1}`}
+                  </Text>
+                  {line.variantTitle ? (
+                    <Text style={[styles.lineMeta, { color: colors.textMuted }]}>{line.variantTitle}</Text>
+                  ) : null}
+                  <Text style={[styles.lineMeta, { color: colors.textMuted }]}>
+                    Qty {line.quantity} × {formatCurrency(Number(line.unitPrice || 0), line.currency || payableCurrency)}
+                  </Text>
+                </View>
+                <Text style={[styles.rowValue, { color: colors.text }]}>{formatCurrency(lineTotal, line.currency || payableCurrency)}</Text>
+              </View>
+            );
+          })}
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
           <View style={styles.row}>
             <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
-            <Text style={[styles.totalValue, { color: colors.primary }]}>
-              {displayAmount}
-            </Text>
+            <Text style={[styles.totalValue, { color: colors.primary }]}>{displayAmount}</Text>
           </View>
         </View>
 
-        {/* Payment Method Info */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Shipping Address</Text>
+
+          {hasCompleteShippingAddress ? (
+            <View style={styles.addressSummary}>
+              <Text style={[styles.addressLine, { color: colors.text }]}>{addressDraft.line1}</Text>
+              {addressDraft.line2 ? (
+                <Text style={[styles.addressLine, { color: colors.textMuted }]}>{addressDraft.line2}</Text>
+              ) : null}
+              <Text style={[styles.addressLine, { color: colors.textMuted }]}>
+                {[addressDraft.city, addressDraft.state, addressDraft.postalCode].filter(Boolean).join(", ")}
+              </Text>
+              <Text style={[styles.addressLine, { color: colors.textMuted }]}>{addressDraft.country}</Text>
+            </View>
+          ) : (
+            <>
+              <InputField
+                label="Address line 1"
+                placeholder="Street address"
+                value={addressDraft.line1}
+                onChangeText={(value) => updateAddressField("line1", value)}
+                required
+              />
+              <InputField
+                label="Address line 2"
+                placeholder="Apartment, suite, landmark (optional)"
+                value={addressDraft.line2}
+                onChangeText={(value) => updateAddressField("line2", value)}
+              />
+              <View style={styles.doubleRow}>
+                <View style={styles.doubleCell}>
+                  <InputField
+                    label="City"
+                    placeholder="City"
+                    value={addressDraft.city}
+                    onChangeText={(value) => updateAddressField("city", value)}
+                    required
+                  />
+                </View>
+                <View style={styles.doubleCell}>
+                  <InputField
+                    label="State"
+                    placeholder="State"
+                    value={addressDraft.state}
+                    onChangeText={(value) => updateAddressField("state", value)}
+                    required
+                  />
+                </View>
+              </View>
+              <View style={styles.doubleRow}>
+                <View style={styles.doubleCell}>
+                  <InputField
+                    label="Postal code"
+                    placeholder="PIN / ZIP"
+                    value={addressDraft.postalCode}
+                    onChangeText={(value) => updateAddressField("postalCode", value)}
+                    required
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={styles.doubleCell}>
+                  <InputField
+                    label="Country"
+                    placeholder="Country"
+                    value={addressDraft.country}
+                    onChangeText={(value) => updateAddressField("country", value)}
+                    required
+                  />
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
         <View
           style={[
             styles.card,
@@ -217,25 +313,21 @@ export const CheckoutScreen = () => {
         >
           <View style={styles.paymentMethodHeader}>
             <SvgXml xml={walletIcon(colors.primary)} width={22} height={22} />
-            <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0 }]}>
-              Payment Method
-            </Text>
+            <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0 }]}>Payment Method</Text>
           </View>
           <Text style={[styles.paymentMethodDesc, { color: colors.textMuted }]}>
-            UPI, Debit/Credit Card, Net Banking, Wallets & more via Razorpay
+            UPI, Debit/Credit Card, Net Banking, Wallets and more via Razorpay.
           </Text>
         </View>
 
-        {/* Security Badge */}
         <View style={[styles.securityRow, { backgroundColor: colors.primarySoft }]}>
           <SvgXml xml={shieldIcon(colors.primary)} width={18} height={18} />
           <Text style={[styles.securityText, { color: colors.primary }]}>
-            Secured by Razorpay. 100% safe & encrypted.
+            Secured by Razorpay. Order totals are calculated on the server before payment.
           </Text>
         </View>
       </ScrollView>
 
-      {/* Pay Button (sticky bottom) */}
       <View
         style={[
           styles.bottomBar,
@@ -270,8 +362,6 @@ export const CheckoutScreen = () => {
   );
 };
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -296,9 +386,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   headerSpacer: { width: 36 },
-
   content: { padding: 16, gap: 16 },
-
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -310,54 +398,99 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     marginBottom: 14,
   },
-
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 6,
   },
-  rowLabel: { fontSize: 14, fontWeight: "600" },
-  rowValue: { fontSize: 14, fontWeight: "700", maxWidth: "60%", textAlign: "right" },
-
-  divider: { height: 1, marginVertical: 10 },
-
-  totalLabel: { fontSize: 16, fontWeight: "900" },
-  totalValue: { fontSize: 20, fontWeight: "900" },
-
-  paymentMethodHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  paymentMethodDesc: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
-
+  rowValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  lineItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 8,
+  },
+  lineMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 10,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  addressSummary: {
+    gap: 4,
+  },
+  addressLine: {
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  doubleRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  doubleCell: {
+    flex: 1,
+  },
+  paymentMethodHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  paymentMethodDesc: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
   securityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderRadius: 12,
-    paddingVertical: 12,
+    gap: 10,
     paddingHorizontal: 14,
-  },
-  securityText: { fontSize: 13, fontWeight: "700" },
-
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-  },
-  payButtonWrap: { borderRadius: 14, overflow: "hidden" },
-  payButton: {
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingVertical: 12,
     borderRadius: 14,
   },
+  securityText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    lineHeight: 17,
+  },
+  bottomBar: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  payButtonWrap: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  payButton: {
+    minHeight: 54,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   payButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
+    color: "#FFF",
+    fontSize: 16,
     fontWeight: "900",
-    letterSpacing: -0.2,
+    letterSpacing: 0.2,
   },
 });

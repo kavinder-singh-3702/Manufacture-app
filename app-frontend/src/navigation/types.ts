@@ -1,6 +1,7 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 import { RouteName, routes } from "./routes";
 import { ServiceType } from "../services/serviceRequest.service";
+import { CheckoutAddressInput, CheckoutLineInput, CheckoutSource } from "../services/payment.service";
 
 export type CompanyContextStackScreen =
   | "AddProduct"
@@ -95,18 +96,18 @@ export type RootStackParamList = {
   MyProducts: { initialQuery?: string; initialVisibility?: "all" | "public" | "private" } | undefined;
   // Payment
   Checkout: {
-    amountInRupees: number;
+    source: CheckoutSource;
+    lines: CheckoutLineInput[];
+    shippingAddress?: CheckoutAddressInput;
     description?: string;
-    quoteId?: string;
     productName?: string;
-    quantity?: number;
-    unitPrice?: number;
   };
   OrderConfirmation: {
     success: boolean;
     paymentId?: string;
     amount?: number;
     productName?: string;
+    statusMessage?: string;
     errorMessage?: string;
   };
   // Accounting Reports

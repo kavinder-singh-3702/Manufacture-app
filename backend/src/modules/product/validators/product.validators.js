@@ -1,5 +1,9 @@
 const { body, param } = require('express-validator');
 const { PRODUCT_CATEGORIES, PRODUCT_STATUSES, PRODUCT_VISIBILITY, DISCOUNT_TYPES } = require('../../../constants/product');
+const {
+  PURCHASE_PAYMENT_MODES,
+  PURCHASE_PROVIDERS
+} = require('../utils/purchaseOptions.util');
 
 const CATEGORY_IDS = PRODUCT_CATEGORIES.map((c) => c.id);
 
@@ -25,6 +29,10 @@ const createProductValidation = [
   body('contactPreferences').optional().isObject(),
   body('contactPreferences.allowChat').optional().isBoolean(),
   body('contactPreferences.allowCall').optional().isBoolean(),
+  body('purchaseOptions').optional().isObject(),
+  body('purchaseOptions.prepaidEnabled').optional().isBoolean(),
+  body('purchaseOptions.paymentMode').optional().isIn(PURCHASE_PAYMENT_MODES),
+  body('purchaseOptions.provider').optional().isIn(PURCHASE_PROVIDERS),
   body('attributes').optional().isObject(),
   body('metadata').optional().isObject()
 ];
@@ -51,6 +59,10 @@ const updateProductValidation = [
   body('contactPreferences').optional().isObject(),
   body('contactPreferences.allowChat').optional().isBoolean(),
   body('contactPreferences.allowCall').optional().isBoolean(),
+  body('purchaseOptions').optional().isObject(),
+  body('purchaseOptions.prepaidEnabled').optional().isBoolean(),
+  body('purchaseOptions.paymentMode').optional().isIn(PURCHASE_PAYMENT_MODES),
+  body('purchaseOptions.provider').optional().isIn(PURCHASE_PROVIDERS),
   body('attributes').optional().isObject(),
   body('metadata').optional().isObject()
 ];

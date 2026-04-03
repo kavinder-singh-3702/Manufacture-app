@@ -31,6 +31,16 @@ export type ProductVariantSummary = {
   currency: string | null;
 };
 
+export type ProductCheckoutReason = "not_inhouse" | "prepaid_disabled" | "inactive";
+
+export type ProductPurchaseOptions = {
+  prepaidEnabled: boolean;
+  paymentMode: "none" | "full_prepay";
+  provider: "none" | "razorpay";
+  checkoutEligible: boolean;
+  checkoutReason?: ProductCheckoutReason;
+};
+
 export type Product = {
   _id: string;
   name: string;
@@ -60,6 +70,7 @@ export type Product = {
     allowChat?: boolean;
     allowCall?: boolean;
   };
+  purchaseOptions?: ProductPurchaseOptions;
   attributes?: Record<string, unknown>;
   images?: ProductImage[];
   variantSummary?: ProductVariantSummary;
@@ -82,6 +93,11 @@ export type CreateProductInput = {
   contactPreferences?: {
     allowChat?: boolean;
     allowCall?: boolean;
+  };
+  purchaseOptions?: {
+    prepaidEnabled?: boolean;
+    paymentMode?: "none" | "full_prepay";
+    provider?: "none" | "razorpay";
   };
   attributes?: Record<string, unknown>;
   metadata?: Record<string, unknown>;

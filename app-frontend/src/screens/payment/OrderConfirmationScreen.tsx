@@ -43,7 +43,7 @@ export const OrderConfirmationScreen = () => {
   const route = useRoute<Route>();
   const insets = useSafeAreaInsets();
 
-  const { success, paymentId, amount, productName, errorMessage } = route.params;
+  const { success, paymentId, amount, productName, statusMessage, errorMessage } = route.params;
 
   const displayAmount = useMemo(
     () =>
@@ -104,7 +104,7 @@ export const OrderConfirmationScreen = () => {
         {/* Subtitle */}
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           {success
-            ? "Your order has been placed successfully. You'll receive a confirmation shortly."
+            ? statusMessage ?? "Your order has been placed successfully. You'll receive a confirmation shortly."
             : errorMessage ?? "Something went wrong with your payment. Please try again."}
         </Text>
 

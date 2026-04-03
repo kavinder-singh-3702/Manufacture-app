@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
+import { useCart } from "../../hooks/useCart";
 import { RootStackParamList } from "../../navigation/types";
 import { Product, productService } from "../../services/product.service";
 import { ProductVariant, productVariantService } from "../../services/productVariant.service";
@@ -72,6 +73,7 @@ export const ProductDetailsScreen = () => {
   const route = useRoute<ScreenRoute>();
   const { productId, product: passedProduct } = route.params;
   const { user, requestLogin } = useAuth();
+  const { addToCart } = useCart();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [product, setProduct] = useState<Product | null>(passedProduct || null);
@@ -148,6 +150,7 @@ export const ProductDetailsScreen = () => {
   const rating = product ? getRating(product) : null;
   const displayStock = selectedVariant ? Number(selectedVariant.availableQuantity || 0) : Number(product?.availableQuantity || 0);
   const hideStockForPublicListing = isPublicListingProduct(product);
+  const checkoutEligible = Boolean(product?.purchaseOptions?.checkoutEligible);
 
   const handleShare = useCallback(async () => {
     if (!product) return;
@@ -180,6 +183,80 @@ export const ProductDetailsScreen = () => {
     }
     setQuoteSheetOpen(true);
   }, [isGuest, requestLogin]);
+
+  const buildCheckoutLine = useCallback(() => {
+    if (!product) return null;
+    return {
+      productId: product._id,
+      variantId: selectedVariant?._id,
+      quantity: 1,
+      productName: product.name,
+      variantTitle: selectedVariant ? variantLabel(selectedVariant) : undefined,
+      unitPrice: Number(selectedVariant?.price?.amount ?? product.price?.amount ?? 0),
+      currency: selectedVariant?.price?.currency || product.price?.currency || "INR",
+    };
+  }, [product, selectedVariant]);
+
+  const ensureCheckoutReady = useCallback(() => {
+    if (!product) return null;
+    if (!checkoutEligible) {
+      toastError("Prepaid checkout unavailable", "This product is not enabled for Razorpay checkout.");
+      return null;
+    }
+    if (selectedVariant && selectedVariant.status !== "active") {
+      toastError("Variant unavailable", "Please choose an active variant before continuing.");
+      return null;
+    }
+
+    const line = buildCheckoutLine();
+    if (!line || Number(line.unitPrice || 0) <= 0) {
+      toastError("Pricing unavailable", "This product does not have valid checkout pricing yet.");
+      return null;
+    }
+    return line;
+  }, [buildCheckoutLine, checkoutEligible, product, selectedVariant, toastError]);
+
+  const handleAddToCart = useCallback(() => {
+    if (isGuest) {
+      requestLogin();
+      return;
+    }
+    if (!product) return;
+
+    const line = ensureCheckoutReady();
+    if (!line) return;
+
+    addToCart(
+      product,
+      1,
+      selectedVariant
+        ? {
+            id: selectedVariant._id,
+            title: variantLabel(selectedVariant),
+            options: (selectedVariant.options || {}) as Record<string, unknown>,
+            price: selectedVariant.price || null,
+            unit: selectedVariant.unit,
+          }
+        : null
+    );
+    toastSuccess("Added to cart", `${product.name} is ready for checkout.`);
+  }, [addToCart, ensureCheckoutReady, isGuest, product, requestLogin, selectedVariant, toastSuccess]);
+
+  const handleBuyNow = useCallback(() => {
+    if (isGuest) {
+      requestLogin();
+      return;
+    }
+    const line = ensureCheckoutReady();
+    if (!line) return;
+
+    navigation.navigate("Checkout", {
+      source: "buy_now",
+      lines: [line],
+      productName: product?.name,
+      description: `Payment for ${product?.name || "order"}`,
+    });
+  }, [ensureCheckoutReady, isGuest, navigation, product?.name, requestLogin]);
 
   const openPromoteRequest = useCallback(() => {
     if (isGuest) {
@@ -537,6 +614,40 @@ export const ProductDetailsScreen = () => {
                   <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Promote Product</Text>
                 </TouchableOpacity>
               </View>
+            ) : checkoutEligible ? (
+              <View style={styles.bottomColumn}>
+                <TouchableOpacity
+                  onPress={handleBuyNow}
+                  style={[styles.quotePrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="flash-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Buy Now</Text>
+                </TouchableOpacity>
+
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    onPress={handleAddToCart}
+                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="cart-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Add to Cart</Text>
+                  </TouchableOpacity>
+
+                  <View
+                    style={[
+                      styles.checkoutInfoPill,
+                      {
+                        borderRadius: radius.md,
+                        borderColor: colors.border,
+                        backgroundColor: colors.primary + "12",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.checkoutInfoText, { color: colors.primary }]}>Razorpay</Text>
+                  </View>
+                </View>
+              </View>
             ) : (
               <View style={styles.bottomColumn}>
                 <TouchableOpacity
@@ -840,6 +951,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+  },
+  checkoutInfoPill: {
+    minWidth: 110,
+    borderWidth: 1,
+    height: 46,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  checkoutInfoText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   bottomSecondaryText: {
     fontSize: 13,

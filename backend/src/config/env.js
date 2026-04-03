@@ -90,7 +90,11 @@ const config = {
   notificationsDispatchBatchSize: Number(process.env.NOTIFICATIONS_DISPATCH_BATCH_SIZE || 30),
   notificationRetryBaseMs: Number(process.env.NOTIFICATION_RETRY_BASE_MS || 30000),
   notificationRetryMaxMs: Number(process.env.NOTIFICATION_RETRY_MAX_MS || 30 * 60 * 1000),
-  expoPushAccessToken: process.env.EXPO_PUSH_ACCESS_TOKEN
+  expoPushAccessToken: process.env.EXPO_PUSH_ACCESS_TOKEN,
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+  paymentCurrency: process.env.PAYMENT_CURRENCY || 'INR'
 };
 
 module.exports = Object.freeze(config);

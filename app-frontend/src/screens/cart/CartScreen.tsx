@@ -305,6 +305,31 @@ export const CartScreen = () => {
     return sum + price * ci.quantity;
   }, 0);
 
+  const eligibleItems = useMemo(
+    () => items.filter((cartItem) => Boolean(cartItem.item.purchaseOptions?.checkoutEligible)),
+    [items]
+  );
+  const shortlistItems = useMemo(
+    () => items.filter((cartItem) => !cartItem.item.purchaseOptions?.checkoutEligible),
+    [items]
+  );
+  const payableTotal = useMemo(
+    () =>
+      eligibleItems.reduce((sum, cartItem) => {
+        const price = (cartItem.variant?.price?.amount ?? cartItem.item.price?.amount) || 0;
+        return sum + price * cartItem.quantity;
+      }, 0),
+    [eligibleItems]
+  );
+  const payableItemCount = useMemo(
+    () => eligibleItems.reduce((sum, cartItem) => sum + cartItem.quantity, 0),
+    [eligibleItems]
+  );
+  const shortlistItemCount = useMemo(
+    () => shortlistItems.reduce((sum, cartItem) => sum + cartItem.quantity, 0),
+    [shortlistItems]
+  );
+
   type SellerContactOption = {
     sellerId: string;
     sellerName: string;
@@ -314,7 +339,7 @@ export const CartScreen = () => {
 
   const sellerOptions = useMemo<SellerContactOption[]>(() => {
     const groups = new Map<string, SellerContactOption>();
-    items.forEach((cartItem) => {
+    shortlistItems.forEach((cartItem) => {
       const product = cartItem.item;
       const sellerId = product.createdBy ? String(product.createdBy) : product.company?._id ? String(product.company._id) : null;
       if (!sellerId) return;
@@ -334,7 +359,7 @@ export const CartScreen = () => {
     });
 
     return Array.from(groups.values()).sort((a, b) => a.sellerName.localeCompare(b.sellerName));
-  }, [items]);
+  }, [shortlistItems]);
 
   const messageOptions = useMemo(
     () => sellerOptions.filter((option) => canMessageProduct(option.product)),
@@ -394,6 +419,12 @@ export const CartScreen = () => {
   );
 
   const contactHelperText = useMemo(() => {
+    if (eligibleItems.length && !shortlistItems.length) {
+      return "These products support prepaid checkout, so you can complete the order directly.";
+    }
+    if (eligibleItems.length && shortlistItems.length) {
+      return `${shortlistItemCount} shortlisted item${shortlistItemCount === 1 ? "" : "s"} still need seller confirmation.`;
+    }
     if (!messageOptions.length && !callOptions.length) {
       return "No seller contact options available for shortlisted items.";
     }
@@ -404,7 +435,35 @@ export const CartScreen = () => {
       return "Calling is unavailable for current shortlisted sellers.";
     }
     return "Contact sellers directly to finalize pricing and order terms.";
-  }, [callOptions.length, messageOptions.length]);
+  }, [callOptions.length, eligibleItems.length, messageOptions.length, shortlistItemCount, shortlistItems.length]);
+
+  const handleProceedToPayment = useCallback(() => {
+    if (!eligibleItems.length) return;
+    if (user?.role === "guest") {
+      requestLogin();
+      return;
+    }
+
+    navigation.navigate("Checkout", {
+      source: "cart",
+      lines: eligibleItems.map((cartItem) => ({
+        lineKey: cartItem.lineKey,
+        productId: cartItem.item._id,
+        variantId: cartItem.variant?.id,
+        quantity: cartItem.quantity,
+        productName: cartItem.item.name,
+        variantTitle: cartItem.variant?.title,
+        unitPrice: Number(cartItem.variant?.price?.amount ?? cartItem.item.price?.amount ?? 0),
+        currency: cartItem.variant?.price?.currency || cartItem.item.price?.currency || "INR",
+      })),
+      description:
+        eligibleItems.length === 1
+          ? `Payment for ${eligibleItems[0].item.name}`
+          : `Payment for ${eligibleItems.length} shortlisted products`,
+      productName:
+        eligibleItems.length === 1 ? eligibleItems[0].item.name : `${eligibleItems.length} products`,
+    });
+  }, [eligibleItems, navigation, requestLogin, user?.role]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: CartItem; index: number }) => (
@@ -515,42 +574,76 @@ export const CartScreen = () => {
                 <Text style={styles.summaryLabel}>Estimated value</Text>
                 <Text style={styles.summaryAmount}>INR {totalValue.toFixed(2)}</Text>
               </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Payable now</Text>
+                <Text style={styles.summaryAmount}>INR {payableTotal.toFixed(2)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Eligible items</Text>
+                <Text style={styles.summaryMetaValue}>{payableItemCount}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Seller-confirm items</Text>
+                <Text style={styles.summaryMetaValue}>{shortlistItemCount}</Text>
+              </View>
               <Text style={styles.contactHelperText}>{contactHelperText}</Text>
             </View>
 
+            {eligibleItems.length ? (
+              <TouchableOpacity
+                style={styles.paymentActionButton}
+                activeOpacity={0.9}
+                onPress={handleProceedToPayment}
+              >
+                <LinearGradient
+                  colors={[COLORS.accent, "#6572e0"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.paymentActionGradient}
+                >
+                  <Text style={styles.contactActionText}>
+                    Proceed to Payment
+                    {payableItemCount ? ` • INR ${payableTotal.toFixed(2)}` : ""}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : null}
+
             {/* Seller contact actions */}
-            <View style={styles.contactActionRow}>
-              <TouchableOpacity
-                style={[styles.contactActionButton, !messageOptions.length ? styles.contactActionButtonDisabled : null]}
-                activeOpacity={0.9}
-                disabled={!messageOptions.length}
-                onPress={() => handleOpenSellerPicker("message")}
-              >
-                <LinearGradient
-                  colors={messageOptions.length ? [COLORS.accent, "#6572e0"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.contactActionGradient}
+            {shortlistItems.length ? (
+              <View style={styles.contactActionRow}>
+                <TouchableOpacity
+                  style={[styles.contactActionButton, !messageOptions.length ? styles.contactActionButtonDisabled : null]}
+                  activeOpacity={0.9}
+                  disabled={!messageOptions.length}
+                  onPress={() => handleOpenSellerPicker("message")}
                 >
-                  <Text style={styles.contactActionText}>Message Seller</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.contactActionButton, !callOptions.length ? styles.contactActionButtonDisabled : null]}
-                activeOpacity={0.9}
-                disabled={!callOptions.length}
-                onPress={() => handleOpenSellerPicker("call")}
-              >
-                <LinearGradient
-                  colors={callOptions.length ? [COLORS.success, "#4bc08f"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.contactActionGradient}
+                  <LinearGradient
+                    colors={messageOptions.length ? [COLORS.accent, "#6572e0"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.contactActionGradient}
+                  >
+                    <Text style={styles.contactActionText}>Message Seller</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.contactActionButton, !callOptions.length ? styles.contactActionButtonDisabled : null]}
+                  activeOpacity={0.9}
+                  disabled={!callOptions.length}
+                  onPress={() => handleOpenSellerPicker("call")}
                 >
-                  <Text style={styles.contactActionText}>Call Seller</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+                  <LinearGradient
+                    colors={callOptions.length ? [COLORS.success, "#4bc08f"] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.contactActionGradient}
+                  >
+                    <Text style={styles.contactActionText}>Call Seller</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </LinearGradient>
         </View>
       )}
@@ -990,12 +1083,28 @@ const createStyles = (COLORS: ReturnType<typeof useCartPalette>, fs: (size: numb
     fontWeight: "800",
     color: COLORS.text,
   },
+  summaryMetaValue: {
+    fontSize: fs(14),
+    fontWeight: "800",
+    color: COLORS.text,
+  },
   contactHelperText: {
     marginTop: 8,
     fontSize: fs(12),
     fontWeight: "500",
     color: COLORS.textSubtle,
     lineHeight: fs(17),
+  },
+  paymentActionButton: {
+    borderRadius: 14,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  paymentActionGradient: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    borderRadius: 14,
   },
   contactActionRow: {
     flexDirection: "row",

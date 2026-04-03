@@ -58,7 +58,9 @@ const updateInhouseProduct = async ({ actorUserId, productId, updates } = {}) =>
 
 const adjustInhouseProductQuantity = async ({ actorUserId, productId, adjustment } = {}) => {
   const companyId = await resolveInhouseCompanyId(actorUserId);
-  return adjustQuantity(productId, adjustment, actorUserId, companyId);
+  const product = await adjustQuantity(productId, adjustment, actorUserId, companyId);
+  if (!product) return null;
+  return getProductById(productId, companyId);
 };
 
 const deleteInhouseProduct = async ({ actorUserId, productId } = {}) => {

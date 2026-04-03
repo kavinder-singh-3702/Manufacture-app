@@ -31,6 +31,7 @@ type CartContextValue = {
   totalItems: number;
   addToCart: (item: Product, quantity?: number, variant?: CartVariantSnapshot | null) => void;
   removeFromCart: (lineKey: string) => void;
+  removeManyFromCart: (lineKeys: string[]) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
   updateCartItem: (itemId: string, updatedProduct: Product) => void;
   refreshCartItems: () => Promise<void>;
@@ -113,6 +114,29 @@ export const CartProvider = ({ children }: CartProviderProps) => {
           variantTitle: existing?.variant?.title,
         },
       } as any);
+    },
+    [logEventSafe]
+  );
+
+  const removeManyFromCart = useCallback(
+    (lineKeys: string[]) => {
+      if (!Array.isArray(lineKeys) || lineKeys.length === 0) return;
+      const lineKeySet = new Set(lineKeys);
+      const removedItems = itemsRef.current.filter((ci) => lineKeySet.has(ci.lineKey));
+      setItems((prev) => prev.filter((ci) => !lineKeySet.has(ci.lineKey)));
+
+      removedItems.forEach((existing) => {
+        logEventSafe({
+          type: "remove_from_cart",
+          productId: existing?.item?._id,
+          category: existing?.item?.category,
+          meta: {
+            variantId: existing?.variant?.id,
+            variantTitle: existing?.variant?.title,
+            reason: "checkout_completed",
+          },
+        } as any);
+      });
     },
     [logEventSafe]
   );
@@ -218,6 +242,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       totalItems,
       addToCart,
       removeFromCart,
+      removeManyFromCart,
       updateQuantity,
       updateCartItem,
       refreshCartItems,
@@ -232,6 +257,7 @@ export const CartProvider = ({ children }: CartProviderProps) => {
       totalItems,
       addToCart,
       removeFromCart,
+      removeManyFromCart,
       updateQuantity,
       updateCartItem,
       refreshCartItems,

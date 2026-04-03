@@ -6,6 +6,11 @@ const UserFavorite = require('../../../models/userFavorite.model');
 const { uploadProductImage } = require('../../../services/storage.service');
 const { PRODUCT_CATEGORIES } = require('../../../constants/product');
 const { createStockAdjustmentForItem } = require('../../accounting/services/stockAdjustment.service');
+const {
+  mapToObject,
+  normalizePurchaseOptionsInput,
+  computePurchaseOptionsState
+} = require('../utils/purchaseOptions.util');
 
 const buildStockStatusExpr = (status) => {
   if (status === 'out_of_stock') {
@@ -28,6 +33,28 @@ const buildAdminCreatorFilter = async (createdByRole) => {
       { createdByRole: 'admin' },
       { createdBy: { $in: adminIds } }
     ]
+  };
+};
+
+const shapeProduct = (product) => {
+  if (!product) return null;
+
+  const company = product.company
+    ? {
+        ...product.company,
+        metadata: mapToObject(product.company.metadata) || product.company.metadata
+      }
+    : product.company;
+
+  return {
+    ...product,
+    company,
+    attributes: mapToObject(product.attributes) || {},
+    metadata: mapToObject(product.metadata) || {},
+    purchaseOptions: computePurchaseOptionsState({
+      ...product,
+      company
+    })
   };
 };
 
@@ -198,7 +225,7 @@ const getProductsByCategory = async (
 
   const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
       .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
@@ -212,7 +239,7 @@ const getProductsByCategory = async (
 
   return {
     products: productsWithVariants.map((p) => ({
-      ...p,
+      ...shapeProduct(p),
       isFavorite: favoritesSet.has(p._id?.toString())
     })),
     pagination: {
@@ -297,7 +324,7 @@ const getAllProducts = async (
 
   const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
       .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
@@ -311,7 +338,7 @@ const getAllProducts = async (
 
   return {
     products: productsWithVariants.map((p) => ({
-      ...p,
+      ...shapeProduct(p),
       isFavorite: favoritesSet.has(p._id?.toString())
     })),
     pagination: {
@@ -329,14 +356,14 @@ const getProductById = async (productId, companyId, { includeVariantSummary } = 
     query.company = new mongoose.Types.ObjectId(companyId);
   }
   const product = await Product.findOne(query)
-    .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
+    .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
     .lean();
   if (!product) return null;
 
-  if (!includeVariantSummary) return product;
+  if (!includeVariantSummary) return shapeProduct(product);
 
   const [withSummary] = await attachVariantSummary([product], companyId);
-  return withSummary;
+  return shapeProduct(withSummary);
 };
 
 const createProduct = async (payload, userId, companyId, creatorRole = 'user') => {
@@ -348,6 +375,7 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
   // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
   delete cleanedPayload.availableQuantity;
   delete cleanedPayload.minStockQuantity;
+  cleanedPayload.purchaseOptions = normalizePurchaseOptionsInput(cleanedPayload.purchaseOptions);
 
   const product = new Product({
     ...cleanedPayload,
@@ -358,7 +386,7 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
   });
 
   await product.save();
-  return product.toObject();
+  return getProductById(product._id, companyId);
 };
 
 const updateProduct = async (productId, updates, userId, companyId) => {
@@ -378,6 +406,9 @@ const updateProduct = async (productId, updates, userId, companyId) => {
   // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
   delete cleanedUpdates.availableQuantity;
   delete cleanedUpdates.minStockQuantity;
+  if (Object.prototype.hasOwnProperty.call(cleanedUpdates, 'purchaseOptions')) {
+    cleanedUpdates.purchaseOptions = normalizePurchaseOptionsInput(cleanedUpdates.purchaseOptions);
+  }
 
   const product = await Product.findOneAndUpdate(
     query,
@@ -385,7 +416,8 @@ const updateProduct = async (productId, updates, userId, companyId) => {
     { new: true, runValidators: true }
   );
 
-  return product?.toObject() || null;
+  if (!product) return null;
+  return getProductById(product._id, companyId);
 };
 
 const adjustQuantity = async (productId, adjustment, userId, companyId) => {
@@ -409,7 +441,7 @@ const adjustQuantity = async (productId, adjustment, userId, companyId) => {
   }
 
   const refreshed = await Product.findOne(query).lean();
-  return refreshed || null;
+  return shapeProduct(refreshed) || null;
 };
 
 const deleteProduct = async (productId, companyId) => {
@@ -454,7 +486,7 @@ const applyTargetedDiscount = async (productId, companyId, discountPayload, acto
   product.lastUpdatedBy = actorUserId;
   await product.save();
 
-  return product.toObject();
+  return getProductById(product._id, companyId);
 };
 
 const addProductImage = async (productId, companyId, filePayload, userId) => {
@@ -488,9 +520,10 @@ const addProductImage = async (productId, companyId, filePayload, userId) => {
   await product.save();
 
   const image = product.images[product.images.length - 1];
+  const refreshedProduct = await getProductById(product._id, companyId);
 
   return {
-    product: product.toObject(),
+    product: refreshedProduct,
     image
   };
 };

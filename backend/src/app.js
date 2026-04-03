@@ -3,6 +3,7 @@ const session = require('express-session');
 const cors = require('cors');
 const morgan = require('morgan');
 const routes = require('./routes');
+const razorpayWebhookRouter = require('./modules/productOrders/routes/razorpayWebhook.routes');
 const config = require('./config/env');
 const { getSessionStore } = require('./config/sessionStore');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -19,6 +20,7 @@ app.use(
     credentials: true
   })
 );
+app.use('/api/payments/razorpay/webhook', express.raw({ type: 'application/json' }), razorpayWebhookRouter);
 // Allow uploads up to 5 MB (base64 inflates ~33%), so set parser limits a bit higher.
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

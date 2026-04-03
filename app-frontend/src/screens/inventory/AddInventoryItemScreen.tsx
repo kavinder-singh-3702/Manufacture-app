@@ -3,6 +3,7 @@ import {
   ScrollView,
   View,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   Alert,
@@ -102,6 +103,11 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
     price: { amount: 0, currency: "INR", unit: "unit" },
     unit: "units",
     visibility: "public",
+    purchaseOptions: {
+      prepaidEnabled: false,
+      paymentMode: "none",
+      provider: "none",
+    },
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -117,6 +123,23 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
     setFormData((prev) => ({
       ...prev,
       price: { ...prev.price, [field]: value },
+    }));
+  }, []);
+
+  const setPrepaidEnabled = useCallback((enabled: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      purchaseOptions: enabled
+        ? {
+            prepaidEnabled: true,
+            paymentMode: "full_prepay",
+            provider: "razorpay",
+          }
+        : {
+            prepaidEnabled: false,
+            paymentMode: "none",
+            provider: "none",
+          },
     }));
   }, []);
 
@@ -744,6 +767,48 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           </View>
         )}
       </View>
+
+      {mode === "inhouse" ? (
+        <View
+          style={[
+            styles.paymentCard,
+            {
+              marginTop: spacing.lg,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              borderRadius: radius.lg,
+            },
+          ]}
+        >
+          <View style={styles.paymentCardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.paymentCardTitle, { color: colors.text }]}>Accept prepaid checkout</Text>
+              <Text style={[styles.paymentCardSubtitle, { color: colors.textMuted }]}>
+                Enable Razorpay for this shop product. Buyers can pay only when this is turned on.
+              </Text>
+            </View>
+            <Switch
+              value={Boolean(formData.purchaseOptions?.prepaidEnabled)}
+              onValueChange={setPrepaidEnabled}
+              trackColor={{ false: colors.border, true: colors.primary + "66" }}
+              thumbColor={Boolean(formData.purchaseOptions?.prepaidEnabled) ? colors.primary : "#f4f3f4"}
+            />
+          </View>
+
+          <View style={styles.variantPillRow}>
+            <View style={[styles.variantPill, { borderColor: colors.border, backgroundColor: surfaceElevated }]}>
+              <Text style={[styles.variantPillText, { color: colors.text }]}>
+                Mode {formData.purchaseOptions?.prepaidEnabled ? "FULL_PREPAY" : "NONE"}
+              </Text>
+            </View>
+            <View style={[styles.variantPill, { borderColor: colors.border, backgroundColor: surfaceElevated }]}>
+              <Text style={[styles.variantPillText, { color: colors.textMuted }]}>
+                Provider {formData.purchaseOptions?.prepaidEnabled ? "RAZORPAY" : "NONE"}
+              </Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </>
   );
 
@@ -1064,6 +1129,26 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  paymentCard: {
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  paymentCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  paymentCardTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  paymentCardSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 17,
   },
   variantSummaryCard: {
     borderWidth: 1,

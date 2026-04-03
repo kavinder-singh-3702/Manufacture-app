@@ -10,12 +10,14 @@ const ADMIN_PERMISSIONS = Object.freeze({
   READ_VERIFICATIONS: 'admin.read.verifications',
   READ_SERVICE_REQUESTS: 'admin.read.service-requests',
   READ_INHOUSE_PRODUCTS: 'admin.read.inhouse-products',
+  READ_PRODUCT_ORDERS: 'admin.read.product-orders',
   READ_CONVERSATIONS: 'admin.read.conversations',
   READ_CALL_LOGS: 'admin.read.call-logs',
   MUTATE_COMPANY_STATUS: 'admin.mutate.company-status',
   MUTATE_SERVICE_REQUEST_WORKFLOW: 'admin.mutate.service-request-workflow',
   MUTATE_SERVICE_REQUEST_CONTENT: 'admin.mutate.service-request-content',
   MUTATE_INHOUSE_PRODUCTS: 'admin.mutate.inhouse-products',
+  MUTATE_PRODUCT_ORDERS: 'admin.mutate.product-orders',
   REQUEST_COMPANY_DOCUMENTS: 'admin.mutate.request-documents',
   HARD_DELETE_COMPANY: 'admin.mutate.hard-delete-company'
 });
@@ -30,11 +32,13 @@ const PERMISSIONS_BY_ROLE = Object.freeze({
     ADMIN_PERMISSIONS.READ_VERIFICATIONS,
     ADMIN_PERMISSIONS.READ_SERVICE_REQUESTS,
     ADMIN_PERMISSIONS.READ_INHOUSE_PRODUCTS,
+    ADMIN_PERMISSIONS.READ_PRODUCT_ORDERS,
     ADMIN_PERMISSIONS.READ_CONVERSATIONS,
     ADMIN_PERMISSIONS.READ_CALL_LOGS,
     ADMIN_PERMISSIONS.MUTATE_COMPANY_STATUS,
     ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW,
     ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS,
+    ADMIN_PERMISSIONS.MUTATE_PRODUCT_ORDERS,
     ADMIN_PERMISSIONS.REQUEST_COMPANY_DOCUMENTS
   ]),
   'super-admin': new Set(Object.values(ADMIN_PERMISSIONS))
