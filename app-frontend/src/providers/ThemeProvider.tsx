@@ -13,7 +13,7 @@ import { themeStorage } from "../services/themeStorage";
 import { userService } from "../services/user.service";
 import { useAuth } from "../hooks/useAuth";
 
-const DEFAULT_MODE: ThemeMode = "system";
+const DEFAULT_MODE: ThemeMode = "light";
 
 const isThemeMode = (value: unknown): value is ThemeMode => {
   return value === "system" || value === "light" || value === "dark";
@@ -24,7 +24,7 @@ const resolveThemeMode = (
   colorScheme: "light" | "dark" | null
 ): ResolvedThemeMode => {
   if (mode === "light" || mode === "dark") return mode;
-  return colorScheme === "light" ? "light" : "dark";
+  return colorScheme === "dark" ? "dark" : "light";
 };
 
 type ThemeModeContextValue = {
@@ -35,11 +35,11 @@ type ThemeModeContextValue = {
   toggleMode: () => void;
 };
 
-export const ThemeContext = createContext<Theme>(getTheme("dark"));
+export const ThemeContext = createContext<Theme>(getTheme("light"));
 
 export const ThemeModeContext = createContext<ThemeModeContextValue>({
   mode: DEFAULT_MODE,
-  resolvedMode: "dark",
+  resolvedMode: "light",
   initialized: false,
   setMode: () => {},
   toggleMode: () => {},
@@ -67,7 +67,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       const storedMode = await themeStorage.getThemeMode();
       if (!isMounted) return;
 
-      if (storedMode) {
+      if (storedMode && storedMode !== "system") {
         setModeState(storedMode);
         setHasLocalPreference(true);
       }

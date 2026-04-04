@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   assetsLoadingFallback: {
     flex: 1,
-    backgroundColor: "#05070C",
+    backgroundColor: "#F4F8FC",
     alignItems: "center",
     justifyContent: "center",
   },

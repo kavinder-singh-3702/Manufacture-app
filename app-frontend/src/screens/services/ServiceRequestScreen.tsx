@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -433,7 +433,7 @@ export const ServiceRequestScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
-  const pageBg = isDark ? NEU_BG_DARK : NEU_BG_LIGHT;
+  const pageBg = colors.background;
 
   const { user, requestLogin } = useAuth();
   const { success, error } = useToast();
@@ -874,9 +874,10 @@ export const ServiceRequestScreen = () => {
   /* ── Render ────────────────────────────────────────────────────────── */
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: pageBg }]}>
+    <View style={[styles.container, { backgroundColor: pageBg }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScrollView
+          style={{ backgroundColor: pageBg }}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
             paddingTop: spacing.sm,
@@ -1284,7 +1285,7 @@ export const ServiceRequestScreen = () => {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

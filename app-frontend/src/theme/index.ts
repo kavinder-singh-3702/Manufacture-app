@@ -32,7 +32,7 @@ const themes = {
 export const getTheme = (resolvedMode: ResolvedThemeMode) => themes[resolvedMode];
 
 // Backward-compatible default export used by legacy code paths.
-export const theme = getTheme("dark");
+export const theme = getTheme("light");
 
 export type Theme = ReturnType<typeof getTheme>;
 export type { ThemeGradientKey };

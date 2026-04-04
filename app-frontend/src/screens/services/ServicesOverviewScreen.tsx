@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -68,7 +68,7 @@ export const ServicesOverviewScreen = () => {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
 
-  const pageBg = isDark ? NEU_BG_DARK : NEU_BG_LIGHT;
+  const pageBg = colors.background;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -261,9 +261,9 @@ export const ServicesOverviewScreen = () => {
   /* ── render ────────────────────────────────────────────────────────── */
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: pageBg }]}>
+    <View style={[styles.container, { backgroundColor: pageBg }]}>
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: pageBg }]}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
           paddingTop: spacing.md,
@@ -388,7 +388,7 @@ export const ServicesOverviewScreen = () => {
       </ScrollView>
 
       <SupportFab loading={supportLoading} onPress={handleSupport} style={{ bottom: insets.bottom + 76 }} />
-    </SafeAreaView>
+    </View>
   );
 };
 
