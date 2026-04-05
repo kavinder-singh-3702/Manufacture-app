@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoginCard } from "@/src/features/auth";
 import { CommandHero } from "@/src/features/dashboard";
+import { LegalLinks } from "@/src/features/legal";
 
 export const metadata = {
   title: "Manufacture Command — Sign in",
@@ -52,6 +53,9 @@ export default function SignInPage() {
               Create an account
             </Link>
           </p>
+          <div className="mt-4">
+            <LegalLinks compact centered className="text-[#7a5d6b]" />
+          </div>
         </aside>
       </div>
     </main>

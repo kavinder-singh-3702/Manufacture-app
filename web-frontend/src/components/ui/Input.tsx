@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { type InputHTMLAttributes, type TextareaHTMLAttributes, forwardRef, useState, type ReactNode } from "react";
+import { type HTMLMotionProps } from "framer-motion";
+import { type InputHTMLAttributes, forwardRef, useState, type ReactNode } from "react";
 
 // ============================================
 // ANIMATED INPUT COMPONENT
@@ -175,7 +176,7 @@ AnimatedInput.displayName = "AnimatedInput";
 // ANIMATED TEXTAREA
 // ============================================
 
-interface AnimatedTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "className"> {
+interface AnimatedTextareaProps extends Omit<HTMLMotionProps<"textarea">, "className" | "children"> {
   label?: string;
   error?: string;
   success?: boolean;

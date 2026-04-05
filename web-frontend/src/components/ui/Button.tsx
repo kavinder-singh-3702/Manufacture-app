@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { type ButtonHTMLAttributes, type ReactNode, useState, useRef } from "react";
+import { type HTMLMotionProps } from "framer-motion";
+import { type ReactNode, useState, useRef } from "react";
 
 // ============================================
 // RIPPLE EFFECT COMPONENT
@@ -80,7 +81,7 @@ const LoadingSpinner = ({ size = 20 }: { size?: number }) => {
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
-interface AnimatedButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
+interface AnimatedButtonProps extends Omit<HTMLMotionProps<"button">, "className" | "children"> {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -228,7 +229,7 @@ export const AnimatedButton = ({
 // ICON BUTTON
 // ============================================
 
-interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
+interface IconButtonProps extends Omit<HTMLMotionProps<"button">, "className" | "children"> {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;

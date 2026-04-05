@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignupCard } from "@/src/features/auth";
 import { SpotlightPrograms, QuickActions } from "@/src/features/dashboard";
+import { LegalLinks } from "@/src/features/legal";
 
 export const metadata = {
   title: "Manufacture Command — Sign up",
@@ -19,6 +20,9 @@ export default function SignUpPage() {
               Sign in to your workspace
             </Link>
           </p>
+          <div className="mt-4">
+            <LegalLinks compact centered className="text-[#7a5d6b]" />
+          </div>
         </aside>
         <div className="flex flex-1 flex-col gap-6">
           <QuickActions />

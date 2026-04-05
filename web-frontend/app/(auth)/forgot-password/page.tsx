@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CommandHero, QuickActions } from "@/src/features/dashboard";
 import { ForgotPasswordCard } from "@/src/features/auth";
+import { LegalLinks } from "@/src/features/legal";
 
 export const metadata = {
   title: "Manufacture Command — Forgot password",
@@ -55,6 +56,9 @@ export default function ForgotPasswordPage() {
               Back to sign in
             </Link>
           </p>
+          <div className="mt-4">
+            <LegalLinks compact centered className="text-[#7a5d6b]" />
+          </div>
         </aside>
       </div>
     </main>

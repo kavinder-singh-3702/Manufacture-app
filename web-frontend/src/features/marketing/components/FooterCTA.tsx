@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalLinks } from "@/src/features/legal";
 
 export const FooterCTA = () => {
   return (
@@ -84,8 +85,12 @@ export const FooterCTA = () => {
           we will schedule a session within 24 hours.
         </p>
       </div>
-      <div className="mt-8 border-t pt-4 text-xs text-[#7a5d6b]" style={{ borderColor: "var(--border-soft)" }}>
-        © {new Date().getFullYear()} Manufacture Command. All rights reserved.
+      <div
+        className="mt-8 flex flex-col gap-3 border-t pt-4 text-xs text-[#7a5d6b] md:flex-row md:items-center md:justify-between"
+        style={{ borderColor: "var(--border-soft)" }}
+      >
+        <p>© {new Date().getFullYear()} Manufacture Command. All rights reserved.</p>
+        <LegalLinks compact className="text-[#7a5d6b]" />
       </div>
     </footer>
   );

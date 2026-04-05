@@ -89,7 +89,19 @@ export class HttpClient {
   }
 }
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api").replace(/\/$/, "");
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  if (!configuredBaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL is required for web-frontend API requests. Set it in your environment before loading the app."
+    );
+  }
+
+  return configuredBaseUrl.replace(/\/+$/, "");
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export const httpClient = new HttpClient({
   baseURL: API_BASE_URL,

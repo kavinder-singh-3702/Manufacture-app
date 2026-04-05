@@ -77,7 +77,7 @@ const createFormState = (company?: Company): CompanyFormState => ({
 });
 
 const normalizeForm = (form: CompanyFormState): UpdateCompanyPayload => {
-  const trim = (value: string) => value.trim();
+  const trim = (value?: string) => value?.trim() ?? "";
   const categories = form.categories
     .split(",")
     .map((value) => value.trim().toLowerCase())

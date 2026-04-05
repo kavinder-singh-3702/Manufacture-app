@@ -13,6 +13,7 @@ interface ConfettiParticle {
   y: number;
   rotation: number;
   scale: number;
+  duration: number;
   color: string;
   shape: "circle" | "square" | "triangle";
   delay: number;
@@ -34,6 +35,7 @@ const generateParticles = (count: number): ConfettiParticle[] => {
     y: -10 - Math.random() * 20,
     rotation: Math.random() * 360,
     scale: 0.5 + Math.random() * 0.5,
+    duration: 2 + Math.random() * 2,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
     shape: (["circle", "square", "triangle"] as const)[Math.floor(Math.random() * 3)],
     delay: Math.random() * 0.5,
@@ -68,15 +70,20 @@ export const Confetti = ({ active, duration = 3000, particleCount = 50, onComple
 
   useEffect(() => {
     if (active) {
-      setParticles(generateParticles(particleCount));
-      setIsVisible(true);
+      const animationFrame = window.requestAnimationFrame(() => {
+        setParticles(generateParticles(particleCount));
+        setIsVisible(true);
+      });
 
       const timer = setTimeout(() => {
         setIsVisible(false);
         onComplete?.();
       }, duration);
 
-      return () => clearTimeout(timer);
+      return () => {
+        window.cancelAnimationFrame(animationFrame);
+        clearTimeout(timer);
+      };
     }
   }, [active, duration, particleCount, onComplete]);
 
@@ -104,7 +111,7 @@ export const Confetti = ({ active, duration = 3000, particleCount = 50, onComple
                 opacity: [1, 1, 0],
               }}
               transition={{
-                duration: 2 + Math.random() * 2,
+                duration: particle.duration,
                 delay: particle.delay,
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
@@ -138,17 +145,9 @@ export const SuccessCelebration = ({
   message = "You've achieved something great!",
   onClose,
 }: SuccessCelebrationProps) => {
-  const [showConfetti, setShowConfetti] = useState(false);
-
-  useEffect(() => {
-    if (show) {
-      setShowConfetti(true);
-    }
-  }, [show]);
-
   return (
     <>
-      <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
+      <Confetti active={show} />
       <AnimatePresence>
         {show && (
           <>
