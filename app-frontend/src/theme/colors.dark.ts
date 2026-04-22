@@ -153,21 +153,21 @@ export const darkColors = {
   // Semantic
   success: "#33D39A",
   successLight: "#79E7C1",
-  successBg: "rgba(51,211,154,0.14)",
+  successBg: "#163A2A",
 
   error: "#FF7B87",
   errorStrong: "#F45E6C",
   errorLight: "#FFB0B7",
-  errorBg: "rgba(255,123,135,0.14)",
+  errorBg: "#3A1520",
 
   warning: "#F7B955",
   warningStrong: "#E6A53D",
   warningLight: "#FFD792",
-  warningBg: "rgba(247,185,85,0.14)",
+  warningBg: "#3A2A0A",
 
   info: "#4CCEEF",
   infoLight: "#8AE0F7",
-  infoBg: "rgba(76,206,239,0.14)",
+  infoBg: "#09293A",
 
   // Buttons
   buttonPrimary: "#19B8E6",

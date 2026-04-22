@@ -17,7 +17,7 @@ module.exports = ({ config }) => {
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
-    newArchEnabled: false,
+    newArchEnabled: true,
     icon: "./assets/brand/arvann-icon-1024.png",
     splash: {
       backgroundColor: "#FFFFFF",
@@ -46,7 +46,7 @@ module.exports = ({ config }) => {
     },
     android: {
       package: isProd ? "com.manufactureapp.frontend" : "com.manufactureapp.frontend.dev",
-      versionCode: 2,
+      versionCode: 3,
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {

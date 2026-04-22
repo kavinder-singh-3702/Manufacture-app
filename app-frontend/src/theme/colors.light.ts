@@ -78,10 +78,10 @@ export const lightColors = {
   gradientBurgundyPink: "#D5616D",
   gradientCharcoalBurgundy: "#E9F1FA",
 
-  successBg: "rgba(51,211,154,0.12)",
-  errorBg: "rgba(255,123,135,0.12)",
-  warningBg: "rgba(247,185,85,0.14)",
-  infoBg: "rgba(76,206,239,0.14)",
+  successBg: "#E8FAF3",
+  errorBg: "#FEF0F1",
+  warningBg: "#FEF7EC",
+  infoBg: "#EBF8FD",
 
   // Buttons
   buttonPrimary: "#148DB2",

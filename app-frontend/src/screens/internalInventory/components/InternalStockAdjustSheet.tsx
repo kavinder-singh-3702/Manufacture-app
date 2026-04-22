@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { useTheme } from "../../../hooks/useTheme";
 import { Button } from "../../../components/common/Button";
 import type { InternalInventoryItem, InternalStockMovementType } from "../../../services/internalInventory.service";
@@ -79,8 +79,12 @@ export const InternalStockAdjustSheet = ({ visible, item, loading = false, onClo
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}> 
+        <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <View
               style={[
@@ -203,6 +207,7 @@ export const InternalStockAdjustSheet = ({ visible, item, loading = false, onClo
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

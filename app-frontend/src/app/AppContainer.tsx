@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, StyleSheet, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -19,11 +20,14 @@ const AppShell = () => {
   const { resolvedMode } = useThemeMode();
 
   return (
-    <View style={[styles.safeArea, { backgroundColor: colors.background }]}> 
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />
-      <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <AppNavigator />
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 };

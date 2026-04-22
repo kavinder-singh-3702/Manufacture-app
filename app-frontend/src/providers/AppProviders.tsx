@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ThemeProvider } from "./ThemeProvider";
 import { AuthProvider } from "./AuthProvider";
 import { CartProvider } from "./CartProvider";
@@ -15,19 +16,21 @@ type AppProvidersProps = {
 export const AppProviders = ({ children }: AppProvidersProps) => {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <CartProvider>
-            <UnreadMessagesProvider>
-              <PushNotificationsProvider>
-                <NotificationsProvider>
-                  <ToastProvider>{children}</ToastProvider>
-                </NotificationsProvider>
-              </PushNotificationsProvider>
-            </UnreadMessagesProvider>
-          </CartProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <KeyboardProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <CartProvider>
+              <UnreadMessagesProvider>
+                <PushNotificationsProvider>
+                  <NotificationsProvider>
+                    <ToastProvider>{children}</ToastProvider>
+                  </NotificationsProvider>
+                </PushNotificationsProvider>
+              </UnreadMessagesProvider>
+            </CartProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 };

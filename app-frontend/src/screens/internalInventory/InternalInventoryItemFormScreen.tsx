@@ -303,10 +303,10 @@ export const InternalInventoryItemFormScreen = () => {
             errorText={errors.avgCost}
           />
 
-          <View style={{ marginTop: spacing.md }}>
-            <Button label={isEdit ? "Save changes" : "Create internal item"} onPress={handleSave} loading={loading} />
-          </View>
         </ScrollView>
+        <View style={[styles.footer, { paddingHorizontal: spacing.lg, borderTopColor: colors.border }]}>
+          <Button label={isEdit ? "Save changes" : "Create internal item"} onPress={handleSave} loading={loading} />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -352,6 +352,11 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 12,
     fontWeight: "600",
+  },
+  footer: {
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
 });
 

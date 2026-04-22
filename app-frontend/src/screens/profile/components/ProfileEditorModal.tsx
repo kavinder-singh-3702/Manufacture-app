@@ -41,15 +41,17 @@ export const ProfileEditorModal = ({ title, visible, onClose, onSubmit, saving, 
         >
           {children}
           {error ? <Text style={[styles.errorText, { marginTop: spacing.md, color: colors.error }]}>{error}</Text> : null}
+        </ScrollView>
+        <View style={[styles.footer, { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderTopColor: colors.border }]}>
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[styles.primaryButton, { marginTop: spacing.lg, opacity: saving ? 0.7 : 1, backgroundColor: colors.primary }]}
+            style={[styles.primaryButton, { opacity: saving ? 0.7 : 1, backgroundColor: colors.primary }]}
             onPress={onSubmit}
             disabled={saving}
           >
             {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryButtonText}>Save changes</Text>}
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -75,6 +77,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
+  },
+  footer: {
+    borderTopWidth: 1,
+    paddingTop: 12,
   },
   primaryButton: {
     borderRadius: 32,

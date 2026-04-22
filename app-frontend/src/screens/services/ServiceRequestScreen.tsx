@@ -880,7 +880,7 @@ export const ServiceRequestScreen = () => {
           style={{ backgroundColor: pageBg }}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
-            paddingTop: spacing.sm,
+            paddingTop: insets.top + spacing.sm,
             paddingBottom: spacing.xxl + insets.bottom,
             gap: 16,
           }}

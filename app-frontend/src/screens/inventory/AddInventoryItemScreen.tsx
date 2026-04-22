@@ -339,6 +339,15 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
 
   const handleSubmit = useCallback(async () => {
     if (!validateStepOne()) {
+      const missing: string[] = [];
+      if (!formData.name.trim()) missing.push("Product name");
+      if (!formData.category) missing.push("Category");
+      if (!formData.subCategory?.trim()) missing.push("Sub-category");
+      if (Number(formData.price.amount || 0) <= 0) missing.push("Price");
+      toastError(
+        "Product info incomplete",
+        missing.length ? `Please fill: ${missing.join(", ")}` : "Please fill the required fields in Step 1."
+      );
       animateToStep(1);
       return;
     }
@@ -617,7 +626,12 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
             ) : filteredCategories.length === 0 ? (
               <Text style={[styles.errorText, { color: colors.textMuted }]}>No categories match your search</Text>
             ) : (
-              <ScrollView style={{ maxHeight: 220 }}>
+              <ScrollView
+                style={{ maxHeight: 220 }}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator
+              >
                 {filteredCategories.map((cat) => {
                   const isSelected = formData.category === cat.id;
                   return (
@@ -952,6 +966,7 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
+          nestedScrollEnabled
         >
           {step === 1 ? renderStepOne() : renderStepTwo()}
         </ScrollView>

@@ -11,8 +11,6 @@ import {
   Keyboard,
   FlatList,
   TextInput,
-  LayoutAnimation,
-  UIManager,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -27,11 +25,6 @@ import { getChatSocket, ChatMessageEvent } from "../../services/chatSocket";
 import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatScreenNavProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
@@ -83,7 +76,6 @@ export const ChatScreen = () => {
   const [sending, setSending] = useState(false);
   const [inputText, setInputText] = useState("");
   const [userPhone, setUserPhone] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   const { colors } = useTheme();
@@ -97,38 +89,6 @@ export const ChatScreen = () => {
 
   const { conversationId, recipientName, recipientPhone } = route.params;
   const currentUserId = useMemo(() => user?.id || "user-guest", [user]);
-
-  // ─── Keyboard tracking ───
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const onShow = (e: any) => {
-      if (Platform.OS === "ios") {
-        LayoutAnimation.configureNext(
-          LayoutAnimation.create(e.duration || 250, LayoutAnimation.Types.keyboard, LayoutAnimation.Properties.opacity)
-        );
-      }
-      setKeyboardHeight(e.endCoordinates.height);
-    };
-
-    const onHide = (e: any) => {
-      if (Platform.OS === "ios") {
-        LayoutAnimation.configureNext(
-          LayoutAnimation.create(e?.duration || 250, LayoutAnimation.Types.keyboard, LayoutAnimation.Properties.opacity)
-        );
-      }
-      setKeyboardHeight(0);
-    };
-
-    const sub1 = Keyboard.addListener(showEvent, onShow);
-    const sub2 = Keyboard.addListener(hideEvent, onHide);
-    return () => { sub1.remove(); sub2.remove(); };
-  }, []);
-
-  // When keyboard is open: bottom space = keyboard height
-  // When keyboard is closed: bottom space = safe area bottom inset
-  const bottomSpace = keyboardHeight > 0 ? keyboardHeight : insets.bottom;
 
   useEffect(() => {
     if (recipientPhone) setUserPhone(recipientPhone);
@@ -321,7 +281,7 @@ export const ChatScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomSpace }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
       {/* Status bar */}
       <View style={{ height: insets.top, backgroundColor: colors.surface }} />
 

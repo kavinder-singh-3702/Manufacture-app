@@ -1,5 +1,6 @@
-import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { homeScrollY } from "./components/MainTabs/homeScrollState";
 import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -201,6 +202,33 @@ export const MainTabs = () => {
   const { unreadCount: notificationUnreadCount } = useNotifications();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+
+  const [isToolbarSolid, setIsToolbarSolid] = useState(false);
+  const toolbarBackdropOpacity = useRef(
+    homeScrollY.interpolate({
+      inputRange: [0, 80, 140],
+      outputRange: [0, 0, 1],
+      extrapolate: "clamp",
+    })
+  ).current;
+  useEffect(() => {
+    const id = homeScrollY.addListener(({ value }) => {
+      const next = value > 110;
+      setIsToolbarSolid((prev) => (prev === next ? prev : next));
+    });
+    return () => homeScrollY.removeListener(id);
+  }, []);
+
+  // Reset scroll-driven toolbar state whenever we return to the Dashboard.
+  // homeScrollY is a module-level singleton; without this reset it holds a
+  // stale value from the previous session and renders the toolbar in the
+  // wrong state until the user scrolls.
+  useEffect(() => {
+    if (activeRoute === routes.DASHBOARD) {
+      homeScrollY.setValue(0);
+      setIsToolbarSolid(false);
+    }
+  }, [activeRoute]);
 
   const userRole = (user?.role as "super-admin" | "admin" | "user" | "guest") || "guest";
   const isAdmin = isAdminRole(userRole);
@@ -503,12 +531,24 @@ export const MainTabs = () => {
 
         {isTransparentToolbar && (
           <View style={[styles.transparentToolbarWrap, { paddingTop: insets.top + 6 }]}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: colors.background,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.border,
+                  opacity: toolbarBackdropOpacity,
+                },
+              ]}
+            />
             <HomeToolbar
               mode={topBarConfig.mode}
               title={topBarConfig.title}
               subtitle={topBarConfig.subtitle}
               showSearch={topBarConfig.showSearch}
-              transparent
+              transparent={!isToolbarSolid}
               onMenuPress={() => setSidebarVisible(true)}
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
@@ -647,9 +687,11 @@ const styles = StyleSheet.create({
   contentArea: { flex: 1 },
   transparentToolbarWrap: {
     position: "absolute",
+    top: 0,
     left: 0,
     right: 0,
     zIndex: 20,
+    elevation: 20,
   },
 
   modalBackdrop: { flex: 1, justifyContent: "flex-end" },

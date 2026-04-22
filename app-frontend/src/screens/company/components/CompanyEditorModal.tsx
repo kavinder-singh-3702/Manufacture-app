@@ -30,7 +30,7 @@ export const CompanyEditorModal = ({ visible, section, form, onChange, onClose, 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}> 
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View
             style={[
               styles.modalHeader,
@@ -127,10 +127,10 @@ export const CompanyEditorModal = ({ visible, section, form, onChange, onClose, 
               </>
             ) : null}
 
-            <View style={{ marginTop: spacing.md }}>
-              <Button label={saving ? "Saving…" : "Save changes"} onPress={() => { onSubmit(); }} loading={saving} disabled={saving} />
-            </View>
           </ScrollView>
+          <View style={[styles.footer, { paddingHorizontal: layout.edgePadding, borderTopColor: colors.border }]}>
+            <Button label={saving ? "Saving…" : "Save changes"} onPress={() => { onSubmit(); }} loading={saving} disabled={saving} />
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
@@ -241,5 +241,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 0,
     maxWidth: "100%",
+  },
+  footer: {
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
 });

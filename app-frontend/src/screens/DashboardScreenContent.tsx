@@ -37,6 +37,7 @@ import { motion } from "../theme/motion";
 import { useToast } from "../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "./product/utils/productContact";
 import { HeroBannerCarousel } from "../components/home/HeroBannerCarousel";
+import { homeScrollY } from "../navigation/components/MainTabs/homeScrollState";
 
 // ============================================================
 // TYPES
@@ -1115,10 +1116,15 @@ const UserDashboardContent = () => {
           ]}
         />
       </View>
-      <ScrollView
+      <Animated.ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: homeScrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
         {/* Hero Banner — always visible (full bleed, no padding) */}
         <Animated.View style={revealStyle(0)}>
@@ -1170,7 +1176,7 @@ const UserDashboardContent = () => {
             )}
           </Animated.View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 };

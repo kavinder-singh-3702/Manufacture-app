@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -115,7 +116,7 @@ export const VariantFormSheet = ({
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <KeyboardAvoidingView
-              behavior="padding"
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
               style={[
                 styles.sheet,
                 {
@@ -123,7 +124,6 @@ export const VariantFormSheet = ({
                   borderColor: colors.border,
                   borderTopLeftRadius: radius.xl,
                   borderTopRightRadius: radius.xl,
-                  paddingBottom: insets.bottom + spacing.md,
                 },
               ]}
             >
@@ -134,7 +134,13 @@ export const VariantFormSheet = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.lg }}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets
+                showsVerticalScrollIndicator={false}
+              >
                 {error ? (
                   <View style={[styles.errorBox, { borderColor: colors.error + "55", backgroundColor: colors.error + "14", borderRadius: radius.md }]}>
                     <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
@@ -183,7 +189,7 @@ export const VariantFormSheet = ({
                 </View>
               </ScrollView>
 
-              <View style={[styles.footer, { paddingHorizontal: spacing.lg, borderTopColor: colors.border }]}>
+              <View style={[styles.footer, { paddingHorizontal: spacing.lg, paddingBottom: Math.max(insets.bottom, 16) + spacing.md, borderTopColor: colors.border }]}>
                 <TouchableOpacity
                   onPress={handleSubmit}
                   disabled={Boolean(loading)}
@@ -228,7 +234,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     borderTopWidth: 1,
-    maxHeight: "92%",
+    maxHeight: "88%",
+    flexDirection: "column",
   },
   header: {
     borderBottomWidth: 1,
