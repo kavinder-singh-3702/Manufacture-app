@@ -2,55 +2,54 @@
 
 :root {
   /* Brand Colors */
-  --charcoal: #2E2E3A;
-  --green: #11A440;
-  --burgundy: #3B1F2B;
-  --pink: #FADADD;
-
-  /* Derived Shades */
-  --charcoal-light: #434355;
-  --green-dark: #0D7D31;
-  --burgundy-light: #4D2838;
-  --pink-light: #FCF0F1;
+  --teal: #148DB2;
+  --teal-dark: #0F6E8C;
+  --teal-light: #E8F6FB;
+  --coral: #D5616D;
+  --coral-dark: #B84D58;
+  --coral-light: #FCEDEF;
 
   /* Neutrals */
   --white: #FFFFFF;
-  --off-white: #F8F8FA;
-  --light-gray: #E5E5E8;
-  --medium-gray: #9999A1;
+  --off-white: #F8FAFB;
+  --light-gray: #E4E9EC;
+  --medium-gray: #8FA3AD;
+  --dark-gray: #4A5568;
+  --charcoal: #1E2D35;
 
   /* Semantic */
-  --success: #11A440;
+  --success: #16A34A;
   --error: #DC2626;
   --warning: #F59E0B;
-  --info: #3B82F6;
+  --info: var(--teal);
 
   /* Application Colors */
-  --background: var(--pink-light);
+  --background: var(--off-white);
   --foreground: var(--charcoal);
   --surface: var(--white);
+  --card: var(--white);
   --border: var(--light-gray);
-  --primary: var(--green);
-  --secondary: var(--burgundy);
-  --accent: var(--pink);
-
-  /* Additional color mappings */
-  --color-charcoal: #2e2e3a;
-  --color-midnight: #1a2440;
-  --color-plum: #3b1f2b;
-  --color-peach: #fadad0;
-  --color-cream: #fff8f4;
-  --color-linen: #fceee7;
-  --surface-muted: var(--color-linen);
-  --border-soft: rgba(90, 48, 66, 0.18);
+  --primary: var(--teal);
+  --primary-dark: var(--teal-dark);
+  --primary-light: var(--teal-light);
+  --accent: var(--coral);
+  --accent-dark: var(--coral-dark);
+  --accent-light: var(--coral-light);
 }
 
 [data-theme="dark"] {
-  --background: #111827;
-  --surface: rgba(17, 24, 39, 0.65);
-  --surface-muted: rgba(59, 31, 43, 0.35);
-  --border-soft: rgba(250, 218, 208, 0.2);
-  --foreground: #f8fafc;
+  --teal: #19B8E6;
+  --teal-dark: #148DB2;
+  --teal-light: rgba(25, 184, 230, 0.12);
+  --coral: #F56E79;
+  --coral-dark: #D5616D;
+  --coral-light: rgba(245, 110, 121, 0.12);
+
+  --background: #0D1B22;
+  --foreground: #F0F7FA;
+  --surface: #132330;
+  --border: rgba(25, 184, 230, 0.15);
+  --medium-gray: #6B8899;
 }
 
 @theme inline {
@@ -61,21 +60,20 @@
 
   /* Brand */
   --color-primary: var(--primary);
-  --color-primary-dark: var(--green-dark);
-  --color-secondary: var(--secondary);
-  --color-secondary-light: var(--burgundy-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
   --color-accent: var(--accent);
-  --color-accent-light: var(--pink-light);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-light: var(--accent-light);
 
   /* Text */
-  --color-text: var(--charcoal);
-  --color-text-light: var(--charcoal-light);
+  --color-text: var(--foreground);
   --color-text-muted: var(--medium-gray);
   --color-text-inverse: var(--white);
 
   /* Border */
   --color-border: var(--border);
-  --color-border-dark: var(--charcoal-light);
+  --color-light-gray: var(--light-gray);
 
   /* Semantic */
   --color-success: var(--success);
@@ -87,36 +85,37 @@
   --font-sans: var(--font-geist-sans, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   --font-mono: var(--font-geist-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
 
-  /* Gradients - Mixed color theme */
-  --gradient-green-pink: linear-gradient(135deg, var(--green) 0%, var(--pink) 100%);
-  --gradient-burgundy-pink: linear-gradient(135deg, var(--burgundy) 0%, var(--pink) 100%);
-  --gradient-charcoal-green: linear-gradient(135deg, var(--charcoal) 0%, var(--green) 100%);
-  --gradient-brand: linear-gradient(135deg, var(--green) 0%, var(--pink) 50%, var(--burgundy) 100%);
-  --gradient-soft: linear-gradient(180deg, var(--pink-light) 0%, var(--white) 100%);
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, var(--teal) 0%, #1DA8D4 100%);
+  --gradient-hero: linear-gradient(160deg, var(--teal-light) 0%, var(--white) 60%);
+  --gradient-accent: linear-gradient(135deg, var(--coral) 0%, #E87B85 100%);
 
-  /* Shadows - Soft pink tinted */
-  --shadow-sm: 0 1px 2px 0 rgba(250, 218, 221, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(250, 218, 221, 0.4), 0 2px 4px -1px rgba(250, 218, 221, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(250, 218, 221, 0.5), 0 4px 6px -2px rgba(250, 218, 221, 0.3);
-  --shadow-green: 0 4px 12px rgba(17, 164, 64, 0.3);
-  --shadow-burgundy: 0 4px 12px rgba(59, 31, 43, 0.3);
+  /* Shadows - teal tinted */
+  --shadow-sm: 0 1px 3px rgba(20, 141, 178, 0.08);
+  --shadow-md: 0 4px 12px rgba(20, 141, 178, 0.12), 0 2px 4px rgba(20, 141, 178, 0.08);
+  --shadow-lg: 0 10px 25px rgba(20, 141, 178, 0.15), 0 4px 8px rgba(20, 141, 178, 0.08);
+  --shadow-primary: 0 4px 14px rgba(20, 141, 178, 0.35);
+  --shadow-accent: 0 4px 14px rgba(213, 97, 109, 0.35);
+
+  /* Alias */
+  --color-card: var(--surface);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background-color: var(--background);
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(246, 184, 168, 0.4), transparent 55%),
-    linear-gradient(180deg, var(--color-cream), #ffffff);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-}
-
-body[data-theme="dark"] {
-  background: radial-gradient(circle at top, rgba(250, 218, 208, 0.35), transparent 55%),
-    linear-gradient(135deg, var(--color-midnight), var(--color-charcoal));
+  overscroll-behavior: none;
 }

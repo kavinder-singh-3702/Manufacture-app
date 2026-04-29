@@ -8,6 +8,7 @@ import { companyService } from "@/src/services/company";
 import { ApiError } from "@/src/lib/api-error";
 import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES } from "@/src/constants/business";
 import type { Company } from "@/src/types/company";
+import { motion } from "framer-motion";
 import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
 import { Sidebar } from "./user-dashboard/Navigation";
 import { OverviewSection } from "./user-dashboard/OverviewSection";
@@ -74,61 +75,81 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
 
   if (initializing || !user) {
     return (
-      <div className="mx-auto max-w-4xl py-20 text-center">
-        <p className="text-sm font-semibold text-[#5c4451]">
-          {initializing ? "Loading your workspace…" : "Redirecting to sign in…"}
-        </p>
+      <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+        <div className="flex flex-col items-center gap-4">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-t-transparent"
+            style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }}
+          />
+          <p className="text-sm font-semibold" style={{ color: "var(--medium-gray)" }}>
+            {initializing ? "Loading your workspace…" : "Redirecting to sign in…"}
+          </p>
+        </div>
       </div>
     );
   }
+
+  const handleSwitchCompany = async (companyId: string) => {
+    try {
+      setSwitchingCompanyId(companyId);
+      await switchCompany(companyId);
+      await refreshUser();
+      await reloadCompanies();
+    } finally {
+      setSwitchingCompanyId(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/signin");
+  };
 
   return (
     <DashboardContext.Provider
       value={{ user, refreshUser, openVerificationModal, verificationModalSignal, companies, activeCompany, reloadCompanies }}
     >
-      <div className="space-y-6">
-        <DashboardTopbar
-          user={user}
-          activeCompany={activeCompany}
-          companies={companies}
-          switchingCompanyId={switchingCompanyId}
-          onToggleSidebar={() => setSidebarOpen(true)}
-          notificationCount={notificationPreviewCount}
-          onOpenNotifications={() => router.push("/dashboard/notifications")}
-          onProfile={() => router.push("/dashboard/profile")}
-          onSettings={() => router.push("/dashboard/settings")}
-          onLogout={async () => {
-            await logout();
-            router.push("/signin");
-          }}
+      <div className="flex overflow-hidden" style={{ height: "100vh", backgroundColor: "var(--background)" }}>
+        {/* Sidebar */}
+        <Sidebar
+          activePath={pathname}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
           onOpenCompanyCreate={() => setCompanyModalOpen(true)}
-          onSwitchCompany={async (companyId) => {
-            try {
-              setSwitchingCompanyId(companyId);
-              await switchCompany(companyId);
-              await refreshUser();
-              await reloadCompanies();
-            } finally {
-              setSwitchingCompanyId(null);
-            }
-          }}
+          onSwitchCompany={handleSwitchCompany}
+          switchingCompanyId={switchingCompanyId}
+          onLogout={handleLogout}
         />
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <Sidebar activePath={pathname} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <div className="flex-1 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-5 shadow-lg shadow-[#5a304218]">
+
+        {/* Main column */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <DashboardTopbar
+            onToggleSidebar={() => setSidebarOpen(true)}
+            notificationCount={notificationPreviewCount}
+            onOpenNotifications={() => router.push("/dashboard/notifications")}
+            onProfile={() => router.push("/dashboard/profile")}
+          />
+          <motion.main
+            className="flex-1 overflow-y-auto p-6"
+            style={{ backgroundColor: "var(--background)", overscrollBehavior: "none" }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
             {children}
-          </div>
+          </motion.main>
         </div>
-        <CreateCompanyModal
-          open={companyModalOpen}
-          onClose={() => setCompanyModalOpen(false)}
-          onCreated={async () => {
-            await refreshUser();
-            await reloadCompanies();
-            setCompanyModalOpen(false);
-          }}
-        />
       </div>
+
+      <CreateCompanyModal
+        open={companyModalOpen}
+        onClose={() => setCompanyModalOpen(false)}
+        onCreated={async () => {
+          await refreshUser();
+          await reloadCompanies();
+          setCompanyModalOpen(false);
+        }}
+      />
     </DashboardContext.Provider>
   );
 };
@@ -423,21 +444,21 @@ const CreateCompanyModal = ({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 backdrop-blur">
       <div
-        className="w-full max-w-lg rounded-3xl border border-[var(--border-soft)] bg-white p-6 shadow-2xl shadow-[#5a304233]"
+        className="w-full max-w-lg rounded-3xl border border-[var(--border)] bg-white p-6 shadow-2xl shadow-[rgba(20,141,178,0.20)]"
         role="dialog"
         aria-modal="true"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
               New company
             </p>
-            <h3 className="text-xl font-semibold text-[#2e1f2c]">Create a workspace</h3>
-            <p className="text-sm text-[#5c4451]">Add another company under your login to switch seamlessly.</p>
+            <h3 className="text-xl font-semibold text-[var(--foreground)]">Create a workspace</h3>
+            <p className="text-sm text-[var(--foreground)]">Add another company under your login to switch seamlessly.</p>
           </div>
           <button
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl border border-[var(--border-soft)] text-[#5c4451]"
+            className="h-10 w-10 rounded-2xl border border-[var(--border)] text-[var(--foreground)]"
             aria-label="Close create company"
           >
             ×
@@ -445,7 +466,7 @@ const CreateCompanyModal = ({
         </div>
 
         {error ? (
-          <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[#b23a48]">
+          <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[var(--accent)]">
             {error}
           </div>
         ) : null}
@@ -464,10 +485,10 @@ const CreateCompanyModal = ({
             placeholder="What does this company do?"
           />
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-sm font-semibold text-[#2e1f2c]">
+            <label className="text-sm font-semibold text-[var(--foreground)]">
               Type
               <select
-                className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[#2e1f2c] focus:outline-none"
+                className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none"
                 value={form.type}
                 onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
               >
@@ -479,9 +500,9 @@ const CreateCompanyModal = ({
               </select>
             </label>
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-[#2e1f2c]">Logo</p>
-              <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-3">
-                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[var(--border-soft)] bg-white text-sm font-semibold text-[var(--color-plum)]">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Logo</p>
+              <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-3 py-3">
+                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-white text-sm font-semibold text-[var(--primary)]">
                   {form.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={form.logoUrl} alt="Logo preview" className="h-full w-full object-cover" />
@@ -489,8 +510,8 @@ const CreateCompanyModal = ({
                     (form.displayName || "Co").slice(0, 2).toUpperCase()
                   )}
                 </div>
-                <div className="flex flex-1 flex-col gap-1 text-sm text-[#5c4451]">
-                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 font-semibold text-[var(--color-plum)] shadow-sm hover:border-[var(--color-plum)]">
+                <div className="flex flex-1 flex-col gap-1 text-sm text-[var(--foreground)]">
+                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)]">
                     <input
                       type="file"
                       accept="image/*"
@@ -502,7 +523,7 @@ const CreateCompanyModal = ({
                     />
                     {logoUploading ? "Uploading…" : "Upload logo"}
                   </label>
-                  <p className="text-xs text-[#b98b9e]">
+                  <p className="text-xs text-[var(--medium-gray)]">
                     Upload a JPG/PNG. A preview appears instantly.
                   </p>
                   {logoError ? <p className="text-xs font-semibold text-[#c53048]">{logoError}</p> : null}
@@ -546,7 +567,7 @@ const CreateCompanyModal = ({
             />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
               Categories
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -559,9 +580,9 @@ const CreateCompanyModal = ({
                     onClick={() => toggleCategory(category)}
                     className="rounded-full border px-3 py-1 text-xs font-semibold transition"
                     style={{
-                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border-soft)",
-                      backgroundColor: active ? "var(--color-peach)" : "transparent",
-                      color: active ? "var(--color-plum)" : "#5c4451",
+                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border)",
+                      backgroundColor: active ? "var(--primary-light)" : "transparent",
+                      color: active ? "var(--primary)" : "var(--medium-gray)",
                     }}
                   >
                     {formatCategory(category)}
@@ -575,7 +596,7 @@ const CreateCompanyModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-[var(--border-soft)] px-4 py-2 text-sm font-semibold text-[#5c4451]"
+              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
               disabled={loading || logoUploading}
             >
               Cancel
@@ -583,7 +604,7 @@ const CreateCompanyModal = ({
             <button
               type="submit"
               disabled={loading || logoUploading}
-              className="rounded-full bg-[var(--color-plum)] px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#5a304225] disabled:opacity-60"
+              className="rounded-full bg-[var(--primary)] px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[rgba(20,141,178,0.15)] disabled:opacity-60"
             >
               {logoUploading ? "Uploading logo…" : loading ? "Creating…" : "Create company"}
             </button>

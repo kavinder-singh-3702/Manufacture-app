@@ -32,16 +32,20 @@ export const ProfileVerificationPrompt = ({
   const companyLabel = primaryCompany ?? "Your workspace";
 
   return (
-    <div className="mb-6 rounded-3xl border border-[#fed7aa] bg-gradient-to-r from-[#fffaf0] via-[#fffdf5] to-white p-5 shadow-sm shadow-[#ffefd533]">
+    <div className="mb-6 overflow-hidden rounded-3xl p-5" style={{ border: "1px solid rgba(213,97,109,0.25)", background: "linear-gradient(135deg, rgba(213,97,109,0.06) 0%, rgba(20,141,178,0.04) 100%)", boxShadow: "0 2px 12px rgba(213,97,109,0.08)" }}>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <span className="inline-flex items-center rounded-full border border-[#fb923c] bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-[#b45309]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide" style={{ borderColor: "rgba(213,97,109,0.4)", backgroundColor: "rgba(213,97,109,0.08)", color: "var(--accent)" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" />
+              <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
             Unverified
           </span>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-[#7c2d12]">{companyLabel} isn&apos;t verified yet.</p>
-            <p className="text-xs text-[#9a4a2a]">
-              Claim the badge to boost trust, unlock private RFQs, and surface higher in buyer searches.
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{companyLabel} isn&apos;t verified yet.</p>
+            <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+              Get verified to boost trust, unlock private RFQs, and rank higher in buyer searches.
             </p>
           </div>
         </div>
@@ -49,13 +53,14 @@ export const ProfileVerificationPrompt = ({
           <button
             type="button"
             onClick={handleRequestVerification}
-            className="inline-flex items-center justify-center rounded-full bg-[#0d9f6e] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#0d9f6e33] transition hover:scale-[1.01]"
+            className="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:opacity-90 active:scale-[0.98]"
+            style={{ backgroundColor: "var(--accent)", boxShadow: "0 4px 14px rgba(213,97,109,0.35)" }}
           >
-            Get verified
+            Get verified →
           </button>
         ) : (
-          <p className="text-xs font-semibold text-[#b45309]">
-            Set your company type to trader or manufacturer to become eligible.
+          <p className="text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>
+            Set your account type to trader or manufacturer to become eligible.
           </p>
         )}
       </div>
@@ -103,7 +108,7 @@ export const ProfileSection = ({
 
   const savedBadge =
     saveState.status === "success" ? (
-      <span className="rounded-full bg-[var(--color-peach)] px-4 py-1 text-xs font-semibold text-[var(--color-plum)]">Saved</span>
+      <span className="rounded-full bg-[var(--primary-light)] px-4 py-1 text-xs font-semibold text-[var(--primary)]">Saved</span>
     ) : null;
 
   const headerAction = verificationBadge || savedBadge ? (
@@ -117,9 +122,9 @@ export const ProfileSection = ({
     <div className="space-y-6">
       <SectionHeader title="Profile & identity" subtitle="Profile" action={headerAction} />
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <form onSubmit={onSubmit} className="space-y-6 rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5">
+        <form onSubmit={onSubmit} className="space-y-6 rounded-3xl border border-[var(--border)] bg-white/90 p-5">
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Profile photo</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Profile photo</h3>
             <ProfilePhotoUploader
               user={user}
               onChange={(src) => updateField("avatarUrl", src)}
@@ -128,7 +133,7 @@ export const ProfileSection = ({
             />
           </div>
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Identity</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Identity</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <ProfileInputField
                 label="First name"
@@ -158,7 +163,7 @@ export const ProfileSection = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Contact</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Contact</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <ProfileInputField
                 label="Phone"
@@ -171,7 +176,7 @@ export const ProfileSection = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Address</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Address</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <ProfileInputField
                 label="Address line 1"
@@ -204,7 +209,7 @@ export const ProfileSection = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Professional profile</h3>
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Professional profile</h3>
             <ProfileInputField
               label="Bio"
               value={editForm.bio}
@@ -248,14 +253,14 @@ export const ProfileSection = ({
                 {currentTagPreview.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold text-[#5a3042]"
+                    className="rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[#b98b9e]">No tags yet. Use commas to add your focus areas.</p>
+              <p className="text-xs text-[var(--medium-gray)]">No tags yet. Use commas to add your focus areas.</p>
             )}
           </div>
           {saveState.status === "error" ? (
@@ -264,41 +269,41 @@ export const ProfileSection = ({
           <button
             type="submit"
             className="inline-flex items-center rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white"
-            style={{ backgroundColor: "var(--color-plum)", boxShadow: "0 15px 30px rgba(90, 48, 66, 0.2)" }}
+            style={{ backgroundColor: "var(--primary)", boxShadow: "0 15px 30px rgba(90, 48, 66, 0.2)" }}
             disabled={saveState.status === "saving"}
           >
             {saveState.status === "saving" ? "Saving…" : "Update profile"}
           </button>
         </form>
         <div className="space-y-4">
-          <div className="rounded-3xl border border-[var(--border-soft)] bg-white/85 p-5">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Linked companies</h3>
+          <div className="rounded-3xl border border-[var(--border)] bg-white/85 p-5">
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Linked companies</h3>
             <div className="mt-4 flex flex-wrap gap-2">
               {companyList.map((company) => (
                 <span
                   key={company}
-                  className="rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-semibold text-[#5a3042]"
+                  className="rounded-full border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold text-[var(--primary-dark)]"
                 >
                   {company}
                 </span>
               ))}
             </div>
           </div>
-          <div className="rounded-3xl border border-[var(--border-soft)] bg-white/85 p-5">
-            <h3 className="text-lg font-semibold text-[#2e1f2c]">Activity tags</h3>
+          <div className="rounded-3xl border border-[var(--border)] bg-white/85 p-5">
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Activity tags</h3>
             {currentTagPreview.length ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {currentTagPreview.map((tag) => (
                   <span
                     key={`${tag}-preview`}
-                    className="rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold text-[#5a3042]"
+                    className="rounded-full border border-[var(--border)] bg-[var(--background)] px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-sm text-[#5c4451]">Add tags to surface your expertise in search.</p>
+              <p className="mt-3 text-sm text-[var(--foreground)]">Add tags to surface your expertise in search.</p>
             )}
           </div>
         </div>
