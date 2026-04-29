@@ -245,25 +245,25 @@ export const SignupCard = () => {
 
   return (
     <div
-      className="rounded-3xl p-6 shadow-xl shadow-[#5a30422a]"
+      className="rounded-3xl p-6 shadow-xl shadow-[rgba(20,141,178,0.16)]"
       style={{
-        border: "1px solid var(--border-soft)",
-        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(135deg, #fffdf9, var(--background))",
         color: "var(--foreground)",
       }}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Step {stepIndex + 1} of {steps.length}
           </p>
-          <h3 className="text-xl font-semibold text-[#2e1f2c]">{stepTitles[step]}</h3>
-          <p className="text-sm text-[#5c4451]">{stepDescriptions[step]}</p>
+          <h3 className="text-xl font-semibold text-[var(--foreground)]">{stepTitles[step]}</h3>
+          <p className="text-sm text-[var(--foreground)]">{stepDescriptions[step]}</p>
         </div>
         <button
           onClick={handleBack}
           className="text-sm font-semibold transition"
-          style={{ color: "var(--color-plum)" }}
+          style={{ color: "var(--primary)" }}
         >
           {stepIndex === 0 ? "Reset" : "Back"}
         </button>
@@ -272,7 +272,7 @@ export const SignupCard = () => {
       {status ? (
         <p
           className="mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-          style={{ backgroundColor: "var(--surface-muted)", color: "var(--color-plum)" }}
+          style={{ backgroundColor: "var(--background)", color: "var(--primary)" }}
         >
           {status}
         </p>
@@ -314,7 +314,7 @@ export const SignupCard = () => {
 
         {step === "otp" ? (
           <div className="space-y-4">
-            <p className="text-sm text-[#5c4451]">
+            <p className="text-sm text-[var(--foreground)]">
               We sent an OTP to {profile.email || "your email"} and {profile.phone || "your phone"}. Expires in{" "}
               {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
             </p>
@@ -325,7 +325,7 @@ export const SignupCard = () => {
               onChange={setOtp}
               error={otpError ?? undefined}
             />
-            <button onClick={resetFlow} className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+            <button onClick={resetFlow} className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
               Start over
             </button>
           </div>
@@ -333,17 +333,17 @@ export const SignupCard = () => {
 
         {step === "account" ? (
           <div className="space-y-5">
-            <div className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+            <div className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
               Create password
               <div
                 className="mt-2 flex items-center rounded-2xl border px-4"
                 style={{
-                  borderColor: accountErrors.password ? "#ff9aa2" : "var(--border-soft)",
+                  borderColor: accountErrors.password ? "#ff9aa2" : "var(--border)",
                   backgroundColor: "white",
                 }}
               >
                 <input
-                  className="w-full bg-transparent py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+                  className="w-full bg-transparent py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
                   placeholder="Create Password"
                   value={account.password}
                   onChange={(event) => setAccount((prev) => ({ ...prev, password: event.target.value }))}
@@ -353,7 +353,7 @@ export const SignupCard = () => {
                   type="button"
                   onClick={() => setShowSignupPassword((prev) => !prev)}
                   className="text-sm font-semibold"
-                  style={{ color: "var(--color-plum)" }}
+                  style={{ color: "var(--primary)" }}
                 >
                   {showSignupPassword ? "Hide" : "Show"}
                 </button>
@@ -366,7 +366,7 @@ export const SignupCard = () => {
             </div>
 
             <div>
-              <p className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
                 Select account type
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -379,9 +379,9 @@ export const SignupCard = () => {
                       onClick={() => setAccount((prev) => ({ ...prev, accountType: type }))}
                       className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
                       style={{
-                        borderColor: isActive ? "rgba(246, 184, 168, 0.8)" : "var(--border-soft)",
-                        backgroundColor: isActive ? "var(--color-peach)" : "transparent",
-                        color: isActive ? "var(--color-plum)" : "rgba(67, 52, 61, 0.7)",
+                        borderColor: isActive ? "rgba(246, 184, 168, 0.8)" : "var(--border)",
+                        backgroundColor: isActive ? "var(--primary-light)" : "transparent",
+                        color: isActive ? "var(--primary)" : "rgba(67, 52, 61, 0.7)",
                         boxShadow: isActive ? "0 10px 25px rgba(246, 184, 168, 0.45)" : undefined,
                       }}
                     >
@@ -402,7 +402,7 @@ export const SignupCard = () => {
                   error={accountErrors.companyName}
                 />
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--primary)" }}>
                     Business categories
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -415,9 +415,9 @@ export const SignupCard = () => {
                           onClick={() => toggleCategory(category)}
                           className="rounded-full border px-4 py-2 text-sm font-semibold capitalize transition"
                           style={{
-                            borderColor: isSelected ? "rgba(246, 184, 168, 0.8)" : "var(--border-soft)",
-                            backgroundColor: isSelected ? "var(--color-peach)" : "transparent",
-                            color: isSelected ? "var(--color-plum)" : "rgba(67, 52, 61, 0.7)",
+                            borderColor: isSelected ? "rgba(246, 184, 168, 0.8)" : "var(--border)",
+                            backgroundColor: isSelected ? "var(--primary-light)" : "transparent",
+                            color: isSelected ? "var(--primary)" : "rgba(67, 52, 61, 0.7)",
                           }}
                         >
                           {category}
@@ -441,7 +441,7 @@ export const SignupCard = () => {
         onClick={handleContinue}
         className="mt-8 w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide disabled:opacity-50"
         style={{
-          backgroundColor: "var(--color-plum)",
+          backgroundColor: "var(--primary)",
           color: "white",
           boxShadow: "0 12px 30px rgba(90, 48, 66, 0.25)",
         }}
@@ -463,12 +463,12 @@ type InputFieldProps = {
 };
 
 const InputField = ({ label, value, onChange, placeholder, error, type = "text" }: InputFieldProps) => (
-  <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+  <label className="block text-sm font-semibold" style={{ color: "var(--primary)" }}>
     {label}
     <input
-      className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+      className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
       style={{
-        borderColor: error ? "#ff9aa2" : "var(--border-soft)",
+        borderColor: error ? "#ff9aa2" : "var(--border)",
         backgroundColor: "white",
       }}
       placeholder={placeholder}

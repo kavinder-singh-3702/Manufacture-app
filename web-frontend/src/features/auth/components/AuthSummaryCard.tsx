@@ -10,41 +10,41 @@ export const AuthSummaryCard = () => {
       <div
         className="animate-pulse rounded-3xl p-6 shadow"
         style={{
-          border: "1px solid var(--border-soft)",
+          border: "1px solid var(--border)",
           backgroundColor: "var(--surface)",
         }}
       >
-        <div className="h-4 w-32 rounded" style={{ backgroundColor: "var(--color-linen)" }} />
-        <div className="mt-3 h-6 w-48 rounded" style={{ backgroundColor: "var(--color-linen)" }} />
-        <div className="mt-6 h-10 w-full rounded-full" style={{ backgroundColor: "var(--color-cream)" }} />
+        <div className="h-4 w-32 rounded" style={{ backgroundColor: "var(--background)" }} />
+        <div className="mt-3 h-6 w-48 rounded" style={{ backgroundColor: "var(--background)" }} />
+        <div className="mt-6 h-10 w-full rounded-full" style={{ backgroundColor: "var(--background)" }} />
       </div>
     );
   }
 
   return (
     <div
-      className="rounded-3xl p-6 shadow-xl shadow-[#5a304226]"
+      className="rounded-3xl p-6 shadow-xl shadow-[rgba(20,141,178,0.15)]"
       style={{
-        border: "1px solid var(--border-soft)",
-        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(135deg, #fffdf9, var(--background))",
         color: "var(--foreground)",
       }}
     >
       <div className="flex items-center gap-4">
         <div
           className="flex h-14 w-14 items-center justify-center rounded-2xl text-lg font-semibold"
-          style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
+          style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
         >
           {user?.displayName?.slice(0, 2).toUpperCase() || "MC"}
         </div>
         <div>
-          <p className="text-sm uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-sm uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Workspace status
           </p>
-          <h3 className="text-xl font-semibold text-[#2e1f2c]">
+          <h3 className="text-xl font-semibold text-[var(--foreground)]">
             {user ? `Hi, ${user.displayName ?? user.email}` : "Guest explorer"}
           </h3>
-          <p className="text-sm text-[#5c4451]">
+          <p className="text-sm text-[var(--foreground)]">
             {user ? user.email : "Authenticate to sync with your Manufacture backend."}
           </p>
         </div>
@@ -63,8 +63,8 @@ export const AuthSummaryCard = () => {
             onClick={() => logout()}
             className="flex-1 rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide"
             style={{
-              backgroundColor: "var(--color-plum)",
-              border: "1px solid var(--border-soft)",
+              backgroundColor: "var(--primary)",
+              border: "1px solid var(--border)",
               color: "white",
               boxShadow: "0 10px 30px rgba(90, 48, 66, 0.25)",
             }}
@@ -72,7 +72,7 @@ export const AuthSummaryCard = () => {
             Logout
           </button>
         ) : (
-          <p className="text-sm text-[#5c4451]">
+          <p className="text-sm text-[var(--foreground)]">
             New profiles stay signed in thanks to secure HTTP-only sessions.
           </p>
         )}

@@ -52,15 +52,15 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
       : success
       ? "var(--color-success)"
       : isFocused
-      ? "var(--color-plum)"
-      : "var(--border-soft)";
+      ? "var(--primary)"
+      : "var(--border)";
 
     return (
       <div className={`space-y-2 ${className}`}>
         {/* Label */}
         {label && (
           <motion.label
-            animate={{ color: isFocused ? "var(--color-plum)" : "var(--color-charcoal)" }}
+            animate={{ color: isFocused ? "var(--primary)" : "var(--foreground)" }}
             className="block text-sm font-semibold"
           >
             {label}
@@ -83,7 +83,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
           {/* Left icon */}
           {icon && iconPosition === "left" && (
             <motion.span
-              animate={{ color: isFocused ? "var(--color-plum)" : "var(--color-text-muted)" }}
+              animate={{ color: isFocused ? "var(--primary)" : "var(--color-text-muted)" }}
               className="mr-3"
             >
               {icon}
@@ -96,7 +96,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             disabled={disabled}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="flex-1 bg-transparent py-3 text-sm text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none disabled:cursor-not-allowed"
+            className="flex-1 bg-transparent py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none disabled:cursor-not-allowed"
             {...props}
           />
 
@@ -132,7 +132,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
             {icon && iconPosition === "right" && !error && !success && (
               <motion.span
                 key="right-icon"
-                animate={{ color: isFocused ? "var(--color-plum)" : "var(--color-text-muted)" }}
+                animate={{ color: isFocused ? "var(--primary)" : "var(--color-text-muted)" }}
                 className="ml-2"
               >
                 {icon}
@@ -203,14 +203,14 @@ export const AnimatedTextarea = forwardRef<HTMLTextAreaElement, AnimatedTextarea
       : success
       ? "var(--color-success)"
       : isFocused
-      ? "var(--color-plum)"
-      : "var(--border-soft)";
+      ? "var(--primary)"
+      : "var(--border)";
 
     return (
       <div className={`space-y-2 ${className}`}>
         {label && (
           <motion.label
-            animate={{ color: isFocused ? "var(--color-plum)" : "var(--color-charcoal)" }}
+            animate={{ color: isFocused ? "var(--primary)" : "var(--foreground)" }}
             className="block text-sm font-semibold"
           >
             {label}
@@ -228,8 +228,8 @@ export const AnimatedTextarea = forwardRef<HTMLTextAreaElement, AnimatedTextarea
           }}
           transition={{ duration: 0.2 }}
           className={`
-            w-full rounded-2xl border px-4 py-3 text-sm text-[#2e1f2c]
-            placeholder:text-[#7a5d6b] focus:outline-none resize-none
+            w-full rounded-2xl border px-4 py-3 text-sm text-[var(--foreground)]
+            placeholder:text-[var(--medium-gray)] focus:outline-none resize-none
             ${disabled ? "bg-white/70 cursor-not-allowed" : "bg-white"}
           `}
           style={{ borderWidth: 1.5 }}
@@ -299,8 +299,8 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             borderColor: error
               ? "var(--color-error)"
               : isFocused
-              ? "var(--color-plum)"
-              : "var(--border-soft)",
+              ? "var(--primary)"
+              : "var(--border)",
             boxShadow: isFocused ? "0 0 0 3px rgba(90, 48, 66, 0.1)" : "none",
           }}
           className="relative rounded-2xl border bg-white"
@@ -312,14 +312,14 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             disabled={disabled}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="w-full bg-transparent px-4 pt-6 pb-2 text-sm text-[#2e1f2c] focus:outline-none"
+            className="w-full bg-transparent px-4 pt-6 pb-2 text-sm text-[var(--foreground)] focus:outline-none"
             {...props}
           />
           <motion.label
             animate={{
               y: isFloating ? -10 : 0,
               scale: isFloating ? 0.85 : 1,
-              color: isFocused ? "var(--color-plum)" : "var(--color-text-muted)",
+              color: isFocused ? "var(--primary)" : "var(--color-text-muted)",
             }}
             transition={{ duration: 0.2 }}
             className="absolute left-4 top-4 origin-left pointer-events-none"
@@ -367,11 +367,11 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           boxShadow: isFocused ? "0 4px 20px rgba(90, 48, 66, 0.15)" : "0 2px 8px rgba(90, 48, 66, 0.08)",
         }}
         className={`flex items-center gap-3 rounded-full bg-white px-4 py-2.5 ${className}`}
-        style={{ border: "1px solid var(--border-soft)" }}
+        style={{ border: "1px solid var(--border)" }}
       >
         {/* Search icon */}
         <motion.svg
-          animate={{ color: isFocused ? "var(--color-plum)" : "var(--color-text-muted)" }}
+          animate={{ color: isFocused ? "var(--primary)" : "var(--color-text-muted)" }}
           width={18}
           height={18}
           viewBox="0 0 24 24"
@@ -395,7 +395,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               onSearch(value);
             }
           }}
-          className="flex-1 bg-transparent text-sm text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+          className="flex-1 bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
           {...props}
         />
 
@@ -415,7 +415,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
                 height={16}
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--color-plum)"
+                stroke="var(--primary)"
                 strokeWidth={2}
               >
                 <circle cx={12} cy={12} r={10} strokeDasharray="32" strokeDashoffset="16" />

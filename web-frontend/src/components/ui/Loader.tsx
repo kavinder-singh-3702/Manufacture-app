@@ -176,7 +176,7 @@ export const ProgressBar = ({
         className="w-full rounded-full overflow-hidden"
         style={{
           height,
-          backgroundColor: "var(--surface-muted)",
+          backgroundColor: "var(--background)",
         }}
       >
         <motion.div
@@ -204,7 +204,7 @@ export const ProgressBar = ({
           <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
             {value} / {max}
           </span>
-          <span className="text-xs font-semibold" style={{ color: "var(--color-charcoal)" }}>
+          <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>
             {Math.round(percentage)}%
           </span>
         </div>
@@ -250,7 +250,7 @@ export const CircularProgress = ({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--surface-muted)"
+          stroke="var(--background)"
           strokeWidth={strokeWidth}
         />
         {/* Progress circle */}
@@ -275,7 +275,7 @@ export const CircularProgress = ({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
             className="text-sm font-bold"
-            style={{ color: "var(--color-charcoal)" }}
+            style={{ color: "var(--foreground)" }}
           >
             {Math.round(percentage)}%
           </motion.span>

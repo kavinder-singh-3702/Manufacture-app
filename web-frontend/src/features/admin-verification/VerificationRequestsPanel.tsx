@@ -134,10 +134,10 @@ export const VerificationRequestsPanel = () => {
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Compliance review
           </p>
-          <h2 className="text-2xl font-semibold text-[#2e1f2c]">Company verification queue</h2>
+          <h2 className="text-2xl font-semibold text-[var(--foreground)]">Company verification queue</h2>
           <p className="text-sm text-[#6c4f5b]">
             Approve or reject GST + Aadhaar submissions from manufacturers.
           </p>
@@ -147,7 +147,7 @@ export const VerificationRequestsPanel = () => {
           onClick={loadRequests}
           className="rounded-full px-5 py-2 text-sm font-semibold shadow"
           style={{
-            backgroundColor: "var(--color-plum)",
+            backgroundColor: "var(--primary)",
             color: "#fff",
           }}
           disabled={!canModerate}
@@ -166,8 +166,8 @@ export const VerificationRequestsPanel = () => {
               onClick={() => setStatusFilter(filter.value)}
               className="rounded-full px-4 py-2 text-sm font-semibold transition"
               style={{
-                backgroundColor: isActive ? "var(--color-peach)" : "rgba(255,255,255,0.7)",
-                color: isActive ? "var(--color-plum)" : "rgba(46,31,44,0.7)",
+                backgroundColor: isActive ? "var(--primary-light)" : "rgba(255,255,255,0.7)",
+                color: isActive ? "var(--primary)" : "rgba(46,31,44,0.7)",
                 boxShadow: isActive ? "0 10px 25px rgba(246,184,168,0.45)" : undefined,
               }}
               disabled={!canModerate}
@@ -190,7 +190,7 @@ export const VerificationRequestsPanel = () => {
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-[#2e1f2c]">
+                  <h3 className="text-lg font-semibold text-[var(--foreground)]">
                     {request.company?.displayName ?? "Company"}
                   </h3>
                   <p className="text-sm text-[#6c4f5b]">
@@ -243,7 +243,7 @@ export const VerificationRequestsPanel = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-semibold"
-                          style={{ color: "var(--color-plum)" }}
+                          style={{ color: "var(--primary)" }}
                         >
                           Open file
                         </a>
@@ -263,7 +263,7 @@ export const VerificationRequestsPanel = () => {
                     type="button"
                     onClick={() => startAction(request, "approve")}
                     className="flex-1 rounded-full px-4 py-2 text-sm font-semibold text-white"
-                    style={{ backgroundColor: "var(--color-plum)" }}
+                    style={{ backgroundColor: "var(--primary)" }}
                   >
                     Approve
                   </button>
@@ -285,7 +285,7 @@ export const VerificationRequestsPanel = () => {
       {activeAction ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
           <div
-            className="w-full max-w-lg rounded-3xl p-6 text-[#2e1f2c]"
+            className="w-full max-w-lg rounded-3xl p-6 text-[var(--foreground)]"
             style={{ backgroundColor: "white", border: "1px solid rgba(90,48,66,0.2)" }}
           >
             <h3 className="text-xl font-semibold">

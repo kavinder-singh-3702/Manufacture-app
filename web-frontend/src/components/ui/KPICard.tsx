@@ -173,7 +173,7 @@ export const ProgressRing = ({
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="var(--surface-muted)"
+        stroke="var(--background)"
         strokeWidth={strokeWidth}
       />
       {/* Progress circle */}
@@ -234,15 +234,15 @@ export const KPICard = ({
       transition={{ duration: 0.4 }}
       className={`rounded-2xl p-5 ${className}`}
       style={{
-        border: "1px solid var(--border-soft)",
-        background: "linear-gradient(135deg, var(--surface), var(--color-linen))",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(135deg, var(--surface), var(--background))",
       }}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span
           className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--color-plum)" }}
+          style={{ color: "var(--primary)" }}
         >
           {title}
         </span>
@@ -252,7 +252,7 @@ export const KPICard = ({
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring" }}
             className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "var(--color-peach)" }}
+            style={{ backgroundColor: "var(--primary-light)" }}
           >
             {icon}
           </motion.div>
@@ -263,7 +263,7 @@ export const KPICard = ({
       <div className="flex items-baseline gap-2 mb-2">
         <motion.span
           className="text-3xl font-bold"
-          style={{ color: "var(--color-charcoal)" }}
+          style={{ color: "var(--foreground)" }}
         >
           {prefix}
           {animatedValue.toLocaleString()}
@@ -290,7 +290,7 @@ export const KPICard = ({
           />
           <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
             <div>{target.label}</div>
-            <div className="font-semibold" style={{ color: "var(--color-charcoal)" }}>
+            <div className="font-semibold" style={{ color: "var(--foreground)" }}>
               {Math.round((value / target.value) * 100)}% of {target.value.toLocaleString()}
             </div>
           </div>

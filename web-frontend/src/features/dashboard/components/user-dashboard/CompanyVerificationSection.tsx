@@ -175,16 +175,16 @@ export const CompanyVerificationSection = ({
   return (
     <>
       {!hideInline ? (
-        <section id="company-verification" className="rounded-3xl border border-[var(--border-soft)] bg-gradient-to-br from-white to-[#fff8fd] p-5">
+        <section id="company-verification" className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-white to-[#fff8fd] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
                 Compliance
               </p>
               <h2 className="text-2xl font-semibold text-[#1f1422]">Company verification</h2>
               <p className="text-sm text-[#5f3c4c]">
                 Active company:{" "}
-                <span className="font-semibold text-[#2e1f2c]">{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
+                <span className="font-semibold text-[var(--foreground)]">{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
                 {latest?.company?.type ?? "Type not set"}
               </p>
             </div>
@@ -197,7 +197,7 @@ export const CompanyVerificationSection = ({
               <button
                 type="button"
                 onClick={loadLatest}
-                className="rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[#5a3042] transition hover:border-[var(--color-plum)] hover:text-[var(--color-plum)] disabled:opacity-60"
+                className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-60"
                 disabled={!activeCompanyId || loading}
               >
                 {loading ? "Refreshing…" : "Refresh"}
@@ -215,11 +215,11 @@ export const CompanyVerificationSection = ({
           {activeCompanyId ? (
             <>
               <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-                <div className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5 shadow-sm shadow-[#e7ddea]">
+                <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-[#2e1f2c]">Latest status</p>
-                      <p className="text-xs text-[#7a5d6b]">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">Latest status</p>
+                      <p className="text-xs text-[var(--medium-gray)]">
                         {request
                           ? `Updated ${formatDateTime(request.updatedAt ?? request.createdAt)}`
                           : "No verification requests yet"}
@@ -229,7 +229,7 @@ export const CompanyVerificationSection = ({
                       type="button"
                       onClick={() => setHistoryOpen((prev) => !prev)}
                       disabled={!request}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-semibold text-[var(--color-plum)] transition hover:border-[var(--color-plum)] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold text-[var(--primary)] transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {historyOpen ? "Hide history" : "View history"}
                       <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition ${historyOpen ? "rotate-180" : ""}`}>
@@ -237,7 +237,7 @@ export const CompanyVerificationSection = ({
                       </svg>
                     </button>
                   </div>
-                  <p className="mt-4 text-sm text-[#5c4451]">{statusMeta.helper}</p>
+                  <p className="mt-4 text-sm text-[var(--foreground)]">{statusMeta.helper}</p>
                   {request?.rejectionReason ? (
                     <p className="mt-3 rounded-2xl border border-[#fecaca] bg-[#fff5f5] p-3 text-sm text-[#7f1d1d]">
                       Rejection reason: <span className="font-semibold">{request.rejectionReason}</span>
@@ -250,7 +250,7 @@ export const CompanyVerificationSection = ({
                   ) : null}
                 </div>
                 <div className="rounded-3xl border border-[#bbf7d0] bg-gradient-to-br from-white via-[#f5fff9] to-[#e7fff1] p-5 shadow-sm shadow-[#ccf2dc]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
                     Credibility spotlight
                   </p>
                   <h3 className="mt-2 text-xl font-semibold text-[#174836]">Turn trust into more deals</h3>
@@ -296,7 +296,7 @@ export const CompanyVerificationSection = ({
               </AnimatePresence>
             </>
           ) : (
-            <p className="mt-6 text-sm text-[#5c4451]">
+            <p className="mt-6 text-sm text-[var(--foreground)]">
               Select or create a trader/manufacturer company to unlock verification. Once selected, your badge controls will appear here.
             </p>
           )}
@@ -325,8 +325,8 @@ export const CompanyVerificationSection = ({
 const VerificationHistory = ({ request }: { request: CompanyVerificationRequest | null }) => {
   if (!request) {
     return (
-      <div className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5">
-        <p className="text-sm text-[#5c4451]">
+      <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5">
+        <p className="text-sm text-[var(--foreground)]">
           When you submit your GST + Aadhaar documents, the compliance team&apos;s updates will appear here.
         </p>
       </div>
@@ -342,48 +342,48 @@ const VerificationHistory = ({ request }: { request: CompanyVerificationRequest 
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-      <div className="rounded-3xl border border-[var(--border-soft)] bg-white p-5 shadow-sm shadow-[#e7ddea]">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+      <div className="rounded-3xl border border-[var(--border)] bg-white p-5 shadow-sm shadow-[#e7ddea]">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
           Latest submission
         </p>
         <h4 className="mt-2 text-lg font-semibold text-[#1f1422]">Documents on file</h4>
-        <p className="text-sm text-[#5c4451]">
+        <p className="text-sm text-[var(--foreground)]">
           Submitted {formatDateTime(request.createdAt)} by {requestedBy}.
         </p>
         <div className="mt-4 space-y-3">
           {docEntries.map((entry) => (
             <div
               key={entry.label}
-              className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 text-sm text-[#2e1f2c]"
+              className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3 text-sm text-[var(--foreground)]"
             >
               <p className="font-semibold">{entry.label}</p>
               {entry.doc ? (
-                <p className="text-xs text-[#7a5d6b]">
+                <p className="text-xs text-[var(--medium-gray)]">
                   {entry.doc.fileName ?? "Uploaded file"}
                   {entry.doc.size ? ` · ${formatFileSize(entry.doc.size)}` : ""}
                 </p>
               ) : (
-                <p className="text-xs text-[#b98b9e]">Waiting on upload</p>
+                <p className="text-xs text-[var(--medium-gray)]">Waiting on upload</p>
               )}
               {entry.doc?.uploadedAt ? (
-                <p className="text-xs text-[#b98b9e]">Uploaded {formatDateTime(entry.doc.uploadedAt)}</p>
+                <p className="text-xs text-[var(--medium-gray)]">Uploaded {formatDateTime(entry.doc.uploadedAt)}</p>
               ) : null}
             </div>
           ))}
         </div>
         {request.notes ? (
-          <p className="mt-4 rounded-2xl bg-[var(--surface-muted)] p-3 text-sm text-[#5c4451]">
+          <p className="mt-4 rounded-2xl bg-[var(--background)] p-3 text-sm text-[var(--foreground)]">
             Submitter note: <span className="font-semibold">{request.notes}</span>
           </p>
         ) : null}
         {request.decisionNotes ? (
-          <p className="mt-2 rounded-2xl bg-white/70 p-3 text-sm text-[#2e1f2c]">
+          <p className="mt-2 rounded-2xl bg-white/70 p-3 text-sm text-[var(--foreground)]">
             Reviewer note: <span className="font-semibold">{request.decisionNotes}</span>
           </p>
         ) : null}
       </div>
-      <div className="rounded-3xl border border-[var(--border-soft)] bg-white p-5 shadow-sm shadow-[#e7ddea]">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+      <div className="rounded-3xl border border-[var(--border)] bg-white p-5 shadow-sm shadow-[#e7ddea]">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
           Audit trail
         </p>
         <h4 className="mt-2 text-lg font-semibold text-[#1f1422]">Verification steps</h4>
@@ -392,18 +392,18 @@ const VerificationHistory = ({ request }: { request: CompanyVerificationRequest 
             {auditTrail.map((entry, index) => (
               <li
                 key={`${entry.action}-${entry.at ?? index}`}
-                className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3"
+                className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3"
               >
-                <p className="text-sm font-semibold text-[#2e1f2c] capitalize">{entry.action}</p>
-                <p className="text-xs text-[#7a5d6b]">
+                <p className="text-sm font-semibold text-[var(--foreground)] capitalize">{entry.action}</p>
+                <p className="text-xs text-[var(--medium-gray)]">
                   {formatDateTime(entry.at)} · {entry.by?.displayName ?? entry.by?.email ?? "System"}
                 </p>
-                {entry.notes ? <p className="mt-1 text-xs text-[#5c4451]">{entry.notes}</p> : null}
+                {entry.notes ? <p className="mt-1 text-xs text-[var(--foreground)]">{entry.notes}</p> : null}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-[#5c4451]">
+          <p className="mt-3 text-sm text-[var(--foreground)]">
             Once compliance reviews your submission, their actions will show up here with timestamps.
           </p>
         )}
@@ -462,7 +462,7 @@ const VerificationModal = ({
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="w-full max-w-xl rounded-3xl border border-[var(--border-soft)] bg-white p-6 shadow-2xl shadow-[#5a304236]"
+            className="w-full max-w-xl rounded-3xl border border-[var(--border)] bg-white p-6 shadow-2xl shadow-[rgba(20,141,178,0.22)]"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
@@ -470,7 +470,7 @@ const VerificationModal = ({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
                   Verification request
                 </p>
                 <h3 className="text-xl font-semibold text-[#1f1422]">Submit documents</h3>
@@ -481,7 +481,7 @@ const VerificationModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-[var(--border-soft)] p-2 text-[#5a3042] disabled:opacity-60"
+                className="rounded-full border border-[var(--border)] p-2 text-[var(--primary-dark)] disabled:opacity-60"
                 aria-label="Close verification modal"
                 disabled={submitting}
               >
@@ -493,10 +493,10 @@ const VerificationModal = ({
             <form onSubmit={onSubmit} className="mt-5 space-y-4">
               <DocumentUploadField label="GST certificate" entry={gstDocument} onSelect={onSelectGst} disabled={submitting} />
               <DocumentUploadField label="Aadhaar card" entry={aadhaarDocument} onSelect={onSelectAadhaar} disabled={submitting} />
-              <label className="text-sm font-semibold text-[#2e1f2c]">
+              <label className="text-sm font-semibold text-[var(--foreground)]">
                 Reviewer notes (optional)
                 <textarea
-                  className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] bg-white px-4 py-3 text-sm text-[#2e1f2c] focus:outline-none"
+                  className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] focus:outline-none"
                   rows={3}
                   maxLength={500}
                   value={notes}
@@ -511,7 +511,7 @@ const VerificationModal = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-full border border-[var(--border-soft)] px-4 py-2 text-sm font-semibold text-[#5a3042] disabled:opacity-60"
+                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] disabled:opacity-60"
                   disabled={submitting}
                 >
                   Cancel
@@ -544,9 +544,9 @@ const DocumentUploadField = ({
   disabled?: boolean;
 }) => (
   <div>
-    <p className="text-sm font-semibold text-[#2e1f2c]">{label}</p>
+    <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
     <label
-      className={`mt-2 block rounded-2xl border border-dashed border-[var(--border-soft)] bg-white/70 px-4 py-4 text-sm text-[#5c4451] ${
+      className={`mt-2 block rounded-2xl border border-dashed border-[var(--border)] bg-white/70 px-4 py-4 text-sm text-[var(--foreground)] ${
         disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
       }`}
     >
@@ -562,9 +562,9 @@ const DocumentUploadField = ({
       />
       {entry ? (
         <div>
-          <p className="font-semibold text-[#2e1f2c]">{entry.fileName}</p>
-          <p className="text-xs text-[#7a5d6b]">{entry.sizeLabel}</p>
-          <p className="text-xs text-[var(--color-plum)]">Click to replace file</p>
+          <p className="font-semibold text-[var(--foreground)]">{entry.fileName}</p>
+          <p className="text-xs text-[var(--medium-gray)]">{entry.sizeLabel}</p>
+          <p className="text-xs text-[var(--primary)]">Click to replace file</p>
         </div>
       ) : (
         <p>Click to upload PDF or image scans.</p>
@@ -645,7 +645,7 @@ const getVerificationStatusMeta = (status?: CompanyVerificationStatus | string |
   return (
     metaMap[normalized] ?? {
       label: "Not submitted",
-      className: "border-[#f5d6e8] bg-[#fff7fb] text-[#5a3042]",
+      className: "border-[#f5d6e8] bg-[#fff7fb] text-[var(--primary-dark)]",
       helper: "Earn trust by submitting GST + Aadhaar documents once you're ready.",
     }
   );

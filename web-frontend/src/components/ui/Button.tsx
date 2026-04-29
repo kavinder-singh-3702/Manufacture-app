@@ -100,20 +100,20 @@ const sizeStyles: Record<ButtonSize, string> = {
 
 const variantStyles: Record<ButtonVariant, { base: string; hover: string }> = {
   primary: {
-    base: "bg-[var(--color-plum)] text-white shadow-lg",
+    base: "bg-[var(--primary)] text-white shadow-lg",
     hover: "shadow-xl",
   },
   secondary: {
-    base: "bg-[var(--color-peach)] text-[var(--color-plum)]",
+    base: "bg-[var(--primary-light)] text-[var(--primary)]",
     hover: "shadow-md",
   },
   outline: {
-    base: "border-2 border-[var(--color-plum)] text-[var(--color-plum)] bg-transparent",
-    hover: "bg-[var(--color-plum)]/5",
+    base: "border-2 border-[var(--primary)] text-[var(--primary)] bg-transparent",
+    hover: "bg-[var(--primary)]/5",
   },
   ghost: {
-    base: "text-[var(--color-plum)] bg-transparent",
-    hover: "bg-[var(--color-plum)]/10",
+    base: "text-[var(--primary)] bg-transparent",
+    hover: "bg-[var(--primary)]/10",
   },
   danger: {
     base: "bg-[var(--color-error)] text-white",
@@ -174,7 +174,7 @@ export const AnimatedButton = ({
       disabled={isDisabled}
       className={`
         relative overflow-hidden rounded-full font-semibold uppercase tracking-wide
-        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-plum)]/50 focus:ring-offset-2
+        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50 focus:ring-offset-2
         ${sizeStyles[size]}
         ${styles.base}
         ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
@@ -264,7 +264,7 @@ export const IconButton = ({
       className={`
         relative overflow-hidden rounded-full
         flex items-center justify-center
-        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-plum)]/50
+        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/50
         ${iconSizeStyles[size]}
         ${styles.base}
         ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}

@@ -66,35 +66,35 @@ export const ResetPasswordCard = () => {
 
   return (
     <div
-      className="rounded-3xl p-6 shadow-xl shadow-[#5a304230]/20"
+      className="rounded-3xl p-6 shadow-xl shadow-[rgba(20,141,178,0.12)]"
       style={{
-        border: "1px solid var(--border-soft)",
-        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(135deg, #fffdf9, var(--background))",
         color: "var(--foreground)",
       }}
     >
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             New password
           </p>
-          <h3 className="text-xl font-semibold text-[#2e1f2c]">Secure your account</h3>
-          <p className="text-sm text-[#5c4451]">Paste your reset token and set a fresh password.</p>
+          <h3 className="text-xl font-semibold text-[var(--foreground)]">Secure your account</h3>
+          <p className="text-sm text-[var(--foreground)]">Paste your reset token and set a fresh password.</p>
         </div>
         <div
           className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-          style={{ backgroundColor: "var(--color-peach)", color: "var(--color-plum)" }}
+          style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
         >
           Step 2
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+        <label className="block text-sm font-semibold" style={{ color: "var(--primary)" }}>
           Reset token
           <textarea
-            className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
-            style={{ borderColor: "var(--border-soft)", backgroundColor: "white" }}
+            className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
+            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
             placeholder="Paste the reset token from email or SMS"
             value={token}
             onChange={(event) => setToken(event.target.value)}
@@ -102,14 +102,14 @@ export const ResetPasswordCard = () => {
           />
         </label>
 
-        <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+        <label className="block text-sm font-semibold" style={{ color: "var(--primary)" }}>
           New password
           <div
             className="mt-2 flex items-center rounded-2xl border px-4"
-            style={{ borderColor: "var(--border-soft)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
           >
             <input
-              className="w-full bg-transparent py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+              className="w-full bg-transparent py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
               placeholder="Create a new password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -120,21 +120,21 @@ export const ResetPasswordCard = () => {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               className="text-sm font-semibold"
-              style={{ color: "var(--color-plum)" }}
+              style={{ color: "var(--primary)" }}
             >
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
         </label>
 
-        <label className="block text-sm font-semibold" style={{ color: "var(--color-plum)" }}>
+        <label className="block text-sm font-semibold" style={{ color: "var(--primary)" }}>
           Confirm password
           <div
             className="mt-2 flex items-center rounded-2xl border px-4"
-            style={{ borderColor: "var(--border-soft)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
           >
             <input
-              className="w-full bg-transparent py-3 text-base text-[#2e1f2c] placeholder:text-[#7a5d6b] focus:outline-none"
+              className="w-full bg-transparent py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
               placeholder="Re-enter password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -145,7 +145,7 @@ export const ResetPasswordCard = () => {
               type="button"
               onClick={() => setShowConfirm((prev) => !prev)}
               className="text-sm font-semibold"
-              style={{ color: "var(--color-plum)" }}
+              style={{ color: "var(--primary)" }}
             >
               {showConfirm ? "Hide" : "Show"}
             </button>
@@ -155,7 +155,7 @@ export const ResetPasswordCard = () => {
         {status ? (
           <div
             className="rounded-2xl px-4 py-3 text-sm font-semibold"
-            style={{ backgroundColor: "var(--surface-muted)", color: "var(--color-plum)" }}
+            style={{ backgroundColor: "var(--background)", color: "var(--primary)" }}
           >
             {status}
           </div>
@@ -171,7 +171,7 @@ export const ResetPasswordCard = () => {
           type="submit"
           className="w-full rounded-full py-3 text-sm font-semibold uppercase tracking-wide disabled:opacity-50"
           style={{
-            backgroundColor: "var(--color-plum)",
+            backgroundColor: "var(--primary)",
             color: "white",
             boxShadow: "0 12px 30px rgba(90, 48, 66, 0.25)",
           }}
@@ -180,9 +180,9 @@ export const ResetPasswordCard = () => {
           {loading ? "Resetting…" : "Reset password"}
         </button>
 
-        <p className="text-center text-xs text-[#5c4451]">
+        <p className="text-center text-xs text-[var(--foreground)]">
           Need a token?{" "}
-          <Link href="/forgot-password" className="font-semibold" style={{ color: "var(--color-plum)" }}>
+          <Link href="/forgot-password" className="font-semibold" style={{ color: "var(--primary)" }}>
             Request reset instructions
           </Link>
         </p>

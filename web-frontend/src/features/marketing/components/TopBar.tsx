@@ -12,7 +12,7 @@ export const TopBar = () => {
     <header
       className="sticky top-0 z-20 flex items-center justify-between gap-6 px-4 py-4 backdrop-blur"
       style={{
-        borderBottom: "1px solid var(--border-soft)",
+        borderBottom: "1px solid var(--border)",
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         boxShadow: "0 20px 45px rgba(90, 48, 66, 0.08)",
       }}
@@ -20,12 +20,12 @@ export const TopBar = () => {
       <Link href="/" className="flex items-center gap-3" style={{ color: "var(--foreground)" }}>
         <div
           className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-semibold"
-          style={{ backgroundColor: "var(--color-linen)", color: "var(--color-plum)", border: "1px solid var(--border-soft)" }}
+          style={{ backgroundColor: "var(--background)", color: "var(--primary)", border: "1px solid var(--border)" }}
         >
           MC
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Manufacture
           </p>
           <p className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>
@@ -35,7 +35,7 @@ export const TopBar = () => {
       </Link>
       <nav className="hidden items-center gap-6 text-sm font-semibold text-[#43343d]/90 lg:flex">
         {navLinks.map((link) => (
-          <a key={link.label} href={link.href} className="transition hover:text-[#5a3042]">
+          <a key={link.label} href={link.href} className="transition hover:text-[var(--primary-dark)]">
             {link.label}
           </a>
         ))}
@@ -44,7 +44,7 @@ export const TopBar = () => {
         <button
           type="button"
           aria-label="Notifications"
-          className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border-soft)] bg-white text-[#5a3042] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-white text-[var(--primary-dark)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -62,8 +62,8 @@ export const TopBar = () => {
           href="/signup"
           className="rounded-full px-5 py-2 text-sm font-semibold uppercase tracking-wide"
           style={{
-            backgroundColor: "var(--color-peach)",
-            color: "var(--color-plum)",
+            backgroundColor: "var(--primary-light)",
+            color: "var(--primary)",
             boxShadow: "0 10px 25px rgba(246, 184, 168, 0.65)",
           }}
         >

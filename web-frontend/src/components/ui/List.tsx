@@ -102,7 +102,7 @@ export const AnimatedListItem = ({
       `}
       style={{
         backgroundColor: "var(--surface)",
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border)",
       }}
     >
       {children}
@@ -173,7 +173,7 @@ export const SwipeableListItem = ({
         className="relative p-4"
         style={{
           backgroundColor: "var(--surface)",
-          border: "1px solid var(--border-soft)",
+          border: "1px solid var(--border)",
           borderRadius: 12,
         }}
       >
@@ -212,16 +212,16 @@ export function AnimatedTable<T>({
   className = "",
 }: AnimatedTableProps<T>) {
   return (
-    <div className={`overflow-x-auto rounded-xl ${className}`} style={{ border: "1px solid var(--border-soft)" }}>
+    <div className={`overflow-x-auto rounded-xl ${className}`} style={{ border: "1px solid var(--border)" }}>
       <table className="w-full">
         {/* Header */}
-        <thead style={{ backgroundColor: "var(--surface-muted)" }}>
+        <thead style={{ backgroundColor: "var(--background)" }}>
           <tr>
             {columns.map((column) => (
               <th
                 key={String(column.key)}
                 className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--color-plum)", width: column.width }}
+                style={{ color: "var(--primary)", width: column.width }}
               >
                 {column.header}
               </th>
@@ -253,16 +253,16 @@ export function AnimatedTable<T>({
                   key={keyExtractor(item, index)}
                   variants={tableRowVariants}
                   layout
-                  whileHover={{ backgroundColor: "var(--surface-muted)" }}
+                  whileHover={{ backgroundColor: "var(--background)" }}
                   onClick={() => onRowClick?.(item, index)}
                   className={`border-t transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
-                  style={{ borderColor: "var(--border-soft)" }}
+                  style={{ borderColor: "var(--border)" }}
                 >
                   {columns.map((column) => (
                     <td
                       key={String(column.key)}
                       className="px-4 py-3 text-sm"
-                      style={{ color: "var(--color-charcoal)" }}
+                      style={{ color: "var(--foreground)" }}
                     >
                       {column.render
                         ? column.render(item, index)
@@ -322,16 +322,16 @@ export const AccordionItem = ({ title, children, defaultOpen = false, className 
       className={`rounded-xl overflow-hidden ${className}`}
       style={{
         backgroundColor: "var(--surface)",
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border)",
       }}
     >
       {/* Header */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 text-left"
-        whileHover={{ backgroundColor: "var(--surface-muted)" }}
+        whileHover={{ backgroundColor: "var(--background)" }}
       >
-        <span className="font-medium" style={{ color: "var(--color-charcoal)" }}>
+        <span className="font-medium" style={{ color: "var(--foreground)" }}>
           {title}
         </span>
         <motion.svg
@@ -341,7 +341,7 @@ export const AccordionItem = ({ title, children, defaultOpen = false, className 
           height={20}
           viewBox="0 0 24 24"
           fill="none"
-          stroke="var(--color-plum)"
+          stroke="var(--primary)"
           strokeWidth={2}
         >
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -359,7 +359,7 @@ export const AccordionItem = ({ title, children, defaultOpen = false, className 
           >
             <div
               className="p-4 pt-0"
-              style={{ borderTop: "1px solid var(--border-soft)" }}
+              style={{ borderTop: "1px solid var(--border)" }}
             >
               {children}
             </div>

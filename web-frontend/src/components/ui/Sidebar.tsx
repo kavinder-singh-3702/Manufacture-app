@@ -93,13 +93,13 @@ export const AnimatedSidebar = ({ children, header, footer, className = "" }: An
           ${className}
         `}
         style={{
-          background: "linear-gradient(180deg, var(--surface), var(--color-linen))",
-          borderRight: "1px solid var(--border-soft)",
+          background: "linear-gradient(180deg, var(--surface), var(--background))",
+          borderRight: "1px solid var(--border)",
         }}
       >
         {/* Header */}
         {header && (
-          <div className="p-4 border-b" style={{ borderColor: "var(--border-soft)" }}>
+          <div className="p-4 border-b" style={{ borderColor: "var(--border)" }}>
             {header}
           </div>
         )}
@@ -109,7 +109,7 @@ export const AnimatedSidebar = ({ children, header, footer, className = "" }: An
 
         {/* Footer */}
         {footer && (
-          <div className="p-4 border-t" style={{ borderColor: "var(--border-soft)" }}>
+          <div className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
             {footer}
           </div>
         )}
@@ -154,10 +154,10 @@ export const SidebarItem = ({ icon, label, href, onClick, active = false, badge,
         className={`
           flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer
           transition-colors duration-200
-          ${active ? "bg-[var(--color-peach)]" : "hover:bg-[var(--surface-muted)]"}
+          ${active ? "bg-[var(--primary-light)]" : "hover:bg-[var(--background)]"}
         `}
         style={{
-          color: active ? "var(--color-plum)" : "var(--color-charcoal)",
+          color: active ? "var(--primary)" : "var(--foreground)",
         }}
       >
         {/* Icon */}
@@ -284,8 +284,8 @@ export const SidebarToggle = () => {
       onClick={toggleCollapse}
       className="w-8 h-8 rounded-lg flex items-center justify-center"
       style={{
-        backgroundColor: "var(--surface-muted)",
-        color: "var(--color-plum)",
+        backgroundColor: "var(--background)",
+        color: "var(--primary)",
       }}
     >
       <motion.svg
@@ -318,8 +318,8 @@ export const MobileSidebarTrigger = () => {
       className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center"
       style={{
         backgroundColor: "var(--surface)",
-        border: "1px solid var(--border-soft)",
-        color: "var(--color-plum)",
+        border: "1px solid var(--border)",
+        color: "var(--primary)",
       }}
     >
       <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

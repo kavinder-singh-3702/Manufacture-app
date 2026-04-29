@@ -37,10 +37,10 @@ const formatCategory = (category: string) => category.charAt(0).toUpperCase() + 
 const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
   <div className="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
         {subtitle ?? "Company".toUpperCase()}
       </p>
-      <h2 className="text-2xl font-semibold text-[#2e1f2c]">{title}</h2>
+      <h2 className="text-2xl font-semibold text-[var(--foreground)]">{title}</h2>
     </div>
   </div>
 );
@@ -211,7 +211,7 @@ export const CompanyProfile = () => {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-6 text-[#5c4451]">
+      <div className="rounded-3xl border border-[var(--border)] bg-white/95 p-6 text-[var(--foreground)]">
         Please sign in to view your company.
       </div>
     );
@@ -219,15 +219,15 @@ export const CompanyProfile = () => {
 
   if (!activeCompanyId) {
     return (
-      <div className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-6 text-[#5c4451]">
-        <p className="text-lg font-semibold text-[#2e1f2c]">No active company selected</p>
+      <div className="rounded-3xl border border-[var(--border)] bg-white/95 p-6 text-[var(--foreground)]">
+        <p className="text-lg font-semibold text-[var(--foreground)]">No active company selected</p>
         <p className="mt-2 text-sm">
           Create or select a company from the admin console to see its profile here.
         </p>
         <div className="mt-4">
           <Link
             href="/admin"
-            className="inline-flex items-center rounded-full bg-[var(--color-plum)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#5a304233]"
+            className="inline-flex items-center rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[rgba(20,141,178,0.20)]"
           >
             Go to admin
           </Link>
@@ -275,7 +275,7 @@ export const CompanyProfile = () => {
   return (
     <div className="space-y-6">
       {verificationBanner}
-      <div className="overflow-hidden rounded-3xl border border-[var(--border-soft)] bg-gradient-to-br from-[#fff5fb] via-white to-[#eef2ff] shadow-lg shadow-[#5a30421a]">
+      <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--background)] via-white to-[var(--primary-light)] shadow-lg shadow-[rgba(20,141,178,0.10)]">
         <div
           className="h-36 w-full"
           style={{
@@ -288,7 +288,7 @@ export const CompanyProfile = () => {
         />
         <div className="-mt-10 flex flex-wrap items-center justify-between gap-4 px-5 pb-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-[var(--color-plum)] shadow-lg shadow-[#5a30423a]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-[var(--primary)] shadow-lg shadow-[rgba(20,141,178,0.23)]">
               {company?.logoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={company.logoUrl} alt={company.displayName ?? "Company"} className="h-full w-full rounded-2xl object-cover" />
@@ -297,19 +297,19 @@ export const CompanyProfile = () => {
               )}
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                 Company
               </p>
               <p className="text-2xl font-semibold text-[#1f1422]">{company?.displayName ?? "Loading…"}</p>
-              <p className="text-sm text-[#7a5d6b]">{company?.legalName ?? "Add legal name"}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-[#7a5d6b]">
+              <p className="text-sm text-[var(--medium-gray)]">{company?.legalName ?? "Add legal name"}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--medium-gray)]">
                 {company?.type ? (
-                  <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-[var(--color-plum)] shadow-sm shadow-[#5a304222]">
+                  <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-[var(--primary)] shadow-sm shadow-[rgba(20,141,178,0.10)]">
                     Type: {company.type}
                   </span>
                 ) : null}
                 {company?.complianceStatus ? (
-                  <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-[var(--color-plum)] shadow-sm shadow-[#5a304222]">
+                  <span className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-[var(--primary)] shadow-sm shadow-[rgba(20,141,178,0.10)]">
                     Compliance: {company.complianceStatus}
                   </span>
                 ) : null}
@@ -320,7 +320,7 @@ export const CompanyProfile = () => {
             <button
               type="button"
               onClick={() => setEditing((prev) => !prev)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-plum)] bg-white px-5 py-2 text-sm font-semibold text-[var(--color-plum)] shadow-sm shadow-[#5a304233] transition hover:bg-[var(--color-plum)] hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)] bg-white px-5 py-2 text-sm font-semibold text-[var(--primary)] shadow-sm shadow-[rgba(20,141,178,0.20)] transition hover:bg-[var(--primary)] hover:text-white"
             >
               {editing ? "Close editor" : "Edit profile"}
             </button>
@@ -331,19 +331,19 @@ export const CompanyProfile = () => {
       </div>
 
       {loading ? (
-        <div className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-5 text-sm text-[#5c4451]">Loading company…</div>
+        <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5 text-sm text-[var(--foreground)]">Loading company…</div>
       ) : company ? (
         <>
           <div className="space-y-5">
-            <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+            <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
               <SectionHeader title="Profile overview" subtitle="Company" />
               <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {companySummary.map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-4 shadow-sm shadow-[#5a30421a]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                  <div key={item.label} className="rounded-3xl border border-[var(--border)] bg-white/90 p-4 shadow-sm shadow-[rgba(20,141,178,0.10)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
                       {item.label}
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-[#2e1f2c]">{item.value}</p>
+                    <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -351,27 +351,27 @@ export const CompanyProfile = () => {
 
             <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-5">
-                <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                         Story
                       </p>
-                      <h3 className="text-lg font-semibold text-[#2e1f2c]">About this company</h3>
+                      <h3 className="text-lg font-semibold text-[var(--foreground)]">About this company</h3>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-[#5c4451]">
+                  <p className="mt-3 text-sm text-[var(--foreground)]">
                     {company.description?.length ? company.description : "Add a description to tell buyers who you are."}
                   </p>
                 </section>
 
-                <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                         Contact
                       </p>
-                      <h3 className="text-lg font-semibold text-[#2e1f2c]">Primary details</h3>
+                      <h3 className="text-lg font-semibold text-[var(--foreground)]">Primary details</h3>
                     </div>
                   </div>
                   <dl className="mt-3 grid gap-3 md:grid-cols-2">
@@ -383,25 +383,25 @@ export const CompanyProfile = () => {
               </div>
 
               <div className="space-y-5">
-                <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                         Location
                       </p>
-                      <h3 className="text-lg font-semibold text-[#2e1f2c]">Headquarters</h3>
+                      <h3 className="text-lg font-semibold text-[var(--foreground)]">Headquarters</h3>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-[#5c4451]">
+                  <p className="mt-3 text-sm text-[var(--foreground)]">
                     {formatAddress(company.headquarters) || "Add a headquarters address."}
                   </p>
                   {company.locations && company.locations.length ? (
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
                         LOCATIONS
                       </p>
                       {company.locations.map((location, index) => (
-                        <p key={`${location.line1}-${index}`} className="text-sm text-[#5c4451]">
+                        <p key={`${location.line1}-${index}`} className="text-sm text-[var(--foreground)]">
                           {formatAddress(location)}
                         </p>
                       ))}
@@ -409,16 +409,16 @@ export const CompanyProfile = () => {
                   ) : null}
                 </section>
 
-                <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                         Presence
                       </p>
-                      <h3 className="text-lg font-semibold text-[#2e1f2c]">Social links</h3>
+                      <h3 className="text-lg font-semibold text-[var(--foreground)]">Social links</h3>
                     </div>
                   </div>
-                  <dl className="mt-3 space-y-2 text-sm text-[#5c4451]">
+                  <dl className="mt-3 space-y-2 text-sm text-[var(--foreground)]">
                     <ContactRow label="LinkedIn" value={company.socialLinks?.linkedin} isLink />
                     <ContactRow label="Twitter" value={company.socialLinks?.twitter} isLink />
                     <ContactRow label="Instagram" value={company.socialLinks?.instagram} isLink />
@@ -430,13 +430,13 @@ export const CompanyProfile = () => {
           </div>
 
           {editing ? (
-            <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+            <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--color-plum)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                     Edit
                   </p>
-                  <h3 className="text-lg font-semibold text-[#2e1f2c]">Update company profile</h3>
+                  <h3 className="text-lg font-semibold text-[var(--foreground)]">Update company profile</h3>
                 </div>
               </div>
               <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -569,14 +569,14 @@ export const CompanyProfile = () => {
                   <button
                     type="button"
                     onClick={() => setEditing(false)}
-                    className="rounded-full border border-[var(--border-soft)] px-4 py-2 text-sm font-semibold text-[#5a3042] disabled:opacity-60"
+                    className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] disabled:opacity-60"
                     disabled={saving}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="rounded-full bg-[var(--color-plum)] px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#5a304233] disabled:opacity-60"
+                    className="rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[rgba(20,141,178,0.20)] disabled:opacity-60"
                     disabled={saving}
                   >
                     {saving ? "Saving…" : "Save changes"}
@@ -593,19 +593,19 @@ export const CompanyProfile = () => {
 
 const ContactRow = ({ label, value, isLink }: { label: string; value?: string; isLink?: boolean }) => (
   <div>
-    <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+    <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
       {label}
     </p>
     {value ? (
       isLink ? (
-        <a href={value} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[var(--color-plum)]">
+        <a href={value} target="_blank" rel="noreferrer" className="text-sm font-semibold text-[var(--primary)]">
           {value}
         </a>
       ) : (
-        <p className="text-sm text-[#2e1f2c]">{value}</p>
+        <p className="text-sm text-[var(--foreground)]">{value}</p>
       )
     ) : (
-      <p className="text-sm text-[#b98b9e]">Not provided</p>
+      <p className="text-sm text-[var(--medium-gray)]">Not provided</p>
     )}
   </div>
 );
@@ -631,11 +631,11 @@ const TextField = ({
 }) => {
   const baseClasses = "mt-2 w-full rounded-2xl border px-4 py-3 text-sm focus:outline-none";
   return (
-    <label className="text-sm font-semibold text-[#2e1f2c]">
+    <label className="text-sm font-semibold text-[var(--foreground)]">
       {label}
       {multiline ? (
         <textarea
-          className={`${baseClasses} border-[var(--border-soft)] bg-white`}
+          className={`${baseClasses} border-[var(--border)] bg-white`}
           rows={rows}
           value={value}
           placeholder={placeholder}
@@ -643,14 +643,14 @@ const TextField = ({
         />
       ) : (
         <input
-          className={`${baseClasses} border-[var(--border-soft)] bg-white`}
+          className={`${baseClasses} border-[var(--border)] bg-white`}
           type={type}
           value={value}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
         />
       )}
-      {helper ? <span className="mt-1 block text-xs text-[#b98b9e]">{helper}</span> : null}
+      {helper ? <span className="mt-1 block text-xs text-[var(--medium-gray)]">{helper}</span> : null}
     </label>
   );
 };
@@ -666,10 +666,10 @@ const SelectField = ({
   options: { label: string; value: string }[];
   onChange: (value: string) => void;
 }) => (
-  <label className="text-sm font-semibold text-[#2e1f2c]">
+  <label className="text-sm font-semibold text-[var(--foreground)]">
     {label}
     <select
-      className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] bg-white px-4 py-3 text-sm text-[#2e1f2c] focus:outline-none"
+      className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] focus:outline-none"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >

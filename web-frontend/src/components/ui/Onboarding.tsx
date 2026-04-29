@@ -217,7 +217,7 @@ const OnboardingOverlay = () => {
           style={{
             ...getTooltipPosition(),
             background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
+            border: "1px solid var(--border)",
           }}
         >
           {/* Step indicator */}
@@ -233,7 +233,7 @@ const OnboardingOverlay = () => {
                       ? "var(--color-primary)"
                       : i < currentStep
                       ? "var(--color-primary)"
-                      : "var(--surface-muted)",
+                      : "var(--background)",
                 }}
                 transition={{ duration: 0.3 }}
               />
@@ -243,7 +243,7 @@ const OnboardingOverlay = () => {
           {/* Content */}
           <h4
             className="text-lg font-semibold mb-1"
-            style={{ color: "var(--color-charcoal)" }}
+            style={{ color: "var(--foreground)" }}
           >
             {step.title}
           </h4>
@@ -271,8 +271,8 @@ const OnboardingOverlay = () => {
                   onClick={prev}
                   className="px-4 py-2 rounded-full text-sm font-semibold"
                   style={{
-                    backgroundColor: "var(--surface-muted)",
-                    color: "var(--color-charcoal)",
+                    backgroundColor: "var(--background)",
+                    color: "var(--foreground)",
                   }}
                 >
                   Back
@@ -353,7 +353,7 @@ export const FeatureHighlight = ({
               `}
               style={{
                 background: "var(--surface)",
-                border: "1px solid var(--border-soft)",
+                border: "1px solid var(--border)",
               }}
             >
               {/* Arrow */}
@@ -364,17 +364,17 @@ export const FeatureHighlight = ({
                 `}
                 style={{
                   background: "var(--surface)",
-                  borderRight: position === "top" ? "1px solid var(--border-soft)" : "none",
-                  borderBottom: position === "top" ? "1px solid var(--border-soft)" : "none",
-                  borderLeft: position === "bottom" ? "1px solid var(--border-soft)" : "none",
-                  borderTop: position === "bottom" ? "1px solid var(--border-soft)" : "none",
+                  borderRight: position === "top" ? "1px solid var(--border)" : "none",
+                  borderBottom: position === "top" ? "1px solid var(--border)" : "none",
+                  borderLeft: position === "bottom" ? "1px solid var(--border)" : "none",
+                  borderTop: position === "bottom" ? "1px solid var(--border)" : "none",
                 }}
               />
 
               <div className="flex items-start justify-between mb-2">
                 <h5
                   className="text-sm font-semibold"
-                  style={{ color: "var(--color-charcoal)" }}
+                  style={{ color: "var(--foreground)" }}
                 >
                   {title}
                 </h5>
@@ -422,7 +422,7 @@ export const StepProgress = ({ steps, currentStep, className = "" }: StepProgres
             <motion.div
               animate={{
                 backgroundColor:
-                  index <= currentStep ? "var(--color-primary)" : "var(--surface-muted)",
+                  index <= currentStep ? "var(--color-primary)" : "var(--background)",
                 scale: index === currentStep ? 1.1 : 1,
               }}
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
@@ -450,7 +450,7 @@ export const StepProgress = ({ steps, currentStep, className = "" }: StepProgres
             <span
               className="mt-2 text-xs font-medium whitespace-nowrap"
               style={{
-                color: index <= currentStep ? "var(--color-charcoal)" : "var(--color-text-muted)",
+                color: index <= currentStep ? "var(--foreground)" : "var(--color-text-muted)",
               }}
             >
               {label}
@@ -464,7 +464,7 @@ export const StepProgress = ({ steps, currentStep, className = "" }: StepProgres
               style={{ width: 40 }}
               animate={{
                 backgroundColor:
-                  index < currentStep ? "var(--color-primary)" : "var(--surface-muted)",
+                  index < currentStep ? "var(--color-primary)" : "var(--background)",
               }}
             />
           )}

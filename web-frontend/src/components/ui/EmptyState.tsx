@@ -20,7 +20,7 @@ const EmptyBoxIllustration = () => (
     {/* Box body */}
     <motion.path
       d="M20 45L60 25L100 45L100 90L60 110L20 90L20 45Z"
-      fill="var(--color-peach)"
+      fill="var(--primary-light)"
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
@@ -28,8 +28,8 @@ const EmptyBoxIllustration = () => (
     {/* Box top */}
     <motion.path
       d="M20 45L60 65L100 45L60 25L20 45Z"
-      fill="var(--surface-muted)"
-      stroke="var(--color-plum)"
+      fill="var(--background)"
+      stroke="var(--primary)"
       strokeWidth={2}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -38,8 +38,8 @@ const EmptyBoxIllustration = () => (
     {/* Box left side */}
     <motion.path
       d="M20 45L20 90L60 110L60 65L20 45Z"
-      fill="var(--color-linen)"
-      stroke="var(--color-plum)"
+      fill="var(--background)"
+      stroke="var(--primary)"
       strokeWidth={2}
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -49,7 +49,7 @@ const EmptyBoxIllustration = () => (
     <motion.path
       d="M60 65L60 110L100 90L100 45L60 65Z"
       fill="var(--surface)"
-      stroke="var(--color-plum)"
+      stroke="var(--primary)"
       strokeWidth={2}
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -62,7 +62,7 @@ const EmptyBoxIllustration = () => (
       textAnchor="middle"
       fontSize="28"
       fontWeight="bold"
-      fill="var(--color-plum)"
+      fill="var(--primary)"
       initial={{ opacity: 0, scale: 0 }}
       animate={{ opacity: 0.5, scale: 1 }}
       transition={{ duration: 0.4, delay: 0.5 }}
@@ -88,7 +88,7 @@ const NoDataIllustration = () => (
       width="20"
       height="25"
       rx="4"
-      fill="var(--surface-muted)"
+      fill="var(--background)"
       initial={{ scaleY: 0 }}
       animate={{ scaleY: 1 }}
       transition={{ duration: 0.4, delay: 0.1 }}
@@ -100,7 +100,7 @@ const NoDataIllustration = () => (
       width="20"
       height="45"
       rx="4"
-      fill="var(--surface-muted)"
+      fill="var(--background)"
       initial={{ scaleY: 0 }}
       animate={{ scaleY: 1 }}
       transition={{ duration: 0.4, delay: 0.2 }}
@@ -112,7 +112,7 @@ const NoDataIllustration = () => (
       width="20"
       height="60"
       rx="4"
-      fill="var(--surface-muted)"
+      fill="var(--background)"
       initial={{ scaleY: 0 }}
       animate={{ scaleY: 1 }}
       transition={{ duration: 0.4, delay: 0.3 }}
@@ -124,7 +124,7 @@ const NoDataIllustration = () => (
       width="20"
       height="40"
       rx="4"
-      fill="var(--surface-muted)"
+      fill="var(--background)"
       initial={{ scaleY: 0 }}
       animate={{ scaleY: 1 }}
       transition={{ duration: 0.4, delay: 0.4 }}
@@ -136,7 +136,7 @@ const NoDataIllustration = () => (
       y1="60"
       x2="115"
       y2="60"
-      stroke="var(--color-plum)"
+      stroke="var(--primary)"
       strokeWidth={2}
       strokeDasharray="6 4"
       initial={{ pathLength: 0 }}
@@ -149,8 +149,8 @@ const NoDataIllustration = () => (
       animate={{ opacity: 1, scale: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.7, type: "spring" }}
     >
-      <circle cx="85" cy="30" r="15" fill="var(--color-peach)" stroke="var(--color-plum)" strokeWidth={3} />
-      <line x1="96" y1="41" x2="108" y2="53" stroke="var(--color-plum)" strokeWidth={4} strokeLinecap="round" />
+      <circle cx="85" cy="30" r="15" fill="var(--primary-light)" stroke="var(--primary)" strokeWidth={3} />
+      <line x1="96" y1="41" x2="108" y2="53" stroke="var(--primary)" strokeWidth={4} strokeLinecap="round" />
     </motion.g>
   </motion.svg>
 );
@@ -171,7 +171,7 @@ const NoSearchResultsIllustration = () => (
       width="70"
       height="75"
       rx="8"
-      fill="var(--surface-muted)"
+      fill="var(--background)"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -182,7 +182,7 @@ const NoSearchResultsIllustration = () => (
       width="70"
       height="75"
       rx="8"
-      fill="var(--color-linen)"
+      fill="var(--background)"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
@@ -194,7 +194,7 @@ const NoSearchResultsIllustration = () => (
       height="75"
       rx="8"
       fill="var(--surface)"
-      stroke="var(--color-plum)"
+      stroke="var(--primary)"
       strokeWidth={2}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -209,7 +209,7 @@ const NoSearchResultsIllustration = () => (
         width={50 - i * 10}
         height="6"
         rx="3"
-        fill="var(--surface-muted)"
+        fill="var(--background)"
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.3, delay: 0.4 + i * 0.1 }}
@@ -351,7 +351,7 @@ export const EmptyState = ({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
         className="text-xl font-semibold mb-2"
-        style={{ color: "var(--color-charcoal)" }}
+        style={{ color: "var(--foreground)" }}
       >
         {title}
       </motion.h3>
@@ -404,7 +404,7 @@ export const LoadingEmptyState = ({ message = "Loading..." }: { message?: string
       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
       className="w-10 h-10 rounded-full border-3 mb-4"
       style={{
-        borderColor: "var(--surface-muted)",
+        borderColor: "var(--background)",
         borderTopColor: "var(--color-primary)",
         borderWidth: 3,
       }}

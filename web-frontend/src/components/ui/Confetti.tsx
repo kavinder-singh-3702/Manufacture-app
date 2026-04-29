@@ -21,8 +21,8 @@ interface ConfettiParticle {
 
 const COLORS = [
   "var(--color-primary)",
-  "var(--color-peach)",
-  "var(--color-plum)",
+  "var(--primary-light)",
+  "var(--primary)",
   "#FFD700",
   "#FF6B6B",
   "#4ECDC4",
@@ -171,7 +171,7 @@ export const SuccessCelebration = ({
               <div
                 className="rounded-3xl p-8 text-center"
                 style={{
-                  background: "linear-gradient(135deg, var(--surface), var(--color-linen))",
+                  background: "linear-gradient(135deg, var(--surface), var(--background))",
                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                 }}
               >
@@ -208,7 +208,7 @@ export const SuccessCelebration = ({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                   className="text-2xl font-bold mb-2"
-                  style={{ color: "var(--color-charcoal)" }}
+                  style={{ color: "var(--foreground)" }}
                 >
                   {title}
                 </motion.h2>
@@ -234,7 +234,7 @@ export const SuccessCelebration = ({
                   onClick={onClose}
                   className="px-6 py-2.5 rounded-full text-sm font-semibold text-white"
                   style={{
-                    backgroundColor: "var(--color-plum)",
+                    backgroundColor: "var(--primary)",
                     boxShadow: "0 4px 12px rgba(90, 48, 66, 0.3)",
                   }}
                 >

@@ -53,13 +53,13 @@ export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: Profil
   const initials = (user.displayName ?? user.email ?? "NA").slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3">
+    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3">
       <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[var(--border-soft)] bg-white text-sm font-semibold text-[var(--color-plum)]">
+        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-white text-sm font-semibold text-[var(--primary)]">
           {preview ? <img src={preview} alt="Avatar preview" className="h-full w-full object-cover" /> : initials}
         </div>
-        <div className="flex flex-1 flex-col gap-2 text-sm text-[#5c4451]">
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border-soft)] bg-white px-4 py-2 font-semibold text-[var(--color-plum)] shadow-sm hover:border-[var(--color-plum)]">
+        <div className="flex flex-1 flex-col gap-2 text-sm text-[var(--foreground)]">
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)]">
             <input
               type="file"
               accept="image/*"
@@ -71,7 +71,7 @@ export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: Profil
             />
             Upload photo
           </label>
-          <p className="text-xs text-[#b98b9e]">Upload a JPG/PNG. We will show a preview instantly.</p>
+          <p className="text-xs text-[var(--medium-gray)]">Upload a JPG/PNG. We will show a preview instantly.</p>
           {error ? <p className="text-xs font-semibold text-[#c53048]">{error}</p> : null}
         </div>
       </div>

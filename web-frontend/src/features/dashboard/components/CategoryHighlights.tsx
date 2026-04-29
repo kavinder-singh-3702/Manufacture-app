@@ -15,21 +15,21 @@ const gradients = [
 export const CategoryHighlights = ({ sections = categorySections }: CategoryHighlightsProps) => {
   return (
     <section
-      className="rounded-3xl p-6 shadow-lg shadow-[#5a304226]"
+      className="rounded-3xl p-6 shadow-lg shadow-[rgba(20,141,178,0.15)]"
       style={{
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border)",
         backgroundColor: "var(--surface)",
         color: "var(--foreground)",
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Discovery
           </p>
-          <h2 className="text-xl font-semibold text-[#2e1f2c]">Top categories</h2>
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">Top categories</h2>
         </div>
-        <button className="text-sm font-semibold transition" style={{ color: "var(--color-plum)" }}>
+        <button className="text-sm font-semibold transition" style={{ color: "var(--primary)" }}>
           View all
         </button>
       </div>
@@ -39,12 +39,12 @@ export const CategoryHighlights = ({ sections = categorySections }: CategoryHigh
             key={section.id}
             className="flex flex-col gap-4 rounded-2xl border p-5 shadow-sm"
             style={{
-              borderColor: "var(--border-soft)",
+              borderColor: "var(--border)",
               background: gradients[index % gradients.length],
             }}
           >
             <div className="space-y-1 rounded-2xl bg-white/80 p-4 backdrop-blur">
-              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--color-plum)" }}>
+              <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
                 {section.highlight}
               </p>
               <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
@@ -57,16 +57,16 @@ export const CategoryHighlights = ({ sections = categorySections }: CategoryHigh
                   key={item.id}
                   className="flex items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition"
                   style={{
-                    borderColor: "var(--border-soft)",
+                    borderColor: "var(--border)",
                     backgroundColor: "var(--surface)",
-                    color: "var(--color-plum)",
+                    color: "var(--primary)",
                   }}
                 >
                   <div>
                     <p>{item.label}</p>
-                    <p className="text-xs font-medium text-[#5c4451]">{item.detail}</p>
+                    <p className="text-xs font-medium text-[var(--foreground)]">{item.detail}</p>
                   </div>
-                  <span className="text-lg text-[#b98b9e]">›</span>
+                  <span className="text-lg text-[var(--medium-gray)]">›</span>
                 </button>
               ))}
             </div>

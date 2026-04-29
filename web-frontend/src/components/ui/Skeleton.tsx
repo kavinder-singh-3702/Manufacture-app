@@ -34,7 +34,7 @@ export const Skeleton = ({
         width,
         height,
         borderRadius,
-        background: "linear-gradient(90deg, var(--surface-muted) 0%, var(--color-peach) 50%, var(--surface-muted) 100%)",
+        background: "linear-gradient(90deg, var(--background) 0%, var(--primary-light) 50%, var(--background) 100%)",
         backgroundSize: "200% 100%",
       }}
       className={className}
@@ -70,7 +70,7 @@ export const SkeletonCard = ({ className = "" }: { className?: string }) => {
     <div
       className={`rounded-2xl p-6 ${className}`}
       style={{
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border)",
         background: "var(--surface)",
       }}
     >
@@ -94,7 +94,7 @@ export const SkeletonTable = ({ rows = 5, columns = 4, className = "" }: { rows?
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Header */}
-      <div className="flex gap-4 pb-3" style={{ borderBottom: "1px solid var(--border-soft)" }}>
+      <div className="flex gap-4 pb-3" style={{ borderBottom: "1px solid var(--border)" }}>
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} height={14} width={`${100 / columns}%`} borderRadius={4} />
         ))}
@@ -121,7 +121,7 @@ export const SkeletonKPICard = ({ className = "" }: { className?: string }) => {
     <div
       className={`rounded-2xl p-5 ${className}`}
       style={{
-        border: "1px solid var(--border-soft)",
+        border: "1px solid var(--border)",
         background: "var(--surface)",
       }}
     >
@@ -205,7 +205,7 @@ export const DashboardSkeleton = () => {
           <div
             className="rounded-2xl p-5"
             style={{
-              border: "1px solid var(--border-soft)",
+              border: "1px solid var(--border)",
               background: "var(--surface)",
             }}
           >

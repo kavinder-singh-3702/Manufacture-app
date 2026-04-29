@@ -28,7 +28,7 @@ const CompanyBadge = ({
   return (
     <motion.div
       key={company.id}
-      className="flex items-center justify-between rounded-2xl border border-[var(--border-soft)] bg-white/90 px-4 py-3 shadow-sm"
+      className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/90 px-4 py-3 shadow-sm"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
@@ -38,30 +38,30 @@ const CompanyBadge = ({
           <img
             src={company.logoUrl}
             alt={company.displayName}
-            className="h-10 w-10 rounded-full border border-[var(--border-soft)] object-cover"
+            className="h-10 w-10 rounded-full border border-[var(--border)] object-cover"
           />
         ) : (
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-peach)] text-sm font-semibold text-[var(--color-plum)]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-light)] text-sm font-semibold text-[var(--primary)]">
             {company.displayName.slice(0, 2).toUpperCase()}
           </span>
         )}
         <div>
-          <p className="text-sm font-semibold text-[#2e1f2c]">{company.displayName}</p>
-          <p className="text-xs text-[#7a5d6b]">
+          <p className="text-sm font-semibold text-[var(--foreground)]">{company.displayName}</p>
+          <p className="text-xs text-[var(--medium-gray)]">
             {categoryLabel} • {company.type ?? "normal"}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
         {active ? (
-          <span className="rounded-full bg-[var(--color-peach)] px-3 py-1 text-xs font-semibold text-[var(--color-plum)]">
+          <span className="rounded-full bg-[var(--primary-light)] px-3 py-1 text-xs font-semibold text-[var(--primary)]">
             Active
           </span>
         ) : (
           <button
             onClick={() => onSwitch(company.id)}
             disabled={switching}
-            className="rounded-full border border-[var(--color-plum)] px-3 py-1 text-xs font-semibold text-[var(--color-plum)] transition hover:scale-[1.02] disabled:opacity-50"
+            className="rounded-full border border-[var(--primary)] px-3 py-1 text-xs font-semibold text-[var(--primary)] transition hover:scale-[1.02] disabled:opacity-50"
           >
             {switching ? "Switching…" : "Switch"}
           </button>
@@ -157,24 +157,24 @@ export const CompanyWorkspace = () => {
   }, [companies, activeCompanyId]);
 
   return (
-    <section className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-4">
+    <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Multi-company
           </p>
-          <h3 className="text-xl font-semibold text-[#2e1f2c]">Linked workspaces</h3>
-          <p className="text-sm text-[#5c4451]">
+          <h3 className="text-xl font-semibold text-[var(--foreground)]">Linked workspaces</h3>
+          <p className="text-sm text-[var(--foreground)]">
             Switch like Instagram profiles. Create and link multiple entities under one login.
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-3 text-sm font-semibold text-[var(--color-plum)]">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm font-semibold text-[var(--primary)]">
           Active: {activeName}
         </div>
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[#b23a48]">
+        <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[var(--accent)]">
           {error}
         </div>
       ) : null}
@@ -182,9 +182,9 @@ export const CompanyWorkspace = () => {
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3">
           {loading ? (
-            <div className="space-y-2 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-              <div className="h-4 w-28 rounded bg-[var(--color-linen)]" />
-              <div className="h-4 w-20 rounded bg-[var(--color-linen)]" />
+            <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+              <div className="h-4 w-28 rounded bg-[var(--background)]" />
+              <div className="h-4 w-20 rounded bg-[var(--background)]" />
             </div>
           ) : companies.length ? (
             <div className="space-y-2">
@@ -201,7 +201,7 @@ export const CompanyWorkspace = () => {
               </AnimatePresence>
             </div>
           ) : (
-            <p className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-4 py-3 text-sm text-[#5c4451]">
+            <p className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)]">
               No companies yet. Create one to get started.
             </p>
           )}
@@ -209,34 +209,34 @@ export const CompanyWorkspace = () => {
 
         <form
           onSubmit={handleCreate}
-          className="space-y-4 rounded-2xl border border-[var(--border-soft)] bg-white p-4 shadow-sm shadow-[#5a304210]"
+          className="space-y-4 rounded-2xl border border-[var(--border)] bg-white p-4 shadow-sm shadow-[rgba(20,141,178,0.06)]"
         >
-          <p className="text-sm font-semibold text-[#2e1f2c]">Create a company</p>
-          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-sm font-semibold text-[var(--foreground)]">Create a company</p>
+          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
             Display name
             <input
-              className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] px-3 py-2 text-sm text-[#2e1f2c] placeholder:text-[#b98b9e] focus:outline-none"
+              className="mt-2 w-full rounded-2xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
               placeholder="e.g., Acme Textiles"
               value={form.displayName}
               onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
             />
           </label>
 
-          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
             Logo URL
             <input
-              className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] px-3 py-2 text-sm text-[#2e1f2c] placeholder:text-[#b98b9e] focus:outline-none"
+              className="mt-2 w-full rounded-2xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
               placeholder="https://..."
               value={form.logoUrl}
               onChange={(event) => setForm((prev) => ({ ...prev, logoUrl: event.target.value }))}
             />
-            <span className="mt-1 block text-[11px] text-[#7a5d6b]">Paste an image link to personalize the company avatar.</span>
+            <span className="mt-1 block text-[11px] text-[var(--medium-gray)]">Paste an image link to personalize the company avatar.</span>
           </label>
 
-          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+          <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
             Type
             <select
-              className="mt-2 w-full rounded-2xl border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[#2e1f2c] focus:outline-none"
+              className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none"
               value={form.type}
               onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
             >
@@ -249,7 +249,7 @@ export const CompanyWorkspace = () => {
           </label>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
               Categories
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -262,9 +262,9 @@ export const CompanyWorkspace = () => {
                     onClick={() => toggleCategory(category)}
                     className="rounded-full border px-3 py-1 text-xs font-semibold transition"
                     style={{
-                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border-soft)",
-                      backgroundColor: active ? "var(--color-peach)" : "transparent",
-                      color: active ? "var(--color-plum)" : "#5c4451",
+                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border)",
+                      backgroundColor: active ? "var(--primary-light)" : "transparent",
+                      color: active ? "var(--primary)" : "var(--medium-gray)",
                     }}
                   >
                     {formatCategory(category)}
@@ -277,7 +277,7 @@ export const CompanyWorkspace = () => {
           <button
             type="submit"
             disabled={creating}
-            className="w-full rounded-full bg-[var(--color-plum)] py-3 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-[#5a304225] disabled:opacity-60"
+            className="w-full rounded-full bg-[var(--primary)] py-3 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-[rgba(20,141,178,0.15)] disabled:opacity-60"
           >
             {creating ? "Creating…" : "Create & link"}
           </button>

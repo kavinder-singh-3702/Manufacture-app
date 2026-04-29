@@ -32,21 +32,21 @@ export const DescriptionSection = () => {
   return (
     <section
       id="overview"
-      className="rounded-3xl border p-6 shadow-lg shadow-[#5a304226]/20 md:p-8"
+      className="rounded-3xl border p-6 shadow-lg shadow-[rgba(20,141,178,0.15)]/20 md:p-8"
       style={{
-        borderColor: "var(--border-soft)",
+        borderColor: "var(--border)",
         backgroundColor: "var(--surface)",
       }}
     >
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.6em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.6em]" style={{ color: "var(--primary)" }}>
             Why teams switch
           </p>
           <h2 className="text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
             A web console tailored for manufacturing leaders
           </h2>
-          <p className="text-base text-[#5c4451]">
+          <p className="text-base text-[var(--foreground)]">
             Build predictable export programs with a single pane of glass. We keep your RFQs, verification steps, and
             supplier health in sync with your mobile workflow so nothing slips.
           </p>
@@ -54,22 +54,22 @@ export const DescriptionSection = () => {
             {["ISO-ready logs", "Role-aware sharing", "Cross-team dashboards"].map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-[var(--border-soft)] bg-white px-3 py-1 text-xs font-semibold text-[#5a3042]"
+                className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
               >
                 {item}
               </span>
             ))}
           </div>
         </div>
-        <div className="grid w-full max-w-xl gap-3 rounded-3xl border border-[var(--border-soft)] bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+        <div className="grid w-full max-w-xl gap-3 rounded-3xl border border-[var(--border)] bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
             Onboarding lane
           </p>
           <div className="space-y-3">
             {milestones.map((milestone, index) => (
               <div
                 key={milestone.title}
-                className="flex items-start gap-3 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3"
+                className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3"
               >
                 <div
                   className="flex h-9 w-9 items-center justify-center rounded-2xl text-sm font-semibold text-white"
@@ -78,10 +78,10 @@ export const DescriptionSection = () => {
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-[#2e1f2c]">{milestone.title}</p>
-                  <p className="text-xs text-[#7a5d6b]">{milestone.detail}</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{milestone.title}</p>
+                  <p className="text-xs text-[var(--medium-gray)]">{milestone.detail}</p>
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[#b98b9e]">{milestone.meta}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--medium-gray)]">{milestone.meta}</span>
               </div>
             ))}
           </div>
@@ -91,17 +91,17 @@ export const DescriptionSection = () => {
         {features.map((feature) => (
           <article
             key={feature.title}
-            className="rounded-2xl border p-4 shadow-sm shadow-[#5a304214]"
+            className="rounded-2xl border p-4 shadow-sm shadow-[rgba(20,141,178,0.08)]"
             style={{
-              borderColor: "var(--border-soft)",
-              backgroundColor: "var(--surface-muted)",
+              borderColor: "var(--border)",
+              backgroundColor: "var(--background)",
             }}
           >
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: feature.tone }} />
-              <h3 className="text-base font-semibold text-[#2e1f2c]">{feature.title}</h3>
+              <h3 className="text-base font-semibold text-[var(--foreground)]">{feature.title}</h3>
             </div>
-            <p className="mt-2 text-sm text-[#5c4451]">{feature.description}</p>
+            <p className="mt-2 text-sm text-[var(--foreground)]">{feature.description}</p>
           </article>
         ))}
       </div>

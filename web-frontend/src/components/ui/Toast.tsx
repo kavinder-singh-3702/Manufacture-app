@@ -131,7 +131,7 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
 
       {/* Content */}
       <div className="flex-1">
-        <p className="font-semibold text-sm" style={{ color: "var(--color-charcoal)" }}>
+        <p className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>
           {toast.title}
         </p>
         {toast.message && (

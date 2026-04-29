@@ -45,7 +45,7 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
 
   if (initializing || !user) {
     return (
-      <div className="mx-auto max-w-3xl py-24 text-center text-sm font-semibold text-[#5c4451]">
+      <div className="mx-auto max-w-3xl py-24 text-center text-sm font-semibold text-[var(--foreground)]">
         Checking your session…
       </div>
     );
@@ -53,7 +53,7 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
 
   if (!isAdmin) {
     return (
-      <div className="mx-auto max-w-3xl py-24 text-center text-sm font-semibold text-[#5c4451]">
+      <div className="mx-auto max-w-3xl py-24 text-center text-sm font-semibold text-[var(--foreground)]">
         You need an admin account to access this console.
       </div>
     );
@@ -64,7 +64,7 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
       <AdminTopbar userEmail={user.email} onToggleSidebar={() => setSidebarOpen(true)} />
       <div className="flex flex-col gap-6 lg:flex-row">
         <AdminSidebar activePath={pathname} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-5 shadow-lg shadow-[#5a304218]">
+        <div className="flex-1 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg shadow-[rgba(20,141,178,0.08)]">
           {children}
         </div>
       </div>
@@ -74,7 +74,7 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
 
 const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onToggleSidebar: () => void }) => (
   <motion.header
-    className="flex flex-col gap-4 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-4 shadow-lg shadow-[#5a304212] lg:flex-row lg:items-center lg:justify-between"
+    className="flex flex-col gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.07)] lg:flex-row lg:items-center lg:justify-between"
     initial={{ opacity: 0, y: -12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
@@ -82,7 +82,7 @@ const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onTog
     <div className="flex items-center gap-3">
       <button
         onClick={onToggleSidebar}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-soft)] text-[#5a3042] lg:hidden"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] text-[var(--primary-dark)] lg:hidden"
         aria-label="Toggle navigation"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -90,24 +90,24 @@ const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onTog
         </svg>
       </button>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
           Admin console
         </p>
-        <p className="text-lg font-semibold text-[#2e1f2c]">Compliance & moderation</p>
+        <p className="text-lg font-semibold text-[var(--foreground)]">Compliance & moderation</p>
       </div>
     </div>
     <div className="flex flex-1 flex-col gap-4 lg:flex-row lg:items-center">
-      <div className="flex items-center gap-3 rounded-2xl border border-[var(--border-soft)] bg-white/85 px-4 py-2">
+      <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-white/85 px-4 py-2">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 7.5-7.5 7.5 7.5 0 0 1-7.5 7.5z" stroke="#b98b9e" strokeWidth="1.6" />
+          <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 7.5-7.5 7.5 7.5 0 0 1-7.5 7.5z" stroke="var(--medium-gray)" strokeWidth="1.6" />
         </svg>
         <input
           type="search"
           placeholder="Search moderation queue"
-          className="w-full bg-transparent text-sm text-[#2e1f2c] placeholder:text-[#b98b9e] focus:outline-none"
+          className="w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
         />
       </div>
-      <div className="rounded-2xl border border-[var(--border-soft)] bg-white/85 px-4 py-2 text-sm text-[#5c4451]">
+      <div className="rounded-2xl border border-[var(--border)] bg-white/85 px-4 py-2 text-sm text-[var(--foreground)]">
         Signed in as {userEmail ?? "admin"}
       </div>
     </div>
@@ -135,7 +135,7 @@ const AdminSidebar = ({
             onClick={onClose}
           />
           <motion.aside
-            className="fixed inset-y-6 left-4 z-40 w-72 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-4 shadow-2xl lg:hidden"
+            className="fixed inset-y-6 left-4 z-40 w-72 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl lg:hidden"
             initial={{ x: -320, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -320, opacity: 0 }}
@@ -145,7 +145,7 @@ const AdminSidebar = ({
         </>
       ) : null}
     </AnimatePresence>
-    <div className="hidden w-full max-w-xs flex-shrink-0 rounded-3xl border border-[var(--border-soft)] bg-[var(--surface)] p-4 shadow-lg shadow-[#5a304218] lg:block">
+    <div className="hidden w-full max-w-xs flex-shrink-0 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.08)] lg:block">
       <AdminSidebarContent activePath={activePath} onNavigate={onClose} />
     </div>
   </>
@@ -153,11 +153,11 @@ const AdminSidebar = ({
 
 const AdminSidebarContent = ({ activePath, onNavigate }: { activePath: string; onNavigate: () => void }) => (
   <div className="space-y-4">
-    <div className="rounded-2xl bg-[var(--surface-muted)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+    <div className="rounded-2xl bg-[var(--background)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
         Admin tools
       </p>
-      <p className="mt-1 text-sm text-[#5c4451]">Jump between moderation workstreams</p>
+      <p className="mt-1 text-sm text-[var(--foreground)]">Jump between moderation workstreams</p>
     </div>
     <div className="space-y-2">
       {adminNavItems.map((item) => {
@@ -172,11 +172,11 @@ const AdminSidebarContent = ({ activePath, onNavigate }: { activePath: string; o
             {isActive && (
               <motion.span
                 layoutId="admin-sidebar-highlight"
-                className="absolute inset-0 rounded-2xl border border-[var(--color-plum)] bg-white shadow-xl shadow-[#5a304233]"
+                className="absolute inset-0 rounded-2xl border border-[var(--primary)] bg-white shadow-xl shadow-[rgba(20,141,178,0.20)]"
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
               />
             )}
-            <span className={`relative z-10 text-sm font-semibold ${isActive ? "text-[var(--color-plum)]" : "text-[#5c4451]"}`}>
+            <span className={`relative z-10 text-sm font-semibold ${isActive ? "text-[var(--primary)]" : "text-[var(--foreground)]"}`}>
               {item.label}
             </span>
           </Link>
@@ -228,10 +228,10 @@ export const AdminOverview = () => {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Admin overview
           </p>
-          <h1 className="text-2xl font-semibold text-[#2e1f2c]">Compliance command center</h1>
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Compliance command center</h1>
           <p className="text-sm text-[#6c4f5b]">Track verification throughput and jump into the moderation queue.</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -239,13 +239,13 @@ export const AdminOverview = () => {
             type="button"
             onClick={loadRequests}
             className="rounded-full px-5 py-2 text-sm font-semibold text-white"
-            style={{ backgroundColor: "var(--color-plum)", boxShadow: "0 10px 25px rgba(90,48,66,0.2)" }}
+            style={{ backgroundColor: "var(--primary)", boxShadow: "0 10px 25px rgba(90,48,66,0.2)" }}
           >
             Refresh data
           </button>
           <Link
             href="/admin/verification-requests"
-            className="rounded-full border border-[var(--color-plum)] px-5 py-2 text-sm font-semibold text-[var(--color-plum)]"
+            className="rounded-full border border-[var(--primary)] px-5 py-2 text-sm font-semibold text-[var(--primary)]"
           >
             Go to queue
           </Link>
@@ -259,11 +259,11 @@ export const AdminOverview = () => {
           { label: "Approved", value: stats.approved },
           { label: "Rejected", value: stats.rejected },
         ].map((card) => (
-          <div key={card.label} className="rounded-3xl border border-[var(--border-soft)] bg-white/90 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--color-plum)" }}>
+          <div key={card.label} className="rounded-3xl border border-[var(--border)] bg-white/90 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
               {card.label}
             </p>
-            <p className="mt-3 text-3xl font-semibold text-[#2e1f2c]">{loading ? "…" : card.value}</p>
+            <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{loading ? "…" : card.value}</p>
           </div>
         ))}
       </div>
@@ -271,29 +271,29 @@ export const AdminOverview = () => {
       {error ? (
         <p className="text-sm font-semibold text-[#b91c1c]">{error}</p>
       ) : (
-        <div className="rounded-3xl border border-[var(--border-soft)] bg-white/95 p-5">
+        <div className="rounded-3xl border border-[var(--border)] bg-white/95 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
                 Recent submissions
               </p>
-              <h2 className="text-xl font-semibold text-[#2e1f2c]">Latest company reviews</h2>
+              <h2 className="text-xl font-semibold text-[var(--foreground)]">Latest company reviews</h2>
             </div>
-            <Link href="/admin/verification-requests" className="text-sm font-semibold text-[var(--color-plum)]">
+            <Link href="/admin/verification-requests" className="text-sm font-semibold text-[var(--primary)]">
               View all
             </Link>
           </div>
           {loading ? (
-            <p className="mt-6 text-sm text-[#5c4451]">Loading queue…</p>
+            <p className="mt-6 text-sm text-[var(--foreground)]">Loading queue…</p>
           ) : recent.length ? (
             <div className="mt-4 space-y-3">
               {recent.map((request) => {
                 const badge = statusColors[request.status];
                 return (
-                  <div key={request.id} className="rounded-2xl border border-[var(--border-soft)] bg-white/90 p-4">
+                  <div key={request.id} className="rounded-2xl border border-[var(--border)] bg-white/90 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[#2e1f2c]">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">
                           {request.company?.displayName ?? "Company"}
                         </p>
                         <p className="text-xs text-[#6c4f5b]">
@@ -312,7 +312,7 @@ export const AdminOverview = () => {
               })}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-[#5c4451]">No submissions yet.</p>
+            <p className="mt-4 text-sm text-[var(--foreground)]">No submissions yet.</p>
           )}
         </div>
       )}
