@@ -8,6 +8,7 @@ import { buildInitials, resolveCompanyLabel } from "./helpers";
 
 export const navItems = [
   { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
+  { id: "products",      label: "Products",       description: "Catalog & stock",     href: "/dashboard/products" },
   { id: "company",       label: "Company",        description: "Profile & details",   href: "/dashboard/company" },
   { id: "activity",      label: "Activity",       description: "Recent timeline",     href: "/dashboard/activity" },
   { id: "notifications", label: "Notifications",  description: "Alerts & updates",    href: "/dashboard/notifications" },
@@ -26,6 +27,12 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
           <rect x="14" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.8" />
           <rect x="3" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.8" />
           <rect x="14" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth="1.8" />
+        </svg>
+      );
+    case "products":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 8 12 3 3 8m18 0v8l-9 5m9-13L12 13m0 0L3 8m9 5v8m0 0L3 16V8" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "company":
