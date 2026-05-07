@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     resizeMode: "cover",
+    tintColor: "#121923",
   },
   textWrap: {
     marginLeft: 10,

@@ -72,6 +72,16 @@ const {
   updateAdminOrderStatusValidation
 } = require('../../productOrders/validators/productOrder.validators');
 const {
+  listAdminInquiriesController,
+  getAdminInquiryController,
+  updateAdminInquiryStatusController,
+} = require('../../productInquiry/controllers/productInquiry.controller');
+const {
+  inquiryIdParamValidation,
+  listAdminInquiriesValidation,
+  updateAdminInquiryStatusValidation,
+} = require('../../productInquiry/validators/productInquiry.validators');
+const {
   createProductValidation,
   updateProductValidation,
   adjustQuantityValidation,
@@ -253,5 +263,18 @@ router.get('/call-logs', validate(listAdminCallLogsValidation), listAdminCallLog
 
 // GET /api/admin/audit-events - immutable admin audit stream
 router.get('/audit-events', validate(listAdminAuditEventsValidation), listAdminAuditEventsController);
+
+// GET /api/admin/product-inquiries - purchase inquiry queue
+router.get('/product-inquiries', validate(listAdminInquiriesValidation), listAdminInquiriesController);
+
+// GET /api/admin/product-inquiries/:inquiryId - inquiry detail
+router.get('/product-inquiries/:inquiryId', validate(inquiryIdParamValidation), getAdminInquiryController);
+
+// PATCH /api/admin/product-inquiries/:inquiryId/status - update inquiry status
+router.patch(
+  '/product-inquiries/:inquiryId/status',
+  validate([...inquiryIdParamValidation, ...updateAdminInquiryStatusValidation]),
+  updateAdminInquiryStatusController
+);
 
 module.exports = router;

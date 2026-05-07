@@ -19,7 +19,9 @@ const ADMIN_PERMISSIONS = Object.freeze({
   MUTATE_INHOUSE_PRODUCTS: 'admin.mutate.inhouse-products',
   MUTATE_PRODUCT_ORDERS: 'admin.mutate.product-orders',
   REQUEST_COMPANY_DOCUMENTS: 'admin.mutate.request-documents',
-  HARD_DELETE_COMPANY: 'admin.mutate.hard-delete-company'
+  HARD_DELETE_COMPANY: 'admin.mutate.hard-delete-company',
+  READ_PRODUCT_INQUIRIES: 'admin.read.product-inquiries',
+  MUTATE_PRODUCT_INQUIRIES: 'admin.mutate.product-inquiries',
 });
 
 const PERMISSIONS_BY_ROLE = Object.freeze({
@@ -39,7 +41,9 @@ const PERMISSIONS_BY_ROLE = Object.freeze({
     ADMIN_PERMISSIONS.MUTATE_SERVICE_REQUEST_WORKFLOW,
     ADMIN_PERMISSIONS.MUTATE_INHOUSE_PRODUCTS,
     ADMIN_PERMISSIONS.MUTATE_PRODUCT_ORDERS,
-    ADMIN_PERMISSIONS.REQUEST_COMPANY_DOCUMENTS
+    ADMIN_PERMISSIONS.REQUEST_COMPANY_DOCUMENTS,
+    ADMIN_PERMISSIONS.READ_PRODUCT_INQUIRIES,
+    ADMIN_PERMISSIONS.MUTATE_PRODUCT_INQUIRIES,
   ]),
   'super-admin': new Set(Object.values(ADMIN_PERMISSIONS))
 });

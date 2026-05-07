@@ -606,14 +606,24 @@ export const AdminProductsScreen = () => {
           </View>
         </View>
         {isAdmin ? (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("AdminAddProduct")}
-            style={[styles.addInhouseButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
-          >
-            <Text style={styles.addInhouseButtonIcon}>＋</Text>
-            <Text style={styles.addInhouseButtonText}>Add</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("AdminProductInquiries")}
+              style={[styles.inquiriesButton, { borderRadius: radius.md, borderColor: colors.border }]}
+              hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
+            >
+              <Ionicons name="mail-outline" size={18} color={COLORS.accent} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("AdminAddProduct")}
+              style={[styles.addInhouseButton, { borderRadius: radius.md, backgroundColor: colors.primary }]}
+            >
+              <Text style={styles.addInhouseButtonIcon}>＋</Text>
+              <Text style={styles.addInhouseButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
       </View>
 
@@ -821,6 +831,19 @@ const createStyles = (COLORS: ReturnType<typeof useAdminProductsPalette>) =>
     fontWeight: "500",
     color: COLORS.textMuted,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inquiriesButton: {
+    width: 38,
+    height: 38,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
   },
   addInhouseButton: {
     height: 38,

@@ -47,6 +47,7 @@ import { TransactionListScreen } from "../screens/tally/TransactionListScreen";
 import { rootNavigationRef } from "./navigationRef";
 import { withAdminGuard } from "./components/AdminOnlyScreen";
 import { UserManagementScreen, VerificationsScreen, CompaniesScreen, AdStudioScreen } from "../screens/admin";
+import { AdminProductInquiriesScreen } from "../screens/admin/AdminProductInquiriesScreen";
 import { withCompanyContextGuard } from "./components/CompanyContextGuard";
 import { InternalInventoryItemFormScreen } from "../screens/internalInventory/InternalInventoryItemFormScreen";
 import { CheckoutScreen, OrderConfirmationScreen } from "../screens/payment";
@@ -66,6 +67,7 @@ const GuardedAdminUsersScreen = withAdminGuard(UserManagementScreen);
 const GuardedAdminCompaniesScreen = withAdminGuard(CompaniesScreen);
 const GuardedAdminVerificationsScreen = withAdminGuard(VerificationsScreen);
 const GuardedAdStudioScreen = withAdminGuard(AdStudioScreen);
+const GuardedAdminProductInquiriesScreen = withAdminGuard(AdminProductInquiriesScreen);
 const GuardedAdminAddProductScreen = withAdminGuard(AdminAddProductScreen);
 const GuardedAdminEditProductScreen = withAdminGuard(AdminEditProductScreen);
 const GuardedAdminProductVariantsScreen = withAdminGuard(AdminProductVariantsScreen);
@@ -215,6 +217,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="AdminCatalog"
               component={GuardedAdminCatalogScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminProductInquiries"
+              component={GuardedAdminProductInquiriesScreen}
               options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen

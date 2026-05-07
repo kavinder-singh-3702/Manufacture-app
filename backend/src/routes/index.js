@@ -17,6 +17,7 @@ const quoteRouter = require('../modules/quotes/routes/quote.routes');
 const businessSetupRouter = require('../modules/businessSetup/routes/businessSetup.routes');
 const adsRouter = require('../modules/ads/routes/ad.routes');
 const productOrderRouter = require('../modules/productOrders/routes/productOrder.routes');
+const productInquiryRouter = require('../modules/productInquiry/routes/productInquiry.routes');
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/quotes', quoteRouter);
 router.use('/business-setup-requests', businessSetupRouter);
 router.use('/ads', adsRouter);
 router.use('/product-orders', productOrderRouter);
+router.use('/product-inquiries', productInquiryRouter);
 
 module.exports = router;

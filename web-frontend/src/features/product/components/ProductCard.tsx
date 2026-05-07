@@ -35,7 +35,7 @@ export const ProductCard = ({ product, index = 0 }: { product: Product; index?: 
       whileHover={{ y: -4 }}
     >
       <Link
-        href={`/dashboard/products/${product._id}`}
+        href={`/dashboard/products/detail?productId=${encodeURIComponent(product._id)}`}
         className="group relative block overflow-hidden rounded-2xl transition-shadow duration-200"
         style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}
       >

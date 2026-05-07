@@ -24,6 +24,8 @@ import { quoteService } from "../../services/quote.service";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
 import { QuoteRequestFormSubmit, QuoteRequestSheet } from "../quotes/components/QuoteRequestSheet";
+import { ProductInquirySheet, InquiryFormSubmit } from "../product/components/ProductInquirySheet";
+import { productInquiryService } from "../../services/productInquiry.service";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { isPublicListingProduct } from "./utils/publicListing";
 
@@ -84,6 +86,8 @@ export const ProductDetailsScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [quoteSheetOpen, setQuoteSheetOpen] = useState(false);
   const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [inquirySheetOpen, setInquirySheetOpen] = useState(false);
+  const [inquirySubmitting, setInquirySubmitting] = useState(false);
 
   const isGuest = user?.role === "guest";
 
@@ -151,6 +155,9 @@ export const ProductDetailsScreen = () => {
   const displayStock = selectedVariant ? Number(selectedVariant.availableQuantity || 0) : Number(product?.availableQuantity || 0);
   const hideStockForPublicListing = isPublicListingProduct(product);
   const checkoutEligible = Boolean(product?.purchaseOptions?.checkoutEligible);
+  const isAdminProduct =
+    !isOwnProduct &&
+    (product?.purchaseOptions as any)?.checkoutReason !== "not_inhouse";
 
   const handleShare = useCallback(async () => {
     if (!product) return;
@@ -297,6 +304,35 @@ export const ProductDetailsScreen = () => {
       }
     },
     [navigation, product, selectedVariantObjectId, toastError, toastSuccess]
+  );
+
+  const openInquirySheet = useCallback(() => {
+    if (isGuest) { requestLogin(); return; }
+    setInquirySheetOpen(true);
+  }, [isGuest, requestLogin]);
+
+  const submitInquiry = useCallback(
+    async (payload: InquiryFormSubmit) => {
+      if (!product) return;
+      try {
+        setInquirySubmitting(true);
+        await productInquiryService.create({
+          productId: product._id,
+          variantId: selectedVariantObjectId,
+          quantity: payload.quantity,
+          location: payload.location,
+          message: payload.message,
+          contact: payload.contact,
+        });
+        setInquirySheetOpen(false);
+        toastSuccess("Request sent", "Admin will reach out to you shortly.");
+      } catch (err: any) {
+        toastError("Failed to send", err?.message || "Please try again.");
+      } finally {
+        setInquirySubmitting(false);
+      }
+    },
+    [product, selectedVariantObjectId, toastError, toastSuccess]
   );
 
   const sellerName = product?.company?.displayName || "Seller";
@@ -614,41 +650,62 @@ export const ProductDetailsScreen = () => {
                   <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Promote Product</Text>
                 </TouchableOpacity>
               </View>
-            ) : checkoutEligible ? (
+            ) : isAdminProduct ? (
               <View style={styles.bottomColumn}>
                 <TouchableOpacity
-                  onPress={handleBuyNow}
+                  onPress={openInquirySheet}
                   style={[styles.quotePrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}
                 >
-                  <Ionicons name="flash-outline" size={18} color={colors.textOnPrimary} />
-                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Buy Now</Text>
+                  <Ionicons name="mail-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Contact to Purchase</Text>
                 </TouchableOpacity>
 
                 <View style={styles.bottomRow}>
                   <TouchableOpacity
-                    onPress={handleAddToCart}
+                    onPress={() =>
+                      startProductConversation({
+                        product,
+                        isGuest,
+                        requestLogin,
+                        navigation,
+                        toastError,
+                      })
+                    }
                     style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
                   >
+                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => callProductSeller({ product, toastError })}
+                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="call-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Call</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : /* === RAZORPAY CHECKOUT DISABLED — replaced by Contact to Purchase for admin products ===
+            checkoutEligible ? (
+              <View style={styles.bottomColumn}>
+                <TouchableOpacity onPress={handleBuyNow} style={[styles.quotePrimaryBtn, { borderRadius: radius.md, backgroundColor: colors.primary }]}>
+                  <Ionicons name="flash-outline" size={18} color={colors.textOnPrimary} />
+                  <Text style={[styles.bottomPrimaryText, { color: colors.textOnPrimary }]}>Buy Now</Text>
+                </TouchableOpacity>
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity onPress={handleAddToCart} style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}>
                     <Ionicons name="cart-outline" size={18} color={colors.primary} />
                     <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Add to Cart</Text>
                   </TouchableOpacity>
-
-                  <View
-                    style={[
-                      styles.checkoutInfoPill,
-                      {
-                        borderRadius: radius.md,
-                        borderColor: colors.border,
-                        backgroundColor: colors.primary + "12",
-                      },
-                    ]}
-                  >
+                  <View style={[styles.checkoutInfoPill, { borderRadius: radius.md, borderColor: colors.border, backgroundColor: colors.primary + "12" }]}>
                     <Ionicons name="shield-checkmark-outline" size={16} color={colors.primary} />
                     <Text style={[styles.checkoutInfoText, { color: colors.primary }]}>Razorpay</Text>
                   </View>
                 </View>
               </View>
-            ) : (
+            ) :
+            === END RAZORPAY CHECKOUT === */ (
               <View style={styles.bottomColumn}>
                 <TouchableOpacity
                   onPress={openQuoteSheet}
@@ -699,6 +756,20 @@ export const ProductDetailsScreen = () => {
             }}
             onClose={() => setQuoteSheetOpen(false)}
             onSubmit={submitQuoteRequest}
+          />
+
+          <ProductInquirySheet
+            visible={inquirySheetOpen}
+            loading={inquirySubmitting}
+            productName={product.name}
+            variantLabel={selectedVariant ? variantLabel(selectedVariant) : undefined}
+            defaultContact={{
+              name: user?.displayName || (user as any)?.firstName,
+              phone: user?.phone,
+              email: user?.email,
+            }}
+            onClose={() => setInquirySheetOpen(false)}
+            onSubmit={submitInquiry}
           />
         </>
       ) : null}
