@@ -22,39 +22,101 @@ const CardSkeleton = ({ index }: { index: number }) => (
   </motion.div>
 );
 
-const EmptyState = ({ onCreate }: { onCreate?: () => void }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 16 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.3 }}
-    className="flex flex-col items-center justify-center rounded-2xl px-6 py-16 text-center"
-    style={{ border: "1px dashed var(--border)", backgroundColor: "var(--card)" }}
-  >
-    <div
-      className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl"
-      style={{ background: "linear-gradient(135deg, var(--primary-light), var(--accent-light))" }}
+type EmptyStateProps = {
+  onCreate?: () => void;
+  scope?: "company" | "marketplace";
+  hasFilters?: boolean;
+  onClearFilters?: () => void;
+  onSwitchToMarketplace?: () => void;
+  companyName?: string;
+};
+
+const EmptyState = ({
+  onCreate,
+  scope = "company",
+  hasFilters = false,
+  onClearFilters,
+  onSwitchToMarketplace,
+  companyName,
+}: EmptyStateProps) => {
+  let icon = "📦";
+  let title = "No products yet";
+  let body = "Add your first product to start managing inventory and showing it to verified buyers.";
+  let primaryLabel: string | null = onCreate ? "Create your first product" : null;
+  let primaryAction = onCreate;
+  let secondary: { label: string; onClick: () => void } | null = null;
+
+  if (hasFilters) {
+    icon = "🔍";
+    title = "No products match your filters";
+    body = "Try clearing filters or switching scope to find what you're looking for.";
+    primaryLabel = onClearFilters ? "Clear filters" : null;
+    primaryAction = onClearFilters;
+    if (scope === "company" && onSwitchToMarketplace) {
+      secondary = { label: "Browse marketplace →", onClick: onSwitchToMarketplace };
+    }
+  } else if (scope === "company") {
+    icon = "📦";
+    title = companyName ? `${companyName} has no products yet` : "No products in this catalog yet";
+    body =
+      "My Catalog only shows products owned by your currently active company. If you created products under a different company, switch to it from the sidebar.";
+    primaryLabel = onCreate ? "Add a product" : null;
+    primaryAction = onCreate;
+    if (onSwitchToMarketplace) {
+      secondary = { label: "Browse marketplace →", onClick: onSwitchToMarketplace };
+    }
+  } else {
+    icon = "🛒";
+    title = "Marketplace is quiet";
+    body = "No products are listed right now. Check back soon, or add your own to get started.";
+    primaryLabel = onCreate ? "Add a product" : null;
+    primaryAction = onCreate;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col items-center justify-center rounded-2xl px-6 py-16 text-center"
+      style={{ border: "1px dashed var(--border)", backgroundColor: "var(--card)" }}
     >
-      📦
-    </div>
-    <h3 className="mt-5 text-lg font-bold" style={{ color: "var(--foreground)" }}>No products yet</h3>
-    <p className="mt-1.5 max-w-sm text-sm" style={{ color: "var(--medium-gray)" }}>
-      Add your first product to start managing inventory and showing it to verified buyers.
-    </p>
-    {onCreate && (
-      <button
-        type="button"
-        onClick={onCreate}
-        className="mt-5 inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
-        style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl"
+        style={{ background: "linear-gradient(135deg, var(--primary-light), var(--accent-light))" }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
-        Create your first product
-      </button>
-    )}
-  </motion.div>
-);
+        {icon}
+      </div>
+      <h3 className="mt-5 text-lg font-bold" style={{ color: "var(--foreground)" }}>{title}</h3>
+      <p className="mt-1.5 max-w-md text-sm" style={{ color: "var(--medium-gray)" }}>{body}</p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        {primaryLabel && primaryAction && (
+          <button
+            type="button"
+            onClick={primaryAction}
+            className="inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+            {primaryLabel}
+          </button>
+        )}
+        {secondary && (
+          <button
+            type="button"
+            onClick={secondary.onClick}
+            className="inline-flex items-center gap-1.5 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}
+          >
+            {secondary.label}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
 const ErrorState = ({ message, onRetry }: { message: string; onRetry?: () => void }) => (
   <div
@@ -88,6 +150,11 @@ export const ProductGrid = ({
   hasMore,
   loadingMore,
   onLoadMore,
+  scope,
+  hasFilters,
+  onClearFilters,
+  onSwitchToMarketplace,
+  companyName,
 }: {
   products: Product[];
   loading: boolean;
@@ -97,6 +164,11 @@ export const ProductGrid = ({
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  scope?: "company" | "marketplace";
+  hasFilters?: boolean;
+  onClearFilters?: () => void;
+  onSwitchToMarketplace?: () => void;
+  companyName?: string;
 }) => {
   if (loading && products.length === 0) {
     return (
@@ -111,7 +183,16 @@ export const ProductGrid = ({
   }
 
   if (products.length === 0) {
-    return <EmptyState onCreate={onCreate} />;
+    return (
+      <EmptyState
+        onCreate={onCreate}
+        scope={scope}
+        hasFilters={hasFilters}
+        onClearFilters={onClearFilters}
+        onSwitchToMarketplace={onSwitchToMarketplace}
+        companyName={companyName}
+      />
+    );
   }
 
   return (

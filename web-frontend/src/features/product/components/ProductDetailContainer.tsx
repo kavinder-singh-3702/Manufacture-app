@@ -9,9 +9,11 @@ import { ApiError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
 import { ProductFormDrawer } from "./ProductFormDrawer";
+import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 
 export const ProductDetailContainer = ({ productId }: { productId: string }) => {
   const router = useRouter();
+  const { activeCompany } = useDashboardContext();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +106,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const stockStatus = product.stockStatus ? STOCK_STATUS_COLORS[product.stockStatus] : null;
   const images = product.images ?? [];
   const cover = images[activeImage]?.url ?? images[0]?.url;
+  const canEdit = Boolean(activeCompany && product.company?._id && product.company._id === activeCompany.id);
 
   return (
     <div className="space-y-6">
@@ -232,52 +235,66 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                   Reorder at {product.minStockQuantity}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleAdjustQty(-1)}
-                  disabled={adjusting || product.availableQuantity <= 0}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold disabled:opacity-40"
-                  style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}
-                  aria-label="Decrease"
-                >−</button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustQty(1)}
-                  disabled={adjusting}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold text-white disabled:opacity-50"
-                  style={{ backgroundColor: "var(--primary)" }}
-                  aria-label="Increase"
-                >+</button>
-              </div>
+              {canEdit && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustQty(-1)}
+                    disabled={adjusting || product.availableQuantity <= 0}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold disabled:opacity-40"
+                    style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}
+                    aria-label="Decrease"
+                  >−</button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustQty(1)}
+                    disabled={adjusting}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold text-white disabled:opacity-50"
+                    style={{ backgroundColor: "var(--primary)" }}
+                    aria-label="Increase"
+                  >+</button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "var(--primary)" }}
+          {canEdit ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "var(--primary)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M11 4h-7v16h16v-7M19 4l-9 9M14 4h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Edit product
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteState("confirm")}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+                style={{ border: "1px solid var(--border)", color: "var(--accent)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          ) : (
+            <p
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium"
+              style={{ backgroundColor: "var(--light-gray)", color: "var(--medium-gray)" }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M11 4h-7v16h16v-7M19 4l-9 9M14 4h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15v2m-6-6V9a6 6 0 1 1 12 0v2m-15 0h18v9H3v-9z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Edit product
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteState("confirm")}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
-              style={{ border: "1px solid var(--border)", color: "var(--accent)" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Delete
-            </button>
-          </div>
+              Listed by {product.company?.displayName ?? "another company"} — view only
+            </p>
+          )}
         </div>
       </motion.div>
 
@@ -325,13 +342,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
         ))}
       </motion.div>
 
-      {/* Edit drawer */}
-      <ProductFormDrawer
-        open={editOpen}
-        product={product}
-        onClose={() => setEditOpen(false)}
-        onSubmit={handleSave}
-      />
+      {/* Edit drawer — owners only */}
+      {canEdit && (
+        <ProductFormDrawer
+          open={editOpen}
+          product={product}
+          onClose={() => setEditOpen(false)}
+          onSubmit={handleSave}
+        />
+      )}
 
       {/* Delete confirm modal */}
       {deleteState !== "idle" && (

@@ -92,27 +92,66 @@ export const ProductFilters = ({
         </div>
 
         {/* Scope toggle */}
-        <div className="flex rounded-xl p-1" style={{ backgroundColor: "var(--light-gray)" }}>
+        <div
+          role="tablist"
+          aria-label="Product scope"
+          className="flex flex-shrink-0 rounded-xl p-1"
+          style={{
+            backgroundColor: "var(--light-gray)",
+            border: "1px solid var(--border)",
+            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)",
+          }}
+        >
           {(["company", "marketplace"] as const).map((scope) => {
             const isActive = value.scope === scope;
+            const label = scope === "company" ? "My Catalog" : "Marketplace";
             return (
-              <button
+              <motion.button
                 key={scope}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => onChange({ ...value, scope })}
-                className="relative rounded-lg px-4 py-2 text-xs font-semibold transition-colors duration-200"
-                style={{ color: isActive ? "var(--primary)" : "var(--medium-gray)" }}
+                whileTap={{ scale: 0.96 }}
+                className="relative flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-200"
+                style={{ color: isActive ? "#fff" : "var(--foreground)" }}
               >
                 {isActive && (
                   <motion.span
                     layoutId="scope-pill"
                     className="absolute inset-0 rounded-lg"
-                    style={{ backgroundColor: "var(--surface)", boxShadow: "0 1px 4px rgba(20,141,178,0.12)" }}
-                    transition={{ type: "spring", stiffness: 600, damping: 38 }}
+                    style={{
+                      backgroundColor: "var(--primary)",
+                      boxShadow: "0 4px 12px rgba(20,141,178,0.35), 0 1px 2px rgba(20,141,178,0.2)",
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 34 }}
                   />
                 )}
-                <span className="relative z-10">{scope === "company" ? "My Catalog" : "Marketplace"}</span>
-              </button>
+                <span className="relative z-10 flex items-center gap-1.5">
+                  {scope === "company" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M3 7.5 12 3l9 4.5M3 7.5v9L12 21l9-4.5v-9M3 7.5l9 4.5m0 0 9-4.5m-9 4.5V21"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M3 9V7l2-4h14l2 4v2m-18 0a2 2 0 1 0 4 0m-4 0v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9m-18 0a2 2 0 1 1 4 0m0 0a2 2 0 1 0 4 0m0 0a2 2 0 1 1 4 0m0 0a2 2 0 1 0 4 0M9 21v-7h6v7"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                  {label}
+                </span>
+              </motion.button>
             );
           })}
         </div>

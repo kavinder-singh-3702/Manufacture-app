@@ -9,6 +9,7 @@ import { ProductsStatsHero } from "./ProductsStatsHero";
 import { ProductFilters, type FiltersState } from "./ProductFilters";
 import { ProductGrid } from "./ProductGrid";
 import { ProductFormDrawer } from "./ProductFormDrawer";
+import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 
 const PAGE_SIZE = 24;
 
@@ -68,6 +69,7 @@ const NoCompanyBanner = ({ onBrowseMarketplace }: { onBrowseMarketplace: () => v
 );
 
 export const ProductsListContainer = () => {
+  const { activeCompany } = useDashboardContext();
   const [filters, setFilters] = useState<FiltersState>(initialFilters);
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
@@ -173,6 +175,11 @@ export const ProductsListContainer = () => {
           hasMore={hasMore}
           loadingMore={loadingMore}
           onLoadMore={() => loadProducts("more")}
+          scope={filters.scope}
+          hasFilters={Boolean(filters.search || filters.category || filters.status)}
+          onClearFilters={() => setFilters({ ...initialFilters, scope: filters.scope })}
+          onSwitchToMarketplace={() => setFilters((f) => ({ ...f, scope: "marketplace" }))}
+          companyName={activeCompany?.displayName}
         />
       </div>
 
