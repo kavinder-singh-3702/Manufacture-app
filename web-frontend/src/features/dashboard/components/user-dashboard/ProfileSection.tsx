@@ -264,7 +264,7 @@ export const ProfileSection = ({
             )}
           </div>
           {saveState.status === "error" ? (
-            <p className="text-sm font-semibold text-[#c53048]">{saveState.message}</p>
+            <p className="text-sm font-semibold text-[color:var(--danger-strong)]">{saveState.message}</p>
           ) : null}
           <button
             type="submit"

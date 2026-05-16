@@ -466,7 +466,7 @@ const CreateCompanyModal = ({
         </div>
 
         {error ? (
-          <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[var(--accent)]">
+          <div className="mt-3 rounded-2xl border border-[color:var(--danger)] bg-[color:var(--danger-bg)] px-4 py-3 text-sm font-semibold text-[color:var(--danger-strong)]">
             {error}
           </div>
         ) : null}
@@ -526,7 +526,7 @@ const CreateCompanyModal = ({
                   <p className="text-xs text-[var(--medium-gray)]">
                     Upload a JPG/PNG. A preview appears instantly.
                   </p>
-                  {logoError ? <p className="text-xs font-semibold text-[#c53048]">{logoError}</p> : null}
+                  {logoError ? <p className="text-xs font-semibold text-[color:var(--danger-strong)]">{logoError}</p> : null}
                 </div>
               </div>
             </div>

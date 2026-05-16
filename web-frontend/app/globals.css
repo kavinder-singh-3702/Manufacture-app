@@ -23,6 +23,11 @@
   --warning: #F59E0B;
   --info: var(--teal);
 
+  /* Form-validation tones (softer than --error, brand-aligned) */
+  --danger: #FF9AA2;
+  --danger-strong: #C53048;
+  --danger-bg: #FFEEF1;
+
   /* Application Colors */
   --background: var(--off-white);
   --foreground: var(--charcoal);
@@ -80,6 +85,9 @@
   --color-error: var(--error);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-danger-bg: var(--danger-bg);
 
   /* Fonts */
   --font-sans: var(--font-geist-sans, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
@@ -87,6 +95,8 @@
 
   /* Gradients */
   --gradient-brand: linear-gradient(135deg, var(--teal) 0%, #1DA8D4 100%);
+  --gradient-brand-strong: linear-gradient(135deg, #148DB2 0%, #0F6E8C 100%);
+  --gradient-brand-deep: linear-gradient(135deg, #148DB2 0%, #0F6E8C 50%, #0D5A74 100%);
   --gradient-hero: linear-gradient(160deg, var(--teal-light) 0%, var(--white) 60%);
   --gradient-accent: linear-gradient(135deg, var(--coral) 0%, #E87B85 100%);
 

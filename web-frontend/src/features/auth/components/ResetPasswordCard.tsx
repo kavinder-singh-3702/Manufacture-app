@@ -162,7 +162,7 @@ export const ResetPasswordCard = () => {
         ) : null}
 
         {error ? (
-          <p className="text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>
             {error}
           </p>
         ) : null}

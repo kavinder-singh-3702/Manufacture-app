@@ -52,7 +52,7 @@ export const AuthSummaryCard = () => {
       {bootstrapError ? (
         <p
           className="mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-          style={{ backgroundColor: "rgba(255, 154, 162, 0.2)", color: "#ff9aa2" }}
+          style={{ backgroundColor: "var(--danger-bg)", color: "var(--danger-strong)" }}
         >
           {bootstrapError}
         </p>

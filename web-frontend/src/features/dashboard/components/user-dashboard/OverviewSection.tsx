@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useDashboardContext } from "./context";
 
 const QUICK_ACTIONS = [
-  { label: "Inventory",  icon: "📦", href: "/dashboard/inventory",  gradient: "from-[#148DB2] to-[#1DA8D4]",  shadow: "rgba(20,141,178,0.30)" },
-  { label: "Products",   icon: "🏷️", href: "/dashboard/products",   gradient: "from-[#D5616D] to-[#E87B85]",  shadow: "rgba(213,97,109,0.30)" },
-  { label: "Quotes",     icon: "📋", href: "/dashboard/quotes",     gradient: "from-[#7C3AED] to-[#9D5CF0]",  shadow: "rgba(124,58,237,0.25)" },
-  { label: "Services",   icon: "🛠️", href: "/dashboard/services",   gradient: "from-[#059669] to-[#10B981]",  shadow: "rgba(5,150,105,0.25)"  },
-  { label: "Chat",       icon: "💬", href: "/dashboard/chat",       gradient: "from-[#D97706] to-[#F59E0B]",  shadow: "rgba(217,119,6,0.25)"  },
-  { label: "Accounting", icon: "📊", href: "/dashboard/accounting", gradient: "from-[#4F46E5] to-[#6366F1]",  shadow: "rgba(79,70,229,0.25)"  },
+  { label: "Inventory",  icon: "📦", href: "/dashboard/inventory",  gradient: "from-[#148DB2] to-[#1DA8D4]",  shadow: "rgba(20,141,178,0.30)", soon: true  },
+  { label: "Products",   icon: "🏷️", href: "/dashboard/products",   gradient: "from-[#D5616D] to-[#E87B85]",  shadow: "rgba(213,97,109,0.30)", soon: false },
+  { label: "Quotes",     icon: "📋", href: "/dashboard/quotes",     gradient: "from-[#7C3AED] to-[#9D5CF0]",  shadow: "rgba(124,58,237,0.25)", soon: true  },
+  { label: "Services",   icon: "🛠️", href: "/dashboard/services",   gradient: "from-[#059669] to-[#10B981]",  shadow: "rgba(5,150,105,0.25)",  soon: true  },
+  { label: "Chat",       icon: "💬", href: "/dashboard/chat",       gradient: "from-[#D97706] to-[#F59E0B]",  shadow: "rgba(217,119,6,0.25)",  soon: true  },
+  { label: "Accounting", icon: "📊", href: "/dashboard/accounting", gradient: "from-[#4F46E5] to-[#6366F1]",  shadow: "rgba(79,70,229,0.25)",  soon: true  },
 ] as const;
 
 const STAT_ICONS = [
@@ -73,7 +73,7 @@ function WelcomeHero({ name, companyName }: { name?: string; companyName?: strin
       {...fade(0)}
       className="relative overflow-hidden rounded-3xl p-6 md:p-8"
       style={{
-        background: "linear-gradient(135deg, #148DB2 0%, #0F6E8C 50%, #0D5A74 100%)",
+        background: "var(--gradient-brand-deep)",
       }}
     >
       {/* Decorative circles */}
@@ -89,7 +89,7 @@ function WelcomeHero({ name, companyName }: { name?: string; companyName?: strin
           </h2>
           {companyName && (
             <p className="text-sm text-white/70">
-              You're managing <span className="font-semibold text-white">{companyName}</span>
+              You&apos;re managing <span className="font-semibold text-white">{companyName}</span>
             </p>
           )}
         </div>
@@ -143,15 +143,15 @@ export const OverviewSection = ({
             {/* Colored top accent bar */}
             <div
               className="absolute inset-x-0 top-0 h-1 rounded-t-2xl"
-              style={{ backgroundColor: STAT_COLORS[i]?.text ?? "#148DB2" }}
+              style={{ backgroundColor: STAT_COLORS[i]?.text ?? "var(--primary)" }}
             />
             <div className="flex items-start justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: STAT_COLORS[i]?.text ?? "#148DB2" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: STAT_COLORS[i]?.text ?? "var(--primary)" }}>
                 {card.label}
               </p>
               <span
                 className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ backgroundColor: STAT_COLORS[i]?.bg ?? "#E8F6FB", color: STAT_COLORS[i]?.text ?? "#148DB2" }}
+                style={{ backgroundColor: STAT_COLORS[i]?.bg ?? "var(--primary-light)", color: STAT_COLORS[i]?.text ?? "var(--primary)" }}
               >
                 {STAT_ICONS[i]}
               </span>
@@ -179,7 +179,8 @@ export const OverviewSection = ({
             <motion.div key={action.label} {...fade(0.2 + i * 0.04)}>
               <Link
                 href={action.href}
-                className="flex flex-col items-center gap-2.5 rounded-2xl p-4 text-center transition-all duration-200 hover:-translate-y-1"
+                aria-label={action.soon ? `${action.label} (coming soon)` : action.label}
+                className="relative flex flex-col items-center gap-2.5 rounded-2xl p-4 text-center transition-all duration-200 hover:-translate-y-1"
                 style={{
                   border: "1px solid var(--border)",
                   backgroundColor: "var(--card)",
@@ -192,6 +193,18 @@ export const OverviewSection = ({
                   (e.currentTarget as HTMLAnchorElement).style.boxShadow = "var(--shadow-sm)";
                 }}
               >
+                {action.soon ? (
+                  <span
+                    className="absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider"
+                    style={{
+                      backgroundColor: "var(--primary-light)",
+                      color: "var(--primary)",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Soon
+                  </span>
+                ) : null}
                 <span
                   className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl ${action.gradient}`}
                   style={{ boxShadow: `0 4px 10px ${action.shadow}` }}

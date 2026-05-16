@@ -6,16 +6,34 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
 import { buildInitials, resolveCompanyLabel } from "./helpers";
 
-export const navItems = [
-  { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
-  { id: "products",      label: "Products",       description: "Catalog & stock",     href: "/dashboard/products" },
-  { id: "company",       label: "Company",        description: "Profile & details",   href: "/dashboard/company" },
-  { id: "activity",      label: "Activity",       description: "Recent timeline",     href: "/dashboard/activity" },
-  { id: "notifications", label: "Notifications",  description: "Alerts & updates",    href: "/dashboard/notifications" },
-  { id: "settings",      label: "Settings",       description: "Account settings",    href: "/dashboard/settings" },
-] as const;
+type NavItem = {
+  id: string;
+  label: string;
+  description: string;
+  href: string;
+  soon?: boolean;
+};
 
-type NavId = (typeof navItems)[number]["id"];
+const workspaceNav: NavItem[] = [
+  { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
+  { id: "products",      label: "Products",      description: "Catalog & stock",     href: "/dashboard/products" },
+  { id: "company",       label: "Company",       description: "Profile & details",   href: "/dashboard/company" },
+  { id: "activity",      label: "Activity",      description: "Recent timeline",     href: "/dashboard/activity" },
+  { id: "notifications", label: "Notifications", description: "Alerts & updates",    href: "/dashboard/notifications" },
+  { id: "settings",      label: "Settings",      description: "Account settings",    href: "/dashboard/settings" },
+];
+
+const modulesNav: NavItem[] = [
+  { id: "inventory",  label: "Inventory",  description: "Stock & warehouses",  href: "/dashboard/inventory",  soon: true },
+  { id: "quotes",     label: "Quotes",     description: "RFQs & negotiation",  href: "/dashboard/quotes",     soon: true },
+  { id: "services",   label: "Services",   description: "Job-work marketplace", href: "/dashboard/services",  soon: true },
+  { id: "chat",       label: "Chat",       description: "Messages & threads",  href: "/dashboard/chat",       soon: true },
+  { id: "accounting", label: "Accounting", description: "Invoices & ledgers",  href: "/dashboard/accounting", soon: true },
+];
+
+export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav];
+
+type NavId = string;
 
 const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
   const color = active ? "#fff" : "var(--medium-gray)";
@@ -54,6 +72,36 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
           <path d="M10 18a2 2 0 0 0 4 0" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
+    case "inventory":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7M12 11v10" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "quotes":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 4h10a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2zM9 9h6M9 13h6M9 17h4" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "services":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14.7 6.3a4 4 0 0 1 4.5 5.4l-1.3-1.3a2 2 0 0 0-2.8 2.8l1.3 1.3a4 4 0 0 1-5.4-4.5l-7.3 7.3a1.5 1.5 0 0 0 2.1 2.1l7.3-7.3" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "chat":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 12a8 8 0 0 1-8 8 8.6 8.6 0 0 1-3.5-.7L4 21l1.7-5.5A8 8 0 1 1 21 12z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "accounting":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 12h3l2-7 4 14 2-7h7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     default:
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -63,6 +111,85 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
       );
   }
 };
+
+const NavGroup = ({
+  label,
+  items,
+  activePath,
+  onNavigate,
+  className = "",
+}: {
+  label: string;
+  items: NavItem[];
+  activePath: string;
+  onNavigate: () => void;
+  className?: string;
+}) => (
+  <div className={className}>
+    <p
+      className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
+      style={{ color: "var(--medium-gray)" }}
+    >
+      {label}
+    </p>
+    <div className="space-y-0.5">
+      {items.map((item) => {
+        const isActive =
+          activePath === item.href ||
+          (item.href !== "/dashboard" && activePath.startsWith(item.href));
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={isActive ? "page" : undefined}
+            className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors"
+            style={{
+              backgroundColor: isActive ? "var(--primary)" : "transparent",
+              textDecoration: "none",
+            }}
+          >
+            <span
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-all"
+              style={{
+                backgroundColor: isActive ? "rgba(255,255,255,0.18)" : "var(--background)",
+                border: isActive ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
+              }}
+            >
+              <NavIcon id={item.id} active={isActive} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-[13px] font-semibold leading-tight"
+                style={{ color: isActive ? "#fff" : "var(--foreground)" }}
+              >
+                {item.label}
+              </p>
+              <p
+                className="text-[11px] leading-tight"
+                style={{ color: isActive ? "rgba(255,255,255,0.65)" : "var(--medium-gray)" }}
+              >
+                {item.description}
+              </p>
+            </div>
+            {item.soon ? (
+              <span
+                className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                style={{
+                  backgroundColor: isActive ? "rgba(255,255,255,0.22)" : "var(--primary-light)",
+                  color: isActive ? "#fff" : "var(--primary)",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Soon
+              </span>
+            ) : null}
+          </Link>
+        );
+      })}
+    </div>
+  </div>
+);
 
 type SidebarContentProps = {
   activePath: string;
@@ -96,7 +223,7 @@ const SidebarContent = ({
       <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
         <div
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "linear-gradient(135deg, #148DB2 0%, #0F6E8C 100%)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
+          style={{ background: "var(--gradient-brand-strong)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -211,50 +338,8 @@ const SidebarContent = ({
 
       {/* ── Nav items ─────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto p-3">
-        <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--medium-gray)" }}>
-          Workspace
-        </p>
-        <div className="space-y-0.5">
-          {navItems.map((item) => {
-            const isActive = activePath === item.href || (item.href !== "/dashboard" && activePath.startsWith(item.href));
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                onClick={onNavigate}
-                className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors"
-                style={{
-                  backgroundColor: isActive ? "var(--primary)" : "transparent",
-                  textDecoration: "none",
-                }}
-              >
-                <span
-                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-all"
-                  style={{
-                    backgroundColor: isActive ? "rgba(255,255,255,0.18)" : "var(--background)",
-                    border: isActive ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
-                  }}
-                >
-                  <NavIcon id={item.id} active={isActive} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="text-[13px] font-semibold leading-tight"
-                    style={{ color: isActive ? "#fff" : "var(--foreground)" }}
-                  >
-                    {item.label}
-                  </p>
-                  <p
-                    className="text-[11px] leading-tight"
-                    style={{ color: isActive ? "rgba(255,255,255,0.65)" : "var(--medium-gray)" }}
-                  >
-                    {item.description}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <NavGroup label="Workspace" items={workspaceNav} activePath={activePath} onNavigate={onNavigate} />
+        <NavGroup label="Modules" items={modulesNav} activePath={activePath} onNavigate={onNavigate} className="mt-5" />
       </nav>
 
       {/* ── User section ─────────────────────────────────────────── */}

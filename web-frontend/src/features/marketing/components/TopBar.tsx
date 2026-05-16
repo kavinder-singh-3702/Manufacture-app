@@ -10,13 +10,14 @@ const navLinks = [
 export const TopBar = () => {
   return (
     <header
-      className="sticky top-0 z-20 flex items-center justify-between gap-6 px-4 py-4 backdrop-blur"
+      className="sticky top-0 z-20 backdrop-blur"
       style={{
         borderBottom: "1px solid var(--border)",
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         boxShadow: "0 20px 45px rgba(90, 48, 66, 0.08)",
       }}
     >
+      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-6 px-6 py-4 lg:px-10">
       <Link href="/" className="flex items-center gap-3" style={{ color: "var(--foreground)" }}>
         <div
           className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-semibold"
@@ -69,6 +70,7 @@ export const TopBar = () => {
         >
           Join Now
         </Link>
+      </div>
       </div>
     </header>
   );

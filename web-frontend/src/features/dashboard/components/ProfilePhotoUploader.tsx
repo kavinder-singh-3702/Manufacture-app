@@ -59,20 +59,24 @@ export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: Profil
           {preview ? <img src={preview} alt="Avatar preview" className="h-full w-full object-cover" /> : initials}
         </div>
         <div className="flex flex-1 flex-col gap-2 text-sm text-[var(--foreground)]">
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)]">
+          <label
+            aria-disabled={uploading}
+            className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          >
             <input
               type="file"
               accept="image/*"
               className="hidden"
+              disabled={uploading}
               onChange={(event) => {
                 handleFileChange(event.target.files);
                 event.currentTarget.value = "";
               }}
             />
-            Upload photo
+            {uploading ? "Uploading…" : "Upload photo"}
           </label>
           <p className="text-xs text-[var(--medium-gray)]">Upload a JPG/PNG. We will show a preview instantly.</p>
-          {error ? <p className="text-xs font-semibold text-[#c53048]">{error}</p> : null}
+          {error ? <p className="text-xs font-semibold text-[color:var(--error)]">{error}</p> : null}
         </div>
       </div>
     </div>

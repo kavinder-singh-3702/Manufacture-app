@@ -13,9 +13,9 @@ const statusStyles: Record<string, CSSProperties> = {
     borderColor: "rgba(255, 211, 182, 0.7)",
   },
   Critical: {
-    backgroundColor: "rgba(255, 154, 162, 0.25)",
-    color: "#c53048",
-    borderColor: "#ff9aa2",
+    backgroundColor: "var(--danger-bg)",
+    color: "var(--danger-strong)",
+    borderColor: "var(--danger)",
   },
 };
 

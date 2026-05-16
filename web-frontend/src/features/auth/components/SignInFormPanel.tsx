@@ -20,7 +20,7 @@ export const SignInFormPanel = ({ children }: { children: ReactNode }) => (
     >
       <div
         className="flex h-9 w-9 items-center justify-center rounded-xl"
-        style={{ background: "linear-gradient(135deg, #148DB2, #0F6E8C)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
+        style={{ background: "var(--gradient-brand-strong)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

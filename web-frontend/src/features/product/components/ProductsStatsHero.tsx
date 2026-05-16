@@ -86,7 +86,7 @@ export const ProductsStatsHero = ({
       <motion.div
         {...item(0)}
         className="relative flex flex-col gap-4 overflow-hidden rounded-3xl p-6 md:flex-row md:items-center md:justify-between md:p-8"
-        style={{ background: "linear-gradient(135deg, #148DB2 0%, #0F6E8C 50%, #0D5A74 100%)" }}
+        style={{ background: "var(--gradient-brand-deep)" }}
       >
         {/* Decorative */}
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full opacity-[0.10]" style={{ backgroundColor: "#fff" }} />

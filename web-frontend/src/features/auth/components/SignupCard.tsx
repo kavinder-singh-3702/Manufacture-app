@@ -278,7 +278,7 @@ export const SignupCard = () => {
         </p>
       ) : null}
       {error ? (
-        <p className="mt-2 text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+        <p className="mt-2 text-sm font-semibold" style={{ color: "var(--danger)" }}>
           {error}
         </p>
       ) : null}
@@ -338,7 +338,7 @@ export const SignupCard = () => {
               <div
                 className="mt-2 flex items-center rounded-2xl border px-4"
                 style={{
-                  borderColor: accountErrors.password ? "#ff9aa2" : "var(--border)",
+                  borderColor: accountErrors.password ? "var(--danger)" : "var(--border)",
                   backgroundColor: "white",
                 }}
               >
@@ -359,7 +359,7 @@ export const SignupCard = () => {
                 </button>
               </div>
               {accountErrors.password ? (
-                <span className="mt-1 block text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+                <span className="mt-1 block text-sm font-semibold" style={{ color: "var(--danger)" }}>
                   {accountErrors.password}
                 </span>
               ) : null}
@@ -426,7 +426,7 @@ export const SignupCard = () => {
                     })}
                   </div>
                   {accountErrors.categories ? (
-                    <p className="mt-2 text-sm font-semibold" style={{ color: "#ff9aa2" }}>
+                    <p className="mt-2 text-sm font-semibold" style={{ color: "var(--danger)" }}>
                       {accountErrors.categories}
                     </p>
                   ) : null}
@@ -468,7 +468,7 @@ const InputField = ({ label, value, onChange, placeholder, error, type = "text" 
     <input
       className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
       style={{
-        borderColor: error ? "#ff9aa2" : "var(--border)",
+        borderColor: error ? "var(--danger)" : "var(--border)",
         backgroundColor: "white",
       }}
       placeholder={placeholder}
@@ -476,6 +476,6 @@ const InputField = ({ label, value, onChange, placeholder, error, type = "text" 
       onChange={(event) => onChange(event.target.value)}
       type={type}
     />
-    {error ? <span className="mt-1 block text-sm font-semibold" style={{ color: "#ff9aa2" }}>{error}</span> : null}
+    {error ? <span className="mt-1 block text-sm font-semibold" style={{ color: "var(--danger)" }}>{error}</span> : null}
   </label>
 );

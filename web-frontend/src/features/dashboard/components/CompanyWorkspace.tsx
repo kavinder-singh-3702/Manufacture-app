@@ -174,7 +174,7 @@ export const CompanyWorkspace = () => {
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-2xl border border-[#ff9aa2] bg-[#ffeef1] px-4 py-3 text-sm font-semibold text-[var(--accent)]">
+        <div className="mt-3 rounded-2xl border border-[color:var(--danger)] bg-[color:var(--danger-bg)] px-4 py-3 text-sm font-semibold text-[color:var(--danger-strong)]">
           {error}
         </div>
       ) : null}
