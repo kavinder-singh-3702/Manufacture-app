@@ -1,5 +1,6 @@
 import { apiClient } from "./apiClient";
 import {
+  AppleSignInPayload,
   AuthUser,
   ForgotPasswordPayload,
   LoginPayload,
@@ -62,6 +63,9 @@ const signup = {
 
 const login = (payload: LoginPayload) => apiClient.post<LoginResponse>("/auth/login", payload);
 
+const appleSignIn = (payload: AppleSignInPayload) =>
+  apiClient.post<LoginResponse>("/auth/apple", payload);
+
 const logout = () => apiClient.post<void>("/auth/logout");
 
 const requestPasswordReset = (payload: ForgotPasswordPayload) =>
@@ -73,6 +77,7 @@ const resetPassword = (payload: ResetPasswordPayload) =>
 export const authService = {
   signup,
   login,
+  appleSignIn,
   logout,
   requestPasswordReset,
   resetPassword,

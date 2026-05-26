@@ -28,6 +28,7 @@ module.exports = ({ config }) => {
       supportsTablet: true,
       buildNumber: "1",
       bundleIdentifier: isProd ? PROD_BUNDLE_IDENTIFIER : DEV_BUNDLE_IDENTIFIER,
+      usesAppleSignIn: true,
       infoPlist: {
         ...(isProd
           ? {}
@@ -74,6 +75,7 @@ module.exports = ({ config }) => {
     },
     plugins: [
       "expo-secure-store",
+      "expo-apple-authentication",
       [
         "expo-notifications",
         {

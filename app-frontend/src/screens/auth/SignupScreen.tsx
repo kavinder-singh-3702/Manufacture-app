@@ -55,6 +55,7 @@ type AccountState = {
   accountType: BusinessAccountType;
   companyName: string;
   categories: string[];
+  dateOfBirth: string;
 };
 
 type FieldErrors<T extends Record<string, unknown>> = Partial<Record<keyof T, string>>;
@@ -124,6 +125,7 @@ const createInitialAccount = (): AccountState => ({
   accountType: "normal" as BusinessAccountType,
   companyName: "",
   categories: [],
+  dateOfBirth: "",
 });
 
 const normalizeNamePart = (value: string) => value.trim().replace(/\s+/g, " ");
@@ -447,10 +449,21 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       }
     }
 
+    const dob = account.dateOfBirth.trim();
+    if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+      nextErrors.dateOfBirth = "Use YYYY-MM-DD format";
+    } else if (dob) {
+      const parsed = new Date(dob);
+      if (Number.isNaN(parsed.getTime()) || parsed > new Date()) {
+        nextErrors.dateOfBirth = "Enter a valid past date";
+      }
+    }
+
     setAccountErrors((current) => ({
       ...current,
       companyName: nextErrors.companyName,
       categories: nextErrors.categories,
+      dateOfBirth: nextErrors.dateOfBirth,
     }));
 
     return Object.keys(nextErrors).length === 0;
@@ -572,6 +585,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
         fullName: normalizedIdentity.fullName,
         email: normalizedIdentity.email,
         phone: normalizePhone(contact.phone),
+        dateOfBirth: account.dateOfBirth.trim() || undefined,
       });
 
       if (response.token) {
@@ -797,6 +811,22 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const renderBusinessStep = () => (
     <View>
       {renderStepHint(activeStepMeta.hint)}
+      <InputField
+        label="Date of birth"
+        value={account.dateOfBirth}
+        onChangeText={(value) => {
+          setAccount((current) => ({ ...current, dateOfBirth: value }));
+          setAccountErrors((current) => ({ ...current, dateOfBirth: undefined }));
+        }}
+        placeholder="YYYY-MM-DD"
+        keyboardType="numbers-and-punctuation"
+        autoCapitalize="none"
+        maxLength={10}
+        errorText={accountErrors.dateOfBirth}
+        helperText="Optional. Format: YYYY-MM-DD (e.g. 1995-08-21)."
+        placeholderTextColor={inputPlaceholderColor}
+        styles={styles}
+      />
       <Text style={styles.sectionLabel}>
         Account type
         <Text style={styles.requiredMark}> *</Text>

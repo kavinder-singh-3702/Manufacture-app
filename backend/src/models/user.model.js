@@ -140,6 +140,12 @@ const userSchema = new Schema(
     passwordChangedAt: Date, // Records when the password was last rotated for auditing.
     passwordResetToken: { type: String, select: false }, // Token hash for password recovery flow.
     passwordResetExpires: Date, // Expiry timestamp for the reset token.
+    appleUserId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     twoFactorEnabled: { type: Boolean, default: false }, // Indicates if an extra OTP factor is enforced.
     twoFactorSecret: { type: String, select: false }, // Encrypted TOTP secret for MFA apps.
     loginAttempts: { type: Number, default: 0 }, // Failed login counter to help detect brute force attacks.

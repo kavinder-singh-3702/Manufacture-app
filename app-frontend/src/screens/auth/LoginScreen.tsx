@@ -19,6 +19,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { BrandLockup } from "../../components/brand/BrandLockup";
+import { AppleSignInButton } from "../../components/auth/AppleSignInButton";
 
 type CredentialMode = "email" | "phone";
 
@@ -307,6 +308,14 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
               </TouchableOpacity>
             </Animated.View>
 
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: subheadingColor, fontSize: fs(11) }]}>OR</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            <AppleSignInButton onError={setError} />
+
             <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
               <Text style={[styles.helperText, { color: subheadingColor, fontSize: fs(13) }]}>Forgotten your password?</Text>
             </TouchableOpacity>
@@ -481,6 +490,20 @@ const styles = StyleSheet.create({
   },
   helperLink: {
     alignItems: "center",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 18,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  dividerText: {
+    fontWeight: "700",
+    letterSpacing: 1,
   },
   errorText: {
     marginBottom: 8,

@@ -84,7 +84,18 @@ const signupCompleteValidation = [
       throw new Error('One or more categories are invalid');
     }
     return true;
-  })
+  }),
+  body('dateOfBirth')
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage('Date of birth must be in YYYY-MM-DD format')
+    .custom((value) => {
+      const parsed = new Date(value);
+      if (parsed > new Date()) {
+        throw new Error('Date of birth cannot be in the future');
+      }
+      return true;
+    })
 ];
 
 const adminCreateValidation = [

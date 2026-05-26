@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { AuthUser, AuthView, LoginPayload } from "../types/auth";
+import { AppleSignInPayload, AuthUser, AuthView, LoginPayload } from "../types/auth";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { companyService } from "../services/company.service";
@@ -20,6 +20,7 @@ const normalizeUser = (user: AuthUser): AuthUser => ({
 type AuthContextValue = {
   user: AuthUser | null;
   login: (payload: LoginPayload) => Promise<void>;
+  signInWithApple: (payload: AppleSignInPayload) => Promise<void>;
   logout: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
   setUser: (user: AuthUser | null, options?: { requiresVerification?: boolean }) => void;
@@ -153,6 +154,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setBootstrapWarning(null);
   }, []);
 
+  const signInWithApple = useCallback(async (payload: AppleSignInPayload) => {
+    const response = await authService.appleSignIn(payload);
+    if (response.token) {
+      await tokenStorage.setToken(response.token);
+    }
+    setUserState(normalizeUser(response.user));
+    setAuthView(null);
+    setBootstrapError(null);
+    setBootstrapWarning(null);
+  }, []);
+
   const logout = useCallback(async () => {
     await authService.logout();
     // Remove the stored JWT token
@@ -213,6 +225,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     () => ({
       user,
       login,
+      signInWithApple,
       logout,
       switchCompany,
       setUser,
@@ -227,7 +240,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       pendingVerificationRedirect,
       clearPendingVerificationRedirect,
     }),
-    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, switchCompany, user]
+    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

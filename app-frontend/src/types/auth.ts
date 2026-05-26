@@ -66,6 +66,12 @@ export type SignupCompletePayload = {
   fullName?: string;
   email?: string;
   phone?: string;
+  dateOfBirth?: string;
+};
+
+export type AppleSignInPayload = {
+  identityToken: string;
+  fullName?: string;
 };
 
 export type ForgotPasswordPayload = {

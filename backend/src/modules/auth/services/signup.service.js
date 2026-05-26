@@ -261,7 +261,7 @@ const saveSignupContact = async ({ phone }, session) => {
 };
 
 const completeSignup = async (
-  { password, accountType, companyName, categories, fullName, email, phone, otp },
+  { password, accountType, companyName, categories, fullName, email, phone, otp, dateOfBirth },
   req
 ) => {
   const sessionState = getSignupState(req.session);
@@ -321,7 +321,8 @@ const completeSignup = async (
     phone: normalizedPhone,
     password,
     accountType,
-    emailVerifiedAt: now
+    emailVerifiedAt: now,
+    ...(dateOfBirth ? { dateOfBirth: new Date(dateOfBirth) } : {})
   });
 
   user = await maybeCreateInitialCompany(user, {

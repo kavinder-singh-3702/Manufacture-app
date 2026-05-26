@@ -13,6 +13,7 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { AuthView } from "../../types/auth";
 import { BrandLockup } from "../../components/brand/BrandLockup";
+import { AppleSignInButton } from "../../components/auth/AppleSignInButton";
 import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
 import { motion } from "../../theme/motion";
 
@@ -520,7 +521,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
           <Text style={[styles.introHeading, { color: headingColor, fontSize: fs(isXCompact ? 25 : 32), lineHeight: fs(isXCompact ? 30 : 38) }]}>
             Welcome to {APP_NAME}
           </Text>
-          <Text style={[styles.introSubheading, { color: subheadingColor, fontSize: fs(15), lineHeight: fs(21) }]}>Built for industrial trade and operations</Text>
+          <Text style={[styles.introSubheading, { color: subheadingColor, fontSize: fs(15), lineHeight: fs(21) }]}>The business world</Text>
           <View style={[styles.introAccentBar, { backgroundColor: colors.primary + (isDark ? "66" : "3f") }]} />
         </Animated.View>
 
@@ -552,6 +553,10 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
               </LinearGradient>
             </Pressable>
           </Animated.View>
+
+          <View style={styles.appleButtonWrap}>
+            <AppleSignInButton />
+          </View>
 
           <Pressable
             style={({ pressed }) => [
@@ -725,6 +730,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 16,
     letterSpacing: 1.6,
+  },
+  appleButtonWrap: {
+    width: "82%",
+    maxWidth: 320,
+    marginTop: 14,
   },
   skipButton: {
     marginTop: 16,
