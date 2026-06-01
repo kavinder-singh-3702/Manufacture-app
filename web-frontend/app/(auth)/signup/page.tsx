@@ -1,34 +1,51 @@
+import { Metadata } from "next";
 import Link from "next/link";
 import { SignupCard } from "@/src/features/auth";
-import { SpotlightPrograms, QuickActions } from "@/src/features/dashboard";
+import { SignupHero } from "@/src/features/auth/components/SignupHero";
 import { LegalLinks } from "@/src/features/legal";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Manufacture Command — Sign up",
-  description: "Create a new Manufacture Command workspace profile",
+  description: "Create a new Manufacture Command workspace for your manufacturing business.",
 };
 
 export default function SignUpPage() {
   return (
-    <main className="min-h-screen pb-16 pt-10" style={{ color: "var(--foreground)" }}>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 lg:flex-row-reverse">
-        <aside className="w-full max-w-xl">
+    <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+      <SignupHero />
+
+      {/* Right: form panel */}
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-12 lg:px-10">
+        <div className="w-full max-w-md">
+          {/* Mobile logo — hidden on desktop where hero shows */}
+          <div className="mb-8 flex items-center gap-3 lg:hidden">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-2xl"
+              style={{ background: "var(--gradient-brand-strong)" }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>Manufacture</p>
+              <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>Command</p>
+            </div>
+          </div>
+
           <SignupCard />
-          <p className="mt-6 text-center text-sm text-[#5c4451]">
-            Already joined?{" "}
-            <Link href="/signin" className="font-semibold" style={{ color: "var(--color-plum)" }}>
-              Sign in to your workspace
+
+          <p className="mt-6 text-center text-sm" style={{ color: "var(--medium-gray)" }}>
+            Already have an account?{" "}
+            <Link href="/signin" className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+              Sign in →
             </Link>
           </p>
           <div className="mt-4">
-            <LegalLinks compact centered className="text-[#7a5d6b]" />
+            <LegalLinks compact centered />
           </div>
-        </aside>
-        <div className="flex flex-1 flex-col gap-6">
-          <QuickActions />
-          <SpotlightPrograms />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

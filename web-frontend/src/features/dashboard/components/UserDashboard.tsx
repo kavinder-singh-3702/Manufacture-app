@@ -6,7 +6,6 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { userService } from "@/src/services/user";
 import { companyService } from "@/src/services/company";
 import { ApiError } from "@/src/lib/api-error";
-import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES } from "@/src/constants/business";
 import type { Company } from "@/src/types/company";
 import { motion } from "framer-motion";
 import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
@@ -17,6 +16,8 @@ import { ActivitySection } from "./user-dashboard/ActivitySection";
 import { SettingsSection, defaultPreferences } from "./user-dashboard/SettingsSection";
 import { CompanyVerificationSection } from "./user-dashboard/CompanyVerificationSection";
 import { DashboardContext, useDashboardContext } from "./user-dashboard/context";
+import { CompanyCreateDrawer } from "@/src/features/company/components/CompanyCreateDrawer";
+import { CartProvider } from "@/src/providers/CartProvider";
 import {
   buildActivityTags,
   buildAddressPayload,
@@ -106,6 +107,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   };
 
   return (
+    <CartProvider>
     <DashboardContext.Provider
       value={{ user, refreshUser, openVerificationModal, verificationModalSignal, companies, activeCompany, reloadCompanies }}
     >
@@ -141,8 +143,9 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
         </div>
       </div>
 
-      <CreateCompanyModal
+      <CompanyCreateDrawer
         open={companyModalOpen}
+        defaultType={user.accountType}
         onClose={() => setCompanyModalOpen(false)}
         onCreated={async () => {
           await refreshUser();
@@ -151,6 +154,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
         }}
       />
     </DashboardContext.Provider>
+    </CartProvider>
   );
 };
 
@@ -311,306 +315,3 @@ export const DashboardSettings = () => {
   return <SettingsSection preferences={preferences} onToggle={togglePreference} />;
 };
 
-const CreateCompanyModal = ({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: () => Promise<void>;
-}) => {
-  const { user } = useAuth();
-  const [form, setForm] = useState({
-    displayName: "",
-    type: user?.accountType ?? "normal",
-    categories: [] as string[],
-    logoUrl: "",
-    contactEmail: "",
-    contactPhone: "",
-    website: "",
-    city: "",
-    country: "",
-    description: "",
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [logoError, setLogoError] = useState<string | null>(null);
-  const [logoUploading, setLogoUploading] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setForm({
-        displayName: "",
-        type: user?.accountType ?? "normal",
-        categories: [],
-        logoUrl: "",
-        contactEmail: "",
-        contactPhone: "",
-        website: "",
-        city: "",
-        country: "",
-        description: "",
-      });
-      setError(null);
-      setLogoError(null);
-      setLogoUploading(false);
-    }
-  }, [open, user?.accountType]);
-
-  const handleLogoUpload = async (files: FileList | null) => {
-    const file = files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setLogoError("Please select an image file.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (!result) {
-        setLogoError("Unable to read file.");
-        return;
-      }
-      const content = result.includes(",") ? result.split(",")[1] ?? "" : result;
-      try {
-        setLogoUploading(true);
-        const response = await userService.uploadUserFile({
-          fileName: file.name,
-          mimeType: file.type || "image/png",
-          content,
-          purpose: "company-logo",
-        });
-        const url = response.file?.url;
-        if (url) {
-          setForm((prev) => ({ ...prev, logoUrl: url }));
-          setLogoError(null);
-        }
-      } catch (err) {
-        const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to upload logo.";
-        setLogoError(message);
-      } finally {
-        setLogoUploading(false);
-      }
-    };
-    reader.onerror = () => setLogoError("Unable to read file.");
-    reader.readAsDataURL(file);
-  };
-
-  if (!open) return null;
-
-  const toggleCategory = (category: string) => {
-    setForm((prev) => {
-      const exists = prev.categories.includes(category);
-      return { ...prev, categories: exists ? prev.categories.filter((item) => item !== category) : [...prev.categories, category] };
-    });
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const name = form.displayName.trim();
-    if (!name) {
-      setError("Enter a company display name.");
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      await companyService.create({
-        displayName: name,
-        type: form.type,
-        categories: form.categories,
-        logoUrl: form.logoUrl?.trim() || undefined,
-        description: form.description.trim() || undefined,
-        contact: {
-          email: form.contactEmail.trim() || undefined,
-          phone: form.contactPhone.trim() || undefined,
-          website: form.website.trim() || undefined,
-        },
-        headquarters: {
-          city: form.city.trim() || undefined,
-          country: form.country.trim() || undefined,
-        },
-      });
-      await onCreated();
-    } catch (err) {
-      const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to create company.";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 backdrop-blur">
-      <div
-        className="w-full max-w-lg rounded-3xl border border-[var(--border)] bg-white p-6 shadow-2xl shadow-[rgba(20,141,178,0.20)]"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
-              New company
-            </p>
-            <h3 className="text-xl font-semibold text-[var(--foreground)]">Create a workspace</h3>
-            <p className="text-sm text-[var(--foreground)]">Add another company under your login to switch seamlessly.</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="h-10 w-10 rounded-2xl border border-[var(--border)] text-[var(--foreground)]"
-            aria-label="Close create company"
-          >
-            ×
-          </button>
-        </div>
-
-        {error ? (
-          <div className="mt-3 rounded-2xl border border-[color:var(--danger)] bg-[color:var(--danger-bg)] px-4 py-3 text-sm font-semibold text-[color:var(--danger-strong)]">
-            {error}
-          </div>
-        ) : null}
-
-        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-          <ProfileInputField
-            label="Display name"
-            value={form.displayName}
-            onChange={(value) => setForm((prev) => ({ ...prev, displayName: value }))}
-            placeholder="Acme Textiles"
-          />
-          <ProfileInputField
-            label="Description"
-            value={form.description}
-            onChange={(value) => setForm((prev) => ({ ...prev, description: value }))}
-            placeholder="What does this company do?"
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-sm font-semibold text-[var(--foreground)]">
-              Type
-              <select
-                className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none"
-                value={form.type}
-                onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
-              >
-                {BUSINESS_ACCOUNT_TYPES.map((type) => (
-                  <option value={type} key={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Logo</p>
-              <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-3 py-3">
-                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-white text-sm font-semibold text-[var(--primary)]">
-                  {form.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={form.logoUrl} alt="Logo preview" className="h-full w-full object-cover" />
-                  ) : (
-                    (form.displayName || "Co").slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col gap-1 text-sm text-[var(--foreground)]">
-                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)]">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        handleLogoUpload(event.target.files);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                    {logoUploading ? "Uploading…" : "Upload logo"}
-                  </label>
-                  <p className="text-xs text-[var(--medium-gray)]">
-                    Upload a JPG/PNG. A preview appears instantly.
-                  </p>
-                  {logoError ? <p className="text-xs font-semibold text-[color:var(--danger-strong)]">{logoError}</p> : null}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <ProfileInputField
-              label="Contact email"
-              value={form.contactEmail}
-              onChange={(value) => setForm((prev) => ({ ...prev, contactEmail: value }))}
-              placeholder="ops@company.com"
-            />
-            <ProfileInputField
-              label="Contact phone"
-              value={form.contactPhone}
-              onChange={(value) => setForm((prev) => ({ ...prev, contactPhone: value }))}
-              placeholder="+91 99889 11111"
-            />
-          </div>
-          <ProfileInputField
-            label="Website"
-            value={form.website}
-            onChange={(value) => setForm((prev) => ({ ...prev, website: value }))}
-            placeholder="https://example.com"
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            <ProfileInputField
-              label="City"
-              value={form.city}
-              onChange={(value) => setForm((prev) => ({ ...prev, city: value }))}
-              placeholder="Mumbai"
-            />
-            <ProfileInputField
-              label="Country"
-              value={form.country}
-              onChange={(value) => setForm((prev) => ({ ...prev, country: value }))}
-              placeholder="India"
-            />
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
-              Categories
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {BUSINESS_CATEGORIES.map((category) => {
-                const active = form.categories.includes(category);
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => toggleCategory(category)}
-                    className="rounded-full border px-3 py-1 text-xs font-semibold transition"
-                    style={{
-                      borderColor: active ? "rgba(246, 184, 168, 0.9)" : "var(--border)",
-                      backgroundColor: active ? "var(--primary-light)" : "transparent",
-                      color: active ? "var(--primary)" : "var(--medium-gray)",
-                    }}
-                  >
-                    {formatCategory(category)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--foreground)]"
-              disabled={loading || logoUploading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || logoUploading}
-              className="rounded-full bg-[var(--primary)] px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-[rgba(20,141,178,0.15)] disabled:opacity-60"
-            >
-              {logoUploading ? "Uploading logo…" : loading ? "Creating…" : "Create company"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};

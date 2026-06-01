@@ -24,11 +24,12 @@ const workspaceNav: NavItem[] = [
 ];
 
 const modulesNav: NavItem[] = [
+  { id: "orders",     label: "My Orders",  description: "Order history",       href: "/dashboard/orders" },
+  { id: "accounting", label: "Accounting", description: "P&L, GST & reports",  href: "/dashboard/accounting" },
+  { id: "services",   label: "Services",   description: "Job-work marketplace", href: "/dashboard/services" },
   { id: "inventory",  label: "Inventory",  description: "Stock & warehouses",  href: "/dashboard/inventory",  soon: true },
   { id: "quotes",     label: "Quotes",     description: "RFQs & negotiation",  href: "/dashboard/quotes",     soon: true },
-  { id: "services",   label: "Services",   description: "Job-work marketplace", href: "/dashboard/services",  soon: true },
   { id: "chat",       label: "Chat",       description: "Messages & threads",  href: "/dashboard/chat",       soon: true },
-  { id: "accounting", label: "Accounting", description: "Invoices & ledgers",  href: "/dashboard/accounting", soon: true },
 ];
 
 export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav];
@@ -72,6 +73,12 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
           <path d="M10 18a2 2 0 0 0 4 0" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
+    case "orders":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 8h6m-6 4h4" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
     case "inventory":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -99,7 +106,7 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
     case "accounting":
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M3 12h3l2-7 4 14 2-7h7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     default:

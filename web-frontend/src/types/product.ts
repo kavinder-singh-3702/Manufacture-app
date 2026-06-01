@@ -151,3 +151,40 @@ export type UploadProductImagePayload = {
   mimeType?: string;
   content: string;
 };
+
+export type ProductVariant = {
+  _id: string;
+  productId: string;
+  name: string;
+  sku?: string;
+  price?: ProductPrice;
+  availableQuantity: number;
+  minStockQuantity: number;
+  status: ProductStatus;
+  stockStatus?: ProductStockStatus;
+  options?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+  images?: ProductImage[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateVariantInput = {
+  name: string;
+  sku?: string;
+  price?: { amount: number; currency?: string; unit?: string };
+  availableQuantity?: number;
+  minStockQuantity?: number;
+  status?: ProductStatus;
+  options?: Record<string, string>;
+};
+
+export type ProductInquiryInput = {
+  productId: string;
+  quantity?: number;
+  deliveryLocation?: string;
+  message?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+};

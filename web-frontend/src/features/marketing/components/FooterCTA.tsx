@@ -1,97 +1,113 @@
 import Link from "next/link";
-import { LegalLinks } from "@/src/features/legal";
+import { SiteFooter } from "./SiteFooter";
 
-export const FooterCTA = () => {
-  return (
-    <footer
+const FEATURE_CHIPS = ["Security-first", "Concierge setup", "Mobile + web parity"] as const;
+
+export const FooterCTA = () => (
+  <>
+    {/* Pre-footer CTA block */}
+    <section
       id="pricing"
-      className="mt-16 rounded-3xl px-6 py-8 shadow-inner"
+      className="rounded-3xl px-6 py-10 lg:px-10"
       style={{
-        border: "1px solid var(--border-soft)",
-        background: "linear-gradient(135deg, #fffdf9, var(--color-linen))",
-        color: "var(--foreground)",
+        border: "1px solid var(--border)",
+        background: "linear-gradient(135deg, var(--primary-light) 0%, rgba(20,141,178,0.04) 100%)",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--color-plum)" }}>
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
             Ready to join?
           </p>
-          <h3 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+          <h3 className="text-3xl font-bold leading-tight" style={{ color: "var(--foreground)" }}>
             Launch your Manufacture workspace today
           </h3>
-          <p className="text-sm text-[#5c4451]">
+          <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
             Join verified exporters and sourcing leaders already onboarding teams across devices.
           </p>
           <div className="flex flex-wrap gap-2">
-            {["Security-first", "Concierge setup", "Mobile + web parity"].map((item) => (
+            {FEATURE_CHIPS.map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-[var(--border-soft)] bg-white px-3 py-1 text-xs font-semibold text-[#5a3042]"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }}
               >
                 {item}
               </span>
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-3 rounded-3xl border border-[var(--border-soft)] bg-white/80 p-5 shadow-sm shadow-[#5a304215]">
+
+        <div
+          className="flex flex-col gap-4 rounded-3xl p-6"
+          style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", boxShadow: "var(--shadow-md)" }}
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--color-peach)] px-3 py-1 text-[11px] font-semibold text-[var(--color-plum)]">
+            <span
+              className="rounded-full px-3 py-1 text-[11px] font-bold"
+              style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
+            >
               New
             </span>
-            <p className="text-sm font-semibold text-[#2e1f2c]">Workspace concierge: under 48 hours</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              Workspace concierge: under 48 hours
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/signup"
-              className="rounded-full px-6 py-3 text-base font-semibold uppercase tracking-wide"
-              style={{ backgroundColor: "var(--color-plum)", color: "white", boxShadow: "0 12px 30px rgba(90, 48, 66, 0.2)" }}
+              className="inline-flex items-center rounded-2xl px-6 py-3 text-base font-bold text-white transition-all hover:-translate-y-0.5"
+              style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}
             >
-              Join Now
+              Join now →
             </Link>
             <Link
               href="/signin"
-              className="rounded-full border px-6 py-3 text-base font-semibold"
-              style={{ borderColor: "var(--border-soft)", color: "var(--color-plum)" }}
+              className="inline-flex items-center rounded-2xl px-6 py-3 text-base font-semibold transition-opacity hover:opacity-70"
+              style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}
             >
-              Sign In
+              Sign in
             </Link>
           </div>
-          <div className="grid gap-2 text-sm text-[#5c4451] md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
-                SLA
-              </p>
-              <p className="text-sm font-semibold text-[#2e1f2c]">2h onboarding response</p>
-            </div>
-            <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
-                Coverage
-              </p>
-              <p className="text-sm font-semibold text-[#2e1f2c]">14 countries verified</p>
-            </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { label: "SLA", value: "2h onboarding response" },
+              { label: "Coverage", value: "14 countries verified" },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl px-3 py-2.5"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--primary)" }}>
+                  {stat.label}
+                </p>
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{stat.value}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
       <div
         id="support"
-        className="mt-6 rounded-2xl border border-[var(--border-soft)] bg-white/80 px-4 py-3 text-sm text-[#5c4451] shadow-sm"
+        className="mt-6 rounded-2xl px-4 py-3"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--color-plum)" }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
           Support
         </p>
-        <p className="text-sm">
-          Prefer a guided walkthrough? Email <span className="font-semibold text-[#2e1f2c]">support@manufacture.run</span> and
-          we will schedule a session within 24 hours.
+        <p className="mt-1 text-sm" style={{ color: "var(--medium-gray)" }}>
+          Prefer a guided walkthrough? Email{" "}
+          <a href="mailto:support@manufacture.run" className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--foreground)" }}>
+            support@manufacture.run
+          </a>{" "}
+          and we&apos;ll schedule a session within 24 hours.
         </p>
       </div>
-      <div
-        className="mt-8 flex flex-col gap-3 border-t pt-4 text-xs text-[#7a5d6b] md:flex-row md:items-center md:justify-between"
-        style={{ borderColor: "var(--border-soft)" }}
-      >
-        <p>© {new Date().getFullYear()} Manufacture Command. All rights reserved.</p>
-        <LegalLinks compact className="text-[#7a5d6b]" />
-      </div>
-    </footer>
-  );
-};
+    </section>
+
+    <SiteFooter />
+  </>
+);

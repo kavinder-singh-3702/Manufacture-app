@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { companyVerificationService } from "@/src/services/companyVerification";
 import { ApiError } from "@/src/lib/api-error";
@@ -7,6 +7,7 @@ import {
   CompanyVerificationAccountType,
 } from "@/src/constants/business";
 import { useDashboardContext } from "./context";
+import { CompanyVerificationDrawer } from "@/src/features/company/components/CompanyVerificationDrawer";
 import type {
   CompanyVerificationDocumentUpload,
   CompanyVerificationLatestResponse,
@@ -44,12 +45,6 @@ export const CompanyVerificationSection = ({
   const [latest, setLatest] = useState<CompanyVerificationLatestResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [gstDocument, setGstDocument] = useState<UploadEntry | null>(null);
-  const [aadhaarDocument, setAadhaarDocument] = useState<UploadEntry | null>(null);
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastOpenSignal = useRef<number | undefined>(undefined);
@@ -98,68 +93,14 @@ export const CompanyVerificationSection = ({
   useEffect(() => {
     if (!openSignal || openSignal === lastOpenSignal.current) return;
     lastOpenSignal.current = openSignal;
-    setFormError(null);
-    setSuccessMessage(null);
     setIsModalOpen(true);
   }, [openSignal]);
 
-  const handleDocumentSelect = async (files: FileList | null, setter: (entry: UploadEntry | null) => void) => {
-    if (!files || !files.length) return;
-    const file = files[0];
-    try {
-      const payload = await fileToDocumentPayload(file);
-      setter({
-        payload,
-        fileName: file.name,
-        sizeLabel: formatFileSize(file.size),
-      });
-      setFormError(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to read selected file.";
-      setter(null);
-      setFormError(message);
-    }
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!activeCompanyId) {
-      setFormError("Select an active company before submitting for verification.");
-      return;
-    }
-    if (!gstDocument?.payload || !aadhaarDocument?.payload) {
-      setFormError("Upload both GST certificate and Aadhaar card scans before submitting.");
-      return;
-    }
-    try {
-      setSubmitting(true);
-      setFormError(null);
-      setSuccessMessage(null);
-      await companyVerificationService.submit(activeCompanyId, {
-        gstCertificate: gstDocument.payload,
-        aadhaarCard: aadhaarDocument.payload,
-        notes: notes.trim() || undefined,
-      });
-      setSuccessMessage("Verification request submitted. Compliance team will review it shortly.");
-      setNotes("");
-      setGstDocument(null);
-      setAadhaarDocument(null);
-      loadLatest();
-    } catch (error) {
-      const message =
-        error instanceof ApiError || error instanceof Error ? error.message : "Unable to submit verification request.";
-      setFormError(message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const ctaDisabled = !activeCompanyId || loading || !isCompanyTypeEligible || hasPendingRequest;
 
   const handleOpenModal = () => {
     if (ctaDisabled) return;
-    setFormError(null);
-    setSuccessMessage(null);
     if (onRequestVerification) {
       onRequestVerification();
     } else {
@@ -168,7 +109,6 @@ export const CompanyVerificationSection = ({
   };
 
   const handleCloseModal = () => {
-    if (submitting) return;
     setIsModalOpen(false);
   };
 
@@ -302,22 +242,16 @@ export const CompanyVerificationSection = ({
           )}
         </section>
       ) : null}
-      <VerificationModal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        companyName={latest?.company?.displayName ?? user.displayName ?? user.email}
-        companyType={latest?.company?.type}
-        gstDocument={gstDocument}
-        aadhaarDocument={aadhaarDocument}
-        onSelectGst={(files) => handleDocumentSelect(files, setGstDocument)}
-        onSelectAadhaar={(files) => handleDocumentSelect(files, setAadhaarDocument)}
-        notes={notes}
-        onChangeNotes={setNotes}
-        onSubmit={handleSubmit}
-        formError={formError}
-        successMessage={successMessage}
-        submitting={submitting}
-      />
+      {activeCompanyId && (
+        <CompanyVerificationDrawer
+          open={isModalOpen}
+          companyId={activeCompanyId}
+          companyName={latest?.company?.displayName ?? user.displayName ?? user.email}
+          companyType={latest?.company?.type}
+          onClose={handleCloseModal}
+          onSubmitted={() => { loadLatest(); }}
+        />
+      )}
     </>
   );
 };

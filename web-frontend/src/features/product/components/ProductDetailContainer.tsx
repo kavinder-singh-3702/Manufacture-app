@@ -9,6 +9,8 @@ import { ApiError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
 import { ProductFormDrawer } from "./ProductFormDrawer";
+import { ProductVariantsContainer } from "./ProductVariantsContainer";
+import { ProductInquiryDrawer } from "./ProductInquiryDrawer";
 import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 
 export const ProductDetailContainer = ({ productId }: { productId: string }) => {
@@ -21,6 +23,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const [adjusting, setAdjusting] = useState(false);
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
   const [activeImage, setActiveImage] = useState(0);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -285,15 +288,28 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
               </button>
             </div>
           ) : (
-            <p
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium"
-              style={{ backgroundColor: "var(--light-gray)", color: "var(--medium-gray)" }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 15v2m-6-6V9a6 6 0 1 1 12 0v2m-15 0h18v9H3v-9z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Listed by {product.company?.displayName ?? "another company"} — view only
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setInquiryOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Inquire to buy
+              </button>
+              <p
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium"
+                style={{ backgroundColor: "var(--background)", color: "var(--medium-gray)", border: "1px solid var(--border)" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 15v2m-6-6V9a6 6 0 1 1 12 0v2m-15 0h18v9H3v-9z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                By {product.company?.displayName ?? "another company"}
+              </p>
+            </div>
           )}
         </div>
       </motion.div>
@@ -342,6 +358,17 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
         ))}
       </motion.div>
 
+      {/* Variants section */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.15 }}
+        className="rounded-2xl p-6"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
+      >
+        <ProductVariantsContainer productId={product._id} canEdit={canEdit} />
+      </motion.div>
+
       {/* Edit drawer — owners only */}
       {canEdit && (
         <ProductFormDrawer
@@ -349,6 +376,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
           product={product}
           onClose={() => setEditOpen(false)}
           onSubmit={handleSave}
+        />
+      )}
+
+      {/* Inquiry drawer — non-owners */}
+      {!canEdit && (
+        <ProductInquiryDrawer
+          open={inquiryOpen}
+          product={product}
+          onClose={() => setInquiryOpen(false)}
         />
       )}
 

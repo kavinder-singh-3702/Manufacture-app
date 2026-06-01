@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError } from "@/src/lib/api-error";
@@ -160,6 +161,35 @@ export const ProductsListContainer = () => {
   return (
     <div className="space-y-8">
       <ProductsStatsHero stats={stats} loading={statsLoading} onCreate={() => setDrawerOpen(true)} />
+
+      {/* Sub-navigation: quick access to new product features */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+        className="flex flex-wrap gap-2"
+      >
+        {[
+          { href: "/dashboard/products/search", label: "Search Products", icon: "🔍", desc: "Find by name, SKU, category" },
+          { href: "/dashboard/products/mine", label: "My Catalog", icon: "🏷️", desc: "Manage your listings" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="inline-flex items-center gap-2.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md"
+            style={{
+              border: "1px solid var(--border)",
+              backgroundColor: "var(--card)",
+              color: "var(--foreground)",
+              boxShadow: "var(--shadow-sm)",
+            }}
+          >
+            <span className="text-base">{item.icon}</span>
+            <div>
+              <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{item.label}</p>
+              <p className="text-[10px]" style={{ color: "var(--medium-gray)" }}>{item.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </motion.div>
 
       <div className="space-y-5">
         <ProductFilters value={filters} onChange={setFilters} totalResults={total} />

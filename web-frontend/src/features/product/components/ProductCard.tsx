@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { useCart } from "@/src/providers/CartProvider";
 
 const StockBar = ({ available, min }: { available: number; min: number }) => {
   const ratio = min > 0 ? Math.min(available / Math.max(min * 2, 1), 1) : Math.min(available / 50, 1);
@@ -21,6 +23,47 @@ const StockBar = ({ available, min }: { available: number; min: number }) => {
   );
 };
 
+const AddToCartButton = ({ product }: { product: Product }) => {
+  const { addToCart, isInCart } = useCart();
+  const [added, setAdded] = useState(false);
+  const inCart = isInCart(product._id);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-all"
+      style={{
+        backgroundColor: inCart ? "var(--primary)" : "var(--primary-light)",
+        color: inCart ? "#fff" : "var(--primary)",
+        border: "1px solid rgba(20,141,178,0.2)",
+      }}
+      aria-label={inCart ? "In cart" : "Add to cart"}
+      title={inCart ? "Already in cart" : "Add to cart"}
+    >
+      <AnimatePresence mode="wait">
+        {added ? (
+          <motion.span key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="text-xs font-bold">
+            ✓
+          </motion.span>
+        ) : (
+          <motion.svg key="cart" width="14" height="14" viewBox="0 0 24 24" fill="none" initial={{ scale: 1 }} animate={{ scale: 1 }}>
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+};
+
 export const ProductCard = ({ product, index = 0 }: { product: Product; index?: number }) => {
   const cat = getCategoryMeta(product.category);
   const status = STATUS_COLORS[product.status] ?? STATUS_COLORS.draft;
@@ -33,6 +76,7 @@ export const ProductCard = ({ product, index = 0 }: { product: Product; index?: 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -4 }}
+      className="relative"
     >
       <Link
         href={`/dashboard/products/detail?productId=${encodeURIComponent(product._id)}`}
@@ -148,25 +192,21 @@ export const ProductCard = ({ product, index = 0 }: { product: Product; index?: 
             <StockBar available={product.availableQuantity} min={product.minStockQuantity} />
           </div>
 
-          {/* Footer — company */}
-          {product.company?.displayName && (
-            <div
-              className="flex items-center justify-between border-t pt-3"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <p className="truncate text-xs" style={{ color: "var(--medium-gray)" }}>
-                {product.company.displayName}
-              </p>
+          {/* Footer — company + cart */}
+          <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <p className="min-w-0 truncate text-xs" style={{ color: "var(--medium-gray)" }}>
+              {product.company?.displayName ?? "—"}
+            </p>
+            <div className="flex flex-shrink-0 items-center gap-1.5">
               {product.purchaseOptions?.checkoutEligible && (
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
-                >
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
                   Buy now
                 </span>
               )}
+              <AddToCartButton product={product} />
             </div>
-          )}
+          </div>
         </div>
       </Link>
     </motion.div>

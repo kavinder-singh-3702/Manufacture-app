@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
 const createError = require('http-errors');
 const User = require('../../../models/user.model');
 const { attachUserToSession } = require('./session-auth.service');
@@ -12,12 +11,21 @@ const { recordActivitySafe, extractRequestContext } = require('../../activity/se
 const APPLE_ISSUER = 'https://appleid.apple.com';
 const APPLE_JWKS_URI = 'https://appleid.apple.com/auth/keys';
 
-const client = jwksClient({
-  jwksUri: APPLE_JWKS_URI,
-  cache: true,
-  cacheMaxAge: 60 * 60 * 1000,
-  rateLimit: true,
-});
+let client;
+
+const getClient = () => {
+  if (!client) {
+    const jwksClient = require('jwks-rsa');
+    client = jwksClient({
+      jwksUri: APPLE_JWKS_URI,
+      cache: true,
+      cacheMaxAge: 60 * 60 * 1000,
+      rateLimit: true,
+    });
+  }
+
+  return client;
+};
 
 const allowedAudiences = () => {
   const raw = process.env.APPLE_BUNDLE_IDS || '';
@@ -28,7 +36,7 @@ const allowedAudiences = () => {
 };
 
 const getSigningKey = (header, callback) => {
-  client.getSigningKey(header.kid, (err, key) => {
+  getClient().getSigningKey(header.kid, (err, key) => {
     if (err) return callback(err);
     callback(null, key.getPublicKey());
   });

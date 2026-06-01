@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { navItems } from "./Navigation";
 import { useDashboardContext } from "./context";
 import { buildInitials } from "./helpers";
+import { useCart } from "@/src/providers/CartProvider";
+import { CartDrawer } from "@/src/features/cart/components/CartDrawer";
 
 const getPageTitle = (pathname: string) => {
   const item = navItems.find(
@@ -30,8 +33,11 @@ export const DashboardTopbar = ({
   const { label, description } = getPageTitle(pathname ?? "");
   const userInitials = buildInitials(user.displayName ?? user.email ?? "U");
   const userAvatar = typeof user.avatarUrl === "string" ? user.avatarUrl : undefined;
+  const { totalCount } = useCart();
+  const [cartOpen, setCartOpen] = useState(false);
 
   return (
+    <>
     <motion.header
       className="flex h-16 flex-shrink-0 items-center justify-between px-6"
       style={{
@@ -91,6 +97,29 @@ export const DashboardTopbar = ({
           </kbd>
         </button>
 
+        {/* Cart */}
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80"
+          style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
+          aria-label="Shopping cart"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {totalCount > 0 && (
+            <motion.span
+              key={totalCount}
+              initial={{ scale: 0 }} animate={{ scale: 1 }}
+              className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+              style={{ backgroundColor: "var(--accent)" }}
+            >
+              {totalCount > 99 ? "99+" : totalCount}
+            </motion.span>
+          )}
+        </button>
+
         {/* Notifications */}
         <button
           type="button"
@@ -138,5 +167,8 @@ export const DashboardTopbar = ({
         </button>
       </div>
     </motion.header>
+
+    <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+  </>
   );
 };

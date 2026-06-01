@@ -1,17 +1,17 @@
-import { HeroEntry, DescriptionSection, SnapshotShowcase, FooterCTA, TopBar } from "@/src/features/marketing";
+import { HeroEntry, DescriptionSection, SnapshotShowcase, TopBar, FooterCTA } from "@/src/features/marketing";
 
 export default function Home() {
   return (
-    <>
+    <div className="flex min-h-screen flex-col" style={{ color: "var(--foreground)" }}>
       <TopBar />
-      <main className="min-h-screen pb-20 pt-10" style={{ color: "var(--foreground)" }}>
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 px-6 lg:px-10">
-          <HeroEntry />
+      <main className="flex-1">
+        <HeroEntry />
+        <div className="mx-auto w-full max-w-[1600px] space-y-10 px-6 py-12 lg:px-10">
           <DescriptionSection />
           <SnapshotShowcase />
           <FooterCTA />
         </div>
       </main>
-    </>
+    </div>
   );
 }
