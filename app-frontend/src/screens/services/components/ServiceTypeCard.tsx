@@ -2,30 +2,9 @@ import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
-import { useThemeMode } from "../../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
 import { ServiceMeta } from "../services.constants";
-import { neu, type ServiceAccent } from "../services.palette";
-
-/* ─── Neumorphic wrapper ────────────────────────────────────────────── */
-
-/** Dual-shadow neumorphic card wrapper (light highlight + dark shadow). */
-const NeuCard = ({
-  children,
-  isDark,
-  borderRadius,
-  style,
-}: {
-  children: React.ReactNode;
-  isDark: boolean;
-  borderRadius: number;
-  style?: any;
-}) => (
-  <View style={[neu.lightShadow(isDark), { borderRadius }, style]}>
-    <View style={[neu.darkShadow(isDark), { borderRadius }]}>
-      {children}
-    </View>
-  </View>
-);
+import type { ServiceAccent } from "../services.palette";
 
 /* ─── Main component ────────────────────────────────────────────────── */
 
@@ -43,158 +22,216 @@ export const ServiceTypeCard = ({
   accent?: ServiceAccent;
 }) => {
   const { colors, radius } = useTheme();
-  const { resolvedMode } = useThemeMode();
-  const isDark = resolvedMode === "dark";
+  const { fs, sp, isCompact } = useResponsiveLayout();
 
   const accentColor = accent?.color ?? colors.primary;
-  const cardBg = neu.cardBg(isDark);
+  const gradientColors: [string, string, ...string[]] = accent?.gradient ?? ["#1F2937", "#0F1115"];
+  const glow = accent?.glow ?? "rgba(0,0,0,0.35)";
+
+  const cardPadding = isCompact ? sp(14) : sp(16);
+  const iconSize = isCompact ? sp(48) : sp(52);
+  const orbSize = isCompact ? sp(140) : sp(160);
 
   return (
-    <NeuCard isDark={isDark} borderRadius={radius.xl}>
+    <View
+      style={[
+        styles.shadowWrap,
+        {
+          borderRadius: radius.xl,
+          shadowColor: glow,
+        },
+      ]}
+    >
       <TouchableOpacity
         onPress={onPress}
-        activeOpacity={0.9}
-        style={[
-          styles.card,
-          {
-            borderRadius: radius.xl,
-            backgroundColor: selected ? `${accentColor}14` : cardBg,
-          },
-        ]}
+        activeOpacity={0.92}
+        style={{ borderRadius: radius.xl }}
       >
-        {/* Top row: icon + info */}
-        <View style={styles.header}>
-          {/* Neumorphic inset icon circle */}
-          <View
-            style={[
-              styles.iconCircle,
-              neu.pressed(isDark),
-              {
-                borderRadius: 24,
-                backgroundColor: isDark ? `${accentColor}18` : (accent?.soft ?? "#E2E8F0"),
-              },
-            ]}
-          >
-            {accent?.emoji ? (
-              <Text style={styles.emoji}>{accent.emoji}</Text>
-            ) : (
-              <Ionicons name={service.icon} size={20} color={accentColor} />
-            )}
-          </View>
-
-          <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>{service.title}</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={2}>
-              {service.subtitle}
-            </Text>
-          </View>
-        </View>
-
-        {/* Hint text */}
-        <View
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={[
-            styles.hintRow,
+            styles.card,
             {
-              backgroundColor: isDark ? `${accentColor}0D` : `${accentColor}08`,
-              borderRadius: radius.sm,
+              padding: cardPadding,
+              gap: sp(12),
+              borderRadius: radius.xl,
+              borderWidth: selected ? 1.5 : StyleSheet.hairlineWidth,
+              borderColor: selected ? accentColor : "rgba(255,255,255,0.10)",
             },
           ]}
         >
-          <Ionicons name="information-circle-outline" size={13} color={`${accentColor}99`} />
-          <Text
-            style={[styles.hint, { color: isDark ? colors.textMuted : colors.textTertiary }]}
-            numberOfLines={1}
-          >
-            {service.quickHint}
-          </Text>
-        </View>
-
-        {/* CTA Button — neumorphic raised, solid accent */}
-        {onStart ? (
-          <TouchableOpacity
-            onPress={onStart}
-            activeOpacity={0.85}
+          {/* Top-right decorative glow blob */}
+          <View
+            pointerEvents="none"
             style={[
-              styles.ctaOuter,
-              neu.buttonRaised(isDark),
-              { borderRadius: radius.lg },
+              styles.decorOrb,
+              {
+                width: orbSize,
+                height: orbSize,
+                borderRadius: orbSize / 2,
+                top: -orbSize / 2.6,
+                right: -orbSize / 2.6,
+                backgroundColor: accentColor + "26",
+              },
+            ]}
+          />
+
+          {/* Top row: icon + info */}
+          <View style={[styles.header, { gap: sp(12) }]}>
+            <View
+              style={[
+                styles.iconCircle,
+                {
+                  width: iconSize,
+                  height: iconSize,
+                  borderRadius: iconSize / 2,
+                  backgroundColor: "rgba(255,255,255,0.10)",
+                  borderColor: "rgba(255,255,255,0.18)",
+                },
+              ]}
+            >
+              {accent?.emoji ? (
+                <Text style={{ fontSize: fs(22) }}>{accent.emoji}</Text>
+              ) : (
+                <Ionicons name={service.icon} size={fs(22)} color="#FFFFFF" />
+              )}
+            </View>
+
+            <View style={styles.titleBlock}>
+              <Text style={[styles.title, { fontSize: fs(16) }]}>{service.title}</Text>
+              <Text
+                style={[styles.subtitle, { fontSize: fs(12), lineHeight: fs(17) }]}
+                numberOfLines={2}
+              >
+                {service.subtitle}
+              </Text>
+            </View>
+          </View>
+
+          {/* Hint pill */}
+          <View
+            style={[
+              styles.hintRow,
+              {
+                paddingHorizontal: sp(10),
+                paddingVertical: sp(7),
+                borderRadius: radius.sm,
+                backgroundColor: "rgba(255,255,255,0.08)",
+                borderColor: "rgba(255,255,255,0.10)",
+              },
             ]}
           >
-            <LinearGradient
-              colors={
-                isDark
-                  ? [accentColor, `${accentColor}CC`]
-                  : [accentColor, `${accentColor}DD`]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.ctaGradient, { borderRadius: radius.lg }]}
+            <Ionicons name="information-circle-outline" size={fs(13)} color="rgba(255,255,255,0.78)" />
+            <Text style={[styles.hint, { fontSize: fs(11) }]} numberOfLines={1}>
+              {service.quickHint}
+            </Text>
+          </View>
+
+          {/* CTA — frosted white pill */}
+          {onStart ? (
+            <TouchableOpacity
+              onPress={onStart}
+              activeOpacity={0.88}
+              style={[
+                styles.ctaOuter,
+                { borderRadius: radius.lg },
+              ]}
             >
-              <Text style={styles.ctaText}>Start request</Text>
-              <View style={styles.ctaArrow}>
-                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              <View
+                style={[
+                  styles.ctaInner,
+                  {
+                    paddingVertical: sp(12),
+                    paddingHorizontal: sp(16),
+                    borderRadius: radius.lg,
+                    backgroundColor: "rgba(255,255,255,0.96)",
+                  },
+                ]}
+              >
+                <Text style={[styles.ctaText, { fontSize: fs(13), color: accentColor }]}>Start request</Text>
+                <View style={[styles.ctaArrow, { backgroundColor: accentColor }]}>
+                  <Ionicons name="arrow-forward" size={fs(13)} color="#FFFFFF" />
+                </View>
               </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        ) : null}
+            </TouchableOpacity>
+          ) : null}
+        </LinearGradient>
       </TouchableOpacity>
-    </NeuCard>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  shadowWrap: {
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 8,
+  },
   card: {
-    padding: 16,
-    gap: 12,
     overflow: "hidden",
+    position: "relative",
+  },
+  decorOrb: {
+    position: "absolute",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  emoji: { fontSize: 22 },
   titleBlock: { flex: 1 },
-  title: { fontSize: 16, fontWeight: "800", letterSpacing: -0.2 },
-  subtitle: { marginTop: 3, fontSize: 12, fontWeight: "500", lineHeight: 17 },
+  title: {
+    fontWeight: "800",
+    letterSpacing: -0.2,
+    color: "#FFFFFF",
+  },
+  subtitle: {
+    marginTop: 4,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.74)",
+  },
 
   hintRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  hint: { flex: 1, fontSize: 11, fontWeight: "600" },
+  hint: {
+    flex: 1,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.86)",
+  },
 
   ctaOuter: {
     overflow: "hidden",
+    shadowColor: "rgba(0,0,0,0.35)",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  ctaGradient: {
+  ctaInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
   },
   ctaText: {
-    fontSize: 13,
     fontWeight: "800",
-    color: "#FFFFFF",
     letterSpacing: 0.3,
   },
   ctaArrow: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
   },

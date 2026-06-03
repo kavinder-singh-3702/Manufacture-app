@@ -18,10 +18,10 @@ module.exports = ({ config }) => {
     orientation: "portrait",
     userInterfaceStyle: "light",
     newArchEnabled: true,
-    icon: "./assets/brand/arvann-icon-1024.png",
+    icon: "./assets/brand/arvann-icon-new.png",
     splash: {
-      backgroundColor: "#FFFFFF",
-      image: "./assets/brand/arvann-splash-logo.png",
+      backgroundColor: "#000000",
+      image: "./assets/brand/arvann-icon-new.png",
       resizeMode: "contain",
     },
     ios: {
@@ -51,8 +51,8 @@ module.exports = ({ config }) => {
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {
-        foregroundImage: "./assets/brand/arvann-icon-1024.png",
-        backgroundColor: "#FFFFFF",
+        foregroundImage: "./assets/brand/arvann-icon-new.png",
+        backgroundColor: "#000000",
       },
       permissions: [
         "INTERNET",

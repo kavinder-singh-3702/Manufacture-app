@@ -1,5 +1,5 @@
-import { ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { ComponentType, useCallback, useEffect, useMemo, useState } from "react";
+import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { homeScrollY } from "./components/MainTabs/homeScrollState";
 import { LinearGradient } from "expo-linear-gradient";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -203,30 +203,9 @@ export const MainTabs = () => {
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
 
-  const [isToolbarSolid, setIsToolbarSolid] = useState(false);
-  const toolbarBackdropOpacity = useRef(
-    homeScrollY.interpolate({
-      inputRange: [0, 80, 140],
-      outputRange: [0, 0, 1],
-      extrapolate: "clamp",
-    })
-  ).current;
-  useEffect(() => {
-    const id = homeScrollY.addListener(({ value }) => {
-      const next = value > 110;
-      setIsToolbarSolid((prev) => (prev === next ? prev : next));
-    });
-    return () => homeScrollY.removeListener(id);
-  }, []);
-
-  // Reset scroll-driven toolbar state whenever we return to the Dashboard.
-  // homeScrollY is a module-level singleton; without this reset it holds a
-  // stale value from the previous session and renders the toolbar in the
-  // wrong state until the user scrolls.
   useEffect(() => {
     if (activeRoute === routes.DASHBOARD) {
       homeScrollY.setValue(0);
-      setIsToolbarSolid(false);
     }
   }, [activeRoute]);
 
@@ -466,7 +445,7 @@ export const MainTabs = () => {
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.container, { paddingTop: isTransparentToolbar ? 0 : insets.top }]}
+        style={[styles.container, { paddingTop: 0 }]}
       >
         <LinearGradient
           colors={[colors.surfaceOverlayPrimary, "transparent", colors.surfaceOverlaySecondary]}
@@ -478,23 +457,32 @@ export const MainTabs = () => {
         />
 
         {!isTransparentToolbar && (
-          <HomeToolbar
-            mode={topBarConfig.mode}
-            title={topBarConfig.title}
-            subtitle={topBarConfig.subtitle}
-            showSearch={topBarConfig.showSearch}
-            onMenuPress={() => setSidebarVisible(true)}
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSearchPress={handleSearchPress}
-            onNotificationsPress={handleOpenNotifications}
-            notificationCount={notificationUnreadCount}
-            showAddProductAction={shouldShowAddProductAction}
-            onAddProductPress={handleAddProductFromTopBar}
-            activeCompany={activeCompany}
-            onAvatarLongPress={handleOpenCompanySwitcher}
-            onAvatarPress={handleOpenPersonalProfile}
-          />
+          <LinearGradient
+            colors={["#1B1464", "#2E3192", "#0071BC"]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ paddingTop: insets.top }}
+          >
+            <HomeToolbar
+              transparent
+              mode={topBarConfig.mode}
+              title={topBarConfig.title}
+              subtitle={topBarConfig.subtitle}
+              showSearch={topBarConfig.showSearch}
+              onMenuPress={() => setSidebarVisible(true)}
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSearchPress={handleSearchPress}
+              onNotificationsPress={handleOpenNotifications}
+              notificationCount={notificationUnreadCount}
+              showAddProductAction={shouldShowAddProductAction}
+              onAddProductPress={handleAddProductFromTopBar}
+              activeCompany={activeCompany}
+              onAvatarLongPress={handleOpenCompanySwitcher}
+              onAvatarPress={handleOpenPersonalProfile}
+            />
+          </LinearGradient>
         )}
 
         <View style={styles.contentArea}>
@@ -531,24 +519,20 @@ export const MainTabs = () => {
 
         {isTransparentToolbar && (
           <View style={[styles.transparentToolbarWrap, { paddingTop: insets.top + 6 }]}>
-            <Animated.View
+            <LinearGradient
+              colors={["#1B1464", "#2E3192", "#0071BC"]}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: colors.background,
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                  borderBottomColor: colors.border,
-                  opacity: toolbarBackdropOpacity,
-                },
-              ]}
             />
             <HomeToolbar
               mode={topBarConfig.mode}
               title={topBarConfig.title}
               subtitle={topBarConfig.subtitle}
               showSearch={topBarConfig.showSearch}
-              transparent={!isToolbarSolid}
+              transparent
               onMenuPress={() => setSidebarVisible(true)}
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}

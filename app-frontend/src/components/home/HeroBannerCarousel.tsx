@@ -422,6 +422,8 @@ export const HeroBannerCarousel = ({
         ref={scrollRef}
         horizontal
         pagingEnabled
+        scrollEnabled={slides.length > 1}
+        bounces={slides.length > 1}
         showsHorizontalScrollIndicator={false}
         onScrollBeginDrag={handleScrollBeginDrag}
         onMomentumScrollEnd={handleMomentumScrollEnd}

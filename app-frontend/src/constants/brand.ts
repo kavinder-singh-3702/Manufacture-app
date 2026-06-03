@@ -17,8 +17,8 @@ export const BRAND_COLORS = {
 } as const;
 
 export const BRAND_IMAGES: Record<"logo" | "icon" | "splash" | "wordmark", ImageSourcePropType> = {
-  logo: require("../../assets/brand/arvann-logo-source.png"),
-  icon: require("../../assets/brand/arvann-icon-1024.png"),
-  splash: require("../../assets/brand/arvann-splash-logo.png"),
-  wordmark: require("../../assets/brand/arvann-wordmark.png"),
+  logo: require("../../assets/brand/arvann-icon-new.png"),
+  icon: require("../../assets/brand/arvann-icon-new.png"),
+  splash: require("../../assets/brand/arvann-icon-new.png"),
+  wordmark: require("../../assets/brand/arvann-icon-new.png"),
 };

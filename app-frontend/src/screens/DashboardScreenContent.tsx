@@ -742,6 +742,7 @@ const UserDashboardContent = () => {
   const [adFeedLoading, setAdFeedLoading] = useState(false);
   const [heroBannerCards, setHeroBannerCards] = useState<AdFeedCard[]>([]);
   const [heroBannerLoading, setHeroBannerLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const seenImpressionCampaigns = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -960,6 +961,15 @@ const UserDashboardContent = () => {
     }
   }, [isGuest, trackAdImpression]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchCategories(), fetchAdFeed(), fetchHeroBanners()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchAdFeed, fetchCategories, fetchHeroBanners]);
+
   useFocusEffect(
     useCallback(() => {
       fetchAdFeed();
@@ -1091,16 +1101,16 @@ const UserDashboardContent = () => {
   const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "User";
 
   return (
-    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView edges={[]} style={{ flex: 1, backgroundColor: "#1B1464" }}>
       <StatusBar style="light" />
       <View style={StyleSheet.absoluteFill}>
         <LinearGradient
-          colors={[colors.surfaceCanvasStart, colors.surfaceCanvasMid, colors.surfaceCanvasEnd]}
+          colors={["#1B1464", "#2E3192", "#0071BC"]}
           locations={[0, 0.48, 1]}
           style={StyleSheet.absoluteFill}
         />
         <LinearGradient
-          colors={[colors.surfaceOverlayPrimary, "transparent", "transparent"]}
+          colors={["rgba(25,184,230,0.14)", "transparent", "transparent"]}
           locations={[0, 0.56, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -1116,6 +1126,23 @@ const UserDashboardContent = () => {
           ]}
         />
       </View>
+      {/* Hero Banner — static, NOT inside the scroll view so pull-to-refresh doesn't expose it */}
+      <Animated.View style={revealStyle(0)}>
+        <HeroBannerCarousel
+          cards={[...heroBannerCards, ...adCards]}
+          loading={heroBannerLoading}
+          greeting={getGreeting()}
+          userName={firstName}
+          appName={APP_NAME}
+          onCardPress={handleHeroBannerPress}
+          onCardVisible={trackAdImpression}
+          onSearchPress={() => navigation.navigate("ProductSearch", {})}
+          topInset={insets.top + 60}
+          onCallPress={handleAdCall}
+          onMessagePress={handleAdMessage}
+        />
+      </Animated.View>
+
       <Animated.ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
@@ -1125,24 +1152,10 @@ const UserDashboardContent = () => {
           { useNativeDriver: true }
         )}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
       >
-        {/* Hero Banner — always visible (full bleed, no padding) */}
-        <Animated.View style={revealStyle(0)}>
-          <HeroBannerCarousel
-            cards={[...heroBannerCards, ...adCards]}
-            loading={heroBannerLoading}
-            greeting={getGreeting()}
-            userName={firstName}
-            appName={APP_NAME}
-            onCardPress={handleHeroBannerPress}
-            onCardVisible={trackAdImpression}
-            onSearchPress={() => navigation.navigate("ProductSearch", {})}
-            topInset={insets.top + 60}
-            onCallPress={handleAdCall}
-            onMessagePress={handleAdMessage}
-          />
-        </Animated.View>
-
         <View style={{ padding: spacing.lg, gap: spacing.lg }}>
           <Animated.View style={[revealStyle(1), { gap: spacing.sm }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>

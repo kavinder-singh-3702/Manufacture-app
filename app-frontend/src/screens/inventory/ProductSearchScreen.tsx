@@ -321,6 +321,7 @@ export const ProductSearchScreen = () => {
               backgroundColor: colors.surface,
               borderColor: colors.border,
               borderRadius: radius.lg,
+              marginTop: spacing.md,
             },
           ]}
         >

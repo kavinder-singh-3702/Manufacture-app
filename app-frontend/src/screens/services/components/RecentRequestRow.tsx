@@ -2,9 +2,10 @@ import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
 import { useThemeMode } from "../../../hooks/useThemeMode";
+import { useResponsiveLayout } from "../../../hooks/useResponsiveLayout";
 import { ServiceRequest } from "../../../services/serviceRequest.service";
 import { SERVICE_META } from "../services.constants";
-import { SERVICE_ACCENT_MAP, neu } from "../services.palette";
+import { SERVICE_ACCENT_MAP } from "../services.palette";
 import { ServiceStatusBadge } from "./ServiceStatusBadge";
 
 const formatDate = (value: string) => {
@@ -22,95 +23,157 @@ export const RecentRequestRow = ({
 }) => {
   const { colors, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
+  const { fs, sp, isCompact } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const service = SERVICE_META[request.serviceType];
   const accent = SERVICE_ACCENT_MAP[request.serviceType];
+  const accentColor = accent?.color ?? colors.primary;
+
+  const cardBg = isDark ? "#1A1F2B" : "#FFFFFF";
+  const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,36,0.08)";
+
+  const cardPadding = isCompact ? sp(12) : sp(14);
+  const iconSize = isCompact ? sp(36) : sp(40);
 
   return (
-    <View style={[neu.lightShadow(isDark), { borderRadius: radius.lg }]}>
-      <View style={[neu.darkShadow(isDark), { borderRadius: radius.lg }]}>
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={onPress}
+    <View
+      style={[
+        styles.shadowWrap,
+        {
+          borderRadius: radius.lg,
+          shadowColor: isDark ? "#000000" : "#0F1724",
+        },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onPress}
+        style={[
+          styles.card,
+          {
+            padding: cardPadding,
+            paddingLeft: cardPadding + 4,
+            gap: sp(10),
+            borderRadius: radius.lg,
+            backgroundColor: cardBg,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: cardBorder,
+          },
+        ]}
+      >
+      {/* Left accent stripe — identifies the service at a glance */}
+      <View
+        style={[
+          styles.accentStripe,
+          {
+            backgroundColor: accentColor,
+            borderTopLeftRadius: radius.lg,
+            borderBottomLeftRadius: radius.lg,
+          },
+        ]}
+      />
+
+      {/* Top row: icon + title + chevron */}
+      <View style={[styles.header, { gap: sp(10) }]}>
+        <View
           style={[
-            styles.card,
+            styles.iconCircle,
             {
-              borderRadius: radius.lg,
-              backgroundColor: neu.cardBg(isDark),
+              width: iconSize,
+              height: iconSize,
+              borderRadius: iconSize / 2,
+              backgroundColor: accentColor + (isDark ? "26" : "1A"),
             },
           ]}
         >
-          {/* Top: icon + title + chevron */}
-          <View style={styles.header}>
-            <View
-              style={[
-                styles.iconCircle,
-                neu.pressed(isDark),
-                {
-                  borderRadius: 20,
-                  backgroundColor: isDark ? `${accent.color}18` : (accent?.soft ?? "#E2E8F0"),
-                },
-              ]}
-            >
-              {accent?.emoji ? (
-                <Text style={styles.emoji}>{accent.emoji}</Text>
-              ) : (
-                <Ionicons name={service.icon} size={16} color={accent?.color ?? colors.textMuted} />
-              )}
-            </View>
+          {accent?.emoji ? (
+            <Text style={{ fontSize: fs(17) }}>{accent.emoji}</Text>
+          ) : (
+            <Ionicons name={service.icon} size={fs(16)} color={accentColor} />
+          )}
+        </View>
 
-            <View style={styles.titleBlock}>
-              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-                {request.title || service.title}
-              </Text>
-              <Text style={[styles.serviceLabel, { color: accent?.color ?? colors.textMuted }]}>
-                {service.title}
-              </Text>
-            </View>
+        <View style={styles.titleBlock}>
+          <Text
+            style={[
+              styles.title,
+              { fontSize: fs(14), color: colors.text },
+            ]}
+            numberOfLines={1}
+          >
+            {request.title || service.title}
+          </Text>
+          <Text
+            style={[
+              styles.serviceLabel,
+              { fontSize: fs(11), color: accentColor },
+            ]}
+            numberOfLines={1}
+          >
+            {service.title}
+          </Text>
+        </View>
 
-            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-          </View>
-
-          {/* Bottom: badges + date */}
-          <View style={styles.footer}>
-            <View style={styles.badgeRow}>
-              <ServiceStatusBadge status={request.status} />
-              <ServiceStatusBadge priority={request.priority} />
-            </View>
-            <Text style={[styles.date, { color: colors.textTertiary }]}>{formatDate(request.createdAt)}</Text>
-          </View>
-        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={fs(16)} color={colors.textMuted} />
       </View>
+
+      {/* Bottom: status + priority badges + date */}
+      <View style={[styles.footer, { paddingLeft: iconSize + sp(10) }]}>
+        <View style={styles.badgeRow}>
+          <ServiceStatusBadge status={request.status} />
+          <ServiceStatusBadge priority={request.priority} />
+        </View>
+        <Text style={[styles.date, { fontSize: fs(11), color: colors.textTertiary }]}>
+          {formatDate(request.createdAt)}
+        </Text>
+      </View>
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  shadowWrap: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   card: {
-    padding: 14,
-    gap: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+  accentStripe: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  emoji: { fontSize: 17 },
-  titleBlock: { flex: 1 },
-  title: { fontSize: 14, fontWeight: "800", letterSpacing: -0.1 },
-  serviceLabel: { marginTop: 2, fontSize: 11, fontWeight: "700" },
+  titleBlock: { flex: 1, minWidth: 0 },
+  title: {
+    fontWeight: "800",
+    letterSpacing: -0.1,
+  },
+  serviceLabel: {
+    marginTop: 2,
+    fontWeight: "700",
+  },
   footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingLeft: 50,
   },
   badgeRow: { flexDirection: "row", gap: 6 },
-  date: { fontSize: 11, fontWeight: "600" },
+  date: {
+    fontWeight: "600",
+  },
 });

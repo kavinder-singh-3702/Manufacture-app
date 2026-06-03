@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
-  InteractionManager,
   View,
   Text,
   TouchableOpacity,
@@ -57,23 +56,20 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
   useEffect(() => {
     headerIntro.setValue(0);
     formIntro.setValue(0);
-    const task = InteractionManager.runAfterInteractions(() => {
-      Animated.stagger(90, [
-        Animated.timing(headerIntro, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(formIntro, {
-          toValue: 1,
-          duration: 320,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-    return () => task.cancel();
+    Animated.stagger(90, [
+      Animated.timing(headerIntro, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(formIntro, {
+        toValue: 1,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [formIntro, headerIntro]);
 
   const handleCtaPressIn = () => {

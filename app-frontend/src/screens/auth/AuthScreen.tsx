@@ -508,7 +508,7 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
               },
             ]}
           >
-            <Image source={BRAND_IMAGES.logo} style={styles.logoTileImage} />
+            <Image source={BRAND_IMAGES.icon} style={styles.logoTileImage} />
           </Animated.View>
         </View>
 
@@ -661,7 +661,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     resizeMode: "contain",
-    tintColor: "#121923",
   },
   imageShadow: {
     shadowColor: "#000",

@@ -10,40 +10,56 @@ export type ServiceAccent = {
   soft: string;
   wash: string;
   emoji: string;
+  /** Rich dark gradient used as the service card background (diagonal). */
+  gradient: [string, string];
+  /** Colored shadow glow used around the card to give it identity. */
+  glow: string;
 };
 
 export const SERVICE_ACCENT_MAP: Record<ServiceType, ServiceAccent> = {
+  // All cards now use shades of blue for a unified palette,
+  // graduating from cool teal-cyan through royal blue into indigo.
   machine_repair: {
-    color: "#D97706",
-    soft: "#FEF3C7",
-    wash: "#FFFBEB",
+    color: "#22D3EE", // cyan-400 — bright accent for CTA/dots
+    soft: "#CFFAFE",
+    wash: "#ECFEFF",
     emoji: "🔧",
+    gradient: ["#0E7490", "#0B3D4E"], // teal/cyan deep
+    glow: "rgba(34, 211, 238, 0.35)",
   },
   worker: {
-    color: "#059669",
-    soft: "#D1FAE5",
-    wash: "#ECFDF5",
+    color: "#38BDF8", // sky-400
+    soft: "#E0F2FE",
+    wash: "#F0F9FF",
     emoji: "👷",
+    gradient: ["#0369A1", "#0B2C44"], // sky deep
+    glow: "rgba(56, 189, 248, 0.35)",
   },
   transport: {
-    color: "#2563EB",
+    color: "#60A5FA", // blue-400
     soft: "#DBEAFE",
     wash: "#EFF6FF",
     emoji: "🚚",
+    gradient: ["#1E40AF", "#0F1F4D"], // royal blue
+    glow: "rgba(96, 165, 250, 0.35)",
   },
   advertisement: {
-    color: "#DC2626",
-    soft: "#FEE2E2",
-    wash: "#FEF2F2",
+    color: "#818CF8", // indigo-400 / navy accent
+    soft: "#E0E7FF",
+    wash: "#EEF2FF",
     emoji: "📢",
+    gradient: ["#1E3A8A", "#0B1437"], // navy deep
+    glow: "rgba(129, 140, 248, 0.35)",
   },
 };
 
 export const BUSINESS_ACCENT: ServiceAccent = {
-  color: "#7C3AED",
-  soft: "#EDE9FE",
-  wash: "#F5F3FF",
+  color: "#A5B4FC", // indigo-300 — slightly lighter shade for the 5th card
+  soft: "#E0E7FF",
+  wash: "#EEF2FF",
   emoji: "🚀",
+  gradient: ["#312E81", "#0F0C45"], // indigo deep
+  glow: "rgba(165, 180, 252, 0.35)",
 };
 
 /* ─── Neumorphism ────────────────────────────────────────────────────── */
