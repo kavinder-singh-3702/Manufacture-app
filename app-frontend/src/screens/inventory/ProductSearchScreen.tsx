@@ -307,11 +307,20 @@ export const ProductSearchScreen = () => {
         style={[styles.header, { paddingHorizontal: contentPadding, paddingTop: spacing.md, paddingBottom: spacing.sm }]}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backButtonHit}
+          >
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <AdaptiveSingleLineText style={[styles.headerTitle, { color: colors.text }]}>Search products</AdaptiveSingleLineText>
-          <View style={{ width: isXCompact ? 52 : 60 }} />
+          <Text
+            style={[styles.headerTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            Search products
+          </Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <View
@@ -580,15 +589,26 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    minHeight: 40,
+  },
+  backButtonHit: {
+    minWidth: 64,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backButton: {
     fontSize: 16,
     fontWeight: "700",
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "800",
+    textAlign: "center",
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    minWidth: 64,
   },
   searchBar: {
     flexDirection: "row",

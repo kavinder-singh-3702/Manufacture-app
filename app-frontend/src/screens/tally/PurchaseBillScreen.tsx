@@ -11,7 +11,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { tallyService, VoucherItemLine } from '../../services/tally.service';
@@ -22,6 +22,7 @@ import { hasVariants, variantDisplayLabel } from '../inventory/components/varian
 export const PurchaseBillScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   type LineItem = VoucherItemLine & { productName?: string; variantLabel?: string };
 
@@ -243,15 +244,21 @@ export const PurchaseBillScreen = () => {
           {
             backgroundColor: colors.surface,
             borderBottomColor: colors.border,
-            padding: spacing.md,
+            paddingTop: insets.top + spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingBottom: spacing.md,
           },
         ]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.backButtonHit}
+        >
           <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>📥 Purchase Bill</Text>
-        <View style={{ width: 60 }} />
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>📥 Purchase Bill</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
@@ -622,8 +629,9 @@ export const PurchaseBillScreen = () => {
         visible={Boolean(variantChoiceProduct)}
         product={variantChoiceProduct}
         scope="company"
-        title="Choose product option"
-        subtitle="Use base product or pick a variant for accurate bill rate and stock."
+        title="Select variant"
+        subtitle="This product has multiple variants. Pick the one for this line."
+        showBaseOption={false}
         onClose={() => setVariantChoiceProduct(null)}
         onSelect={async (selection) => {
           applySelectionToLine(selection);
@@ -640,16 +648,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
+    minHeight: 44,
+  },
+  backButtonHit: {
+    minWidth: 64,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backButton: {
     fontSize: 16,
     fontWeight: '600',
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    minWidth: 64,
   },
   scroll: {
     flex: 1,

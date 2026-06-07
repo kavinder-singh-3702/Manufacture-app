@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -122,6 +123,18 @@ export const AdminUserDetailScreen = () => {
           <View style={[styles.sectionCard, { backgroundColor: neuCardBg(isDark), borderRadius: radius.xl, padding: spacing.md, ...neuRaised(isDark) }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Email: {overview.user.email}</Text>
+            {overview.user.phone ? (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(`tel:${overview.user.phone}`).catch(() => undefined)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.metaText, { color: colors.primary, fontWeight: "700" }]}>
+                  Phone: {overview.user.phone} 📞
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={[styles.metaText, { color: colors.textMuted, fontStyle: "italic" }]}>Phone: not provided</Text>
+            )}
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Role: {overview.user.role}</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Status: {overview.user.status}</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined: {formatDate(overview.user.createdAt)}</Text>

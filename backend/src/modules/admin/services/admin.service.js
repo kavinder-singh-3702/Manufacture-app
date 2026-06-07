@@ -85,6 +85,8 @@ const shapeUserSummary = (user) => {
   return {
     id: user._id?.toString?.() || user.id,
     email: user.email,
+    phone: user.phone,
+    phoneVerifiedAt: user.phoneVerifiedAt,
     displayName: user.displayName,
     firstName: user.firstName,
     lastName: user.lastName,

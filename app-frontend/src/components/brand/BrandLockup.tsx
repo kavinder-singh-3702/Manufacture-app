@@ -72,8 +72,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    resizeMode: "cover",
-    tintColor: "#121923",
+    resizeMode: "contain",
   },
   textWrap: {
     marginLeft: 10,

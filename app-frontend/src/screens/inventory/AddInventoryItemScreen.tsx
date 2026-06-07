@@ -940,14 +940,18 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
-          <TouchableOpacity onPress={() => (step === 1 ? navigation.goBack() : animateToStep(1))}>
-            <Text style={[styles.backButton, { color: colors.primary }]}>{step === 1 ? "← Back" : "← Product info"}</Text>
+        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
+          <TouchableOpacity
+            onPress={() => (step === 1 ? navigation.goBack() : animateToStep(1))}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backButtonHit}
+          >
+            <Text style={[styles.backButton, { color: colors.primary }]} numberOfLines={1}>{step === 1 ? "← Back" : "← Product info"}</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
             {mode === "inhouse" ? "Add In-house Product" : "Add Product"}
           </Text>
-          <View style={{ width: 70 }} />
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
@@ -1011,16 +1015,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     borderBottomWidth: 1,
+    minHeight: 44,
+  },
+  backButtonHit: {
+    minWidth: 110,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backButton: {
     fontSize: 15,
     fontWeight: "700",
   },
+  headerSpacer: {
+    minWidth: 110,
+  },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "800",
+    textAlign: "center",
+    marginHorizontal: 8,
   },
   sectionTitle: {
     fontSize: 17,

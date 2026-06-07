@@ -376,7 +376,7 @@ export const CompaniesScreen = () => {
 
   const listHeader = useMemo(
     () => (
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+      <View>
         <AdminHeader
           title="Companies"
           subtitle={
@@ -386,17 +386,18 @@ export const CompaniesScreen = () => {
           }
           count={pagination.total}
         />
+        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm }}>
+          <AdminSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search company name or owner..."
+          />
 
-        <AdminSearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search company name or owner..."
-        />
-
-        <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+          <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+        </View>
       </View>
     ),
-    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md, user?.role]
+    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md, spacing.sm, user?.role]
   );
 
   if (loading && !refreshing) {

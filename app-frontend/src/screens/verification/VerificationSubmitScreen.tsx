@@ -8,10 +8,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +28,7 @@ export const VerificationSubmitScreen = () => {
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<RootStackParamList, 'VerificationSubmit'>>();
   const { companyId } = route.params;
 
@@ -100,9 +101,10 @@ export const VerificationSubmitScreen = () => {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={styles.header}>
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        {/* Header — paddingTop adapts to device's safe-area inset
+            (works on every notch / Dynamic Island / Android status bar) */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>

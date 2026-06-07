@@ -3,6 +3,7 @@ import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { enableScreens } from "react-native-screens";
 import { AuthScreen } from "../screens/auth/AuthScreen";
+import { AddMobileNumberScreen } from "../screens/auth/AddMobileNumberScreen";
 import { useAuth } from "../hooks/useAuth";
 import { FullScreenLoader } from "./components/FullScreenLoader";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
@@ -292,6 +293,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="BusinessSetupRequest"
               component={BusinessSetupRequestScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AddMobileNumber"
+              component={AddMobileNumberScreen}
               options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen

@@ -265,11 +265,15 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backButtonHit}
+          >
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
             {mode === "inhouse" ? "Edit In-house Product" : "Edit Product"}
           </Text>
           <TouchableOpacity onPress={handleDelete}>
@@ -577,16 +581,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     borderBottomWidth: 1,
+    minHeight: 44,
+  },
+  backButtonHit: {
+    minWidth: 64,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backButton: {
     fontSize: 16,
     fontWeight: "600",
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "700",
+    textAlign: "center",
+    marginHorizontal: 8,
   },
   deleteButton: {
     fontSize: 14,

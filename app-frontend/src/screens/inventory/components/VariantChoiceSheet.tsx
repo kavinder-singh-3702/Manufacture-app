@@ -35,6 +35,7 @@ export const VariantChoiceSheet = ({
   title = "Select how to continue",
   subtitle = "This product has variants. You can continue with the base product or choose a specific variant.",
   baseActionLabel = "Continue with base product",
+  showBaseOption = true,
   onClose,
   onSelect,
 }: {
@@ -44,6 +45,7 @@ export const VariantChoiceSheet = ({
   title?: string;
   subtitle?: string;
   baseActionLabel?: string;
+  showBaseOption?: boolean;
   onClose: () => void;
   onSelect: (selection: VariantChoiceSelection) => void | Promise<void>;
 }) => {
@@ -150,30 +152,32 @@ export const VariantChoiceSheet = ({
                 contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md }}
                 keyboardShouldPersistTaps="handled"
               >
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  disabled={submitting}
-                  onPress={handleSelectBase}
-                  style={[
-                    styles.baseAction,
-                    {
-                      borderColor: colors.border,
-                      borderRadius: radius.lg,
-                      backgroundColor: colors.surfaceElevated,
-                    },
-                  ]}
-                >
-                  <View style={[styles.baseIcon, { backgroundColor: colors.primary + "1A" }]}>
-                    <Ionicons name="cube-outline" size={18} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.baseTitle, { color: colors.text }]}>{baseActionLabel}</Text>
-                    <Text style={[styles.baseSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
-                      {hideStockForPublicListing ? "Uses the product-level price." : "Uses the product-level stock and price."}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
+                {showBaseOption ? (
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    disabled={submitting}
+                    onPress={handleSelectBase}
+                    style={[
+                      styles.baseAction,
+                      {
+                        borderColor: colors.border,
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.surfaceElevated,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.baseIcon, { backgroundColor: colors.primary + "1A" }]}>
+                      <Ionicons name="cube-outline" size={18} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.baseTitle, { color: colors.text }]}>{baseActionLabel}</Text>
+                      <Text style={[styles.baseSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
+                        {hideStockForPublicListing ? "Uses the product-level price." : "Uses the product-level stock and price."}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
 
                 <View style={styles.listHeaderRow}>
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose specific variant</Text>
@@ -215,7 +219,9 @@ export const VariantChoiceSheet = ({
                     ]}
                   >
                     <Text style={[styles.emptyTitle, { color: colors.text }]}>No active variants</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Continue with base product.</Text>
+                    <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                      {showBaseOption ? "Continue with base product." : "This product has no variants set up. Close and pick a different product."}
+                    </Text>
                   </View>
                 ) : (
                   activeVariants.map((variant) => {
@@ -287,6 +293,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: "92%",
+    minHeight: "45%",
     borderTopWidth: 1,
   },
   header: {

@@ -158,8 +158,17 @@ export const DocumentUploader: React.FC<Props> = ({
   };
 
   const showOptions = () => {
-    // Simple picker to match profile upload flow (image or PDF)
-    pickDocument().catch(() => setIsLoading(false));
+    Alert.alert(
+      'Upload Document',
+      'Choose how you want to add your document',
+      [
+        { text: 'Take Photo', onPress: () => { captureFromCamera().catch(() => setIsLoading(false)); } },
+        { text: 'Choose from Gallery', onPress: () => { pickFromGallery().catch(() => setIsLoading(false)); } },
+        { text: 'Choose PDF / File', onPress: () => { pickDocument().catch(() => setIsLoading(false)); } },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true },
+    );
   };
 
   return (

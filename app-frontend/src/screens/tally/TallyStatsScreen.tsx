@@ -120,7 +120,7 @@ export const TallyStatsScreen = () => {
   // Note: Don't return early on error - show action buttons even if stats fail
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <LinearGradient
         colors={['rgba(108, 99, 255, 0.06)', 'transparent']}
         style={StyleSheet.absoluteFill}

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -27,6 +28,7 @@ const neuInsetBg = (isDark: boolean) => isDark ? NEU_INSET_DARK : NEU_INSET_LIGH
 
 export const AdminSettingsScreen = () => {
   const { colors, radius } = useTheme();
+  const insets = useSafeAreaInsets();
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
   const { logout, user } = useAuth();
@@ -114,7 +116,7 @@ export const AdminSettingsScreen = () => {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
         {user?.email && (
           <Text style={[styles.email, { color: colors.textSecondary }]}>{user.email}</Text>

@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -115,6 +115,12 @@ export const AmazonStyleProductCard = memo(
     );
 
     const primaryImage = product.images?.[0]?.url;
+    const [imageError, setImageError] = useState(false);
+
+    // Reset error state if the product (or its image URL) changes
+    useEffect(() => {
+      setImageError(false);
+    }, [primaryImage]);
     const price = Number(product.price?.amount || 0);
     const currency = product.price?.currency || "INR";
     const compareAt = getCompareAt(product);
@@ -135,11 +141,16 @@ export const AmazonStyleProductCard = memo(
       >
         <View style={styles.row}>
           <View style={styles.imageContainer}>
-            {primaryImage ? (
-              <Image source={{ uri: primaryImage }} style={styles.productImage} resizeMode="contain" />
+            {primaryImage && !imageError ? (
+              <Image
+                source={{ uri: primaryImage }}
+                style={styles.productImage}
+                resizeMode="contain"
+                onError={() => setImageError(true)}
+              />
             ) : (
               <View style={styles.placeholder}>
-                <Ionicons name="image-outline" size={24} color={palette.subtext} />
+                <Ionicons name="cube-outline" size={28} color={palette.subtext} />
                 <Text style={styles.placeholderText}>No image</Text>
               </View>
             )}

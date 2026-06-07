@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { tallyService } from '../../services/tally.service';
@@ -25,6 +25,7 @@ type RouteParams = {
 export const ReceiptPaymentScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<{ params: { type: ReceiptPaymentType } }, 'params'>>();
 
   const type: ReceiptPaymentType = route.params?.type || 'receipt';
@@ -127,15 +128,21 @@ export const ReceiptPaymentScreen = () => {
           {
             backgroundColor: colors.surface,
             borderBottomColor: colors.border,
-            padding: spacing.md,
+            paddingTop: insets.top + spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingBottom: spacing.md,
           },
         ]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.backButtonHit}
+        >
           <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{config.title}</Text>
-        <View style={{ width: 60 }} />
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{config.title}</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingBottom: spacing.xxl }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
@@ -352,16 +359,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderBottomWidth: 1,
+    minHeight: 44,
+  },
+  backButtonHit: {
+    minWidth: 64,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backButton: {
     fontSize: 16,
     fontWeight: '600',
   },
+  headerSpacer: {
+    minWidth: 64,
+  },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
+    textAlign: 'center',
+    marginHorizontal: 8,
   },
   scroll: {
     flex: 1,

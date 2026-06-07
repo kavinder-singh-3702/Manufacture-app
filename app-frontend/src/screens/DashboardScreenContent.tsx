@@ -38,6 +38,7 @@ import { useToast } from "../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "./product/utils/productContact";
 import { HeroBannerCarousel } from "../components/home/HeroBannerCarousel";
 import { homeScrollY } from "../navigation/components/MainTabs/homeScrollState";
+import { BUSINESS_ACCENT } from "./services/services.palette";
 
 // ============================================================
 // TYPES
@@ -311,8 +312,8 @@ const AdminDashboardContent = () => {
             transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
           }}
         >
-          {/* Header */}
-          <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
+          {/* Header — paddingTop adapts to the device's safe-area inset (notch / Dynamic Island / Android status bar) */}
+          <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: insets.top + spacing.sm }]}>
             <View>
               <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()},</Text>
               <Text style={[styles.userName, { color: colors.text }]}>{firstName}</Text>
@@ -364,7 +365,7 @@ const AdminDashboardContent = () => {
                       <Ionicons name="people" size={20} color="#19B8E6" />
                     </View>
                     <AnimatedCounter value={stats?.users.total ?? 0} style={styles.heroStatValue} />
-                    <Text style={styles.heroStatLabel}>Users</Text>
+                    <Text style={styles.heroStatLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Users</Text>
                   </View>
 
                   <View style={styles.heroStatBox}>
@@ -372,7 +373,7 @@ const AdminDashboardContent = () => {
                       <Ionicons name="business" size={20} color="#10B981" />
                     </View>
                     <AnimatedCounter value={stats?.companies.active ?? 0} style={styles.heroStatValue} />
-                    <Text style={styles.heroStatLabel}>Companies</Text>
+                    <Text style={styles.heroStatLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Companies</Text>
                   </View>
 
                   <View style={styles.heroStatBox}>
@@ -380,7 +381,7 @@ const AdminDashboardContent = () => {
                       <Ionicons name="time" size={20} color={pendingCount > 0 ? "#F59E0B" : "#19B8E6"} />
                     </View>
                     <AnimatedCounter value={pendingCount} style={styles.heroStatValue} />
-                    <Text style={styles.heroStatLabel}>Pending</Text>
+                    <Text style={styles.heroStatLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>Pending</Text>
                   </View>
                 </View>
               </View>
@@ -1126,23 +1127,6 @@ const UserDashboardContent = () => {
           ]}
         />
       </View>
-      {/* Hero Banner — static, NOT inside the scroll view so pull-to-refresh doesn't expose it */}
-      <Animated.View style={revealStyle(0)}>
-        <HeroBannerCarousel
-          cards={[...heroBannerCards, ...adCards]}
-          loading={heroBannerLoading}
-          greeting={getGreeting()}
-          userName={firstName}
-          appName={APP_NAME}
-          onCardPress={handleHeroBannerPress}
-          onCardVisible={trackAdImpression}
-          onSearchPress={() => navigation.navigate("ProductSearch", {})}
-          topInset={insets.top + 60}
-          onCallPress={handleAdCall}
-          onMessagePress={handleAdMessage}
-        />
-      </Animated.View>
-
       <Animated.ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
@@ -1156,8 +1140,161 @@ const UserDashboardContent = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
+        {/* Hero Banner now inside the scroll — whole screen scrolls together */}
+        <Animated.View style={revealStyle(0)}>
+          <HeroBannerCarousel
+            cards={[...heroBannerCards, ...adCards]}
+            loading={heroBannerLoading}
+            greeting={getGreeting()}
+            userName={firstName}
+            appName={APP_NAME}
+            onCardPress={handleHeroBannerPress}
+            onCardVisible={trackAdImpression}
+            onSearchPress={() => navigation.navigate("ProductSearch", {})}
+            topInset={insets.top + 60}
+            onCallPress={handleAdCall}
+            onMessagePress={handleAdMessage}
+          />
+        </Animated.View>
+
+        {/* Mobile capture nudge — soft prompt for users without a phone on file (e.g. Apple Sign-In) */}
+        {!isGuest && user && !user.phone ? (
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate("AddMobileNumber")}
+              style={{
+                borderRadius: radius.lg,
+                overflow: "hidden",
+                shadowColor: "#F59E0B",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.4,
+                shadowRadius: 10,
+                elevation: 5,
+              }}
+            >
+              <LinearGradient
+                colors={["#FCD34D", "#F59E0B"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: spacing.md,
+                  gap: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: "rgba(255,255,255,0.32)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="call" size={20} color="#7C2D12" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#7C2D12" }}>
+                    Add your mobile number
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#92400E", marginTop: 2 }}>
+                    Helps with support, recovery, and order coordination.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#7C2D12" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {/* Start your own business — CTA placed between ads and category browse */}
+        <Animated.View style={[revealStyle(1), { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => navigation.navigate("BusinessSetupRequest")}
+            style={{
+              borderRadius: radius.xl,
+              shadowColor: BUSINESS_ACCENT.glow,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.55,
+              shadowRadius: 14,
+              elevation: 6,
+            }}
+          >
+            <LinearGradient
+              colors={BUSINESS_ACCENT.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                padding: spacing.md,
+                borderRadius: radius.xl,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: "rgba(255,255,255,0.12)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                overflow: "hidden",
+              }}
+            >
+              {/* Decorative blob */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: -50,
+                  right: -50,
+                  width: 140,
+                  height: 140,
+                  borderRadius: 70,
+                  backgroundColor: BUSINESS_ACCENT.color + "26",
+                }}
+              />
+
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255,255,255,0.10)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.18)",
+                }}
+              >
+                <Text style={{ fontSize: fs(22) }}>{BUSINESS_ACCENT.emoji}</Text>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: fs(15), fontWeight: "800", color: "#FFFFFF", letterSpacing: -0.2 }}>
+                  Start your own business
+                </Text>
+                <Text style={{ fontSize: fs(12), fontWeight: "600", color: "rgba(255,255,255,0.74)", marginTop: 2, lineHeight: fs(16) }}>
+                  Tell us your idea — get launch support.
+                </Text>
+              </View>
+
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(255,255,255,0.96)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="arrow-forward" size={16} color={BUSINESS_ACCENT.color} />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
         <View style={{ padding: spacing.lg, gap: spacing.lg }}>
-          <Animated.View style={[revealStyle(1), { gap: spacing.sm }]}>
+          <Animated.View style={[revealStyle(2), { gap: spacing.sm }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse by category</Text>
             {categoriesError && (
               <View style={[styles.errorBanner, { backgroundColor: colors.error + "15", padding: spacing.sm, borderRadius: radius.md }]}>
@@ -1632,12 +1769,12 @@ const createStyles = (fs: (size: number) => number) => StyleSheet.create({
   heroContent: { position: "relative", zIndex: 1 },
   heroTitle: { color: "#fff", fontSize: fs(22), fontWeight: "800", letterSpacing: -0.3 },
   heroSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: fs(14), marginTop: scale(4) },
-  heroStatsRow: { flexDirection: "row", marginTop: scale(24), gap: scale(12) },
-  heroStatBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: scale(16), padding: scale(16), alignItems: "center" },
+  heroStatsRow: { flexDirection: "row", marginTop: scale(24), gap: scale(10) },
+  heroStatBox: { flex: 1, minWidth: 0, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: scale(16), paddingVertical: scale(16), paddingHorizontal: scale(8), alignItems: "center" },
   heroStatIconBg: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: scale(8) },
   heroStatIconBgWarning: { backgroundColor: "#FEF3C7" },
-  heroStatValue: { color: "#fff", fontSize: fs(28), fontWeight: "800" },
-  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: fs(12), fontWeight: "600", marginTop: scale(4) },
+  heroStatValue: { color: "#fff", fontSize: fs(26), fontWeight: "800", textAlign: "center" },
+  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: fs(12), fontWeight: "600", marginTop: scale(4), textAlign: "center", maxWidth: "100%" },
 
   // Alert Card
   alertCard: { flexDirection: "row", alignItems: "center", padding: scale(16), gap: scale(12) },

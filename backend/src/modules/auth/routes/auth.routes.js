@@ -1,13 +1,14 @@
 const { Router } = require('express');
 const { createAdmin } = require('../controllers/admin.controller');
 const { beginSignup, verifyOtp, saveContact, finalizeSignup } = require('../controllers/signup.controller');
-const { loginUser, logoutUser } = require('../controllers/session.controller');
+const { loginUser, logoutUser, updatePhoneController } = require('../controllers/session.controller');
 const { appleSignInController } = require('../controllers/appleSignIn.controller');
 const {
   requestPasswordResetController,
   resetPasswordController
 } = require('../controllers/password.controller');
 const validate = require('../../../middleware/validate');
+const { authenticate } = require('../../../middleware/authMiddleware');
 const {
   signupStartValidation,
   signupVerifyValidation,
@@ -31,5 +32,6 @@ router.post('/apple', appleSignInController);
 router.post('/logout', logoutUser);
 router.post('/password/forgot', validate(forgotPasswordValidation), requestPasswordResetController);
 router.post('/password/reset', validate(resetPasswordValidation), resetPasswordController);
+router.post('/profile/phone', authenticate, updatePhoneController);
 
 module.exports = router;

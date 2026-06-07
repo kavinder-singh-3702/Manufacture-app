@@ -8,6 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../hooks/useTheme";
 
 type ActionItem = {
@@ -35,6 +36,7 @@ export const AdminActionSheet = ({
   actions,
 }: AdminActionSheetProps) => {
   const { colors, radius, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
@@ -133,7 +135,7 @@ export const AdminActionSheet = ({
             ))}
           </View>
 
-          {/* Cancel Button */}
+          {/* Cancel Button — bottom inset keeps it clear of the home indicator */}
           <TouchableOpacity
             onPress={onClose}
             activeOpacity={0.7}
@@ -143,7 +145,7 @@ export const AdminActionSheet = ({
                 backgroundColor: colors.background,
                 borderRadius: radius.md,
                 marginHorizontal: spacing.lg,
-                marginBottom: spacing.xl,
+                marginBottom: Math.max(insets.bottom, spacing.lg),
               },
             ]}
           >

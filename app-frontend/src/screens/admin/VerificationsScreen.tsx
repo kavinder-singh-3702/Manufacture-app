@@ -362,23 +362,24 @@ export const VerificationsScreen = () => {
 
   const listHeader = useMemo(
     () => (
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+      <View>
         <AdminHeader
           title="Verifications"
           subtitle="Review submissions, request corrections, and keep compliance queue healthy."
           count={pagination.total}
         />
+        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm }}>
+          <AdminSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search by company or requester..."
+          />
 
-        <AdminSearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search by company or requester..."
-        />
-
-        <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+          <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+        </View>
       </View>
     ),
-    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md]
+    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md, spacing.sm]
   );
 
   if (loading && !refreshing) {

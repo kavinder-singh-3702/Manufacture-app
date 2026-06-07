@@ -60,6 +60,8 @@ export type AdminCompany = {
 export type AdminUser = {
   id: string;
   email: string;
+  phone?: string;
+  phoneVerifiedAt?: string;
   displayName: string;
   firstName?: string;
   lastName?: string;

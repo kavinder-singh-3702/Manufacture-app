@@ -45,8 +45,11 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const headerIntro = useRef(new Animated.Value(0)).current;
-  const formIntro = useRef(new Animated.Value(0)).current;
+  // Initial values default to 1 (fully visible) so the form is never stuck invisible
+  // if the entrance animation effect fails to fire (e.g. mid navigation transition after logout).
+  // The useEffect below resets them to 0 and animates back to 1 for the polished intro.
+  const headerIntro = useRef(new Animated.Value(1)).current;
+  const formIntro = useRef(new Animated.Value(1)).current;
   const ctaScale = useRef(new Animated.Value(1)).current;
 
   const identifierValue = credentialMode === "email" ? email : phone;
@@ -54,22 +57,30 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
     credentialMode === "email" ? "Enter Email Id" : "Enter Mobile Number";
 
   useEffect(() => {
-    headerIntro.setValue(0);
-    formIntro.setValue(0);
-    Animated.stagger(90, [
-      Animated.timing(headerIntro, {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(formIntro, {
-        toValue: 1,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Defer to next frame so the entrance animation fires AFTER any in-flight
+    // navigation transition (post-logout, etc.). Without this, the animation
+    // can silently fail and leave the form invisible — that's the "switch to
+    // Mobile then back to Email" workaround the user reported.
+    const handle = requestAnimationFrame(() => {
+      headerIntro.setValue(0);
+      formIntro.setValue(0);
+      Animated.stagger(90, [
+        Animated.timing(headerIntro, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(formIntro, {
+          toValue: 1,
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+
+    return () => cancelAnimationFrame(handle);
   }, [formIntro, headerIntro]);
 
   const handleCtaPressIn = () => {

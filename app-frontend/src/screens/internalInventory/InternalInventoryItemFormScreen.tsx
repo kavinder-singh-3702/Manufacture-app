@@ -194,11 +194,15 @@ export const InternalInventoryItemFormScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}> 
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+        <View style={[styles.header, { borderBottomColor: colors.border, padding: spacing.lg }]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backButtonHit}
+          >
             <Text style={[styles.backText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{isEdit ? "Edit Internal Item" : "Add Internal Item"}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{isEdit ? "Edit Internal Item" : "Add Internal Item"}</Text>
           {isEdit ? (
             <TouchableOpacity onPress={handleDelete}>
               <Text style={[styles.deleteText, { color: colors.error }]}>Delete</Text>
@@ -326,16 +330,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     borderBottomWidth: 1,
+    minHeight: 44,
+  },
+  backButtonHit: {
+    minWidth: 64,
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   backText: {
     fontSize: 14,
     fontWeight: "700",
   },
   headerTitle: {
+    flex: 1,
     fontSize: 17,
     fontWeight: "800",
+    textAlign: "center",
+    marginHorizontal: 8,
   },
   deleteText: {
     fontSize: 14,

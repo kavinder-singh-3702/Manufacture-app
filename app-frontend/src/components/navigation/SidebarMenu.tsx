@@ -4,9 +4,9 @@ import {
   TouchableWithoutFeedback,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Typography } from "../common/Typography";
@@ -32,6 +32,7 @@ type SidebarMenuProps = {
 export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, menuItems }: SidebarMenuProps) => {
   const { spacing, radius, colors, nativeGradients } = useTheme();
   const { resolvedMode, toggleMode } = useThemeMode();
+  const insets = useSafeAreaInsets();
   const isDark = resolvedMode === "dark";
   const modeLabel = isDark ? "Dark mode" : "Light mode";
   const modeIcon = isDark ? "moon" : "sunny";
@@ -42,7 +43,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]} />
         </TouchableWithoutFeedback>
-        <SafeAreaView style={styles.panelSafeArea}>
+        <View style={styles.panelSafeArea}>
           <LinearGradient
             colors={[colors.sidebarGradientStart, colors.sidebarGradientMid, colors.sidebarGradientEnd]}
             locations={[0, 0.52, 1]}
@@ -50,6 +51,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               styles.panel,
               {
                 padding: spacing.lg,
+                paddingTop: insets.top + spacing.md,
                 borderTopRightRadius: radius.lg,
                 borderBottomRightRadius: radius.lg,
               },
@@ -207,7 +209,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               })}
             </ScrollView>
           </LinearGradient>
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );

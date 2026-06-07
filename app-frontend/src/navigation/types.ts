@@ -90,6 +90,7 @@ export type RootStackParamList = {
     | undefined;
   ServiceDetail: { serviceType: ServiceType };
   BusinessSetupRequest: undefined;
+  AddMobileNumber: undefined;
   // Admin management screens (opened from Settings with back button)
   AdminUsers: undefined;
   AdminCompanies: undefined;

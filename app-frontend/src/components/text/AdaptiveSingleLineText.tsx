@@ -23,7 +23,10 @@ export const AdaptiveSingleLineText = ({
   style,
   containerStyle,
   minimumFontScale = 0.68,
-  allowOverflowScroll = true,
+  // Default OFF: the horizontal ScrollView was making titles draggable.
+  // adjustsFontSizeToFit handles long text; pass true only when you actually
+  // want the text pannable.
+  allowOverflowScroll = false,
   testID,
 }: AdaptiveSingleLineTextProps) => {
   const textNode = (

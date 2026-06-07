@@ -559,7 +559,7 @@ export const MainTabs = () => {
               handleOpenCompanySwitcher();
             }
           }}
-          unreadByRoute={totalUnread > 0 ? { [isAdmin ? routes.CHAT : routes.DASHBOARD]: totalUnread } : undefined}
+          unreadByRoute={totalUnread > 0 && isAdmin ? { [routes.CHAT]: totalUnread } : undefined}
           getSvgIconXml={getTabIconXml}
         />
       </LinearGradient>

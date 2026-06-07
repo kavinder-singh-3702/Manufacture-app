@@ -7,6 +7,8 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
+  Linking,
+  Alert,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -166,6 +168,26 @@ export const UserManagementScreen = () => {
 
   const actions = useMemo(
     () => [
+      ...(selectedUser?.phone
+        ? [
+            {
+              label: `Call ${selectedUser.phone}`,
+              icon: "call-outline" as const,
+              onPress: () => {
+                const url = `tel:${selectedUser.phone}`;
+                Linking.canOpenURL(url)
+                  .then((supported) =>
+                    supported
+                      ? Linking.openURL(url)
+                      : Alert.alert("Cannot place call", "This device cannot make phone calls.")
+                  )
+                  .catch(() =>
+                    Alert.alert("Call failed", "Unable to start the call. Try again.")
+                  );
+              },
+            },
+          ]
+        : []),
       {
         label: "User 360",
         icon: "person-circle-outline" as const,
@@ -231,46 +253,50 @@ export const UserManagementScreen = () => {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: AdminUser }) => (
-      <AdminListCard
-        key={item.id}
-        title={
-          item.displayName ||
-          `${item.firstName || ""} ${item.lastName || ""}`.trim() ||
-          "Unknown user"
-        }
-        subtitle={item.email}
-        avatarText={(item.displayName || item.email || "U")[0].toUpperCase()}
-        status={{
-          label: getStatusLabel(item.status),
-          type: getStatusType(item.status),
-        }}
-        meta={`Joined ${formatDate(item.createdAt)}${item.role ? ` • ${item.role}` : ""}`}
-        onPress={() => openActionSheet(item)}
-      />
-    ),
+    ({ item }: { item: AdminUser }) => {
+      const phoneLine = item.phone ? `📱 ${item.phone}` : "📱 No phone on file";
+      return (
+        <AdminListCard
+          key={item.id}
+          title={
+            item.displayName ||
+            `${item.firstName || ""} ${item.lastName || ""}`.trim() ||
+            "Unknown user"
+          }
+          subtitle={`${item.email}\n${phoneLine}`}
+          avatarText={(item.displayName || item.email || "U")[0].toUpperCase()}
+          status={{
+            label: getStatusLabel(item.status),
+            type: getStatusType(item.status),
+          }}
+          meta={`Joined ${formatDate(item.createdAt)}${item.role ? ` • ${item.role}` : ""}`}
+          onPress={() => openActionSheet(item)}
+        />
+      );
+    },
     [openActionSheet]
   );
 
   const listHeader = useMemo(
     () => (
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+      <View>
         <AdminHeader
           title="Users"
           subtitle="Manage account access, preferences, and audit visibility."
           count={pagination.total}
         />
+        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm }}>
+          <AdminSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search users by name, email, or phone..."
+          />
 
-        <AdminSearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search users by name or email..."
-        />
-
-        <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+          <AdminFilterTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter} />
+        </View>
       </View>
     ),
-    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md]
+    [activeFilter, filterTabs, pagination.total, searchQuery, spacing.lg, spacing.md, spacing.sm]
   );
 
   if (loading && !refreshing) {
@@ -334,7 +360,11 @@ export const UserManagementScreen = () => {
         visible={actionSheetVisible}
         onClose={closeActionSheet}
         title={selectedUser?.displayName || selectedUser?.email}
-        subtitle={selectedUser?.email}
+        subtitle={
+          selectedUser
+            ? `${selectedUser.email}${selectedUser.phone ? `\n📱 ${selectedUser.phone}` : ""}`
+            : undefined
+        }
         actions={actions}
       />
     </View>
