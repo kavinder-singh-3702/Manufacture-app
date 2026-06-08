@@ -21,7 +21,11 @@ import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProd
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
 import { CompanyRequiredCard } from "../../components/company";
-import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import {
+  callProductSeller,
+  isOwnProduct,
+  startProductConversation,
+} from "../product/utils/productContact";
 
 const PAGE_SIZE = 25;
 type VisibilityFilter = "all" | "public" | "private";
@@ -135,24 +139,35 @@ export const MyProductsScreen = () => {
 
   const renderProduct = useCallback(
     ({ item: product }: { item: Product }) => {
+      // On MyProductsScreen every product belongs to the current user. Hide
+      // the Message + Call quick actions entirely — they'd just bounce off the
+      // "Cannot start a conversation with yourself" backend rejection.
+      const isMine = isOwnProduct(product, user?.id);
       return (
         <AmazonStyleProductCard
           product={product}
           onPress={handleProductPress}
-          onMessagePress={(selectedProduct) =>
-            startProductConversation({
-              product: selectedProduct,
-              isGuest: user?.role === "guest",
-              requestLogin,
-              navigation,
-              toastError,
-            })
+          onMessagePress={
+            isMine
+              ? undefined
+              : (selectedProduct) =>
+                  startProductConversation({
+                    product: selectedProduct,
+                    isGuest: user?.role === "guest",
+                    currentUserId: user?.id,
+                    requestLogin,
+                    navigation,
+                    toastError,
+                  })
           }
-          onCallPress={(selectedProduct) =>
-            callProductSeller({
-              product: selectedProduct,
-              toastError,
-            })
+          onCallPress={
+            isMine
+              ? undefined
+              : (selectedProduct) =>
+                  callProductSeller({
+                    product: selectedProduct,
+                    toastError,
+                  })
           }
           showPrimaryAction
           primaryActionLabel="Promote product"

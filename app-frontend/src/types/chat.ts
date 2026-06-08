@@ -9,12 +9,36 @@
  * - ChatUser: Represents a user that admin can chat with
  */
 
+export type ChatAttachment = {
+  url: string;
+  /** MIME type — used by the bubble renderer to decide image vs file icon */
+  type?: string;
+  name?: string;
+  size?: number;
+};
+
+export type ChatContextRef = {
+  /** Discriminator for the referenced entity. Currently only "product". */
+  type: string;
+  refId?: string;
+  label?: string;
+  imageUrl?: string;
+};
+
 export type ChatMessage = {
   id: string;
   conversationId: string;
   senderId: string;
   senderRole: "admin" | "user" | "support";
   content: string;
+  attachments?: ChatAttachment[];
+  /**
+   * Optional reference to whatever this message is about — currently the
+   * product the buyer is asking about. ChatScreen falls back to the latest
+   * non-null contextRef in message history when its route params don't
+   * include productId (e.g. when the seller opens the inbox).
+   */
+  contextRef?: ChatContextRef;
   timestamp: string;
   read: boolean;
 };

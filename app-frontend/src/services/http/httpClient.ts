@@ -128,7 +128,23 @@ export class HttpClient {
         }
       }
 
-      const errorMessage = body?.message || body?.error || "Request failed";
+      // express-validator returns 422 with `{ errors: [{ msg, param, location, ... }] }`.
+      // Fall back to that shape so users see the actual field-level reason
+      // (e.g. "Date of birth must be in YYYY-MM-DD format") instead of a generic
+      // "Request failed".
+      const validatorErrors = (parsedBody as { errors?: Array<{ msg?: string; param?: string }> })?.errors;
+      const firstValidatorMessage = Array.isArray(validatorErrors) && validatorErrors.length > 0
+        ? validatorErrors
+            .map((entry) => (entry?.msg ? `${entry.msg}` : null))
+            .filter(Boolean)
+            .join(" · ")
+        : null;
+
+      const errorMessage =
+        body?.message ||
+        body?.error ||
+        firstValidatorMessage ||
+        "Request failed";
       throw new ApiError(errorMessage, response.status, parsedBody, { kind: "http" });
     }
 

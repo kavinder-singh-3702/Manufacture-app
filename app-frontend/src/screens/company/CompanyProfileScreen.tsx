@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -10,7 +11,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../hooks/useAuth";
 import { isAdminRole } from "../../constants/roles";
 import { useTheme } from "../../hooks/useTheme";
@@ -165,34 +166,48 @@ export const CompanyProfileScreen = () => {
 
     try {
       setLogoError(null);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*"],
-        copyToCacheDirectory: true,
+
+      // Use PHPicker on iOS (full library) instead of the Files-app
+      // DocumentPicker that landed users on "Recents". Same skip-permission-
+      // on-iOS pattern as the chat picker; Android still asks for permission.
+      if (Platform.OS === "android") {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setLogoError("Please allow photo library access to upload a logo.");
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        allowsMultipleSelection: false,
       });
 
       if (result.canceled) return;
 
-      const file = result.assets?.[0];
-      if (!file) {
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
         setLogoError("Unable to read that file. Please try another image.");
         return;
       }
 
-      if (file.size && file.size > 5 * 1024 * 1024) {
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
         setLogoError("Please choose an image smaller than 5 MB.");
         return;
       }
 
-      if (file.mimeType && !file.mimeType.startsWith("image/")) {
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      if (!mimeType.startsWith("image/")) {
         setLogoError("Please choose an image file (JPG or PNG).");
         return;
       }
 
       setLogoUploading(true);
       const response = await companyService.uploadFile(company.id, {
-        fileName: file.name ?? "company-logo.jpg",
-        mimeType: file.mimeType ?? "image/jpeg",
-        uri: file.uri,
+        fileName: asset.fileName ?? "company-logo.jpg",
+        mimeType,
+        uri: asset.uri,
         purpose: "logo",
       });
       setCompany(response.company);

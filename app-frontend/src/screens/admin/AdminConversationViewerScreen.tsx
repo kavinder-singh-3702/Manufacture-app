@@ -195,9 +195,30 @@ export const AdminConversationViewerScreen = () => {
   // phase 5 of the ops rebuild and may 404 in production during the deploy
   // window. The messages endpoint is older and likely available — fall back
   // to showing the message thread with a generic "Conversation" header.
+  // Bug 5 defense: when both endpoints return 404 because no ChatMessage rows
+  // exist YET (admin just lazy-created the conversation via getOrCreateConversation
+  // and is about to send the first message), treat it as an empty thread
+  // instead of showing "Couldn't load this conversation". The composer below
+  // still lets the admin send the first message via POST .../messages, which
+  // creates the message row server-side.
+  const is404Like = (err: unknown): boolean => {
+    if (!err || typeof err !== "object") return false;
+    const status = (err as { status?: number; statusCode?: number }).status ??
+      (err as { statusCode?: number }).statusCode;
+    if (status === 404) return true;
+    const message = (err as { message?: string }).message;
+    return typeof message === "string" && /not found|resource not found/i.test(message);
+  };
+
   const hasAnyData = Boolean(conversation) || messages.length > 0;
   const isLoading = (convLoading && messagesLoading) || (!hasAnyData && (convLoading || messagesLoading));
-  const error = !hasAnyData ? (messagesError || convError) : null;
+  const rawError = !hasAnyData ? (messagesError || convError) : null;
+  // Suppress the error card when the only failure is "not found" AND no
+  // messages exist — that's the empty-thread case, not a real error.
+  const error =
+    rawError && is404Like(rawError) && messages.length === 0
+      ? null
+      : rawError;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

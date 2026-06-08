@@ -47,7 +47,13 @@ export const Button = ({ label, loading, variant = "primary", disabled, style, .
           {loading ? (
             <ActivityIndicator color={textColor} />
           ) : (
-            <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+            <Text
+              style={[styles.label, { color: textColor }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {label}
+            </Text>
           )}
         </LinearGradient>
       </TouchableOpacity>

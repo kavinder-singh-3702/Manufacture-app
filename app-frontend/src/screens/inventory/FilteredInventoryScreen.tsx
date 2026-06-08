@@ -100,6 +100,7 @@ export const FilteredProductsScreen = () => {
             startProductConversation({
               product,
               isGuest: user?.role === "guest",
+              currentUserId: user?.id,
               requestLogin,
               navigation,
               toastError,

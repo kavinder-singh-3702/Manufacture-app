@@ -165,12 +165,13 @@ export const CompanyProductsSection = ({
       startProductConversation({
         product,
         isGuest: user?.role === "guest",
+        currentUserId: user?.id,
         requestLogin,
         navigation,
         toastError,
       });
     },
-    [navigation, requestLogin, toastError, user?.role]
+    [navigation, requestLogin, toastError, user?.id, user?.role]
   );
 
   const handleCall = useCallback(

@@ -1059,6 +1059,7 @@ const UserDashboardContent = () => {
       startProductConversation({
         product: buildContactProduct(card),
         isGuest,
+        currentUserId: user?.id,
         requestLogin,
         navigation,
         toastError,

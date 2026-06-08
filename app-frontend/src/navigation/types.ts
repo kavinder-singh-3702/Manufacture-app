@@ -77,7 +77,19 @@ export type RootStackParamList = {
   AdminProductVariants: { productId: string; productName?: string };
   AdminProductInquiries: undefined;
   // Chat screens
-  Chat: { conversationId: string; recipientId?: string; recipientName: string; recipientPhone?: string };
+  Chat: {
+    conversationId: string;
+    recipientId?: string;
+    recipientName: string;
+    recipientPhone?: string;
+    /**
+     * Optional product reference for seller chat. Powers the pinned product
+     * card in ChatScreen and gets persisted on the first outbound message so
+     * the seller sees the same card when opening from their inbox. Support
+     * chat omits this.
+     */
+    productId?: string;
+  };
   ServiceRequest:
     | {
         serviceType?: ServiceType;

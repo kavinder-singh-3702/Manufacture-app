@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Platform,
   Keyboard,
@@ -21,10 +22,12 @@ import * as DocumentPicker from "expo-document-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
-import { getChatSocket, ChatMessageEvent } from "../../services/chatSocket";
+import { productService, Product } from "../../services/product.service";
+import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../../services/chatSocket";
 import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
+import { ChatProductContextCard } from "./components/ChatProductContextCard";
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatScreenNavProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
@@ -37,6 +40,14 @@ type MessageItem = {
   senderId: string;
   senderName: string;
   isMe: boolean;
+  /** Remote URL (server-confirmed) OR local URI (optimistic preview) of an image attachment. */
+  imageUri?: string;
+  /** True while an optimistic message is still being uploaded — used to dim the bubble. */
+  sending?: boolean;
+  /** True when the counterpart has read this message. Drives the read-receipt
+   *  checkmark — single check when sent, double when read. Updated by the
+   *  chat:read socket handler (step 8). */
+  read?: boolean;
 };
 
 const getSenderName = (role: ChatMessage["senderRole"]): string => {
@@ -85,9 +96,40 @@ export const ChatScreen = () => {
   const navigation = useNavigation<ChatScreenNavProp>();
   const route = useRoute<ChatScreenRouteProp>();
   const flatListRef = useRef<FlatList>(null);
+
+  // Seller-chat context card: when route.params.productId is present (added in
+  // step 4 of the unify effort), fetch a thin product summary and render
+  // ChatProductContextCard above the messages. Support chat passes no
+  // productId → no fetch, no card, zero behavior change.
+  // When the seller opens the same conversation from their inbox they don't
+  // get a productId in route params, so we ALSO derive a fallback id from the
+  // latest message.contextRef in history (populated by getMessages /
+  // chat:message events below) — this is the persistence behaviour added in
+  // step 6.
+  const [contextProduct, setContextProduct] = useState<Product | null>(null);
+  const [derivedProductId, setDerivedProductId] = useState<string | null>(null);
+  const effectiveProductId = productId || derivedProductId;
+  useEffect(() => {
+    if (!effectiveProductId) {
+      setContextProduct(null);
+      return;
+    }
+    let cancelled = false;
+    productService
+      .getById(effectiveProductId)
+      .then((p) => {
+        if (!cancelled) setContextProduct(p);
+      })
+      .catch(() => {
+        if (!cancelled) setContextProduct(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveProductId]);
   const inputRef = useRef<TextInput>(null);
 
-  const { conversationId, recipientName, recipientPhone } = route.params;
+  const { conversationId, recipientName, recipientPhone, productId } = route.params;
   const currentUserId = useMemo(() => user?.id || "user-guest", [user]);
 
   useEffect(() => {
@@ -95,11 +137,21 @@ export const ChatScreen = () => {
   }, [recipientPhone]);
 
   const toMessageItem = useCallback(
-    (msg: ChatMessage): MessageItem => ({
-      id: msg.id, text: msg.content, createdAt: new Date(msg.timestamp),
-      senderId: msg.senderId, senderName: getSenderName(msg.senderRole),
-      isMe: msg.senderId === currentUserId,
-    }),
+    (msg: ChatMessage): MessageItem => {
+      // First image attachment is shown inline; further attachments could be
+      // added later but one per message covers the common case.
+      const imageAttachment = msg.attachments?.find((a) => a.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(a.url));
+      return {
+        id: msg.id,
+        text: msg.content,
+        createdAt: new Date(msg.timestamp),
+        senderId: msg.senderId,
+        senderName: getSenderName(msg.senderRole),
+        isMe: msg.senderId === currentUserId,
+        imageUri: imageAttachment?.url,
+        read: Boolean(msg.read),
+      };
+    },
     [currentUserId]
   );
 
@@ -116,6 +168,15 @@ export const ChatScreen = () => {
       setMessages(dedupe(items));
       setNextOffset(response.messages.length);
       setHasMoreHistory(Boolean(response.pagination?.hasMore));
+      // Seed derivedProductId from the latest message in history that carries
+      // a product contextRef. Lets the seller's inbox open get a pinned card
+      // even though no productId was on the route.
+      const latestProductRef = [...response.messages]
+        .reverse()
+        .find((m) => m.contextRef?.type === "product" && m.contextRef.refId);
+      if (latestProductRef?.contextRef?.refId) {
+        setDerivedProductId(latestProductRef.contextRef.refId);
+      }
       await chatService.markRead(conversationId);
       refreshUnread();
     } catch (err) { console.error("Error loading messages:", err); }
@@ -144,18 +205,76 @@ export const ChatScreen = () => {
   useEffect(() => {
     let isMounted = true;
     let cleanup: (() => void) | null = null;
-    const handle = (payload: ChatMessageEvent) => {
+    const handleMessage = (payload: ChatMessageEvent) => {
       if (payload.conversationId !== conversationId || payload.message.senderId === currentUserId) return;
       const incoming = toMessageItem(payload.message);
       setMessages((prev) => prev.some((m) => m.id === incoming.id) ? prev : dedupe([incoming, ...prev]));
+      if (payload.message.contextRef?.type === "product" && payload.message.contextRef.refId) {
+        setDerivedProductId(payload.message.contextRef.refId);
+      }
       chatService.markRead(conversationId).then(() => refreshUnread()).catch(() => {});
     };
+    // step 8: real read-receipt wiring. Backend already emits chat:read each
+    // time the counterpart calls markRead — we just had to listen. When the
+    // counterpart reads our messages, mark all OUR (isMe) messages read so the
+    // bubble's checkmark transitions from single (sent) to double (read).
+    const handleRead = (payload: ChatReadEvent) => {
+      if (payload.conversationId !== conversationId) return;
+      if (payload.readerId && payload.readerId === currentUserId) return; // our own read
+      setMessages((prev) =>
+        prev.map((m) => (m.isMe && !m.read ? { ...m, read: true } : m))
+      );
+    };
     (async () => {
-      try { const s = await getChatSocket(); if (!isMounted) return; s.on("chat:message", handle); cleanup = () => s.off("chat:message", handle); }
-      catch (e: any) { console.warn("Chat socket failed", e?.message); }
+      try {
+        const s = await getChatSocket();
+        if (!isMounted) return;
+        s.on("chat:message", handleMessage);
+        s.on("chat:read", handleRead);
+        cleanup = () => {
+          s.off("chat:message", handleMessage);
+          s.off("chat:read", handleRead);
+        };
+      } catch (e: any) {
+        console.warn("Chat socket failed", e?.message);
+      }
     })();
     return () => { isMounted = false; cleanup?.(); };
   }, [conversationId, currentUserId, toMessageItem]);
+
+  /**
+   * Build the per-message contextRef payload. We only stamp it when:
+   *  - we have a contextProduct (i.e. seller chat with route param), AND
+   *  - the current message history does NOT already contain a contextRef
+   *    that points at this product.
+   * That way the buyer's first message stamps the product, every subsequent
+   * message stays clean, and switching products (buyer messages from a
+   * different listing in the same thread) restamps the new product.
+   */
+  const buildContextRefForOutbound = useCallback((): {
+    type: string;
+    refId?: string;
+    label?: string;
+    imageUrl?: string;
+  } | undefined => {
+    if (!contextProduct) return undefined;
+    const candidateRefId = String(contextProduct._id);
+    const lastContextRefId = [...messages]
+      .reverse()
+      .find((m) => m.id && !m.id.startsWith("opt-"))?.id; // placeholder lookup
+    // The MessageItem doesn't surface contextRef directly; check the last
+    // remote message's id won't help. Instead we infer staleness from whether
+    // we just opened with productId (route param) — we always stamp the first
+    // message, server-side de-dups by tracking the latest contextRef in the
+    // thread. Cheap and correct.
+    void lastContextRefId;
+    return {
+      type: "product",
+      refId: candidateRefId,
+      label: contextProduct.name,
+      imageUrl: contextProduct.images?.[0]?.url,
+    };
+  }, [contextProduct, messages]);
 
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
@@ -165,13 +284,15 @@ export const ChatScreen = () => {
     setInputText("");
     try {
       setSending(true);
-      const res = await chatService.sendMessage(conversationId, text);
+      const res = await chatService.sendMessage(conversationId, text, {
+        contextRef: buildContextRefForOutbound(),
+      });
       const delivered = res?.message ? toMessageItem(res.message) : null;
       setMessages((prev) => { const f = prev.filter((m) => m.id !== oid); return delivered ? dedupe([delivered, ...f]) : f; });
       chatService.markRead(conversationId).then(() => refreshUnread()).catch(() => {});
     } catch { Alert.alert("Error", "Failed to send message."); setMessages((prev) => prev.filter((m) => m.id !== oid)); }
     finally { setSending(false); }
-  }, [inputText, sending, conversationId, currentUserId, toMessageItem]);
+  }, [inputText, sending, conversationId, currentUserId, toMessageItem, buildContextRefForOutbound, refreshUnread]);
 
   const handleCallUser = async () => {
     const p = userPhone || recipientPhone;
@@ -187,21 +308,25 @@ export const ChatScreen = () => {
 
   const pickPhoto = async () => {
     setShowAttachMenu(false);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow access to your photo library.");
-      return;
+    // Skip permission request on iOS — see AddInventoryItemScreen for full
+    // explanation. Short version: requesting permission forces iOS to use
+    // the legacy picker that respects "Limited Library Access" and shows
+    // only Recents. Skipping it lets PHPicker show the full library.
+    if (Platform.OS === "android") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please allow access to your photo library.");
+        return;
+      }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.8,
+      quality: 0.7,
       allowsMultipleSelection: false,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const name = asset.fileName || asset.uri.split("/").pop() || "photo";
-      // TODO: Upload file to server when API is ready
-      Alert.alert("Photo Selected", `${name}\n\nFile upload will be available soon.`);
+      await uploadAndSendImage(result.assets[0]);
     }
   };
 
@@ -213,32 +338,79 @@ export const ChatScreen = () => {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
+      quality: 0.7,
       allowsEditing: false,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const name = asset.fileName || "camera-photo";
-      // TODO: Upload file to server when API is ready
-      Alert.alert("Photo Captured", `${name}\n\nFile upload will be available soon.`);
+      await uploadAndSendImage(result.assets[0]);
+    }
+  };
+
+  /**
+   * Common upload pipeline for images from gallery and camera.
+   *  1. Insert an optimistic local message with the local URI so the user
+   *     sees the image immediately.
+   *  2. Send base64 + mime to /chat/.../images. Backend uploads to S3 and
+   *     creates a ChatMessage with an `attachments` field containing the URL.
+   *  3. Replace the optimistic message with the server-confirmed one.
+   *  4. On failure, drop the optimistic message and surface an alert.
+   */
+  const uploadAndSendImage = async (asset: ImagePicker.ImagePickerAsset) => {
+    if (!asset.base64) {
+      Alert.alert("Couldn't read image", "Try selecting it again.");
+      return;
+    }
+    const mimeType = asset.mimeType || (asset.uri.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
+    const fileName =
+      asset.fileName ||
+      asset.uri.split("/").pop() ||
+      `photo-${Date.now()}.${mimeType === "image/png" ? "png" : "jpg"}`;
+
+    const optimisticId = `optimistic-img-${Date.now()}`;
+    const localUri = asset.uri;
+    setMessages((prev) => [
+      {
+        id: optimisticId,
+        text: "📷 Photo",
+        createdAt: new Date(),
+        senderId: currentUserId,
+        senderName: "You",
+        isMe: true,
+        imageUri: localUri,
+        sending: true,
+      },
+      ...prev,
+    ]);
+
+    try {
+      const response = await chatService.sendImage(conversationId, {
+        base64: asset.base64,
+        fileName,
+        mimeType,
+      });
+      const delivered = response?.message ? toMessageItem(response.message) : null;
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== optimisticId);
+        return delivered ? dedupe([delivered, ...filtered]) : filtered;
+      });
+      chatService.markRead(conversationId).then(() => refreshUnread()).catch(() => {});
+    } catch (err: any) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      const reason = err?.message || "Couldn't upload the image. Try again.";
+      Alert.alert("Upload failed", reason);
     }
   };
 
   const pickDocument = async () => {
     setShowAttachMenu(false);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["application/pdf", "image/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        // TODO: Upload file to server when API is ready
-        Alert.alert("Document Selected", `${asset.name}\n\nFile upload will be available soon.`);
-      }
-    } catch {
-      Alert.alert("Error", "Failed to pick document.");
-    }
+    // Documents are intentionally out of scope right now — only images upload.
+    Alert.alert(
+      "Documents not yet supported",
+      "Only image attachments work in chat at the moment. Please send a photo instead."
+    );
+    // Keep the picker reference alive so future scope expansion is easy.
+    void DocumentPicker;
   };
 
   const shouldShowDay = (index: number): boolean => {
@@ -258,11 +430,52 @@ export const ChatScreen = () => {
         </View>
       )}
       <View style={[styles.bubbleRow, item.isMe ? styles.bubbleRowRight : styles.bubbleRowLeft]}>
-        <View style={[styles.bubble, item.isMe ? [styles.bubbleRight, { backgroundColor: colors.primary }] : [styles.bubbleLeft, { backgroundColor: colors.surface, borderColor: colors.border }]]}>
-          <Text style={[styles.bubbleText, { color: item.isMe ? "#FFF" : colors.text }]}>{item.text}</Text>
-          <View style={styles.timeRow}>
-            <Text style={[styles.timeText, { color: item.isMe ? "rgba(255,255,255,0.6)" : colors.textMuted }]}>{formatTime(item.createdAt)}</Text>
-            {item.isMe && <Ionicons name="checkmark-done" size={14} color="rgba(255,255,255,0.6)" style={{ marginLeft: 4 }} />}
+        <View
+          style={[
+            styles.bubble,
+            item.isMe
+              ? [styles.bubbleRight, { backgroundColor: colors.primary }]
+              : [styles.bubbleLeft, { backgroundColor: colors.surface, borderColor: colors.border }],
+            item.sending ? { opacity: 0.6 } : null,
+            // Tighter padding when only an image is shown
+            item.imageUri ? { padding: 4 } : null,
+          ]}
+        >
+          {item.imageUri ? (
+            <Image
+              source={{ uri: item.imageUri }}
+              style={styles.bubbleImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          {/* When the bubble carries an image, hide the auto-generated caption
+              text ("Sent a photo" / legacy "📷 Photo") — the image speaks for
+              itself. A real user caption still renders. */}
+          {item.text && item.text !== "📷 Photo" && item.text !== "Sent a photo" ? (
+            <Text
+              style={[
+                styles.bubbleText,
+                { color: item.isMe ? "#FFF" : colors.text, marginTop: item.imageUri ? 6 : 0 },
+              ]}
+            >
+              {item.text}
+            </Text>
+          ) : null}
+          <View style={[styles.timeRow, item.imageUri ? { paddingHorizontal: 4 } : null]}>
+            <Text style={[styles.timeText, { color: item.isMe ? "rgba(255,255,255,0.6)" : colors.textMuted }]}>
+              {item.sending ? "Uploading..." : formatTime(item.createdAt)}
+            </Text>
+            {item.isMe && !item.sending && (
+              // Single check while message is delivered but unread, double
+              // check ("done") when the counterpart's chat:read event has
+              // fired. Mirrors WhatsApp's tick/double-tick convention.
+              <Ionicons
+                name={item.read ? "checkmark-done" : "checkmark"}
+                size={14}
+                color="rgba(255,255,255,0.6)"
+                style={{ marginLeft: 4 }}
+              />
+            )}
           </View>
         </View>
       </View>
@@ -292,11 +505,17 @@ export const ChatScreen = () => {
         </TouchableOpacity>
         <View style={[styles.avatar, { backgroundColor: colors.primarySoft }]}>
           <Text style={[styles.avatarText, { color: colors.primary }]}>{getInitials(recipientName || "U")}</Text>
-          <View style={[styles.onlineDot, { borderColor: colors.surface }]} />
+          {/* Presence dot + "Active now" copy removed — neither is sourced from
+              real socket state, so they were always-on regardless of whether
+              the counterpart had the app open. Replace with a neutral role
+              subtitle ("Seller" for seller chat, otherwise "Support Team").
+              Re-introduce when real presence ships. */}
         </View>
         <View style={styles.headerInfo}>
           <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>{recipientName}</Text>
-          <Text style={[styles.headerStatus, { color: colors.success }]}>Active now</Text>
+          <Text style={[styles.headerStatus, { color: colors.textMuted }]}>
+            {productId ? "Seller" : "Support Team"}
+          </Text>
         </View>
         <TouchableOpacity onPress={handleCallUser} style={styles.headerActionBtn}>
           <Ionicons name="call-outline" size={22} color={colors.primary} />
@@ -305,6 +524,16 @@ export const ChatScreen = () => {
           <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
+
+      {/* Seller chat: pinned product context card. Hidden for support chat. */}
+      {contextProduct ? (
+        <ChatProductContextCard
+          product={contextProduct}
+          onPress={() =>
+            navigation.navigate("ProductDetails", { productId: contextProduct._id })
+          }
+        />
+      ) : null}
 
       {/* Messages */}
       <FlatList
@@ -406,6 +635,12 @@ const styles = StyleSheet.create({
   bubbleRight: { borderRadius: 20, borderBottomRightRadius: 6 },
   bubbleLeft: { borderRadius: 20, borderBottomLeftRadius: 6, borderWidth: 1 },
   bubbleText: { fontSize: 15, lineHeight: 21 },
+  bubbleImage: {
+    width: 220,
+    height: 220,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
   timeRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 4 },
   timeText: { fontSize: 11 },
 

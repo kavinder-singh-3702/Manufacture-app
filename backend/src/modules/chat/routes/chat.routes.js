@@ -6,6 +6,7 @@ const {
   createConversationController,
   getMessagesController,
   sendMessageController,
+  sendImageController,
   markReadController,
   createCallLogController
 } = require('../controllers/chat.controller');
@@ -27,6 +28,11 @@ router.post(
   '/conversations/:conversationId/messages',
   validate([...conversationIdParamValidation, ...sendMessageValidation]),
   sendMessageController
+);
+router.post(
+  '/conversations/:conversationId/images',
+  validate(conversationIdParamValidation),
+  sendImageController
 );
 router.post('/conversations/:conversationId/read', validate(conversationIdParamValidation), markReadController);
 

@@ -16,6 +16,19 @@ const chatMessageSchema = new Schema(
         size: Number
       }
     ],
+    /**
+     * Optional pinned reference for this message. Currently only `type: 'product'`
+     * is used (powers the pinned context card in seller chat). Stored on the
+     * MESSAGE — not the conversation — so the same buyer/seller thread can re-pin
+     * a different product if the buyer messages from another listing. ChatScreen
+     * picks the latest message.contextRef when route params don't provide one.
+     */
+    contextRef: {
+      type: { type: String },
+      refId: String,
+      label: String,
+      imageUrl: String
+    },
     readBy: [{ type: Schema.Types.ObjectId, ref: 'User' }]
   },
   { timestamps: true }

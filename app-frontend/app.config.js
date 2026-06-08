@@ -76,6 +76,7 @@ module.exports = ({ config }) => {
     plugins: [
       "expo-secure-store",
       "expo-apple-authentication",
+      "@react-native-community/datetimepicker",
       [
         "expo-notifications",
         {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   RefreshControl,
   ScrollView,
@@ -15,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { adminService, AdminUserOverview } from "../../services/admin.service";
+import { chatService } from "../../services/chat.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AdminHeader } from "../../components/admin";
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
@@ -54,6 +56,11 @@ export const AdminUserDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Tracks the lazy createConversation roundtrip when admin taps "Message".
+  // Without this, the front-card error users see today is the only signal —
+  // users who never started a chat have no ChatConversation row, so opening
+  // AdminConversationViewer directly with a fake id 404s.
+  const [startingChat, setStartingChat] = useState(false);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -67,6 +74,29 @@ export const AdminUserDetailScreen = () => {
       setRefreshing(false);
     }
   }, [userId]);
+
+  /**
+   * Lazy-create (or reuse) the admin↔user conversation, then open the viewer.
+   * Without this, admins had no entry point for users who had never messaged
+   * — opening the viewer with a placeholder id returned "Resource not found".
+   * Backend createConversationController -> getOrCreateConversation upserts
+   * atomically on participantPairKey, so repeated taps just return the same id.
+   */
+  const handleMessageUser = useCallback(async () => {
+    if (startingChat) return;
+    setStartingChat(true);
+    try {
+      const conversationId = await chatService.startConversation(userId);
+      navigation.navigate("AdminConversation", { id: conversationId });
+    } catch (err: any) {
+      Alert.alert(
+        "Couldn't open chat",
+        err?.message || "Try again in a moment."
+      );
+    } finally {
+      setStartingChat(false);
+    }
+  }, [navigation, startingChat, userId]);
 
   useEffect(() => {
     loadOverview();
@@ -139,6 +169,29 @@ export const AdminUserDetailScreen = () => {
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Status: {overview.user.status}</Text>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Joined: {formatDate(overview.user.createdAt)}</Text>
             <View style={[styles.inlineActions, { marginTop: spacing.sm }]}>
+              {/* Message — lazy-creates the conversation (idempotent) so admin
+                  can chat with users who haven't messaged first. Without this,
+                  the only way into a chat was a stale conversationId that 404s. */}
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: neuInsetBg(isDark),
+                    borderRadius: radius.md,
+                    opacity: startingChat ? 0.6 : 1,
+                    ...neuPressed(isDark),
+                  },
+                ]}
+                onPress={handleMessageUser}
+                disabled={startingChat}
+              >
+                {startingChat ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="chatbubbles-outline" size={14} color={colors.primary} />
+                )}
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Message</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: neuInsetBg(isDark), borderRadius: radius.md, ...neuPressed(isDark) }]}
                 onPress={() =>

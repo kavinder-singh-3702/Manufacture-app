@@ -16,6 +16,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from "../../constants/business";
 import { SignupStepper } from "../../components/auth/SignupStepper";
@@ -217,6 +218,7 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
   const [resendCountdownMs, setResendCountdownMs] = useState(0);
   const [categorySearch, setCategorySearch] = useState("");
@@ -449,13 +451,16 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       }
     }
 
+    // The picker always emits valid ISO YYYY-MM-DD with a past date (its
+    // maximumDate is today), so the format check below is now a defensive
+    // fallback for the unlikely case where the field gets corrupted.
     const dob = account.dateOfBirth.trim();
     if (dob && !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-      nextErrors.dateOfBirth = "Use YYYY-MM-DD format";
+      nextErrors.dateOfBirth = "Please re-pick your date of birth";
     } else if (dob) {
       const parsed = new Date(dob);
       if (Number.isNaN(parsed.getTime()) || parsed > new Date()) {
-        nextErrors.dateOfBirth = "Enter a valid past date";
+        nextErrors.dateOfBirth = "Date of birth must be in the past";
       }
     }
 
@@ -808,25 +813,90 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
     </View>
   );
 
+  const dobAsDate = useMemo(() => {
+    if (!account.dateOfBirth) return null;
+    const parsed = new Date(account.dateOfBirth);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [account.dateOfBirth]);
+
+  const formatDobForDisplay = (iso: string): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  };
+
+  const handleDobChange = (event: DateTimePickerEvent, picked?: Date) => {
+    // Android closes the dialog as a single event; iOS uses a spinner that
+    // emits "set" each time the wheel moves and we want to keep tracking it.
+    if (Platform.OS === "android") setShowDobPicker(false);
+    if (event.type === "dismissed") return;
+    if (!picked) return;
+
+    const iso = `${picked.getFullYear()}-${String(picked.getMonth() + 1).padStart(2, "0")}-${String(
+      picked.getDate()
+    ).padStart(2, "0")}`;
+    setAccount((current) => ({ ...current, dateOfBirth: iso }));
+    setAccountErrors((current) => ({ ...current, dateOfBirth: undefined }));
+  };
+
+  const today = new Date();
+  // Default the picker to "18 years ago" so the wheel doesn't open on today's
+  // date (most signups are adults; tapping back to ~1995 takes forever otherwise).
+  const dobPickerDefault = dobAsDate || new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+
   const renderBusinessStep = () => (
     <View>
       {renderStepHint(activeStepMeta.hint)}
-      <InputField
-        label="Date of birth"
-        value={account.dateOfBirth}
-        onChangeText={(value) => {
-          setAccount((current) => ({ ...current, dateOfBirth: value }));
-          setAccountErrors((current) => ({ ...current, dateOfBirth: undefined }));
-        }}
-        placeholder="YYYY-MM-DD"
-        keyboardType="numbers-and-punctuation"
-        autoCapitalize="none"
-        maxLength={10}
-        errorText={accountErrors.dateOfBirth}
-        helperText="Optional. Format: YYYY-MM-DD (e.g. 1995-08-21)."
-        placeholderTextColor={inputPlaceholderColor}
-        styles={styles}
-      />
+
+      {/* Date of birth — tappable display backed by the native iOS/Android
+          date picker. Stores ISO YYYY-MM-DD (matches backend validator). */}
+      <View style={styles.inputFieldWrap}>
+        <Text style={styles.fieldLabel}>Date of birth</Text>
+        <TouchableOpacity
+          onPress={() => setShowDobPicker(true)}
+          activeOpacity={0.7}
+          style={[styles.inputWrapper, accountErrors.dateOfBirth ? styles.inputWrapperError : null]}
+        >
+          <Text
+            style={[
+              styles.input,
+              { color: account.dateOfBirth ? colors.text : inputPlaceholderColor },
+            ]}
+          >
+            {account.dateOfBirth ? formatDobForDisplay(account.dateOfBirth) : "Tap to pick your date of birth"}
+          </Text>
+        </TouchableOpacity>
+        {accountErrors.dateOfBirth ? (
+          <Text style={styles.fieldError}>{accountErrors.dateOfBirth}</Text>
+        ) : (
+          <Text style={styles.fieldHelper}>Optional. Used for age-gated features.</Text>
+        )}
+      </View>
+
+      {showDobPicker ? (
+        <DateTimePicker
+          value={dobPickerDefault}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          maximumDate={today}
+          minimumDate={new Date(1900, 0, 1)}
+          onChange={handleDobChange}
+        />
+      ) : null}
+
+      {Platform.OS === "ios" && showDobPicker ? (
+        <TouchableOpacity
+          onPress={() => setShowDobPicker(false)}
+          style={[
+            styles.primaryButton,
+            { marginTop: 10, backgroundColor: colors.primary, borderRadius: 12 },
+          ]}
+          activeOpacity={0.85}
+        >
+          <Text style={[styles.primaryButtonText, { color: colors.textOnPrimary }]}>Done</Text>
+        </TouchableOpacity>
+      ) : null}
       <Text style={styles.sectionLabel}>
         Account type
         <Text style={styles.requiredMark}> *</Text>

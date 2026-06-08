@@ -257,6 +257,7 @@ export const ProductSearchScreen = () => {
             startProductConversation({
               product,
               isGuest,
+              currentUserId: user?.id,
               requestLogin,
               navigation,
               toastError: (title, message) => {

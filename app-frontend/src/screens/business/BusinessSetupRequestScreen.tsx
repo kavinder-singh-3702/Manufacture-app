@@ -401,8 +401,20 @@ export const BusinessSetupRequestScreen = () => {
                 style={{ minHeight: 100, textAlignVertical: "top" }}
               />
 
+              {/*
+                Back was given flex:1 alongside Submit, which forced both into
+                equal halves — Back ended up oversized for its 4-char label and
+                "Submit request" had to wrap onto two lines because the Button
+                component's heavy horizontal padding ate the remaining width.
+                Fix: Back gets a compact fixed width, Submit takes the rest.
+              */}
               <View style={styles.footerActions}>
-                <Button label="Back" variant="secondary" onPress={() => setStep(1)} style={{ flex: 1 }} />
+                <Button
+                  label="Back"
+                  variant="secondary"
+                  onPress={() => setStep(1)}
+                  style={{ width: 96 }}
+                />
                 <Button
                   label={submitting ? "Submitting..." : "Submit request"}
                   onPress={submit}

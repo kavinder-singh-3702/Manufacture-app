@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from "react-native";
-import * as DocumentPicker from "expo-document-picker";
+import {
+  Image,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useTheme } from "../../hooks/useTheme";
@@ -37,31 +47,50 @@ export const CompanyCreateScreen = () => {
   const handleUploadLogo = async () => {
     try {
       setLogoError(null);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*"],
-        copyToCacheDirectory: true,
+
+      // Use expo-image-picker (PHPicker on iOS 14+) instead of
+      // expo-document-picker — DocumentPicker on iOS opens the Files app's
+      // document browser which defaults to "Recents" and feels broken next
+      // to the chat picker. PHPicker shows the full Photos library with the
+      // Albums / Photos tabs the way users expect.
+      // iOS: skip the permission request so PHPicker is used (it doesn't
+      // need permission and ignores "Limited Library Access"). Android still
+      // needs the runtime permission.
+      if (Platform.OS === "android") {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setLogoError("Please allow photo library access to upload a logo.");
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        allowsMultipleSelection: false,
       });
 
       if (result.canceled) return;
-      const file = result.assets?.[0];
-      if (!file?.uri) {
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
         setLogoError("Could not read that file, please try another image.");
         return;
       }
-      if (file.size && file.size > 5 * 1024 * 1024) {
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
         setLogoError("Please choose an image smaller than 5 MB.");
         return;
       }
-      if (file.mimeType && !file.mimeType.startsWith("image/")) {
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      if (!mimeType.startsWith("image/")) {
         setLogoError("Please choose a JPG or PNG image.");
         return;
       }
 
       setLogoUploading(true);
       const response = await userService.uploadUserFile({
-        fileName: file.name ?? "company-logo.jpg",
-        mimeType: file.mimeType ?? "image/jpeg",
-        uri: file.uri,
+        fileName: asset.fileName ?? "company-logo.jpg",
+        mimeType,
+        uri: asset.uri,
         purpose: "company-logo",
       });
       const uploadedUrl = response.file?.url ?? "";

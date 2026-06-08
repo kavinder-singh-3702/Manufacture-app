@@ -5,6 +5,7 @@ const CallLog = require('../../../models/callLog.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
 const User = require('../../../models/user.model');
 const { emitToUser } = require('../../../socket');
+const { isAdminRole } = require('../../../utils/roles');
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === String(value);
 
@@ -215,6 +216,22 @@ const getMessages = async (conversationId, { limit = 50, offset = 0 } = {}) => {
         senderId: String(m.sender),
         senderRole: m.senderRole,
         content: m.content,
+        attachments: Array.isArray(m.attachments) && m.attachments.length > 0
+          ? m.attachments.map((a) => ({
+              url: a.url,
+              type: a.type,
+              name: a.name,
+              size: a.size,
+            }))
+          : undefined,
+        contextRef: m.contextRef && m.contextRef.type
+          ? {
+              type: m.contextRef.type,
+              refId: m.contextRef.refId,
+              label: m.contextRef.label,
+              imageUrl: m.contextRef.imageUrl,
+            }
+          : undefined,
         timestamp: m.createdAt,
         read: Array.isArray(m.readBy) && m.readBy.length > 0
       }))
@@ -228,12 +245,26 @@ const getMessages = async (conversationId, { limit = 50, offset = 0 } = {}) => {
   };
 };
 
-const sendMessage = async (conversationId, senderId, { content, senderRole = 'user' }) => {
+const sendMessage = async (conversationId, senderId, { content, senderRole = 'user', attachments, contextRef }) => {
+  // Sanitise contextRef — only persist the small subset of fields the schema
+  // defines so a malformed client payload doesn't pollute the document.
+  const cleanContextRef =
+    contextRef && typeof contextRef === 'object'
+      ? {
+          type: typeof contextRef.type === 'string' ? contextRef.type : undefined,
+          refId: typeof contextRef.refId === 'string' ? contextRef.refId : undefined,
+          label: typeof contextRef.label === 'string' ? contextRef.label : undefined,
+          imageUrl: typeof contextRef.imageUrl === 'string' ? contextRef.imageUrl : undefined,
+        }
+      : undefined;
+
   const message = new ChatMessage({
     conversation: conversationId,
     sender: senderId,
     senderRole,
     content,
+    attachments: Array.isArray(attachments) ? attachments : undefined,
+    contextRef: cleanContextRef,
     readBy: [ensureObjectId(senderId)]
   });
   await message.save();
@@ -250,6 +281,22 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
     senderId: String(message.sender),
     senderRole: message.senderRole,
     content: message.content,
+    attachments: Array.isArray(message.attachments) && message.attachments.length > 0
+      ? message.attachments.map((a) => ({
+          url: a.url,
+          type: a.type,
+          name: a.name,
+          size: a.size,
+        }))
+      : undefined,
+    contextRef: message.contextRef && message.contextRef.type
+      ? {
+          type: message.contextRef.type,
+          refId: message.contextRef.refId,
+          label: message.contextRef.label,
+          imageUrl: message.contextRef.imageUrl,
+        }
+      : undefined,
     timestamp: message.createdAt,
     read: false
   };
@@ -275,24 +322,52 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
   return payload;
 };
 
-const markConversationRead = async (conversationId, userId) => {
-  await ChatConversation.updateOne(
+const markConversationRead = async (conversationId, userId, options = {}) => {
+  // Primary path: caller is a participant — stamp their own participant row.
+  const primary = await ChatConversation.updateOne(
     { _id: conversationId, 'participants.user': ensureObjectId(userId) },
     { $set: { 'participants.$.lastReadAt': new Date() } }
   );
+
+  // Admin fallback: many old support conversations were seeded with a STUB
+  // admin participant (hardcoded fake ObjectId "000000000000000000000001"
+  // from the frontend). When the real logged-in admin tries to mark such a
+  // thread read, the primary updateOne matches nothing — the real admin
+  // isn't in `participants`. As a result the stub's lastReadAt stays null
+  // forever and the unread badge never zeroes.
+  //
+  // When the caller has an admin/support role AND the primary update missed,
+  // stamp the FIRST admin/support participant we find. Guarded on
+  // callerRole so a normal user can't clear someone else's lastReadAt.
+  if (primary.matchedCount === 0 && options.callerRole && isAdminRole(options.callerRole)) {
+    await ChatConversation.updateOne(
+      { _id: conversationId, 'participants.role': { $in: ['admin', 'support'] } },
+      { $set: { 'participants.$.lastReadAt': new Date() } }
+    );
+  }
+
   await ChatMessage.updateMany(
     { conversation: conversationId, readBy: { $ne: ensureObjectId(userId) } },
     { $addToSet: { readBy: ensureObjectId(userId) } }
   );
 
   try {
-    const summary = await getConversationSummaryForUser(conversationId, userId);
-    if (summary) {
-      emitToUser(String(userId), 'chat:read', {
-        conversationId: String(conversationId),
-        conversation: summary,
-        readerId: String(userId)
-      });
+    // Emit chat:read to EVERY participant so the OTHER side's checkmarks
+    // can flip from sent → read in real time (step 8 of the seller-chat
+    // unify effort). Previously this only emitted to the reader's own socket,
+    // which made the sender's UI never learn its messages had been read.
+    const conversation = await ChatConversation.findById(conversationId).lean();
+    if (conversation) {
+      await Promise.all(
+        conversation.participants.map(async (participant) => {
+          const summary = await getConversationSummaryForUser(conversationId, participant.user);
+          emitToUser(String(participant.user), 'chat:read', {
+            conversationId: String(conversationId),
+            conversation: summary,
+            readerId: String(userId)
+          });
+        })
+      );
     }
   } catch (error) {
     console.warn('[Chat] Failed to emit read event', error.message);
@@ -347,9 +422,16 @@ const getConversationAdminById = async (conversationId, viewerId) => {
     (conversation.participants || []).find((p) => String(p.user) !== String(adminParticipant?.user)) ||
     (conversation.participants || [])[0];
 
+  // Defense-in-depth against legacy support conversations that were created
+  // with a STUB admin participant. In those rows `adminParticipant.user` is
+  // the fake id, so `sender: { $ne: stubId }` doesn't filter out the REAL
+  // admin's replies — they show up as unread. Also exclude by senderRole so
+  // admin/support-sent messages never count, regardless of which user id
+  // produced them.
   const unreadQuery = {
     conversation: conversation._id,
-    sender: { $ne: adminParticipant?.user }
+    sender: { $ne: adminParticipant?.user },
+    senderRole: { $nin: ['admin', 'support'] }
   };
   if (adminParticipant?.lastReadAt) {
     unreadQuery.createdAt = { $gt: adminParticipant.lastReadAt };
@@ -578,9 +660,13 @@ const listConversationsAdmin = async ({
         conversation.participants.find((participant) => String(participant.user) !== String(adminParticipant.user)) ||
         conversation.participants[0];
 
+      // Same defense as getConversationSummaryForAdmin above — exclude
+      // admin/support-sent messages by role so the count is robust to
+      // legacy support conversations that pinned a stub admin id.
       const unreadQuery = {
         conversation: conversation._id,
-        sender: { $ne: adminParticipant.user }
+        sender: { $ne: adminParticipant.user },
+        senderRole: { $nin: ['admin', 'support'] }
       };
       if (adminParticipant.lastReadAt) {
         unreadQuery.createdAt = { $gt: adminParticipant.lastReadAt };

@@ -361,13 +361,16 @@ export const CartScreen = () => {
     return Array.from(groups.values()).sort((a, b) => a.sellerName.localeCompare(b.sellerName));
   }, [shortlistItems]);
 
+  // canMessageProduct/canCallProduct now exclude products the current user owns
+  // (would otherwise hit "cannot message yourself"). Keying on user?.id ensures
+  // the filter re-runs if auth state changes.
   const messageOptions = useMemo(
-    () => sellerOptions.filter((option) => canMessageProduct(option.product)),
-    [sellerOptions]
+    () => sellerOptions.filter((option) => canMessageProduct(option.product, user?.id)),
+    [sellerOptions, user?.id]
   );
   const callOptions = useMemo(
-    () => sellerOptions.filter((option) => canCallProduct(option.product)),
-    [sellerOptions]
+    () => sellerOptions.filter((option) => canCallProduct(option.product, user?.id)),
+    [sellerOptions, user?.id]
   );
 
   const activeOptions = contactMode === "message" ? messageOptions : callOptions;
@@ -378,6 +381,7 @@ export const CartScreen = () => {
         await startProductConversation({
           product: option.product,
           isGuest: user?.role === "guest",
+          currentUserId: user?.id,
           requestLogin,
           navigation,
           toastError,

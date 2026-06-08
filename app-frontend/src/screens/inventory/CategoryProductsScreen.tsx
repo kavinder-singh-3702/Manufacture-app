@@ -386,7 +386,7 @@ export const CategoryProductsScreen = () => {
                 product={item}
                 onPress={openDetails}
                 onMessagePress={(product) =>
-                  startProductConversation({ product, isGuest, requestLogin, navigation, toastError })
+                  startProductConversation({ product, isGuest, currentUserId: user?.id, requestLogin, navigation, toastError })
                 }
                 onCallPress={(product) =>
                   callProductSeller({ product, toastError })

@@ -217,10 +217,18 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
 
   const pickImages = useCallback(
     async (options?: { allowMultiple?: boolean }): Promise<LocalImage[]> => {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission needed", "Please allow photo library access to add product images.");
-        return [];
+      // On iOS we deliberately do NOT request media-library permission. With
+      // permission, iOS falls back to the legacy picker that respects "Limited
+      // Library Access" and shows only the Recents subset. Skipping the
+      // permission request lets expo-image-picker use Apple's PHPicker, which
+      // doesn't require permission and always shows the full photo library
+      // (with the Albums tab). Android still needs the permission check.
+      if (Platform.OS === "android") {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert("Permission needed", "Please allow photo library access to add product images.");
+          return [];
+        }
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({

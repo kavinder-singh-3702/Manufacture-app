@@ -78,6 +78,9 @@ export const ProductDetailsScreen = () => {
   const { addToCart } = useCart();
   const { success: toastSuccess, error: toastError } = useToast();
 
+  // Mirrors SupportFab.tsx — disables the Message CTA while createConversation
+  // is in flight so rapid taps can't queue multiple navigations.
+  const [messagingLoading, setMessagingLoading] = useState(false);
   const [product, setProduct] = useState<Product | null>(passedProduct || null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -666,15 +669,31 @@ export const ProductDetailsScreen = () => {
                       startProductConversation({
                         product,
                         isGuest,
+                        currentUserId: user?.id,
                         requestLogin,
                         navigation,
                         toastError,
+                        setLoading: setMessagingLoading,
                       })
                     }
-                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                    disabled={messagingLoading}
+                    style={[
+                      styles.bottomSecondaryBtn,
+                      {
+                        borderRadius: radius.md,
+                        borderColor: colors.border,
+                        opacity: messagingLoading ? 0.6 : 1,
+                      },
+                    ]}
                   >
-                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                    {messagingLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                    )}
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>
+                      {messagingLoading ? "Opening…" : "Message"}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -721,15 +740,31 @@ export const ProductDetailsScreen = () => {
                       startProductConversation({
                         product,
                         isGuest,
+                        currentUserId: user?.id,
                         requestLogin,
                         navigation,
                         toastError,
+                        setLoading: setMessagingLoading,
                       })
                     }
-                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                    disabled={messagingLoading}
+                    style={[
+                      styles.bottomSecondaryBtn,
+                      {
+                        borderRadius: radius.md,
+                        borderColor: colors.border,
+                        opacity: messagingLoading ? 0.6 : 1,
+                      },
+                    ]}
                   >
-                    <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Message</Text>
+                    {messagingLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+                    )}
+                    <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>
+                      {messagingLoading ? "Opening…" : "Message"}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
