@@ -13,6 +13,7 @@ const ACTIVITY_ACTIONS = Object.freeze({
   COMPANY_VERIFICATION_DECIDED: 'company.verification.decided',
   BUSINESS_SETUP_REQUEST_SUBMITTED: 'business-setup.request.submitted',
   ADMIN_COMPANY_STATUS_CHANGED: 'admin.company.status.changed',
+  ADMIN_USER_STATUS_CHANGED: 'admin.user.status.changed',
   ADMIN_COMPANY_ARCHIVED: 'admin.company.archived',
   ADMIN_COMPANY_HARD_DELETE_REQUESTED: 'admin.company.hard-delete.requested',
   ADMIN_COMPANY_HARD_DELETE_COMPLETED: 'admin.company.hard-delete.completed',

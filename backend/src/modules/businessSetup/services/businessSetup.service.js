@@ -37,6 +37,24 @@ const STATUS_TRANSITIONS = Object.freeze({
   rejected: new Set([])
 });
 
+const PRIMARY_NEXT_STATUS = Object.freeze({
+  new: 'contacted',
+  contacted: 'planning',
+  planning: 'onboarding',
+  onboarding: 'launched',
+  launched: 'closed'
+});
+
+const computeAllowedTransitions = (status) => {
+  const targets = STATUS_TRANSITIONS[status];
+  if (!targets) return [];
+  const primary = PRIMARY_NEXT_STATUS[status];
+  return Array.from(targets).map((target) => ({
+    status: target,
+    isPrimary: target === primary
+  }));
+};
+
 const SERVICE_STATUS_BY_BUCKET = Object.freeze({
   open: ['pending', 'in_review', 'scheduled', 'in_progress'],
   closed: ['completed', 'cancelled'],
@@ -193,6 +211,7 @@ const shapeBusinessSetupRequestAdmin = (doc) => {
     assignmentHistory,
     internalNotes,
     timeline,
+    allowedTransitions: computeAllowedTransitions(plain.status),
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt
   };
@@ -324,10 +343,14 @@ const notifyAdminsOnNewRequest = async (request) => {
         workModel: request.workModel
       },
       action: {
+        // Phase 6 of the ops rebuild — deep-link admins directly to the new
+        // AdminRequestDetail screen instead of dumping them on a generic queue.
+        // Frontend falls back to {kind, requestId} from `data` for legacy
+        // payloads that still ship routeName: 'Main'.
         type: NOTIFICATION_ACTION_TYPES.ROUTE,
-        routeName: 'Main',
-        routeParams: { screen: 'chat' },
-        label: 'Open ops queue'
+        routeName: 'AdminRequestDetail',
+        routeParams: { id: request.id, kind: 'business_setup' },
+        label: 'Open request'
       },
       channels: [NOTIFICATION_CHANNELS.IN_APP, NOTIFICATION_CHANNELS.PUSH, NOTIFICATION_CHANNELS.EMAIL]
     });

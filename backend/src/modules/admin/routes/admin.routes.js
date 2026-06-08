@@ -31,8 +31,12 @@ const {
   adjustAdminInhouseVariantQuantityController,
   deleteAdminInhouseVariantController,
   listAdminConversationsController,
+  getAdminConversationController,
+  getAdminConversationMessagesController,
+  getAdminCallLogController,
   listAdminCallLogsController,
   setCompanyStatusController,
+  setUserStatusController,
   archiveCompanyController,
   deleteCompanyController,
   hardDeleteCompanyController,
@@ -46,6 +50,7 @@ const {
 const {
   listEntitiesValidation,
   setCompanyStatusValidation,
+  setUserStatusValidation,
   archiveCompanyValidation,
   hardDeleteCompanyValidation,
   requestDocumentsValidation,
@@ -127,6 +132,7 @@ router.get('/users', validate(listEntitiesValidation), listAllUsersController);
 
 // GET /api/admin/users/:userId/overview - User 360 details for admin console
 router.get('/users/:userId/overview', validate(userIdParamValidation), getAdminUserOverviewController);
+router.patch('/users/:userId/status', validate(setUserStatusValidation), setUserStatusController);
 
 // GET /api/admin/service-requests - Global admin service queue
 router.get('/service-requests', validate(listAdminServiceRequestsValidation), listAdminServiceRequestsController);
@@ -257,9 +263,13 @@ router.patch(
 
 // GET /api/admin/conversations - admin communications queue
 router.get('/conversations', validate(listAdminConversationsValidation), listAdminConversationsController);
+// Phase 5 of the ops rebuild — per-id detail endpoints for admin viewer screens.
+router.get('/conversations/:conversationId', getAdminConversationController);
+router.get('/conversations/:conversationId/messages', getAdminConversationMessagesController);
 
 // GET /api/admin/call-logs - admin call log queue
 router.get('/call-logs', validate(listAdminCallLogsValidation), listAdminCallLogsController);
+router.get('/call-logs/:callLogId', getAdminCallLogController);
 
 // GET /api/admin/audit-events - immutable admin audit stream
 router.get('/audit-events', validate(listAdminAuditEventsValidation), listAdminAuditEventsController);

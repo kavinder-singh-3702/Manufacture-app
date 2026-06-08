@@ -100,28 +100,43 @@ const getConversationSummaryForUser = async (conversationId, userId) => {
 const getOrCreateConversation = async (userId, participantId) => {
   const userObjId = ensureObjectId(userId);
   const participantObjId = ensureObjectId(participantId);
+  const pairKey = ChatConversation.buildParticipantPairKey(userObjId, participantObjId);
 
-  const existing = await ChatConversation.findOne({
-    'participants.user': { $all: [userObjId, participantObjId] }
-  });
-
+  // Fast path: an indexed lookup on the canonical pair key. If a row already
+  // exists for this pair we return it without further work.
+  const existing = await ChatConversation.findOne({ participantPairKey: pairKey });
   if (existing) return existing;
 
-  // Fetch users from database (may not exist for test admin)
+  // We may need to write — resolve participant roles first so they land on
+  // the new document.
   const [user, participant] = await Promise.all([
     User.findById(userId).lean(),
     User.findById(participantId).lean()
   ]);
 
-  // Use ObjectId directly if user not found in DB (e.g., test admin)
-  const conversation = new ChatConversation({
-    participants: [
-      { user: user?._id || userObjId, role: user?.role || 'user', lastReadAt: new Date() },
-      { user: participant?._id || participantObjId, role: participant?.role || 'admin', lastReadAt: null }
-    ]
-  });
-  await conversation.save();
-  return conversation;
+  const newParticipants = [
+    { user: user?._id || userObjId, role: user?.role || 'user', lastReadAt: new Date() },
+    { user: participant?._id || participantObjId, role: participant?.role || 'admin', lastReadAt: null }
+  ];
+
+  // Atomic upsert keyed on participantPairKey. The unique sparse index in the
+  // schema guarantees two concurrent callers can't both insert — the loser
+  // gets E11000 and we recover by re-fetching the winner's row.
+  try {
+    const conversation = await ChatConversation.findOneAndUpdate(
+      { participantPairKey: pairKey },
+      { $setOnInsert: { participantPairKey: pairKey, participants: newParticipants } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return conversation;
+  } catch (err) {
+    if (err && err.code === 11000) {
+      // Duplicate key — another caller inserted the row in the race window.
+      const winner = await ChatConversation.findOne({ participantPairKey: pairKey });
+      if (winner) return winner;
+    }
+    throw err;
+  }
 };
 
 const listConversations = async (userId) => {
@@ -302,10 +317,141 @@ const createCallLog = async ({ callerId, calleeId, conversationId, startedAt, en
   return log.toObject();
 };
 
+/**
+ * Phase 5 of the ops console rebuild: per-id admin detail endpoints. The
+ * existing list functions return summaries; these are used by the new
+ * AdminConversationViewerScreen + AdminCallLogDetailScreen.
+ */
+const getConversationAdminById = async (conversationId, viewerId) => {
+  const conversation = await ChatConversation.findById(conversationId).lean();
+  if (!conversation) return null;
+
+  const participantUserIds = (conversation.participants || []).map((p) => p.user);
+  const users = await User.find({ _id: { $in: participantUserIds } })
+    .select('_id displayName firstName lastName email phone role activeCompany')
+    .lean();
+  const userMap = users.reduce((acc, u) => {
+    acc[String(u._id)] = u;
+    return acc;
+  }, {});
+
+  const viewerIdString = viewerId ? String(viewerId) : null;
+  const viewerParticipant = viewerIdString
+    ? (conversation.participants || []).find((p) => String(p.user) === viewerIdString)
+    : null;
+  const adminParticipant =
+    viewerParticipant ||
+    (conversation.participants || []).find((p) => p.role === 'admin' || p.role === 'support') ||
+    (conversation.participants || [])[0];
+  const otherParticipant =
+    (conversation.participants || []).find((p) => String(p.user) !== String(adminParticipant?.user)) ||
+    (conversation.participants || [])[0];
+
+  const unreadQuery = {
+    conversation: conversation._id,
+    sender: { $ne: adminParticipant?.user }
+  };
+  if (adminParticipant?.lastReadAt) {
+    unreadQuery.createdAt = { $gt: adminParticipant.lastReadAt };
+  }
+  const unreadCount = await ChatMessage.countDocuments(unreadQuery);
+
+  const otherUser = otherParticipant ? userMap[String(otherParticipant.user)] : null;
+
+  return {
+    id: String(conversation._id),
+    lastMessage: conversation.lastMessage,
+    lastMessageAt: conversation.lastMessageAt,
+    unreadCount,
+    participantIds: (conversation.participants || []).map((p) => String(p.user)),
+    participants: (conversation.participants || []).map((p) => {
+      const u = userMap[String(p.user)];
+      return {
+        id: String(p.user),
+        role: p.role,
+        lastReadAt: p.lastReadAt,
+        name:
+          u?.displayName ||
+          `${u?.firstName || ''} ${u?.lastName || ''}`.trim() ||
+          u?.email ||
+          'Unknown',
+        email: u?.email,
+        phone: u?.phone,
+      };
+    }),
+    otherParticipant: otherUser
+      ? {
+        id: String(otherUser._id),
+        name:
+          otherUser.displayName ||
+          `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
+          otherUser.email,
+        email: otherUser.email,
+        phone: otherUser.phone,
+        role: otherUser.role,
+      }
+      : null,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+  };
+};
+
+const getCallLogAdminById = async (callLogId) => {
+  const entry = await CallLog.findById(callLogId)
+    .populate('caller', 'displayName email role phone')
+    .populate('callee', 'displayName email role phone')
+    .populate('conversation', 'lastMessage lastMessageAt updatedAt')
+    .lean();
+  if (!entry) return null;
+
+  return {
+    id: String(entry._id),
+    conversationId:
+      entry.conversation?._id?.toString?.() ||
+      (entry.conversation && typeof entry.conversation === 'object'
+        ? null
+        : entry.conversation?.toString?.()) ||
+      null,
+    caller: entry.caller
+      ? {
+        id: entry.caller._id?.toString?.() || entry.caller,
+        displayName: entry.caller.displayName,
+        email: entry.caller.email,
+        phone: entry.caller.phone,
+        role: entry.caller.role,
+      }
+      : null,
+    callee: entry.callee
+      ? {
+        id: entry.callee._id?.toString?.() || entry.callee,
+        displayName: entry.callee.displayName,
+        email: entry.callee.email,
+        phone: entry.callee.phone,
+        role: entry.callee.role,
+      }
+      : null,
+    startedAt: entry.startedAt,
+    endedAt: entry.endedAt,
+    durationSeconds: entry.durationSeconds,
+    notes: entry.notes,
+    conversation: entry.conversation && typeof entry.conversation === 'object'
+      ? {
+        id: entry.conversation._id?.toString?.() || null,
+        lastMessage: entry.conversation.lastMessage,
+        lastMessageAt: entry.conversation.lastMessageAt,
+        updatedAt: entry.conversation.updatedAt,
+      }
+      : null,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  };
+};
+
 const listConversationsAdmin = async ({
   search,
   userId,
   companyId,
+  viewerId,
   limit = 30,
   offset = 0,
   sort = 'updatedAt:desc'
@@ -412,9 +558,20 @@ const listConversationsAdmin = async ({
     }
   });
 
+  const viewerIdString = viewerId ? String(viewerId) : null;
+
   const conversationsWithUnread = await Promise.all(
     conversations.map(async (conversation) => {
+      // Prefer the participant matching the requesting admin (viewer). This
+      // ensures opening a chat as admin X actually updates the unread count X
+      // sees on the list. Falling back to any admin participant is only useful
+      // when the viewer isn't actually in this conversation — rare for the
+      // primary admin use case.
+      const viewerParticipant = viewerIdString
+        ? conversation.participants.find((participant) => String(participant.user) === viewerIdString)
+        : null;
       const adminParticipant =
+        viewerParticipant ||
         conversation.participants.find((participant) => participant.role === 'admin' || participant.role === 'support') ||
         conversation.participants[0];
       const otherParticipant =
@@ -588,7 +745,9 @@ module.exports = {
   getOrCreateConversation,
   listConversations,
   listConversationsAdmin,
+  getConversationAdminById,
   listCallLogsAdmin,
+  getCallLogAdminById,
   getMessages,
   sendMessage,
   markConversationRead,

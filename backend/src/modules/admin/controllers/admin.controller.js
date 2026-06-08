@@ -5,6 +5,7 @@ const {
   listAllCompanies,
   listAllUsers,
   setCompanyStatus,
+  setUserStatus,
   archiveCompany,
   deleteCompany,
   hardDeleteCompany,
@@ -25,7 +26,10 @@ const {
 } = require('../../businessSetup/services/businessSetup.service');
 const {
   listConversationsAdmin,
-  listCallLogsAdmin
+  listCallLogsAdmin,
+  getConversationAdminById,
+  getCallLogAdminById,
+  getMessages: getConversationMessages,
 } = require('../../chat/services/chat.service');
 const {
   listInhouseCategoryStats,
@@ -840,8 +844,62 @@ const deleteAdminInhouseVariantController = async (req, res, next) => {
 const listAdminConversationsController = async (req, res, next) => {
   try {
     assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CONVERSATIONS);
-    const result = await listConversationsAdmin(req.query);
+    const result = await listConversationsAdmin({ ...req.query, viewerId: req.user.id });
     return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/conversations/:conversationId
+ * Phase 5 of the ops rebuild — per-id detail for AdminConversationViewerScreen.
+ */
+const getAdminConversationController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CONVERSATIONS);
+    const { conversationId } = req.params;
+    const conversation = await getConversationAdminById(conversationId, req.user.id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    return res.json({ conversation });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/conversations/:conversationId/messages
+ * Reuses chat.service.getMessages, which doesn't enforce participation —
+ * suitable for admin moderation since admins may not be conversation participants.
+ */
+const getAdminConversationMessagesController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CONVERSATIONS);
+    const { conversationId } = req.params;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const result = await getConversationMessages(conversationId, { limit, offset });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/admin/call-logs/:callLogId
+ * Phase 5 — per-id detail for AdminCallLogDetailScreen.
+ */
+const getAdminCallLogController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_CALL_LOGS);
+    const { callLogId } = req.params;
+    const callLog = await getCallLogAdminById(callLogId);
+    if (!callLog) {
+      return res.status(404).json({ error: 'Call log not found' });
+    }
+    return res.json({ callLog });
   } catch (error) {
     return next(error);
   }
@@ -890,6 +948,39 @@ const setCompanyStatusController = async (req, res, next) => {
       companyId,
       companyName: result.company.displayName,
       meta: { status, reason }
+    });
+
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * PATCH /api/admin/users/:userId/status
+ * Admin override for a user's status: active / inactive / suspended.
+ * The frontend status pill normally uses login recency — this endpoint lets
+ * an admin force the state regardless.
+ */
+const setUserStatusController = async (req, res, next) => {
+  try {
+    assertAdminPermission(req.user, ADMIN_PERMISSIONS.MUTATE_USER_STATUS);
+    const { userId } = req.params;
+    const { status, reason } = req.body;
+
+    const result = await setUserStatus({
+      userId,
+      actorId: req.user.id,
+      status,
+      reason
+    });
+
+    await recordAdminActivity({
+      req,
+      action: ACTIVITY_ACTIONS.ADMIN_USER_STATUS_CHANGED,
+      label: 'User status changed',
+      description: `${result.user.displayName || result.user.email} moved to ${status}`,
+      meta: { userId, status, reason }
     });
 
     return res.json(result);
@@ -1078,8 +1169,12 @@ module.exports = {
   adjustAdminInhouseVariantQuantityController,
   deleteAdminInhouseVariantController,
   listAdminConversationsController,
+  getAdminConversationController,
+  getAdminConversationMessagesController,
+  getAdminCallLogController,
   listAdminCallLogsController,
   setCompanyStatusController,
+  setUserStatusController,
   archiveCompanyController,
   deleteCompanyController,
   hardDeleteCompanyController,

@@ -51,6 +51,12 @@ const setCompanyStatusValidation = [
   body('contextCompanyId').optional().custom(isObjectId).withMessage('contextCompanyId must be a valid ObjectId')
 ];
 
+const setUserStatusValidation = [
+  ...userIdParamValidation,
+  body('status').isIn(['active', 'inactive', 'suspended']).withMessage('Status must be active, inactive, or suspended'),
+  body('reason').optional().isString().trim().isLength({ min: 1, max: 500 })
+];
+
 const archiveCompanyValidation = [
   ...companyIdParamValidation,
   body('reason').optional().isString().trim().isLength({ min: 1, max: 500 }),
@@ -216,6 +222,7 @@ module.exports = {
   inhouseProductIdParamValidation,
   inhouseVariantIdParamValidation,
   setCompanyStatusValidation,
+  setUserStatusValidation,
   archiveCompanyValidation,
   hardDeleteCompanyValidation,
   requestDocumentsValidation,

@@ -22,9 +22,36 @@ const STATUS_TRANSITIONS = Object.freeze({
   in_review: new Set(['scheduled', 'in_progress', 'completed', 'cancelled']),
   scheduled: new Set(['in_progress', 'completed', 'cancelled']),
   in_progress: new Set(['completed', 'cancelled']),
-  completed: new Set([]),
+  // Admin can reverse a completed service to cancelled (e.g. customer complaint
+  // after delivery, accidental completion). The reason is required by the
+  // workflow controller's validator and is recorded in `statusHistory`. The
+  // user-facing list/detail surfaces the latest reason on the row.
+  completed: new Set(['cancelled']),
   cancelled: new Set([])
 });
+
+/**
+ * "Primary next" — the natural-flow next status used to power the admin's
+ * single Advance CTA button. Phase 3 of the ops rebuild surfaces this via the
+ * admin shape's `allowedTransitions` field so the client doesn't have to
+ * hardcode it.
+ */
+const PRIMARY_NEXT_STATUS = Object.freeze({
+  pending: 'in_review',
+  in_review: 'scheduled',
+  scheduled: 'in_progress',
+  in_progress: 'completed'
+});
+
+const computeAllowedTransitions = (status) => {
+  const targets = STATUS_TRANSITIONS[status];
+  if (!targets) return [];
+  const primary = PRIMARY_NEXT_STATUS[status];
+  return Array.from(targets).map((target) => ({
+    status: target,
+    isPrimary: target === primary
+  }));
+};
 
 const ADMIN_SERVICE_POPULATE = [
   { path: 'company', select: 'displayName status type complianceStatus' },
@@ -153,6 +180,7 @@ const shapeServiceRequestAdmin = (doc) => {
     assignmentHistory,
     internalNotes,
     timeline,
+    allowedTransitions: computeAllowedTransitions(plain.status),
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt
   };

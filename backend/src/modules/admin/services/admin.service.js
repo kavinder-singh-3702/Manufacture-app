@@ -80,6 +80,34 @@ const shapeCompanySummary = (company) => ({
   updatedAt: company.updatedAt
 });
 
+const INACTIVE_THRESHOLD_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Computed activity state combining explicit admin status with login recency.
+ * Order of precedence:
+ *  1. status="suspended" / "deleted" / "inactive" (explicit admin override) — wins
+ *  2. No lastLoginAt → "never_logged_in"
+ *  3. lastLoginAt > 30 days ago → "inactive"
+ *  4. Otherwise → "active"
+ */
+const deriveActivityState = (user) => {
+  const status = user.status || 'active';
+  if (status === 'suspended') return 'suspended';
+  if (status === 'deleted') return 'deleted';
+  if (status === 'inactive') return 'inactive';
+
+  if (!user.lastLoginAt) return 'never_logged_in';
+  const daysSince = (Date.now() - new Date(user.lastLoginAt).getTime()) / MS_PER_DAY;
+  if (daysSince > INACTIVE_THRESHOLD_DAYS) return 'inactive';
+  return 'active';
+};
+
+const daysSinceLogin = (user) => {
+  if (!user.lastLoginAt) return null;
+  return Math.floor((Date.now() - new Date(user.lastLoginAt).getTime()) / MS_PER_DAY);
+};
+
 const shapeUserSummary = (user) => {
   if (!user) return null;
   return {
@@ -92,6 +120,8 @@ const shapeUserSummary = (user) => {
     lastName: user.lastName,
     role: user.role || 'user',
     status: user.status || 'active',
+    activityState: deriveActivityState(user),
+    daysSinceLogin: daysSinceLogin(user),
     accountType: user.accountType,
     verificationStatus: user.verificationStatus,
     lastLoginAt: user.lastLoginAt,
@@ -292,7 +322,24 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, comp
 
   const filter = {};
 
-  if (status) {
+  // Map admin's "active"/"inactive" filter to the combined logic (status + recency).
+  // - "active": status=active AND logged in within 30 days
+  // - "inactive": NOT (status=active AND recent login) — i.e. dormant OR admin-marked
+  //   inactive OR never logged in
+  // - "suspended"/"deleted": pass through directly to status
+  if (status === 'active') {
+    const cutoff = new Date(Date.now() - INACTIVE_THRESHOLD_DAYS * MS_PER_DAY);
+    filter.status = 'active';
+    filter.lastLoginAt = { $gte: cutoff };
+  } else if (status === 'inactive') {
+    const cutoff = new Date(Date.now() - INACTIVE_THRESHOLD_DAYS * MS_PER_DAY);
+    filter.$or = [
+      { status: 'inactive' },
+      { status: 'active', lastLoginAt: { $exists: false } },
+      { status: 'active', lastLoginAt: null },
+      { status: 'active', lastLoginAt: { $lt: cutoff } }
+    ];
+  } else if (status === 'suspended' || status === 'deleted') {
     filter.status = status;
   }
 
@@ -301,11 +348,18 @@ const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, comp
   }
 
   if (search) {
-    filter.$or = [
+    const searchOr = [
       { displayName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } },
       { phone: { $regex: search, $options: 'i' } }
     ];
+    if (filter.$or) {
+      // Combine activity-based $or with search $or via $and so both apply
+      filter.$and = [{ $or: filter.$or }, { $or: searchOr }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchOr;
+    }
   }
 
   const [users, total] = await Promise.all([
@@ -489,6 +543,44 @@ const setCompanyStatus = async ({ companyId, actorId, status, reason }) => {
 
 const archiveCompany = async ({ companyId, actorId, reason }) =>
   setCompanyStatus({ companyId, actorId, status: 'archived', reason });
+
+const USER_STATUS_TARGETS = ['active', 'inactive', 'suspended'];
+
+/**
+ * Admin override for user status. Used by the action sheet in UserManagementScreen.
+ * - "active": removes the admin override; effective state then falls back to recency
+ * - "inactive" / "suspended": forces the user into that state. Bumps
+ *   sessionInvalidBefore so any active sessions are force-logged-out
+ */
+const setUserStatus = async ({ userId, actorId, status, reason }) => {
+  if (!USER_STATUS_TARGETS.includes(status)) {
+    throw createError(400, `Invalid status. Allowed: ${USER_STATUS_TARGETS.join(', ')}`);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw createError(404, 'User not found');
+  }
+
+  user.status = status;
+  if (status === 'inactive' || status === 'suspended') {
+    user.sessionInvalidBefore = new Date();
+    if (reason && typeof reason === 'string') {
+      user.metadata = user.metadata || new Map();
+      user.metadata.set('lastStatusChangeReason', reason);
+      user.metadata.set('lastStatusChangeBy', actorId?.toString?.() || String(actorId || ''));
+      user.metadata.set('lastStatusChangeAt', new Date().toISOString());
+    }
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  return {
+    success: true,
+    message: `User status updated to ${status}`,
+    user: shapeUserSummary(user.toObject ? user.toObject() : user)
+  };
+};
 
 const deleteCompany = async ({ companyId, actorId, reason }) => {
   const archived = await archiveCompany({ companyId, actorId, reason });
@@ -730,6 +822,7 @@ module.exports = {
   listAllUsers,
   getAdminUserOverview,
   setCompanyStatus,
+  setUserStatus,
   archiveCompany,
   deleteCompany,
   hardDeleteCompany,
