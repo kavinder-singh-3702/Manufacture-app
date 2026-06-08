@@ -7,7 +7,10 @@ import {
   RefreshControl,
   StyleSheet,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import { RootStackParamList } from "../../../navigation/types";
 import { useTheme } from "../../../hooks/useTheme";
 import { useThemeMode } from "../../../hooks/useThemeMode";
 import {
@@ -16,25 +19,7 @@ import {
   AdminCallLog,
 } from "../../../services/admin.service";
 import { AdminFilterTabs, AdminListCard } from "../../../components/admin";
-
-/* ── Neumorphic helpers ── */
-const NEU_LIGHT = "#EDF1F7";
-const NEU_DARK = "#1A1F2B";
-const NEU_INSET_LIGHT = "#E2E8F0";
-const NEU_INSET_DARK = "#151A24";
-
-const neuRaised = (isDark: boolean) =>
-  isDark
-    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
-    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
-
-const neuPressed = (isDark: boolean) =>
-  isDark
-    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
-    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
-
-const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
-const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+import { neuCardBg, neuInsetBg, neuPressed, neuRaised } from "../../../theme/neumorphic";
 
 type LogView = "audit" | "calls";
 
@@ -68,6 +53,7 @@ export const LogsTab = () => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [activeView, setActiveView] = useState<LogView>("audit");
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
@@ -147,6 +133,7 @@ export const LogsTab = () => {
         meta={formatDate(item.startedAt)}
         avatarText={item.caller?.displayName?.[0] ?? "?"}
         status={{ label: item.durationSeconds > 0 ? "completed" : "missed", type: item.durationSeconds > 0 ? "success" : "error" }}
+        onPress={() => navigation.navigate("AdminCallLogDetail", { id: item.id })}
       />
     </View>
   );

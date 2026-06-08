@@ -57,6 +57,13 @@ export type AdminCompany = {
 // ============================================================
 // ADMIN USER TYPE
 // ============================================================
+export type UserActivityState =
+  | "active"
+  | "inactive"
+  | "suspended"
+  | "deleted"
+  | "never_logged_in";
+
 export type AdminUser = {
   id: string;
   email: string;
@@ -67,6 +74,10 @@ export type AdminUser = {
   lastName?: string;
   role: string;
   status: string;
+  /** Derived state combining explicit admin status + login recency (30-day window). */
+  activityState?: UserActivityState;
+  /** Days since last login. `null` when the user has never logged in. */
+  daysSinceLogin?: number | null;
   accountType?: string;
   verificationStatus?: string;
   lastLoginAt?: string;
@@ -169,10 +180,29 @@ export type AdminServiceRequest = {
   lastActionAt?: string;
   createdAt: string;
   updatedAt: string;
+  // User-submitted content (returned by shapeServiceRequestAdmin but
+  // previously absent from the type). Loosely typed because the inner
+  // shapes vary by service type.
+  contact?: { phone?: string; email?: string; name?: string; [k: string]: unknown } | null;
+  location?: { address?: string; city?: string; state?: string; postalCode?: string; landmark?: string; [k: string]: unknown } | null;
+  schedule?: { startDate?: string; endDate?: string; preferredWindow?: string; notes?: string; [k: string]: unknown } | null;
+  budget?: { estimatedCost?: number; currency?: string; notes?: string } | null;
+  notes?: string;
+  machineRepairDetails?: Record<string, unknown> | null;
+  workerDetails?: Record<string, unknown> | null;
+  transportDetails?: Record<string, unknown> | null;
+  advertisementDetails?: Record<string, unknown> | null;
   timeline?: AdminServiceRequestTimelineEntry[];
   statusHistory?: Array<Record<string, any>>;
   assignmentHistory?: Array<Record<string, any>>;
   internalNotes?: Array<Record<string, any>>;
+  /**
+   * Server-computed allowed status transitions. Phase 3 of the ops rebuild
+   * adds this so the client doesn't have to mirror backend STATUS_TRANSITIONS
+   * in `requestStatusTransitions.ts`. Falls back to the constants file when
+   * the field is missing (during the rollout window).
+   */
+  allowedTransitions?: Array<{ status: string; isPrimary: boolean }>;
 };
 
 export type AdminBusinessSetupRequest = {
@@ -208,6 +238,7 @@ export type AdminBusinessSetupRequest = {
   createdAt: string;
   updatedAt: string;
   timeline?: AdminServiceRequestTimelineEntry[];
+  allowedTransitions?: Array<{ status: string; isPrimary: boolean }>;
 };
 
 export type AdminOpsRequest = {
@@ -280,6 +311,47 @@ export type AdminCallLog = {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+/**
+ * Phase 5 of the ops rebuild — full per-id shapes for the new admin viewer
+ * and call-log detail screens. Returned by the new
+ * /admin/conversations/:id and /admin/call-logs/:id endpoints.
+ */
+export type AdminConversationDetail = AdminConversationQueueItem & {
+  participants?: Array<{
+    id: string;
+    role?: string;
+    lastReadAt?: string | null;
+    name?: string;
+    email?: string;
+    phone?: string;
+  }>;
+};
+
+export type AdminConversationMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderRole?: "admin" | "user" | "support";
+  content: string;
+  timestamp: string;
+  read: boolean;
+};
+
+export type AdminCallLogDetail = AdminCallLog & {
+  conversation?: {
+    id?: string | null;
+    lastMessage?: string;
+    lastMessageAt?: string;
+    updatedAt?: string;
+  } | null;
+  caller?:
+    | (AdminServiceRequestActor & { phone?: string })
+    | null;
+  callee?:
+    | (AdminServiceRequestActor & { phone?: string })
+    | null;
 };
 
 export type AdminUserOverview = {
@@ -379,6 +451,14 @@ class AdminService {
   async getUserOverview(userId: string, params?: { limit?: number }): Promise<AdminUserOverview> {
     const response = await apiClient.get<{ overview: AdminUserOverview }>(`/admin/users/${userId}/overview`, { params });
     return response.overview;
+  }
+
+  async setUserStatus(
+    userId: string,
+    status: "active" | "inactive" | "suspended",
+    reason?: string
+  ): Promise<{ success: boolean; message: string; user: AdminUser }> {
+    return apiClient.patch(`/admin/users/${userId}/status`, { status, reason });
   }
 
   /**
@@ -613,6 +693,28 @@ class AdminService {
     offset?: number;
   }): Promise<{ conversations: AdminConversationQueueItem[]; pagination: Pagination }> {
     return apiClient.get<{ conversations: AdminConversationQueueItem[]; pagination: Pagination }>("/admin/conversations", { params });
+  }
+
+  async getAdminConversation(conversationId: string): Promise<AdminConversationDetail> {
+    const response = await apiClient.get<{ conversation: AdminConversationDetail }>(
+      `/admin/conversations/${conversationId}`
+    );
+    return response.conversation;
+  }
+
+  async getAdminConversationMessages(
+    conversationId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<{ messages: AdminConversationMessage[]; pagination: Pagination }> {
+    return apiClient.get<{ messages: AdminConversationMessage[]; pagination: Pagination }>(
+      `/admin/conversations/${conversationId}/messages`,
+      { params }
+    );
+  }
+
+  async getAdminCallLog(callLogId: string): Promise<AdminCallLogDetail> {
+    const response = await apiClient.get<{ callLog: AdminCallLogDetail }>(`/admin/call-logs/${callLogId}`);
+    return response.callLog;
   }
 
   async listCallLogs(params?: {

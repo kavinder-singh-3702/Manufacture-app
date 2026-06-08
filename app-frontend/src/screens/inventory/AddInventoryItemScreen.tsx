@@ -949,7 +949,7 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
             <Text style={[styles.backButton, { color: colors.primary }]} numberOfLines={1}>{step === 1 ? "← Back" : "← Product info"}</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {mode === "inhouse" ? "Add In-house Product" : "Add Product"}
+            {mode === "inhouse" ? "Add In House" : "Add Product"}
           </Text>
           <View style={styles.headerSpacer} />
         </View>

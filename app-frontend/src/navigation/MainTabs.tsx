@@ -108,7 +108,7 @@ const TAB_ICON_XML: Partial<Record<RouteName, (color: string) => string>> = {
       <path d="M11 21v-4h2v4" />
     </svg>
   `,
-  [routes.CHAT]: (color) => `
+  [routes.OPS]: (color) => `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
@@ -182,7 +182,11 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   [routes.USERS]: UserManagementScreen,
   [routes.VERIFICATIONS]: VerificationsScreen,
   [routes.COMPANIES]: CompaniesScreen,
-  [routes.CHAT]: AdminOpsConsoleScreen,
+  // routes.OPS (admin "Ops" tab) now points at CommandCenter — the new clean
+  // Requests sub-tab replaces the messy AdminOpsConsoleScreen. The latter is kept
+  // exported (for the action sheet entry in UserManagement and the temp fallback
+  // until phase 7 of the ops rebuild fully retires it).
+  [routes.OPS]: CommandCenterScreen,
   [routes.INVENTORY]: AdminInventoryScreen,
   [routes.ORDERS]: AdminOrdersScreen,
   [routes.SETTINGS]: AdminSettingsScreen,
@@ -511,8 +515,8 @@ export const MainTabs = () => {
             {isAdmin && !tabs.some((tab) => tab.route === routes.VERIFICATIONS) ? (
               <Tab.Screen name={routes.VERIFICATIONS} component={screenRegistry[routes.VERIFICATIONS]} options={{ title: "Verifications" }} />
             ) : null}
-            {isAdmin && !tabs.some((tab) => tab.route === routes.CHAT) ? (
-              <Tab.Screen name={routes.CHAT} component={screenRegistry[routes.CHAT]} options={{ title: "Ops" }} />
+            {isAdmin && !tabs.some((tab) => tab.route === routes.OPS) ? (
+              <Tab.Screen name={routes.OPS} component={screenRegistry[routes.OPS]} options={{ title: "Ops" }} />
             ) : null}
           </Tab.Navigator>
         </View>
@@ -559,7 +563,7 @@ export const MainTabs = () => {
               handleOpenCompanySwitcher();
             }
           }}
-          unreadByRoute={totalUnread > 0 && isAdmin ? { [routes.CHAT]: totalUnread } : undefined}
+          unreadByRoute={totalUnread > 0 && isAdmin ? { [routes.OPS]: totalUnread } : undefined}
           getSvgIconXml={getTabIconXml}
         />
       </LinearGradient>

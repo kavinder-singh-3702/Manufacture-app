@@ -13,6 +13,7 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { AuthView } from "../../types/auth";
 import { BrandLockup } from "../../components/brand/BrandLockup";
+import { GlassView } from "expo-glass-view";
 import { AppleSignInButton } from "../../components/auth/AppleSignInButton";
 import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
 import { motion } from "../../theme/motion";
@@ -531,6 +532,19 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             { opacity: actionReveal, transform: [{ translateY: actionTranslate }] },
           ]}
         >
+          {/* SMOKE TEST: native GlassView. Remove after confirming the native module is wired. */}
+          <GlassView
+            tint="dark"
+            intensity={70}
+            cornerRadius={18}
+            borderColor="rgba(255,255,255,0.4)"
+            style={{ alignSelf: "center", marginBottom: 16, paddingHorizontal: 18, paddingVertical: 10 }}
+          >
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, letterSpacing: 0.5 }}>
+              🔮 Liquid Glass
+            </Text>
+          </GlassView>
+
           <Animated.View style={[styles.primaryButtonWrap, { transform: [{ scale: ctaScale }] }]}>
             <Pressable onPress={onJoin} onPressIn={handleJoinPressIn} onPressOut={handleJoinPressOut} style={styles.primaryButtonPressable}>
               <LinearGradient

@@ -16,7 +16,6 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
-import { routes } from "../../navigation/routes";
 import {
   AdminHeader,
   AdminSearchBar,
@@ -128,22 +127,39 @@ export const UserManagementScreen = () => {
     fetchUsers({ reset: true });
   }, [fetchUsers]);
 
-  const getStatusType = (status: string) => {
-    switch (status) {
+  const getStatusType = (state: string) => {
+    switch (state) {
       case "active":
         return "success" as const;
       case "inactive":
       case "suspended":
+      case "never_logged_in":
+        return "error" as const;
+      case "deleted":
         return "error" as const;
       default:
         return "neutral" as const;
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    if (status === "inactive") return "Inactive";
-    if (status === "suspended") return "Suspended";
+  const getStatusLabel = (state: string) => {
+    if (state === "inactive") return "Inactive";
+    if (state === "suspended") return "Suspended";
+    if (state === "deleted") return "Deleted";
+    if (state === "never_logged_in") return "Never logged in";
     return "Active";
+  };
+
+  const getLastSeenLabel = (user: AdminUser): string => {
+    if (user.activityState === "suspended") return "Suspended by admin";
+    if (user.activityState === "deleted") return "Deleted";
+    if (user.daysSinceLogin === null || user.daysSinceLogin === undefined) {
+      return user.lastLoginAt ? `Last seen ${formatDate(user.lastLoginAt)}` : "Never logged in";
+    }
+    if (user.daysSinceLogin === 0) return "Last seen today";
+    if (user.daysSinceLogin === 1) return "Last seen yesterday";
+    if (user.daysSinceLogin < 30) return `Last seen ${user.daysSinceLogin} days ago`;
+    return `Last seen ${formatDate(user.lastLoginAt)}`;
   };
 
   const formatDate = (dateString?: string) => {
@@ -210,6 +226,45 @@ export const UserManagementScreen = () => {
           });
         },
       },
+      ...(selectedUser
+        ? [
+            (() => {
+              const isCurrentlyInactive =
+                selectedUser.status === "inactive" || selectedUser.status === "suspended";
+              const targetStatus: "active" | "inactive" = isCurrentlyInactive ? "active" : "inactive";
+              const verb = isCurrentlyInactive ? "Activate" : "Deactivate";
+              return {
+                label: `${verb} user`,
+                icon: (isCurrentlyInactive ? "checkmark-circle-outline" : "ban-outline") as const,
+                destructive: !isCurrentlyInactive,
+                onPress: () => {
+                  Alert.alert(
+                    `${verb} user`,
+                    `Confirm: mark ${selectedUser.displayName || selectedUser.email} as ${targetStatus}?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: verb,
+                        style: isCurrentlyInactive ? "default" : "destructive",
+                        onPress: async () => {
+                          try {
+                            await adminService.setUserStatus(selectedUser.id, targetStatus);
+                            fetchUsers({ reset: true });
+                          } catch (err: any) {
+                            Alert.alert(
+                              "Status change failed",
+                              err?.message || "Unable to update user status."
+                            );
+                          }
+                        },
+                      },
+                    ]
+                  );
+                },
+              };
+            })(),
+          ]
+        : []),
       {
         label: "View Activity",
         icon: "time-outline" as const,
@@ -232,15 +287,11 @@ export const UserManagementScreen = () => {
           });
         },
       },
-      {
-        label: "Ops Console",
-        icon: "chatbubbles-outline" as const,
-        onPress: () => {
-          navigation.navigate("Main", { screen: routes.CHAT });
-        },
-      },
+      // "Ops Console" per-row action removed in phase 4 of the ops rebuild —
+      // ops triage isn't a property of a single user, so this entry belonged
+      // in the wrong place. The Ops tab is the canonical entry point.
     ],
-    [navigation, selectedUser]
+    [navigation, selectedUser, fetchUsers]
   );
 
   const filterTabs = useMemo(
@@ -255,6 +306,7 @@ export const UserManagementScreen = () => {
   const renderItem = useCallback(
     ({ item }: { item: AdminUser }) => {
       const phoneLine = item.phone ? `📱 ${item.phone}` : "📱 No phone on file";
+      const effectiveState = item.activityState || item.status;
       return (
         <AdminListCard
           key={item.id}
@@ -266,10 +318,10 @@ export const UserManagementScreen = () => {
           subtitle={`${item.email}\n${phoneLine}`}
           avatarText={(item.displayName || item.email || "U")[0].toUpperCase()}
           status={{
-            label: getStatusLabel(item.status),
-            type: getStatusType(item.status),
+            label: getStatusLabel(effectiveState),
+            type: getStatusType(effectiveState),
           }}
-          meta={`Joined ${formatDate(item.createdAt)}${item.role ? ` • ${item.role}` : ""}`}
+          meta={`${getLastSeenLabel(item)} • Joined ${formatDate(item.createdAt)}${item.role ? ` • ${item.role}` : ""}`}
           onPress={() => openActionSheet(item)}
         />
       );

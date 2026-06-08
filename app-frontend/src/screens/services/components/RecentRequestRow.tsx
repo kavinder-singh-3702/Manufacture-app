@@ -127,6 +127,41 @@ export const RecentRequestRow = ({
           {formatDate(request.createdAt)}
         </Text>
       </View>
+
+      {/* Latest admin status-change reason — surfaces when admin cancelled a
+          previously-completed request so the requester knows WHY. We pull from
+          statusHistory because the backend persists every change with a
+          required `reason` field. */}
+      {(() => {
+        const showsReasonForStatus = ["cancelled", "rejected"].includes(request.status);
+        if (!showsReasonForStatus) return null;
+        const last = request.statusHistory && request.statusHistory.length > 0
+          ? request.statusHistory[request.statusHistory.length - 1]
+          : undefined;
+        const reason = last?.reason?.trim();
+        if (!reason) return null;
+        return (
+          <View
+            style={{
+              marginLeft: iconSize + sp(10),
+              marginTop: sp(8),
+              paddingHorizontal: sp(10),
+              paddingVertical: sp(8),
+              borderRadius: 10,
+              backgroundColor: colors.error + "12",
+              borderLeftWidth: 3,
+              borderLeftColor: colors.error,
+            }}
+          >
+            <Text style={[{ fontSize: fs(11), fontWeight: "800", color: colors.error, letterSpacing: 0.4, textTransform: "uppercase" }]}>
+              {request.status === "rejected" ? "Rejection reason" : "Cancellation reason"}
+            </Text>
+            <Text style={[{ fontSize: fs(12), fontWeight: "600", color: colors.text, marginTop: 2, lineHeight: fs(17) }]}>
+              {reason}
+            </Text>
+          </View>
+        );
+      })()}
       </TouchableOpacity>
     </View>
   );

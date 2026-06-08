@@ -57,31 +57,21 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
     credentialMode === "email" ? "Enter Email Id" : "Enter Mobile Number";
 
   useEffect(() => {
-    // Defer to next frame so the entrance animation fires AFTER any in-flight
-    // navigation transition (post-logout, etc.). Without this, the animation
-    // can silently fail and leave the form invisible — that's the "switch to
-    // Mobile then back to Email" workaround the user reported.
+    // Only animate the header intro. Form stays at opacity 1 — the entrance
+    // animation isn't worth the risk of leaving the form invisible after a
+    // navigation transition (the "switch to Mobile then back to Email" bug).
     const handle = requestAnimationFrame(() => {
       headerIntro.setValue(0);
-      formIntro.setValue(0);
-      Animated.stagger(90, [
-        Animated.timing(headerIntro, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(formIntro, {
-          toValue: 1,
-          duration: 320,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.timing(headerIntro, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
     });
 
     return () => cancelAnimationFrame(handle);
-  }, [formIntro, headerIntro]);
+  }, [headerIntro]);
 
   const handleCtaPressIn = () => {
     Animated.spring(ctaScale, {
@@ -157,6 +147,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
 
   const renderIdentifierInput = () => (
     <TextInput
+      key={credentialMode}
       style={[styles.input, { borderColor: colors.border, color: fieldTextColor, backgroundColor: colors.surfaceElevated, fontSize: fs(16) }]}
       placeholder={identifierPlaceholder}
       placeholderTextColor={colors.textMuted}
@@ -164,6 +155,9 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
       onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
       keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
       autoCapitalize="none"
+      autoCorrect={false}
+      textContentType={credentialMode === "email" ? "emailAddress" : "telephoneNumber"}
+      autoComplete={credentialMode === "email" ? "email" : "tel"}
     />
   );
 
@@ -274,6 +268,10 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="default"
+                textContentType="password"
+                autoComplete="current-password"
               />
               <TouchableOpacity
                 style={styles.eyeButton}

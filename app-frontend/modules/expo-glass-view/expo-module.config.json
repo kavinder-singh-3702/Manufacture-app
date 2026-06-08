@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["ExpoGlassViewModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.glassview.ExpoGlassViewModule"]
+  }
+}

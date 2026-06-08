@@ -493,7 +493,7 @@ const AdminDashboardContent = () => {
                 icon="chatbubbles"
                 label="Messages"
                 color="#19B8E6"
-                onPress={() => navigateToTab(routes.CHAT)}
+                onPress={() => navigateToTab(routes.OPS)}
                 cardWidth={actionCardWidth}
               />
               <ActionCard
@@ -1769,12 +1769,12 @@ const createStyles = (fs: (size: number) => number) => StyleSheet.create({
   heroContent: { position: "relative", zIndex: 1 },
   heroTitle: { color: "#fff", fontSize: fs(22), fontWeight: "800", letterSpacing: -0.3 },
   heroSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: fs(14), marginTop: scale(4) },
-  heroStatsRow: { flexDirection: "row", marginTop: scale(24), gap: scale(10) },
-  heroStatBox: { flex: 1, minWidth: 0, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: scale(16), paddingVertical: scale(16), paddingHorizontal: scale(8), alignItems: "center" },
-  heroStatIconBg: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: scale(8) },
+  heroStatsRow: { flexDirection: "row", marginTop: scale(24), gap: scale(8) },
+  heroStatBox: { flex: 1, minWidth: 0, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: scale(16), paddingVertical: scale(14), paddingHorizontal: scale(4), alignItems: "center", overflow: "hidden" },
+  heroStatIconBg: { width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: scale(6) },
   heroStatIconBgWarning: { backgroundColor: "#FEF3C7" },
-  heroStatValue: { color: "#fff", fontSize: fs(26), fontWeight: "800", textAlign: "center" },
-  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: fs(12), fontWeight: "600", marginTop: scale(4), textAlign: "center", maxWidth: "100%" },
+  heroStatValue: { color: "#fff", fontSize: fs(24), fontWeight: "800", textAlign: "center", paddingHorizontal: scale(2) },
+  heroStatLabel: { color: "rgba(255,255,255,0.8)", fontSize: fs(11), fontWeight: "600", marginTop: scale(2), textAlign: "center", paddingHorizontal: scale(2), width: "100%" },
 
   // Alert Card
   alertCard: { flexDirection: "row", alignItems: "center", padding: scale(16), gap: scale(12) },

@@ -6,32 +6,18 @@ import { useNotifications } from "../../providers/NotificationsProvider";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { CommandCenterHeader, CommandCenterSubTabs } from "../../components/admin";
 import { RootStackParamList } from "../../navigation/types";
+import { neuCardBg } from "../../theme/neumorphic";
 import { OverviewTab } from "./components/OverviewTab";
 import { TradesTab } from "./components/TradesTab";
 import { AlertsTab } from "./components/AlertsTab";
 import { LogsTab } from "./components/LogsTab";
-
-/* ── Neumorphic helpers ── */
-const NEU_LIGHT = "#EDF1F7";
-const NEU_DARK = "#1A1F2B";
-const NEU_INSET_LIGHT = "#E2E8F0";
-const NEU_INSET_DARK = "#151A24";
-
-const neuRaised = (isDark: boolean) =>
-  isDark
-    ? { shadowColor: "#000", shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.45, shadowRadius: 6, elevation: 4 }
-    : { shadowColor: "#A3B1C6", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 };
-
-const neuPressed = (isDark: boolean) =>
-  isDark
-    ? { shadowColor: "#000", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.3, shadowRadius: 3, elevation: 1 }
-    : { shadowColor: "#A3B1C6", shadowOffset: { width: 2, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 1 };
-
-const neuCardBg = (isDark: boolean) => (isDark ? NEU_DARK : NEU_LIGHT);
-const neuInsetBg = (isDark: boolean) => (isDark ? NEU_INSET_DARK : NEU_INSET_LIGHT);
+import { RequestsTab } from "./components/RequestsTab";
+import { MessagesTab } from "./components/MessagesTab";
 
 const SUB_TABS = [
   { key: "overview", label: "OVERVIEW" },
+  { key: "requests", label: "REQUESTS" },
+  { key: "messages", label: "MESSAGES" },
   { key: "trades", label: "TRADES" },
   { key: "alerts", label: "ALERTS" },
   { key: "logs", label: "LOGS" },
@@ -40,7 +26,9 @@ const SUB_TABS = [
 export const CommandCenterScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { unreadCount } = useNotifications();
-  const [activeTab, setActiveTab] = useState("overview");
+  // Default to 'requests' — this screen is now the admin Ops tab destination, so
+  // landing on the request queue is what the admin expects.
+  const [activeTab, setActiveTab] = useState("requests");
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
 
@@ -71,6 +59,8 @@ export const CommandCenterScreen = () => {
             <OverviewTab />
           </ScrollView>
         )}
+        {activeTab === "requests" && <RequestsTab />}
+        {activeTab === "messages" && <MessagesTab />}
         {activeTab === "trades" && <TradesTab />}
         {activeTab === "alerts" && <AlertsTab />}
         {activeTab === "logs" && <LogsTab />}
@@ -78,8 +68,6 @@ export const CommandCenterScreen = () => {
     </View>
   );
 };
-
-export { neuRaised, neuPressed, neuCardBg, neuInsetBg, NEU_LIGHT, NEU_DARK, NEU_INSET_LIGHT, NEU_INSET_DARK };
 
 const styles = StyleSheet.create({
   container: {

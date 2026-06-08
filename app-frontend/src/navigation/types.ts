@@ -91,6 +91,18 @@ export type RootStackParamList = {
   ServiceDetail: { serviceType: ServiceType };
   BusinessSetupRequest: undefined;
   AddMobileNumber: undefined;
+  AdminRequestDetail: { id: string; kind: "service" | "business_setup" };
+  AdminConversation: {
+    id: string;
+    /**
+     * Other ChatConversation ids that share the same other-participant.
+     * Used by the viewer to markRead duplicate threads so the MessagesTab
+     * unread count actually drops to zero. Optional — when omitted (e.g.
+     * deep-link from a notification), the viewer only marks the canonical id.
+     */
+    siblingIds?: string[];
+  };
+  AdminCallLogDetail: { id: string };
   // Admin management screens (opened from Settings with back button)
   AdminUsers: undefined;
   AdminCompanies: undefined;

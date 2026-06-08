@@ -274,7 +274,7 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
             <Text style={[styles.backButton, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {mode === "inhouse" ? "Edit In-house Product" : "Edit Product"}
+            {mode === "inhouse" ? "Edit In House" : "Edit Product"}
           </Text>
           <TouchableOpacity onPress={handleDelete}>
             <Text style={[styles.deleteButton, { color: colors.error }]}>Delete</Text>

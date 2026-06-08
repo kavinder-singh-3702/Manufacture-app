@@ -144,6 +144,20 @@ export type ServiceRequest = {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Append-only log of status changes maintained by the backend. Each entry
+   * records the from/to statuses, who made the change, when, and a required
+   * reason. The latest entry powers the cancellation note shown on the
+   * user's recent-request row so they understand WHY admin reversed/cancelled.
+   */
+  statusHistory?: Array<{
+    from?: ServiceStatus;
+    to?: ServiceStatus;
+    at?: string;
+    by?: string | { id?: string; displayName?: string; email?: string };
+    reason?: string;
+    note?: string;
+  }>;
 };
 
 export type ServiceRequestListFilters = {

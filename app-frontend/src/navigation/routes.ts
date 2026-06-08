@@ -19,7 +19,7 @@ export const routes = {
   USERS: "users",
   VERIFICATIONS: "verifications",
   COMPANIES: "companies",
-  CHAT: "chat", // Admin ops tab
+  OPS: "ops", // Admin ops tab — was routes.CHAT until the ops console rebuild
   INVENTORY: "inventory",
   ORDERS: "orders",
   SETTINGS: "settings",
@@ -143,7 +143,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     roles: ["admin", "super-admin"],
   },
   {
-    route: routes.CHAT,
+    route: routes.OPS,
     label: "Ops",
     tabLabel: "Ops",
     icon: "🧭",

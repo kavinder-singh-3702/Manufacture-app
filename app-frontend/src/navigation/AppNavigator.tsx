@@ -4,7 +4,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { enableScreens } from "react-native-screens";
 import { AuthScreen } from "../screens/auth/AuthScreen";
 import { AddMobileNumberScreen } from "../screens/auth/AddMobileNumberScreen";
+import { AdminRequestDetailScreen } from "../screens/admin/AdminRequestDetailScreen";
+import { AdminConversationViewerScreen } from "../screens/admin/AdminConversationViewerScreen";
+import { AdminCallLogDetailScreen } from "../screens/admin/AdminCallLogDetailScreen";
 import { useAuth } from "../hooks/useAuth";
+import { AppQueryClientProvider } from "../providers/AppQueryClientProvider";
 import { FullScreenLoader } from "./components/FullScreenLoader";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
 import { AppearanceScreen } from "../screens/settings/AppearanceScreen";
@@ -136,6 +140,7 @@ export const AppNavigator = () => {
   }
 
   return (
+    <AppQueryClientProvider>
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
@@ -301,6 +306,21 @@ export const AppNavigator = () => {
               options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
+              name="AdminRequestDetail"
+              component={AdminRequestDetailScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminConversation"
+              component={AdminConversationViewerScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="AdminCallLogDetail"
+              component={AdminCallLogDetailScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
               name="UserPreferences"
               component={GuardedUserPreferenceScreen}
               options={{ animation: "slide_from_right" }}
@@ -423,5 +443,6 @@ export const AppNavigator = () => {
         )}
       </RootStack.Navigator>
     </NavigationContainer>
+    </AppQueryClientProvider>
   );
 };
