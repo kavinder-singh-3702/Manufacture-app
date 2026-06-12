@@ -19,6 +19,7 @@ import { productService, type Product } from "../../services/product.service";
 import { RootStackParamList } from "../../navigation/types";
 import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProductCard";
 import { useAuth } from "../../hooks/useAuth";
+import { useCompanySwitcher } from "../../hooks/useCompanySwitcher";
 import { useToast } from "../../components/ui/Toast";
 import { CompanyRequiredCard } from "../../components/company";
 import {
@@ -33,6 +34,7 @@ type VisibilityFilter = "all" | "public" | "private";
 export const MyProductsScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { open: openCompanySwitcher } = useCompanySwitcher();
   const route = useRoute<RouteProp<RootStackParamList, "MyProducts">>();
   const isFocused = useIsFocused();
   const { user, requestLogin } = useAuth();
@@ -169,6 +171,7 @@ export const MyProductsScreen = () => {
                     toastError,
                   })
           }
+          currentUserId={user?.id}
           showPrimaryAction
           primaryActionLabel="Promote product"
           onPrimaryActionPress={(selectedProduct) =>
@@ -204,12 +207,22 @@ export const MyProductsScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
+        {/* Long-press anywhere on the title block to switch own company —
+            matches the HomeToolbar avatar gesture. Useful when the user
+            owns multiple companies and wants to jump to a different one
+            without going through the dashboard. */}
+        <TouchableOpacity
+          style={styles.headerTitleContainer}
+          activeOpacity={1}
+          onLongPress={() => openCompanySwitcher()}
+          delayLongPress={300}
+          accessibilityHint="Long press to switch to another company"
+        >
           <Text style={[styles.headerTitle, { color: colors.text }]}>My Products</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {headerCount} product{headerCount !== 1 ? "s" : ""} listed
           </Text>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={() =>

@@ -146,6 +146,19 @@ export const AppNavigator = () => {
         {!user ? (
           // Not authenticated: Show login/signup screens
           <RootStack.Screen name="Auth" component={AuthScreen} />
+        ) : (user.role !== "guest" && !user.phone) ? (
+          // Hard phone gate: any authenticated non-guest user without a phone
+          // is locked to AddMobileNumber until they enter one. The email
+          // signup wizard already enforces phone, so this catches social
+          // sign-in (Apple today, Google when shipped) plus any legacy
+          // account whose phone was never captured. After the user submits,
+          // user.phone updates -> this branch falls through and the regular
+          // authenticated stack renders.
+          <RootStack.Screen
+            name="AddMobileNumber"
+            component={AddMobileNumberScreen}
+            options={{ gestureEnabled: false, animation: "fade" }}
+          />
         ) : (
           // Authenticated: Show unified MainTabs (role-based content handled inside)
           <>

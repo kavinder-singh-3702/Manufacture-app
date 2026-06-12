@@ -14,12 +14,19 @@ export const ServiceTypeCard = ({
   onPress,
   onStart,
   accent,
+  comingSoon,
 }: {
   service: ServiceMeta;
   selected?: boolean;
   onPress?: () => void;
   onStart?: () => void;
   accent?: ServiceAccent;
+  /**
+   * When true: card shows a "Coming Soon" chip, dims the contents,
+   * and refuses taps on both the card and the CTA. Used for service
+   * types listed in ServiceType but not yet in AVAILABLE_SERVICE_TYPES.
+   */
+  comingSoon?: boolean;
 }) => {
   const { colors, radius } = useTheme();
   const { fs, sp, isCompact } = useResponsiveLayout();
@@ -43,9 +50,10 @@ export const ServiceTypeCard = ({
       ]}
     >
       <TouchableOpacity
-        onPress={onPress}
+        onPress={comingSoon ? undefined : onPress}
+        disabled={comingSoon}
         activeOpacity={0.92}
-        style={{ borderRadius: radius.xl }}
+        style={{ borderRadius: radius.xl, opacity: comingSoon ? 0.55 : 1 }}
       >
         <LinearGradient
           colors={gradientColors}
@@ -77,6 +85,25 @@ export const ServiceTypeCard = ({
               },
             ]}
           />
+
+          {/* Coming Soon corner chip — surfaces the disabled state */}
+          {comingSoon ? (
+            <View
+              style={[
+                styles.comingSoonChip,
+                {
+                  paddingHorizontal: sp(8),
+                  paddingVertical: sp(4),
+                  borderRadius: radius.pill ?? 999,
+                  top: sp(10),
+                  right: sp(10),
+                },
+              ]}
+            >
+              <Ionicons name="time-outline" size={fs(11)} color="#FFFFFF" />
+              <Text style={[styles.comingSoonText, { fontSize: fs(10) }]}>Coming soon</Text>
+            </View>
+          ) : null}
 
           {/* Top row: icon + info */}
           <View style={[styles.header, { gap: sp(12) }]}>
@@ -129,8 +156,8 @@ export const ServiceTypeCard = ({
             </Text>
           </View>
 
-          {/* CTA — frosted white pill */}
-          {onStart ? (
+          {/* CTA — frosted white pill (disabled for Coming Soon services) */}
+          {onStart && !comingSoon ? (
             <TouchableOpacity
               onPress={onStart}
               activeOpacity={0.88}
@@ -234,5 +261,21 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
+  },
+  comingSoonChip: {
+    position: "absolute",
+    zIndex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.30)",
+  },
+  comingSoonText: {
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 });

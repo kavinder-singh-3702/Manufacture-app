@@ -115,6 +115,7 @@ export const FilteredProductsScreen = () => {
           showPrimaryAction
           primaryActionLabel="Edit product"
           onPrimaryActionPress={(product) => handleEditItem(product._id)}
+          currentUserId={user?.id}
         />
       );
     },

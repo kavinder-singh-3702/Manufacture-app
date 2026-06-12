@@ -24,6 +24,17 @@ type AmazonStyleProductCardProps = {
   showQuickActions?: boolean;
   showPrimaryAction?: boolean;
   containerStyle?: object;
+  /**
+   * Current viewer's user id. When provided, the card derives ownership
+   * from `product.createdBy === currentUserId` and surfaces an owner Boost
+   * CTA (when onBoostPress is also provided), replacing the Add-to-cart
+   * / Message slot. This is the single-source-of-truth pattern agreed in
+   * Phase 1: consumer screens just pass currentUserId={user?.id} instead
+   * of computing per-card ownership themselves.
+   */
+  currentUserId?: string;
+  /** Fired when the owner taps "Boost". Receives the product. */
+  onBoostPress?: (product: Product) => void;
 };
 
 const formatCurrency = (amount: number, currency?: string) => {
@@ -84,6 +95,8 @@ export const AmazonStyleProductCard = memo(
     showQuickActions = true,
     showPrimaryAction = false,
     containerStyle,
+    currentUserId,
+    onBoostPress,
   }: AmazonStyleProductCardProps) => {
     const { colors, radius, spacing } = useTheme();
     const { resolvedMode } = useThemeMode();
@@ -130,8 +143,16 @@ export const AmazonStyleProductCard = memo(
     const seller = product.company?.displayName || "Seller";
     const isVerified = product.company?.complianceStatus === "approved";
 
-    const showMessage = showQuickActions && Boolean(onMessagePress);
-    const showCall = showQuickActions && Boolean(onCallPress);
+    // Owner Boost CTA — when the viewer owns the product, replace the
+    // Add-to-cart/Message slot with a "Boost" action that routes (via
+    // onBoostPress) to the service-request advertisement flow. Suppress
+    // Message/Call too because there's no one for the owner to message.
+    const ownerId = product?.createdBy ? String(product.createdBy) : null;
+    const isOwner = Boolean(currentUserId && ownerId && currentUserId === ownerId);
+    const showBoost = isOwner && Boolean(onBoostPress);
+
+    const showMessage = !isOwner && showQuickActions && Boolean(onMessagePress);
+    const showCall = !isOwner && showQuickActions && Boolean(onCallPress);
 
     return (
       <TouchableOpacity
@@ -201,7 +222,7 @@ export const AmazonStyleProductCard = memo(
           </View>
         </View>
 
-        {(showMessage || showCall || (showPrimaryAction && primaryActionLabel && onPrimaryActionPress)) ? (
+        {(showMessage || showCall || showBoost || (showPrimaryAction && primaryActionLabel && onPrimaryActionPress)) ? (
           <View style={styles.actionsRow}>
             {showMessage ? (
               <TouchableOpacity
@@ -225,7 +246,22 @@ export const AmazonStyleProductCard = memo(
               </TouchableOpacity>
             ) : null}
 
-            {showPrimaryAction && primaryActionLabel && onPrimaryActionPress ? (
+            {showBoost ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.primaryAction}
+                onPress={() => onBoostPress?.(product)}
+              >
+                <Ionicons name="megaphone-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.primaryActionText}>Boost</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Existing primaryAction slot still works for non-owner screens
+                (e.g. MyProductsScreen's "Promote product") — but owners get
+                the Boost action above, which already covers the promote use
+                case via the same advertisement service request. */}
+            {!showBoost && showPrimaryAction && primaryActionLabel && onPrimaryActionPress ? (
               <TouchableOpacity
                 activeOpacity={0.9}
                 disabled={primaryActionDisabled}

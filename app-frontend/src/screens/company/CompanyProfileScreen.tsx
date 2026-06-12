@@ -25,6 +25,7 @@ import { productService } from "../../services/product.service";
 import { ApiError } from "../../services/http";
 import { Company } from "../../types/company";
 import { CompanyHero } from "./components/CompanyHero";
+import { useCompanySwitcher } from "../../hooks/useCompanySwitcher";
 import { CompanySections } from "./components/CompanySections";
 import { CompanyEditorModal } from "./components/CompanyEditorModal";
 import { CompanyEditorSection, CompanyProfileFormState } from "./components/types";
@@ -101,6 +102,7 @@ export const CompanyProfileScreen = () => {
   const targetCompanyId = route.params?.companyId ?? user?.activeCompany ?? null;
   const isReadOnly = isAdminRole(user?.role);
   const canEdit = !isReadOnly;
+  const { open: openCompanySwitcher } = useCompanySwitcher();
 
   const loadCompany = useCallback(async () => {
     if (!targetCompanyId) {
@@ -487,6 +489,7 @@ export const CompanyProfileScreen = () => {
                 complianceStatus={complianceStatus}
                 onUploadLogo={canEdit ? handleUploadLogo : undefined}
                 uploading={logoUploading}
+                onLongPress={canEdit ? () => openCompanySwitcher() : undefined}
               />
 
               {isReadOnly ? (

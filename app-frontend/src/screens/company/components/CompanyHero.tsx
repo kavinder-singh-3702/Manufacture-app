@@ -14,9 +14,15 @@ type Props = {
   complianceStatus: string;
   onUploadLogo?: () => void;
   uploading?: boolean;
+  /**
+   * Long-press shortcut to switch to another owned company. Wired by
+   * CompanyProfileScreen via useCompanySwitcher — fires a medium haptic
+   * and opens the CompanyContextPicker stack screen.
+   */
+  onLongPress?: () => void;
 };
 
-export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading }: Props) => {
+export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading, onLongPress }: Props) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const layout = useCompanyProfileLayout();
@@ -40,8 +46,10 @@ export const CompanyHero = ({ company, complianceStatus, onUploadLogo, uploading
 
         <TouchableOpacity
           onPress={onUploadLogo}
+          onLongPress={onLongPress}
+          delayLongPress={300}
           activeOpacity={0.85}
-          disabled={uploading || !onUploadLogo}
+          disabled={uploading || (!onUploadLogo && !onLongPress)}
           style={styles.avatarWrapper}
         >
           <LinearGradient

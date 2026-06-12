@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { AmazonStyleProductCard } from "../../../components/product/AmazonStyleProductCard";
+import { startProductBoost } from "../../product/utils/productBoost";
 import { useToast } from "../../../components/ui/Toast";
 import { useAuth } from "../../../hooks/useAuth";
 import { useTheme } from "../../../hooks/useTheme";
@@ -389,6 +390,8 @@ export const CompanyProductsSection = ({
                 showPrimaryAction={!isReadOnly}
                 primaryActionLabel="Edit"
                 onPrimaryActionPress={handleEdit}
+                currentUserId={user?.id}
+                onBoostPress={isReadOnly ? (product) => startProductBoost(navigation, product) : undefined}
               />
               {isReadOnly && item.variantSummary?.totalVariants ? (
                 <TouchableOpacity

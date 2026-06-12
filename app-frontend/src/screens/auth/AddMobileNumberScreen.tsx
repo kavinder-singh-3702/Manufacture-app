@@ -13,23 +13,19 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { authService } from "../../services/auth.service";
-import { RootStackParamList } from "../../navigation/types";
 
 export const AddMobileNumberScreen = () => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
 
   const [phone, setPhone] = useState(user?.phone || "");
   const [submitting, setSubmitting] = useState(false);
@@ -46,17 +42,29 @@ export const AddMobileNumberScreen = () => {
       setSubmitting(true);
       setError(null);
       const updated = await authService.updatePhone(trimmed);
+      // No navigation call needed — AppNavigator's hard phone gate falls
+      // through to Main as soon as user.phone is populated. Less surface
+      // for race conditions / Alert dismiss flake.
       setUser(updated);
-      Alert.alert(
-        "Saved",
-        "Mobile number added to your account.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      );
     } catch (err: any) {
       setError(err?.message || "Could not save mobile number. Try again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Mobile number is a hard gate — the only way out without entering one is
+  // to log out (and presumably sign in with a different account that has a
+  // phone, or sign up via the email wizard which captures phone inline).
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign out?",
+      "You can sign back in any time. Adding a mobile number is required to use ARVANN.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign out", style: "destructive", onPress: () => { void logout(); } },
+      ]
+    );
   };
 
   return (
@@ -66,10 +74,9 @@ export const AddMobileNumberScreen = () => {
       style={styles.container}
     >
       <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
+        {/* Header has NO back button — phone is mandatory, the only exit is
+            the "Sign out" link at the bottom of the form. */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity style={styles.headerBackButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>Add Mobile Number</Text>
         </View>
 
@@ -133,12 +140,15 @@ export const AddMobileNumberScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
+              {/* No "Skip" — phone is required. Replaced with a Sign out
+                  escape hatch so a user who genuinely doesn't want to add
+                  a phone can leave (and try a different account). */}
               <TouchableOpacity
-                onPress={() => navigation.goBack()}
+                onPress={handleSignOut}
                 style={styles.skipButton}
                 activeOpacity={0.7}
               >
-                <Text style={styles.skipText}>Skip for now</Text>
+                <Text style={styles.skipText}>Sign out</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

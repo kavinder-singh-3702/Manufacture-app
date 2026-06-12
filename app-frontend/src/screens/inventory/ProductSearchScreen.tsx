@@ -25,6 +25,7 @@ import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProd
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 import { AdaptiveTwoLineText } from "../../components/text/AdaptiveTwoLineText";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { startProductBoost } from "../product/utils/productBoost";
 import { useCart } from "../../hooks/useCart";
 import { VariantChoiceSelection, VariantChoiceSheet } from "./components/VariantChoiceSheet";
 import { hasVariants, variantDisplayLabel } from "./components/variantDomain";
@@ -276,6 +277,8 @@ export const ProductSearchScreen = () => {
           showPrimaryAction
           primaryActionLabel="Add to cart"
           onPrimaryActionPress={(product) => handleAddToCart(product)}
+          currentUserId={user?.id}
+          onBoostPress={(product) => startProductBoost(navigation, product)}
         />
       );
     },

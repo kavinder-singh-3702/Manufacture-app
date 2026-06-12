@@ -1158,58 +1158,9 @@ const UserDashboardContent = () => {
           />
         </Animated.View>
 
-        {/* Mobile capture nudge — soft prompt for users without a phone on file (e.g. Apple Sign-In) */}
-        {!isGuest && user && !user.phone ? (
-          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate("AddMobileNumber")}
-              style={{
-                borderRadius: radius.lg,
-                overflow: "hidden",
-                shadowColor: "#F59E0B",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.4,
-                shadowRadius: 10,
-                elevation: 5,
-              }}
-            >
-              <LinearGradient
-                colors={["#FCD34D", "#F59E0B"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: spacing.md,
-                  gap: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "rgba(255,255,255,0.32)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="call" size={20} color="#7C2D12" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#7C2D12" }}>
-                    Add your mobile number
-                  </Text>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#92400E", marginTop: 2 }}>
-                    Helps with support, recovery, and order coordination.
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#7C2D12" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ) : null}
+        {/* Mobile capture soft banner removed — AppNavigator now hard-gates
+            any authenticated user without a phone to AddMobileNumberScreen,
+            so this banner is unreachable code on the dashboard. */}
 
         {/* Start your own business — CTA placed between ads and category browse */}
         <Animated.View style={[revealStyle(1), { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>

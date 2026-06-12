@@ -27,6 +27,7 @@ import { AmazonStyleProductCard } from "../../components/product/AmazonStyleProd
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { startProductBoost } from "../product/utils/productBoost";
 
 const PAGE_SIZE = 25;
 const useCategoryProductsPalette = () => {
@@ -391,6 +392,8 @@ export const CategoryProductsScreen = () => {
                 onCallPress={(product) =>
                   callProductSeller({ product, toastError })
                 }
+                currentUserId={user?.id}
+                onBoostPress={(product) => startProductBoost(navigation, product)}
               />
             </View>
           ))

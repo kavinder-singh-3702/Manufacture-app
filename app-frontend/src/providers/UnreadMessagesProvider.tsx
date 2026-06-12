@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { chatService } from "../services/chat.service";
+import { chatService, onUnreadCountStale } from "../services/chat.service";
 import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../services/chatSocket";
 
 type UnreadMessagesContextType = {
@@ -45,6 +45,15 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
   useEffect(() => {
     loadUnreadCount();
   }, [loadUnreadCount]);
+
+  // Direct refetch trigger fired by chatService.markRead(). Needed because
+  // the chat:read socket event doesn't always reach this user (legacy
+  // stub-admin conversations where the real admin isn't a participant), so
+  // the OPS-tab footer badge would otherwise never refresh.
+  useEffect(() => {
+    if (!user?.id) return;
+    return onUnreadCountStale(loadUnreadCount);
+  }, [user?.id, loadUnreadCount]);
 
   // Socket listeners for real-time updates
   useEffect(() => {

@@ -22,7 +22,7 @@ import { FadeInView } from "../../components/ui/AnimatedCard";
 import { chatService } from "../../services/chat.service";
 import { serviceRequestService, ServiceRequest, ServiceStatus } from "../../services/serviceRequest.service";
 import type { RootStackParamList } from "../../navigation/types";
-import { SERVICE_META } from "./services.constants";
+import { SERVICE_META, isServiceAvailable } from "./services.constants";
 import { SERVICE_ACCENT_MAP, BUSINESS_ACCENT, neu, NEU_BG_LIGHT, NEU_BG_DARK } from "./services.palette";
 import {
   RecentRequestRow,
@@ -307,16 +307,31 @@ export const ServicesOverviewScreen = () => {
           </FadeInView>
 
           <View style={[styles.catalogGrid, { marginTop: spacing.md }]}>
-            {Object.values(SERVICE_META).map((service, index) => (
-              <FadeInView key={service.type} delay={250 + index * 100} duration={450}>
-                <ServiceTypeCard
-                  service={service}
-                  accent={SERVICE_ACCENT_MAP[service.type]}
-                  onPress={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
-                  onStart={() => navigation.navigate("ServiceRequest", { serviceType: service.type })}
-                />
-              </FadeInView>
-            ))}
+            {Object.values(SERVICE_META).map((service, index) => {
+              // All four services in v1 are live. Future-proofing: as the
+              // `ServiceType` union grows, any new entry not in
+              // AVAILABLE_SERVICE_TYPES auto-renders as Coming Soon.
+              const available = isServiceAvailable(service.type);
+              return (
+                <FadeInView key={service.type} delay={250 + index * 100} duration={450}>
+                  <ServiceTypeCard
+                    service={service}
+                    accent={SERVICE_ACCENT_MAP[service.type]}
+                    comingSoon={!available}
+                    onPress={
+                      available
+                        ? () => navigation.navigate("ServiceRequest", { serviceType: service.type })
+                        : undefined
+                    }
+                    onStart={
+                      available
+                        ? () => navigation.navigate("ServiceRequest", { serviceType: service.type })
+                        : undefined
+                    }
+                  />
+                </FadeInView>
+              );
+            })}
 
             {/* Business Setup Card — bold gradient (matches ServiceTypeCard) */}
             <FadeInView delay={650} duration={450}>
