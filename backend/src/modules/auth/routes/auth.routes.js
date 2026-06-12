@@ -34,4 +34,29 @@ router.post('/password/forgot', validate(forgotPasswordValidation), requestPassw
 router.post('/password/reset', validate(resetPasswordValidation), resetPasswordController);
 router.post('/profile/phone', authenticate, updatePhoneController);
 
+// Public — returns the canonical support-admin user id used by the
+// frontend SupportFab to start support conversations. Sourced from
+// PRIMARY_SUPPORT_ADMIN_ID env var; falls back to the oldest admin user.
+// Replaces the hardcoded stub id that the frontend used to ship with.
+router.get('/support-admin', async (req, res, next) => {
+  try {
+    const envId = process.env.PRIMARY_SUPPORT_ADMIN_ID;
+    const User = require('../../../models/user.model');
+    if (envId) {
+      const exists = await User.findById(envId).select('_id').lean();
+      if (exists) return res.json({ supportAdminId: String(exists._id) });
+    }
+    const fallback = await User.findOne({ role: { $in: ['admin', 'super-admin'] } })
+      .sort({ createdAt: 1 })
+      .select('_id')
+      .lean();
+    if (!fallback) {
+      return res.status(503).json({ message: 'No support admin available on this instance' });
+    }
+    return res.json({ supportAdminId: String(fallback._id) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;

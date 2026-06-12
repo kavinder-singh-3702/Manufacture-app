@@ -65,7 +65,15 @@ const getConversationSummaryForUser = async (conversationId, userId) => {
         .lean()
     : null;
 
-  const unreadQuery = { conversation: conversation._id };
+  // Defense against legacy stub-admin conversations: even if `self` is a
+  // stub participant (lastReadAt never updated) the count must NOT include
+  // admin/support-sent messages — they would be self's own replies surfacing
+  // as someone else's unread. Matches the same filter we apply to
+  // listConversationsAdmin / getConversationSummaryForAdmin.
+  const unreadQuery = {
+    conversation: conversation._id,
+    senderRole: { $nin: ['admin', 'support'] }
+  };
   if (self?.lastReadAt) {
     unreadQuery.createdAt = { $gt: self.lastReadAt };
   }
@@ -163,7 +171,13 @@ const listConversations = async (userId) => {
       const self = conv.participants.find((p) => String(p.user) === String(userId));
       const otherUser = other ? userMap[String(other.user)] : null;
 
-      const unreadQuery = { conversation: conv._id };
+      // Same defense as getConversationSummaryForUser — exclude
+      // admin/support-sent messages so the user-side list never counts
+      // admin replies as unread for the admin viewer of a stub conversation.
+      const unreadQuery = {
+        conversation: conv._id,
+        senderRole: { $nin: ['admin', 'support'] }
+      };
       if (self?.lastReadAt) {
         unreadQuery.createdAt = { $gt: self.lastReadAt };
       }
