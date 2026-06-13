@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Product } from "@/src/types/product";
-import { formatCurrency, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
 import { useCart } from "@/src/providers/CartProvider";
 
 const StockBar = ({ available, min }: { available: number; min: number }) => {
@@ -64,10 +64,20 @@ const AddToCartButton = ({ product }: { product: Product }) => {
   );
 };
 
-export const ProductCard = ({ product, index = 0 }: { product: Product; index?: number }) => {
+export const ProductCard = ({
+  product,
+  index = 0,
+  buyerView = false,
+}: {
+  product: Product;
+  index?: number;
+  /** Buyer-facing browse: hide exact quantity (they contact for quantity). */
+  buyerView?: boolean;
+}) => {
   const cat = getCategoryMeta(product.category);
   const status = STATUS_COLORS[product.status] ?? STATUS_COLORS.draft;
   const stockStatus = product.stockStatus ? STOCK_STATUS_COLORS[product.stockStatus] : null;
+  const buyerStock = getBuyerStock(product.stockStatus, product.availableQuantity);
   const cover = product.images?.[0]?.url;
 
   return (
@@ -181,16 +191,25 @@ export const ProductCard = ({ product, index = 0 }: { product: Product; index?: 
             )}
           </div>
 
-          {/* Stock */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px]">
-              <span style={{ color: "var(--medium-gray)" }}>Available</span>
-              <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-                {product.availableQuantity.toLocaleString("en-IN")}{product.unit ? ` ${product.unit}` : ""}
+          {/* Stock — buyers see status only; owners see exact quantity */}
+          {buyerView ? (
+            <div className="flex items-center">
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={{ backgroundColor: buyerStock.bg, color: buyerStock.fg }}>
+                {buyerStock.icon} {buyerStock.label}
               </span>
             </div>
-            <StockBar available={product.availableQuantity} min={product.minStockQuantity} />
-          </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span style={{ color: "var(--medium-gray)" }}>Available</span>
+                <span className="font-semibold" style={{ color: "var(--foreground)" }}>
+                  {product.availableQuantity.toLocaleString("en-IN")}{product.unit ? ` ${product.unit}` : ""}
+                </span>
+              </div>
+              <StockBar available={product.availableQuantity} min={product.minStockQuantity} />
+            </div>
+          )}
 
           {/* Footer — company + cart */}
           <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>

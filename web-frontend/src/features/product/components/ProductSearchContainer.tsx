@@ -294,7 +294,7 @@ export const ProductSearchContainer = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: Math.min(i * 0.04, 0.3) }}
                     >
-                      <ProductCard product={p} />
+                      <ProductCard product={p} buyerView />
                     </motion.div>
                   ))}
                 </div>

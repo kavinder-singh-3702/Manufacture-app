@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
@@ -27,8 +28,9 @@ const CATEGORIES = [
 
 const navLinks = [
   { href: "/products", label: "Products", hasDropdown: true },
-  { href: "#overview", label: "Platform",  hasDropdown: false },
-  { href: "#support",  label: "Support",   hasDropdown: false },
+  { href: "/about",    label: "About",    hasDropdown: false },
+  { href: "/support",  label: "Support",  hasDropdown: false },
+  { href: "/contact",  label: "Contact",  hasDropdown: false },
 ] as const;
 
 // ── Category mega-dropdown ────────────────────────────────────────────────────
@@ -82,6 +84,7 @@ export const TopBar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
   const { user, initializing } = useAuth();
   const isAuthed = !initializing && !!user;
   const accountLabel = user?.displayName ?? user?.firstName ?? user?.email ?? "Account";
@@ -99,8 +102,8 @@ export const TopBar = () => {
 
   return (
     <header
-      className="sticky top-0 z-30 backdrop-blur-md"
-      style={{ borderBottom: "1px solid var(--border)", backgroundColor: "rgba(248,250,251,0.95)", boxShadow: "0 1px 0 var(--border), 0 4px 20px rgba(20,141,178,0.05)" }}>
+      className="sticky top-0 z-30 backdrop-blur-xl"
+      style={{ borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in srgb, var(--background) 82%, transparent)", boxShadow: "0 1px 0 var(--border), 0 6px 24px color-mix(in srgb, var(--primary) 6%, transparent)" }}>
       <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-6 px-6 py-3.5 lg:px-10">
         {/* Brand */}
         <Link href="/" className="flex items-center flex-shrink-0" aria-label="ARVANN home">
@@ -128,11 +131,20 @@ export const TopBar = () => {
                 </AnimatePresence>
               </div>
             ) : (
-              <a key={link.label} href={link.href}
-                className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-all hover:bg-[var(--primary-light)] hover:text-[var(--primary)]"
-                style={{ color: "var(--foreground)" }}>
-                {link.label}
-              </a>
+              (() => {
+                const active = pathname === link.href;
+                return (
+                  <Link key={link.label} href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-all hover:bg-[var(--primary-light)] hover:text-[var(--primary)]"
+                    style={{
+                      color: active ? "var(--primary)" : "var(--foreground)",
+                      backgroundColor: active ? "var(--primary-light)" : "transparent",
+                    }}>
+                    {link.label}
+                  </Link>
+                );
+              })()
             )
           )}
         </nav>
@@ -202,12 +214,15 @@ export const TopBar = () => {
                   </Link>
                 ))}
               </div>
-              <a href="#overview" onClick={() => setMobileOpen(false)}
-                className="block rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
-                style={{ color: "var(--foreground)" }}>Platform</a>
-              <a href="#support" onClick={() => setMobileOpen(false)}
-                className="block rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
-                style={{ color: "var(--foreground)" }}>Support</a>
+              {[
+                { href: "/about", label: "About" },
+                { href: "/support", label: "Support" },
+                { href: "/contact", label: "Contact" },
+              ].map((l) => (
+                <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+                  className="block rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
+                  style={{ color: pathname === l.href ? "var(--primary)" : "var(--foreground)" }}>{l.label}</Link>
+              ))}
             </nav>
             <div className="mt-4 grid gap-2">
               {isAuthed ? (

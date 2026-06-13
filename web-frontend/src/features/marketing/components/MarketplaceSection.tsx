@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
-import { getCategoryMeta } from "@/src/features/product/utils/categories";
+import { getBuyerStock, getCategoryMeta } from "@/src/features/product/utils/categories";
 
 // ── Categories data ───────────────────────────────────────────────────────────
 
@@ -64,11 +64,15 @@ const MiniProductCard = ({ product, index }: { product: Product; index: number }
               ₹{product.price.amount.toLocaleString("en-IN")}
               {product.price.unit && <span className="text-xs font-normal" style={{ color: "var(--medium-gray)" }}>/{product.price.unit}</span>}
             </span>
-            {product.stockStatus === "in_stock" && (
-              <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ backgroundColor: "#DCFCE7", color: "#15803D" }}>
-                In stock
-              </span>
-            )}
+            {(() => {
+              const s = getBuyerStock(product.stockStatus, product.availableQuantity);
+              return (
+                <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                  style={{ backgroundColor: s.bg, color: s.fg }}>
+                  {s.label}
+                </span>
+              );
+            })()}
           </div>
         </div>
       </Link>

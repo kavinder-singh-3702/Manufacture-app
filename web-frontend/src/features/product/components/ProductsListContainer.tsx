@@ -290,6 +290,7 @@ export const ProductsListContainer = () => {
           onClearFilters={() => setFilters({ ...filters, scope: filters.scope, search: "", category: "", status: "", sort: "" })}
           onSwitchToMarketplace={() => { setShowGuestBanner(false); setFilters((f) => ({ ...f, scope: "marketplace" })); }}
           companyName={activeCompany?.displayName}
+          buyerView={filters.scope === "marketplace"}
         />
       </div>
 

@@ -17,7 +17,10 @@ const getAdFeedController = async (req, res, next) => {
     const feed = await getFeed({
       userId: req.user?.id,
       placement: req.query.placement,
-      limit: req.query.limit
+      limit: req.query.limit,
+      matchCategory: req.query.category,
+      matchSubCategory: req.query.subCategory,
+      excludeProductId: req.query.excludeProductId
     });
     return res.json(feed);
   } catch (error) {

@@ -8,7 +8,8 @@ const AD_CAMPAIGN_STATUSES = Object.freeze([
 
 const AD_PLACEMENTS = Object.freeze([
   'dashboard_home',
-  'hero_banner'
+  'hero_banner',
+  'cart_cross_sell'
 ]);
 
 const AD_MEDIA_TYPES = Object.freeze([

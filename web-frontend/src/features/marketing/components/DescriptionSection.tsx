@@ -54,14 +54,14 @@ export const DescriptionSection = () => {
             {["ISO-ready logs", "Role-aware sharing", "Cross-team dashboards"].map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
+                className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
               >
                 {item}
               </span>
             ))}
           </div>
         </div>
-        <div className="grid w-full max-w-xl gap-3 rounded-3xl border border-[var(--border)] bg-white p-4 shadow-sm">
+        <div className="grid w-full max-w-xl gap-3 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
             Onboarding lane
           </p>

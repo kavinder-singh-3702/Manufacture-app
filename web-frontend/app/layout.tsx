@@ -29,7 +29,7 @@ export default function RootLayout({
         {/* Apply the stored theme before paint to avoid a light→dark flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=localStorage.getItem('arvann-theme')||'system';var d=m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}else{r.style.colorScheme='light';}}catch(e){}})();`,
+            __html: `(function(){try{var m=localStorage.getItem('arvann-theme')||'light';var d=m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}else{r.style.colorScheme='light';}}catch(e){}})();`,
           }}
         />
       </head>

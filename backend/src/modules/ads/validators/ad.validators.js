@@ -115,7 +115,11 @@ const listCampaignsValidation = [
 
 const feedValidation = [
   query('placement').optional().isIn(AD_PLACEMENTS),
-  query('limit').optional().isInt({ min: 1, max: 10 })
+  query('limit').optional().isInt({ min: 1, max: 10 }),
+  // Cross-sell placement: category + sub-category of the cart item that triggered the feed.
+  query('category').optional().isString().trim().isLength({ max: 120 }),
+  query('subCategory').optional().isString().trim().isLength({ max: 120 }),
+  query('excludeProductId').optional().custom(isObjectId).withMessage('excludeProductId must be valid id')
 ];
 
 const insightsValidation = [

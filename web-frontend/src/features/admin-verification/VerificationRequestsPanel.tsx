@@ -286,7 +286,7 @@ export const VerificationRequestsPanel = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
           <div
             className="w-full max-w-lg rounded-3xl p-6 text-[var(--foreground)]"
-            style={{ backgroundColor: "white", border: "1px solid rgba(90,48,66,0.2)" }}
+            style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
           >
             <h3 className="text-xl font-semibold">
               {activeAction.action === "approve" ? "Approve request" : "Reject request"}

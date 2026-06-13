@@ -4,3 +4,7 @@ export { DescriptionSection } from "./components/DescriptionSection";
 export { SnapshotShowcase } from "./components/SnapshotShowcase";
 export { FooterCTA } from "./components/FooterCTA";
 export { MarketplaceSection } from "./components/MarketplaceSection";
+export { MarketingShell, MarketingHero } from "./components/MarketingShell";
+export { AboutPage } from "./components/AboutPage";
+export { SupportPage } from "./components/SupportPage";
+export { ContactPage } from "./components/ContactPage";

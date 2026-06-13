@@ -723,6 +723,8 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   bannerVideoUrl: campaign.creative?.bannerVideoUrl || undefined,
   bannerPosterUrl: campaign.creative?.bannerPosterUrl || undefined,
   priority: campaign.priority,
+  // Scarcity cue: when the campaign has an end date the client can show a countdown.
+  endsAt: campaign.schedule?.endAt || undefined,
   product: {
     id: campaign.product?._id?.toString?.() || campaign.product?.toString?.(),
     name: campaign.product?.name,
@@ -731,6 +733,9 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
     subCategory: campaign.product?.subCategory,
     price: campaign.product?.price,
     images: campaign.product?.images || [],
+    // Stock signals power the "Only N left" urgency cue on the client.
+    availableQuantity: campaign.product?.availableQuantity,
+    minStockQuantity: campaign.product?.minStockQuantity,
     contactPreferences: campaign.product?.contactPreferences || {},
     company: campaign.product?.company
       ? {
@@ -743,10 +748,29 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   }
 });
 
-const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
+const getFeed = async ({
+  userId,
+  placement = 'dashboard_home',
+  limit = 5,
+  matchCategory,
+  matchSubCategory,
+  excludeProductId
+} = {}) => {
   const safePlacement = AD_PLACEMENTS.includes(placement) ? placement : 'dashboard_home';
   const safeLimit = Math.min(Math.max(parseNumber(limit, 5), 1), 10);
   const now = new Date();
+
+  // Cross-sell is triggered by a specific cart item: only promote a *different*
+  // product that shares the same category AND sub-category as the added item.
+  const isCrossSell = safePlacement === 'cart_cross_sell';
+  const crossSellCategory = typeof matchCategory === 'string' ? matchCategory.trim().toLowerCase() : '';
+  const crossSellSubCategory = typeof matchSubCategory === 'string' ? matchSubCategory.trim().toLowerCase() : '';
+  const crossSellExcludeId = toObjectId(excludeProductId)?.toString();
+
+  // Without a category + sub-category there is nothing meaningful to match against.
+  if (isCrossSell && (!crossSellCategory || !crossSellSubCategory)) {
+    return { cards: [], placement: safePlacement };
+  }
 
   const activeCampaigns = await AdCampaign.find({
     status: 'active',
@@ -764,7 +788,7 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
   })
     .populate({
       path: 'product',
-      select: 'name createdBy category subCategory price images contactPreferences company status visibility deletedAt createdByRole',
+      select: 'name createdBy category subCategory price images contactPreferences company status visibility deletedAt createdByRole availableQuantity minStockQuantity',
       populate: { path: 'company', select: 'displayName complianceStatus contact.phone owner' }
     })
     .sort({ priority: -1, updatedAt: -1 })
@@ -839,6 +863,15 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
     const todayCount = impressionCountMap.get(key) || 0;
     if (todayCount >= Math.max(1, parseNumber(campaign.frequencyCapPerDay, 3))) {
       return false;
+    }
+
+    // Cross-sell gate: promoted product must match the added item's category +
+    // sub-category, and must not be the item the user just added.
+    if (isCrossSell) {
+      const product = campaign.product || {};
+      if (crossSellExcludeId && (product._id?.toString?.() === crossSellExcludeId)) return false;
+      if ((product.category || '').toLowerCase() !== crossSellCategory) return false;
+      if ((product.subCategory || '').toLowerCase() !== crossSellSubCategory) return false;
     }
 
     return matchTargeting({

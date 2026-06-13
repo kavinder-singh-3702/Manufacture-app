@@ -1,3 +1,5 @@
+import type { ProductStockStatus } from "@/src/types/product";
+
 export type CategoryMeta = {
   id: string;
   title: string;
@@ -51,4 +53,64 @@ export const STOCK_STATUS_COLORS: Record<string, { bg: string; text: string; lab
   in_stock:     { bg: "#DCFCE7", text: "#15803D", label: "In stock" },
   low_stock:    { bg: "#FEF3C7", text: "#92400E", label: "Low stock" },
   out_of_stock: { bg: "#FEE2E2", text: "#991B1B", label: "Out of stock" },
+};
+
+export type BuyerStockDisplay = {
+  available: boolean;
+  /** Status label only — never exposes an exact quantity. */
+  label: string;
+  /** Encourages the buyer to reach out (they ask for quantity & pricing). */
+  hint: string;
+  icon: string;
+  /** Theme-aware tokens — adapt to light/dark via semantic CSS vars. */
+  fg: string;
+  bg: string;
+  border: string;
+};
+
+/**
+ * Buyer-facing stock state. Deliberately hides exact quantities — buyers
+ * contact the seller to ask about quantity & pricing, mirroring the app's
+ * public-listing behaviour (`isPublicListingProduct`). Colors resolve from
+ * semantic CSS vars so the badge reads correctly in both light and dark.
+ */
+export const getBuyerStock = (
+  status: ProductStockStatus | undefined,
+  availableQuantity: number | undefined
+): BuyerStockDisplay => {
+  const inStock = status ? status !== "out_of_stock" : (availableQuantity ?? 0) > 0;
+
+  if (!inStock) {
+    return {
+      available: false,
+      label: "Out of stock",
+      hint: "Contact the seller to check availability",
+      icon: "❌",
+      fg: "var(--error)",
+      bg: "color-mix(in srgb, var(--error) 12%, transparent)",
+      border: "color-mix(in srgb, var(--error) 30%, transparent)",
+    };
+  }
+
+  if (status === "low_stock") {
+    return {
+      available: true,
+      label: "Limited stock",
+      hint: "Contact the seller for quantity & pricing",
+      icon: "⚠️",
+      fg: "var(--warning)",
+      bg: "color-mix(in srgb, var(--warning) 14%, transparent)",
+      border: "color-mix(in srgb, var(--warning) 32%, transparent)",
+    };
+  }
+
+  return {
+    available: true,
+    label: "In stock",
+    hint: "Contact the seller for quantity & pricing",
+    icon: "✅",
+    fg: "var(--success)",
+    bg: "color-mix(in srgb, var(--success) 13%, transparent)",
+    border: "color-mix(in srgb, var(--success) 30%, transparent)",
+  };
 };

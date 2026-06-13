@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 
 export type AdCampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
-export type AdPlacement = "dashboard_home" | "hero_banner";
+export type AdPlacement = "dashboard_home" | "hero_banner" | "cart_cross_sell";
 export type AdMediaType = "image" | "video";
 export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
@@ -27,6 +27,8 @@ export type AdProductSummary = {
   category?: string;
   subCategory?: string;
   price?: AdPrice;
+  availableQuantity?: number;
+  minStockQuantity?: number;
   images?: Array<{ url?: string; fileName?: string }>;
   contactPreferences?: { allowChat?: boolean; allowCall?: boolean };
   company?: {
@@ -93,6 +95,7 @@ export type AdFeedCard = {
   bannerVideoUrl?: string;
   bannerPosterUrl?: string;
   bannerMediaType?: AdMediaType;
+  endsAt?: string;
   deepLink?: string;
 };
 
@@ -165,7 +168,14 @@ export type CampaignFromRequestResponse = {
 };
 
 class AdService {
-  async getFeed(params?: { placement?: AdPlacement; limit?: number }) {
+  async getFeed(params?: {
+    placement?: AdPlacement;
+    limit?: number;
+    // Cross-sell: match an ad to the category + sub-category of a cart item.
+    category?: string;
+    subCategory?: string;
+    excludeProductId?: string;
+  }) {
     return apiClient.get<{ placement: AdPlacement; cards: AdFeedCard[] }>("/ads/feed", { params });
   }
 

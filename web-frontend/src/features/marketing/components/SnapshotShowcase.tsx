@@ -21,7 +21,7 @@ export const SnapshotShowcase = () => {
     <section
       id="playbooks"
       className="rounded-3xl border p-6 shadow-lg shadow-[rgba(20,141,178,0.15)]/20 md:p-8"
-      style={{ borderColor: "var(--border)", backgroundColor: "white" }}
+      style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
