@@ -17,6 +17,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { useAuth } from "../../hooks/useAuth";
+import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import { useToast } from "../../components/ui/Toast";
 import { FadeInView } from "../../components/ui/AnimatedCard";
 import { chatService } from "../../services/chat.service";
@@ -66,6 +67,10 @@ export const ServicesOverviewScreen = () => {
   const { contentPadding, sectionGap, fs, sp, isCompact } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const { user, requestLogin } = useAuth();
+  // Sum of unread admin/support messages waiting for the user. Drives the
+  // small red badge on the Support FAB so the user knows admin replied
+  // without needing to tap into the chat.
+  const { totalUnread } = useUnreadMessages();
   const { error: toastError } = useToast();
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
@@ -485,7 +490,12 @@ export const ServicesOverviewScreen = () => {
         </View>
       </ScrollView>
 
-      <SupportFab loading={supportLoading} onPress={handleSupport} style={{ bottom: insets.bottom + 76 }} />
+      <SupportFab
+        loading={supportLoading}
+        unreadCount={totalUnread}
+        onPress={handleSupport}
+        style={{ bottom: insets.bottom + 76 }}
+      />
     </View>
   );
 };

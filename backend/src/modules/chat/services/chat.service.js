@@ -65,15 +65,14 @@ const getConversationSummaryForUser = async (conversationId, userId) => {
         .lean()
     : null;
 
-  // Defense against legacy stub-admin conversations: even if `self` is a
-  // stub participant (lastReadAt never updated) the count must NOT include
-  // admin/support-sent messages — they would be self's own replies surfacing
-  // as someone else's unread. Matches the same filter we apply to
-  // listConversationsAdmin / getConversationSummaryForAdmin.
-  const unreadQuery = {
-    conversation: conversation._id,
-    senderRole: { $nin: ['admin', 'support'] }
-  };
+  // unreadQuery counts messages from the OTHER participant that arrived
+  // after this viewer's lastReadAt. `sender = other.user` already excludes
+  // the viewer's own replies — no extra senderRole filter is needed here
+  // (an earlier attempt to add `senderRole NOT IN [admin,support]` for
+  // "stub-admin defense" was self-contradictory: combined with sender =
+  // other.user when other IS the admin, it forced the count to 0 and
+  // admin messages stopped showing up as unread for the user. Reverted.)
+  const unreadQuery = { conversation: conversation._id };
   if (self?.lastReadAt) {
     unreadQuery.createdAt = { $gt: self.lastReadAt };
   }
@@ -171,13 +170,12 @@ const listConversations = async (userId) => {
       const self = conv.participants.find((p) => String(p.user) === String(userId));
       const otherUser = other ? userMap[String(other.user)] : null;
 
-      // Same defense as getConversationSummaryForUser — exclude
-      // admin/support-sent messages so the user-side list never counts
-      // admin replies as unread for the admin viewer of a stub conversation.
-      const unreadQuery = {
-        conversation: conv._id,
-        senderRole: { $nin: ['admin', 'support'] }
-      };
+      // unreadQuery: counterpart's messages after this viewer's lastReadAt.
+      // sender = other.user already excludes the viewer's own replies — no
+      // senderRole filter needed. See getConversationSummaryForUser for the
+      // explanation of why the earlier "stub-admin defense" filter was a
+      // mistake on the user side (admin-side queries DO need it).
+      const unreadQuery = { conversation: conv._id };
       if (self?.lastReadAt) {
         unreadQuery.createdAt = { $gt: self.lastReadAt };
       }
@@ -843,6 +841,7 @@ const listCallLogsAdmin = async ({
 
 module.exports = {
   getOrCreateConversation,
+  getConversationSummaryForUser,
   listConversations,
   listConversationsAdmin,
   getConversationAdminById,

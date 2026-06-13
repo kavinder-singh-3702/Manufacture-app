@@ -1158,9 +1158,57 @@ const UserDashboardContent = () => {
           />
         </Animated.View>
 
-        {/* Mobile capture soft banner removed — AppNavigator now hard-gates
-            any authenticated user without a phone to AddMobileNumberScreen,
-            so this banner is unreachable code on the dashboard. */}
+        {/* Mobile capture soft banner — shown to non-admin users who
+            somehow reached Dashboard without a phone on file. The hard
+            phone gate only fires once per fresh social sign-in, so any
+            legacy account whose phone was never captured falls through to
+            this banner. Admin accounts are exempt. */}
+        {!isGuest && user && !user.phone && user.role !== "admin" && user.role !== "super-admin" ? (
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate("AddMobileNumber")}
+              style={{
+                borderRadius: radius.lg,
+                overflow: "hidden",
+                shadowColor: "#F59E0B",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.4,
+                shadowRadius: 10,
+                elevation: 5,
+              }}
+            >
+              <LinearGradient
+                colors={["#FCD34D", "#F59E0B"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flexDirection: "row", alignItems: "center", padding: spacing.md, gap: 12 }}
+              >
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: "rgba(255,255,255,0.32)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="call" size={20} color="#7C2D12" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#7C2D12" }}>
+                    Add your mobile number
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#92400E", marginTop: 2 }}>
+                    Helps with support, recovery, and order coordination.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#7C2D12" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Start your own business — CTA placed between ads and category browse */}
         <Animated.View style={[revealStyle(1), { paddingHorizontal: spacing.lg, paddingTop: spacing.lg }]}>

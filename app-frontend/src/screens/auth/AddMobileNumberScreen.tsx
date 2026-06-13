@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
@@ -25,6 +26,12 @@ export const AddMobileNumberScreen = () => {
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  // When this screen was reached via navigation (soft banner on Dashboard),
+  // canGoBack() is true and we render a back button. When it's the root of
+  // the stack (the social-signup gate path), there's no goBack target and
+  // we only show "Sign out" as the escape hatch.
+  const canDismiss = navigation.canGoBack();
   const { user, setUser, logout } = useAuth();
 
   const [phone, setPhone] = useState(user?.phone || "");
@@ -74,9 +81,21 @@ export const AddMobileNumberScreen = () => {
       style={styles.container}
     >
       <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
-        {/* Header has NO back button — phone is mandatory, the only exit is
-            the "Sign out" link at the bottom of the form. */}
+        {/* Header shows the back button only when this screen is dismissible
+            (reached via navigation, e.g. the Dashboard soft banner). When
+            it's the root of the auth stack — the fresh-social-signup gate —
+            the back button is hidden and the only exit is the "Sign out"
+            link at the bottom of the form. */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          {canDismiss ? (
+            <TouchableOpacity
+              style={styles.headerBackButton}
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Go back"
+            >
+              <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={styles.headerTitle}>Add Mobile Number</Text>
         </View>
 
@@ -140,16 +159,18 @@ export const AddMobileNumberScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* No "Skip" — phone is required. Replaced with a Sign out
-                  escape hatch so a user who genuinely doesn't want to add
-                  a phone can leave (and try a different account). */}
-              <TouchableOpacity
-                onPress={handleSignOut}
-                style={styles.skipButton}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.skipText}>Sign out</Text>
-              </TouchableOpacity>
+              {/* Dismissible path (back arrow available) renders no extra
+                  escape — the user already has a back button. Root-gate
+                  path (no goBack) shows the Sign out hatch. */}
+              {!canDismiss ? (
+                <TouchableOpacity
+                  onPress={handleSignOut}
+                  style={styles.skipButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.skipText}>Sign out</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

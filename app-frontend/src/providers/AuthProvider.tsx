@@ -34,6 +34,15 @@ type AuthContextValue = {
   clearAuthView: () => void;
   pendingVerificationRedirect: string | null;
   clearPendingVerificationRedirect: () => void;
+  /**
+   * True only between a fresh social sign-in (Apple today, Google later)
+   * and the user adding their phone. Drives the one-time AddMobileNumber
+   * gate. Existing sessions where the app boots into an authenticated
+   * user keep this false, so launching the app never lands on the
+   * phone screen unless the user just signed in. Admin accounts are
+   * exempt — the flag never sets for them.
+   */
+  pendingSocialPhoneCollection: boolean;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -49,6 +58,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [bootstrapWarning, setBootstrapWarning] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [pendingVerificationRedirect, setPendingVerificationRedirect] = useState<string | null>(null);
+  const [pendingSocialPhoneCollection, setPendingSocialPhoneCollection] = useState(false);
 
   const refreshUser = useCallback(async () => {
     const { user: currentUser } = await userService.getCurrentUser();
@@ -159,10 +169,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (response.token) {
       await tokenStorage.setToken(response.token);
     }
-    setUserState(normalizeUser(response.user));
+    const normalized = normalizeUser(response.user);
+    setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
     setBootstrapWarning(null);
+    // Trigger the one-time phone-collection gate ONLY when a non-admin user
+    // just signed in and has no phone on file. Admin accounts are exempt —
+    // they don't need a phone to operate the app. Existing accounts that
+    // already have a phone fall through without gating. Once the user adds
+    // a phone, AddMobileNumberScreen calls setUser with the updated record;
+    // we clear the flag in setUser when user.phone becomes truthy.
+    const isAdmin = normalized.role === "admin" || normalized.role === "super-admin";
+    if (!isAdmin && !normalized.phone) {
+      setPendingSocialPhoneCollection(true);
+    } else {
+      setPendingSocialPhoneCollection(false);
+    }
   }, []);
 
   const logout = useCallback(async () => {
@@ -174,6 +197,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAuthView("login");
     setBootstrapError(null);
     setBootstrapWarning(null);
+    setPendingSocialPhoneCollection(false);
   }, []);
 
   const switchCompany = useCallback(async (companyId: string) => {
@@ -197,6 +221,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // If this is a signup that requires verification, set the redirect
       if (options?.requiresVerification && next.activeCompany) {
         setPendingVerificationRedirect(next.activeCompany);
+      }
+      // Auto-clear the social-signup phone-collection gate once the user
+      // record carries a phone (the only way out of AddMobileNumberScreen
+      // is to either submit successfully — which updates user.phone — or
+      // log out, which we already handle in logout()).
+      if (next.phone) {
+        setPendingSocialPhoneCollection(false);
       }
     }
   }, []);
@@ -239,8 +270,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       clearAuthView,
       pendingVerificationRedirect,
       clearPendingVerificationRedirect,
+      pendingSocialPhoneCollection,
     }),
-    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
+    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingSocialPhoneCollection, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

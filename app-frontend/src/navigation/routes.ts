@@ -151,10 +151,7 @@ export const TAB_CONFIG: RouteConfig[] = [
     inactiveIcon: "chatbubbles-outline",
     topBarMode: "compact",
     gradientKey: "accentDiagonal",
-    // Users also need access to their messages — for them this slot renders
-    // UserMessagesScreen (a simple inbox) instead of CommandCenter. Per-role
-    // component routing lives in MainTabs.tsx.
-    roles: ["admin", "super-admin", "user"],
+    roles: ["admin", "super-admin"],
   },
   {
     route: routes.SETTINGS,

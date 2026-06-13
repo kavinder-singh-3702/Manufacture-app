@@ -1,13 +1,22 @@
 /**
- * Tests for the senderRole-aware unread queries on the user-side chat
- * endpoints. These were added so an admin viewing a stub-admin conversation
- * doesn't see their own replies counted as "unread for the admin" — and
- * symmetrically, a regular user never sees an admin/support reply contribute
- * to their unread count for that thread.
+ * Tests for user-side unread counting on the chat endpoints.
  *
- * Specifically validates the behaviour in:
- *   - getConversationSummaryForUser (around chat.service.js lines 60-90)
- *   - listConversations             (around chat.service.js lines 160-180)
+ * The Support FAB badge shown on ServicesOverviewScreen sources its number
+ * from listConversations via UnreadMessagesProvider. For that badge to mean
+ * anything, admin replies to the user MUST show up as unread for the user.
+ * An earlier attempt at "defense-in-depth" added a `senderRole NOT IN
+ * [admin, support]` filter to the user-side query, which (combined with
+ * sender = other.user where `other` is the admin) reduced to an impossible
+ * condition and forced the count to 0 — silently breaking the badge. These
+ * tests pin the correct behaviour: admin messages count, user messages from
+ * a counterpart count, and markRead drops the total.
+ *
+ * Validated functions in chat.service.js:
+ *   - getConversationSummaryForUser
+ *   - listConversations
+ *
+ * Also covers the GET /auth/support-admin endpoint that resolves the real
+ * admin id used by the frontend chat client.
  */
 
 const mongoose = require('mongoose');
@@ -37,7 +46,7 @@ const createUser = async (suffix, role = 'user') =>
     accountType: 'manufacturer',
   });
 
-describe('User-side unread query excludes admin/support senderRole', () => {
+describe('User-side unread counting (admin replies must show as unread)', () => {
   let mongoServer;
 
   beforeAll(async () => {
@@ -57,14 +66,18 @@ describe('User-side unread query excludes admin/support senderRole', () => {
     await mongoServer.stop();
   });
 
-  test('listConversations does NOT count admin-role messages as unread for the user', async () => {
+  test('listConversations DOES count admin-role messages as unread for the user (regression guard)', async () => {
+    // Regression guard for the SupportFab "always 2 unread" bug. Earlier we
+    // had `senderRole: { $nin: ['admin','support'] }` on the user-side query,
+    // combined with `sender = other.user` (admin). Those AND together to an
+    // impossible condition and forced unreadCount to 0 — so the Support FAB
+    // badge never showed admin replies. Filter removed; this test pins the
+    // fix down so it doesn't regress.
     const user = await createUser('8001', 'user');
     const admin = await createUser('8002', 'admin');
 
     const conv = await getOrCreateConversation(user._id.toString(), admin._id.toString());
 
-    // Admin sends two replies. With the senderRole filter, these should NOT
-    // be counted in the user's unread tally for THIS thread.
     await sendMessage(conv._id.toString(), admin._id.toString(), {
       content: 'Hi from admin 1',
       senderRole: 'admin',
@@ -76,10 +89,33 @@ describe('User-side unread query excludes admin/support senderRole', () => {
 
     const userListing = await listConversations(user._id.toString());
     expect(userListing).toHaveLength(1);
-    // Pre-fix this would have been 2 — both admin messages would have been
-    // counted as unread "from the other participant". With senderRole filter,
-    // admin-role messages drop out and the user sees 0 unread.
-    expect(userListing[0].unreadCount).toBe(0);
+    // The user's Support FAB badge must show admin's replies as unread —
+    // that's the entire point of the badge.
+    expect(userListing[0].unreadCount).toBe(2);
+  });
+
+  test('getConversationSummaryForUser DOES count admin-role messages as unread for the user', async () => {
+    // Same guarantee as above, but for the per-conversation summary used by
+    // socket emits and direct conversation lookups.
+    const user = await createUser('8011', 'user');
+    const admin = await createUser('8012', 'admin');
+
+    const conv = await getOrCreateConversation(user._id.toString(), admin._id.toString());
+    await sendMessage(conv._id.toString(), admin._id.toString(), {
+      content: 'Admin reply',
+      senderRole: 'admin',
+    });
+
+    const {
+      getConversationSummaryForUser,
+    } = require('../src/modules/chat/services/chat.service');
+
+    const summary = await getConversationSummaryForUser(
+      conv._id.toString(),
+      user._id.toString()
+    );
+    expect(summary).not.toBeNull();
+    expect(summary.unreadCount).toBe(1);
   });
 
   test('listConversations counts user-role messages from the counterpart as unread', async () => {

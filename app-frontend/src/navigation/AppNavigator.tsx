@@ -101,7 +101,7 @@ const GuardedReceiptPaymentScreen = withCompanyContextGuard(ReceiptPaymentScreen
  * - Authenticated → MainTabs (which shows role-appropriate tabs)
  */
 export const AppNavigator = () => {
-  const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect } = useAuth();
+  const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect, pendingSocialPhoneCollection } = useAuth();
   const { colors } = useTheme();
 
   const navigationTheme = useMemo(
@@ -146,14 +146,16 @@ export const AppNavigator = () => {
         {!user ? (
           // Not authenticated: Show login/signup screens
           <RootStack.Screen name="Auth" component={AuthScreen} />
-        ) : (user.role !== "guest" && !user.phone) ? (
-          // Hard phone gate: any authenticated non-guest user without a phone
-          // is locked to AddMobileNumber until they enter one. The email
-          // signup wizard already enforces phone, so this catches social
-          // sign-in (Apple today, Google when shipped) plus any legacy
-          // account whose phone was never captured. After the user submits,
-          // user.phone updates -> this branch falls through and the regular
-          // authenticated stack renders.
+        ) : (pendingSocialPhoneCollection && !user.phone) ? (
+          // One-time phone-collection gate. Fires only when the AuthProvider
+          // flag is set — which only happens AT the moment of a fresh,
+          // non-admin Apple/Google sign-in where the returned user has no
+          // phone. Existing sessions launching the app skip this branch
+          // entirely (the flag defaults to false on bootstrap), so the gate
+          // never becomes the "landing screen" for repeat users. Admins are
+          // exempt because the flag never sets for them. The legacy soft
+          // banner on Dashboard catches any account that somehow still has
+          // no phone (e.g. accounts created before this change).
           <RootStack.Screen
             name="AddMobileNumber"
             component={AddMobileNumberScreen}

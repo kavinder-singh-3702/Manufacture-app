@@ -32,7 +32,6 @@ import {
   AdminOrdersScreen,
   AdminSettingsScreen,
 } from "../screens/admin";
-import { UserMessagesScreen } from "../screens/user/UserMessagesScreen";
 import { AdminProductsScreen } from "../screens/cart";
 import { ServicesOverviewScreen } from "../screens/services";
 import { AccountingDashboardScreen } from "../screens/accounting/AccountingDashboardScreen";
@@ -184,11 +183,8 @@ const screenRegistry: Record<RouteName, ComponentType> = {
   [routes.USERS]: UserManagementScreen,
   [routes.VERIFICATIONS]: VerificationsScreen,
   [routes.COMPANIES]: CompaniesScreen,
-  // routes.OPS resolves per role at render time below. For admin/super-admin
-  // it renders CommandCenterScreen (Requests/Messages/Trades/...). For "user"
-  // role it renders UserMessagesScreen — the simple inbox added so users can
-  // see admin-initiated threads and per-thread unread counts. This entry is
-  // the admin fallback; the per-role override happens at Tab.Screen render.
+  // routes.OPS (admin "Ops" tab) points at CommandCenter — the new clean
+  // Requests sub-tab replaces the messy AdminOpsConsoleScreen.
   [routes.OPS]: CommandCenterScreen,
   [routes.INVENTORY]: AdminInventoryScreen,
   [routes.ORDERS]: AdminOrdersScreen,
@@ -507,12 +503,7 @@ export const MainTabs = () => {
             tabBar={() => null}
           >
             {tabs.map((tab) => {
-              // OPS tab content is per-role: users see UserMessagesScreen
-              // (their inbox), admins see CommandCenterScreen.
-              const ScreenComponent =
-                tab.route === routes.OPS && !isAdmin
-                  ? UserMessagesScreen
-                  : screenRegistry[tab.route];
+              const ScreenComponent = screenRegistry[tab.route];
               return <Tab.Screen key={tab.route} name={tab.route} component={ScreenComponent} options={{ title: tab.label }} />;
             })}
             {!isAdmin && !tabs.some((tab) => tab.route === routes.STATS) ? (
@@ -576,7 +567,7 @@ export const MainTabs = () => {
               handleOpenCompanySwitcher();
             }
           }}
-          unreadByRoute={totalUnread > 0 ? { [routes.OPS]: totalUnread } : undefined}
+          unreadByRoute={totalUnread > 0 && isAdmin ? { [routes.OPS]: totalUnread } : undefined}
           getSvgIconXml={getTabIconXml}
         />
       </LinearGradient>
