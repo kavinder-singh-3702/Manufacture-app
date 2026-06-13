@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const {
   AD_CAMPAIGN_STATUSES,
   AD_PLACEMENTS,
+  AD_MEDIA_TYPES,
   AD_TARGETING_MODES
 } = require('../constants/ad');
 
@@ -46,7 +47,13 @@ const AdCreativeSchema = new Schema(
     title: { type: String, trim: true, maxlength: 140 },
     subtitle: { type: String, trim: true, maxlength: 220 },
     ctaLabel: { type: String, trim: true, maxlength: 60 },
-    badge: { type: String, trim: true, maxlength: 40 }
+    badge: { type: String, trim: true, maxlength: 40 },
+    // Full-bleed banner creative (used by the hero_banner placement).
+    bannerMediaType: { type: String, enum: AD_MEDIA_TYPES },
+    bannerImageUrl: { type: String, trim: true },
+    bannerVideoUrl: { type: String, trim: true },
+    // Poster shown before/while a banner video loads (and as a data-saver fallback).
+    bannerPosterUrl: { type: String, trim: true }
   },
   { _id: false }
 );
@@ -83,6 +90,7 @@ const adCampaignSchema = new Schema(
     activatedAt: Date,
     pausedAt: Date,
     archivedAt: Date,
+    completedAt: Date,
 
     metadata: {
       type: Map,

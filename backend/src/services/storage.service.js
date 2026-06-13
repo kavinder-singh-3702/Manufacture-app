@@ -4,6 +4,8 @@ const config = require('../config/env');
 const { assertStorageConfig, STORAGE_NOT_CONFIGURED_CODE } = require('../config/startupValidation');
 
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB guardrail for compliance files.
+const MAX_AD_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB for ad banner images.
+const MAX_AD_VIDEO_SIZE_BYTES = 30 * 1024 * 1024; // 30 MB for ad banner videos.
 const STORAGE_ERROR_CODES = Object.freeze({
   NOT_CONFIGURED: STORAGE_NOT_CONFIGURED_CODE,
   ACCESS_DENIED: 'STORAGE_ACCESS_DENIED',
@@ -249,6 +251,56 @@ const uploadProductImage = async ({ companyId, productId, userId, fileName, mime
   };
 };
 
+const buildAdBannerObjectKey = ({ campaignId, kind = 'image', fileName }) => {
+  const prefix = buildStoragePrefix();
+  const normalizedFileName = sanitizeFileName(fileName) || `${kind}-${Date.now()}`;
+  const timeSegment = Date.now();
+  return `${prefix}/ad-banners/${campaignId}/${kind}-${timeSegment}-${normalizedFileName}`;
+};
+
+//=====>>>Upload ad banner media (image or video) <<<===-
+const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, base64 }) => {
+  if (!base64 || typeof base64 !== 'string') {
+    throw createError(400, 'Invalid banner media payload supplied');
+  }
+
+  const isVideo = kind === 'video';
+  const maxBytes = isVideo ? MAX_AD_VIDEO_SIZE_BYTES : MAX_AD_IMAGE_SIZE_BYTES;
+  const defaultMime = isVideo ? 'video/mp4' : 'image/jpeg';
+
+  const s3 = getS3Client();
+  const objectKey = buildAdBannerObjectKey({ campaignId, kind, fileName });
+  const cleanedBase64 = normalizeBase64Payload(base64);
+  const buffer = Buffer.from(cleanedBase64, 'base64');
+
+  if (!buffer.length) {
+    throw createError(400, 'Banner media content cannot be empty');
+  }
+
+  if (buffer.length > maxBytes) {
+    throw createError(413, `Banner ${kind} exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB limit`);
+  }
+
+  const putCommand = new PutObjectCommand({
+    Bucket: config.awsS3Bucket,
+    Key: objectKey,
+    Body: buffer,
+    ContentType: mimeType || defaultMime
+  });
+
+  await sendPutObject(s3, putCommand);
+
+  return {
+    key: objectKey,
+    url: buildPublicUrl(objectKey),
+    fileName,
+    contentType: mimeType || defaultMime,
+    size: buffer.length,
+    mediaType: isVideo ? 'video' : 'image',
+    uploadedAt: new Date()
+  };
+};
+
 const verifyStorageConnection = async () => {
   try {
     const s3 = getS3Client();
@@ -316,5 +368,6 @@ module.exports = {
   uploadCompanyDocument,
   uploadUserDocument,
   uploadProductImage,
+  uploadAdBanner,
   verifyStorageConnection
 };

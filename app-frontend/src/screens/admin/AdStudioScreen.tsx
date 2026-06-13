@@ -83,6 +83,8 @@ type WizardState = {
   bannerMediaType: "image" | "video" | "";
   bannerMediaMimeType: string;
   bannerMediaFileName: string;
+  bannerPosterUri: string;
+  bannerPosterBase64: string;
 
   launchNow: boolean;
   sourceRequestId: string;
@@ -217,6 +219,8 @@ export const AdStudioScreen = () => {
       bannerMediaType: "",
       bannerMediaMimeType: "",
       bannerMediaFileName: "",
+      bannerPosterUri: "",
+      bannerPosterBase64: "",
 
       launchNow: false,
       sourceRequestId: route.params?.prefillServiceRequestId || "",
@@ -870,6 +874,12 @@ export const AdStudioScreen = () => {
           wizard.selectedPlacement === "hero_banner" && wizard.bannerMediaType
             ? (wizard.bannerMediaType as "image" | "video")
             : undefined,
+        bannerPosterBase64:
+          wizard.selectedPlacement === "hero_banner" &&
+          wizard.bannerMediaType === "video" &&
+          wizard.bannerPosterBase64
+            ? wizard.bannerPosterBase64
+            : undefined,
       },
       sourceServiceRequest: wizard.sourceRequestId.trim() || undefined,
     };
@@ -1469,6 +1479,8 @@ export const AdStudioScreen = () => {
                         bannerMediaType: "",
                         bannerMediaMimeType: "",
                         bannerMediaFileName: "",
+                        bannerPosterUri: "",
+                        bannerPosterBase64: "",
                       }))
                     }
                   />
@@ -1565,11 +1577,59 @@ export const AdStudioScreen = () => {
                               bannerMediaUri: "",
                               bannerMediaBase64: "",
                               bannerMediaType: "",
+                              bannerPosterUri: "",
+                              bannerPosterBase64: "",
                             }))
                           }
                         >
                           <Text style={{ color: colors.error, fontSize: fs(13), fontWeight: "600" }}>Remove</Text>
                         </TouchableOpacity>
+                      </View>
+                    ) : null}
+
+                    {/* Poster image — shown instantly before/while the video loads (data-saver). */}
+                    {wizard.bannerMediaType === "video" ? (
+                      <View style={{ gap: 8 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Video poster (recommended)</Text>
+                        {wizard.bannerPosterUri ? (
+                          <View style={{ alignItems: "center", gap: 8 }}>
+                            <Image
+                              source={{ uri: wizard.bannerPosterUri }}
+                              style={{ width: "100%", height: 120, borderRadius: radius.md }}
+                              resizeMode="cover"
+                            />
+                            <TouchableOpacity
+                              onPress={() => setWizard((prev) => ({ ...prev, bannerPosterUri: "", bannerPosterBase64: "" }))}
+                            >
+                              <Text style={{ color: colors.error, fontSize: fs(13), fontWeight: "600" }}>Remove poster</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={[
+                              styles.mediaPickerButton,
+                              { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+                            ]}
+                            onPress={async () => {
+                              const result = await ImagePicker.launchImageLibraryAsync({
+                                mediaTypes: ["images"],
+                                quality: 0.7,
+                                base64: true,
+                              });
+                              if (!result.canceled && result.assets[0]) {
+                                const asset = result.assets[0];
+                                setWizard((prev) => ({
+                                  ...prev,
+                                  bannerPosterUri: asset.uri,
+                                  bannerPosterBase64: asset.base64 || "",
+                                }));
+                              }
+                            }}
+                          >
+                            <Ionicons name="image-outline" size={24} color={colors.primary} />
+                            <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>Pick Poster</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ) : null}
                   </View>

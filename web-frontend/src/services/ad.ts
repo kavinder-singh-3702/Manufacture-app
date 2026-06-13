@@ -5,8 +5,22 @@ import { httpClient, QueryParams } from "../lib/http-client";
 export type AdCampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
 export type AdPlacement = "dashboard_home" | "hero_banner";
 export type AdMediaType = "image" | "video";
+export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
 export type AdPrice = { amount?: number; currency?: string; unit?: string };
+
+export type AdTargeting = {
+  mode?: AdTargetingMode;
+  userIds?: string[];
+  shopperCategories?: string[];
+  shopperSubCategories?: string[];
+  buyIntentCategories?: string[];
+  buyIntentSubCategories?: string[];
+  listedProductCategories?: string[];
+  listedProductSubCategories?: string[];
+  requireListedProductInSameCategory?: boolean;
+  lookbackDays?: number;
+};
 
 export type AdProductSummary = {
   id: string;
@@ -19,7 +33,7 @@ export type AdProductSummary = {
 };
 
 export type AdCreative = {
-  priceOverride?: AdPrice;
+  priceOverride?: AdPrice | null;
   title?: string;
   subtitle?: string;
   ctaLabel?: string;
@@ -28,6 +42,8 @@ export type AdCreative = {
   bannerImageBase64?: string;
   bannerVideoUrl?: string;
   bannerMediaType?: AdMediaType;
+  bannerPosterUrl?: string;
+  bannerPosterBase64?: string;
 };
 
 export type AdCampaign = {
@@ -37,6 +53,7 @@ export type AdCampaign = {
   status: AdCampaignStatus;
   product: AdProductSummary | null;
   placements: AdPlacement[];
+  targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
   frequencyCapPerDay: number;
   priority: number;
@@ -44,15 +61,37 @@ export type AdCampaign = {
   activatedAt?: string;
   pausedAt?: string;
   archivedAt?: string;
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AdPlacementInsight = {
+  placement: AdPlacement;
+  impression: number;
+  click: number;
+  dismiss: number;
+  ctr: number;
+};
+
+export type AdAttribution = {
+  clickers: number;
+  quotes: number;
+  inquiries: number;
+  orders: number;
+  leads: number;
+  clickToLeadRate: number;
 };
 
 export type AdInsights = {
   campaignId: string;
   status: AdCampaignStatus;
+  range?: { from?: string | null; to?: string | null };
   summary: Record<AdEventType, { count: number; uniqueUsers: number }>;
   ctr: number;
+  dismissRate?: number;
+  byPlacement?: AdPlacementInsight[];
+  attribution?: AdAttribution;
   byDay: Array<{ day: string; type: AdEventType; count: number }>;
 };
 
@@ -62,6 +101,7 @@ export type UpsertAdCampaignInput = {
   status?: AdCampaignStatus;
   productId: string;
   placements?: AdPlacement[];
+  targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
   frequencyCapPerDay?: number;
   priority?: number;
@@ -111,8 +151,10 @@ const pauseCampaign = (campaignId: string) =>
 const stopCampaign = (campaignId: string) =>
   httpClient.patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, { status: "archived" }).then((r) => r.campaign);
 
-const getInsights = (campaignId: string) =>
-  httpClient.get<{ insights: AdInsights }>(`${BASE}/${campaignId}/insights`).then((r) => r.insights);
+const getInsights = (campaignId: string, range?: { from?: string; to?: string }) =>
+  httpClient
+    .get<{ insights: AdInsights }>(`${BASE}/${campaignId}/insights`, { params: toQuery(range as Record<string, unknown>) })
+    .then((r) => r.insights);
 
 export const adService = {
   listCampaigns,

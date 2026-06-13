@@ -123,7 +123,9 @@ const pauseCampaignController = async (req, res, next) => {
 const getCampaignInsightsController = async (req, res, next) => {
   try {
     const insights = await getCampaignInsights({
-      campaignId: req.params.campaignId
+      campaignId: req.params.campaignId,
+      from: req.query.from,
+      to: req.query.to
     });
     if (!insights) {
       return next(createError(404, 'Campaign not found'));

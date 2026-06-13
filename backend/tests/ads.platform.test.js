@@ -1,3 +1,10 @@
+jest.mock('../src/services/storage.service', () => ({
+  uploadAdBanner: jest.fn(async ({ kind = 'image' }) => ({
+    url: `https://cdn.test/ad-banners/${kind}-${Date.now()}.${kind === 'video' ? 'mp4' : 'jpg'}`,
+    mediaType: kind === 'video' ? 'video' : 'image'
+  }))
+}));
+
 const mongoose = require('mongoose');
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const User = require('../src/models/user.model');
@@ -11,8 +18,11 @@ const {
   getFeed,
   recordAdEvent,
   getCampaignInsights,
+  sweepExpiredCampaigns,
   createCampaignFromServiceRequest
 } = require('../src/modules/ads/services/ad.service');
+const AdCampaign = require('../src/models/adCampaign.model');
+const ProductQuote = require('../src/models/productQuote.model');
 const {
   createServiceRequest
 } = require('../src/modules/services/services/serviceRequest.service');
@@ -373,6 +383,130 @@ describe('Ad platform service', () => {
     expect(insights.summary.click.count).toBe(1);
     expect(insights.summary.dismiss.count).toBe(1);
     expect(insights.ctr).toBe(100);
+  });
+
+  test('hero_banner campaign uploads banner media and serves it on the hero feed', async () => {
+    const admin = await createUser('8401', 'admin');
+    const seller = await createUser('8402', 'user');
+    const buyer = await createUser('8403', 'user');
+    const sellerCompany = await createCompany(seller, '8401');
+    const category = PRODUCT_CATEGORIES[0].id;
+    const product = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8401', category });
+
+    const campaign = await createCampaign({
+      actorId: admin._id,
+      payload: {
+        name: 'Hero banner push',
+        productId: product._id,
+        status: 'active',
+        placements: ['hero_banner'],
+        creative: {
+          title: 'Mega sale',
+          bannerImageBase64: Buffer.from('fake-image-bytes').toString('base64'),
+          bannerMimeType: 'image/jpeg'
+        }
+      }
+    });
+
+    expect(campaign.placements).toEqual(['hero_banner']);
+    expect(campaign.creative.bannerMediaType).toBe('image');
+    expect(campaign.creative.bannerImageUrl).toMatch(/^https:\/\/cdn\.test\/ad-banners\/image-/);
+
+    const heroFeed = await getFeed({ userId: buyer._id, placement: 'hero_banner', limit: 5 });
+    expect(heroFeed.placement).toBe('hero_banner');
+    expect(heroFeed.cards.length).toBe(1);
+    expect(heroFeed.cards[0].bannerImageUrl).toBe(campaign.creative.bannerImageUrl);
+    expect(heroFeed.cards[0].bannerMediaType).toBe('image');
+
+    // dashboard_home feed must not include hero_banner-only campaigns.
+    const homeFeed = await getFeed({ userId: buyer._id, placement: 'dashboard_home', limit: 5 });
+    expect(homeFeed.cards.length).toBe(0);
+
+    // Switching to a video banner replaces the image.
+    const updated = await updateCampaign({
+      campaignId: campaign.id,
+      actorId: admin._id,
+      payload: {
+        creative: {
+          bannerVideoBase64: Buffer.from('fake-video-bytes').toString('base64'),
+          bannerMimeType: 'video/mp4'
+        }
+      }
+    });
+    expect(updated.creative.bannerMediaType).toBe('video');
+    expect(updated.creative.bannerVideoUrl).toMatch(/^https:\/\/cdn\.test\/ad-banners\/video-/);
+    expect(updated.creative.bannerImageUrl).toBeFalsy();
+  });
+
+  test('sweepExpiredCampaigns flips ended active campaigns to completed', async () => {
+    const admin = await createUser('8501', 'admin');
+    const seller = await createUser('8502', 'user');
+    const sellerCompany = await createCompany(seller, '8501');
+    const product = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8501', category: PRODUCT_CATEGORIES[0].id });
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const ended = await createCampaign({
+      actorId: admin._id,
+      payload: { name: 'Ended', productId: product._id, status: 'active', schedule: { endAt: yesterday } }
+    });
+    const ongoing = await createCampaign({
+      actorId: admin._id,
+      payload: { name: 'Ongoing', productId: product._id, status: 'active', schedule: { endAt: tomorrow } }
+    });
+    const evergreen = await createCampaign({
+      actorId: admin._id,
+      payload: { name: 'Evergreen', productId: product._id, status: 'active' }
+    });
+
+    const count = await sweepExpiredCampaigns({ now: new Date() });
+    expect(count).toBe(1);
+
+    expect((await AdCampaign.findById(ended.id).lean()).status).toBe('completed');
+    expect((await AdCampaign.findById(ended.id).lean()).completedAt).toBeTruthy();
+    expect((await AdCampaign.findById(ongoing.id).lean()).status).toBe('active');
+    expect((await AdCampaign.findById(evergreen.id).lean()).status).toBe('active');
+  });
+
+  test('insights expose per-placement breakdown, dismiss rate and click attribution', async () => {
+    const admin = await createUser('8601', 'admin');
+    const seller = await createUser('8602', 'user');
+    const buyer = await createUser('8603', 'user');
+    const sellerCompany = await createCompany(seller, '8601');
+    const product = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8601', category: PRODUCT_CATEGORIES[1].id });
+
+    const campaign = await createCampaign({
+      actorId: admin._id,
+      payload: { name: 'Attribution campaign', productId: product._id, status: 'active', placements: ['dashboard_home', 'hero_banner'] }
+    });
+
+    await recordAdEvent({ campaignId: campaign.id, userId: buyer._id, type: 'impression', placement: 'hero_banner', sessionId: 'h1' });
+    await recordAdEvent({ campaignId: campaign.id, userId: buyer._id, type: 'click', placement: 'hero_banner', sessionId: 'h1' });
+    await recordAdEvent({ campaignId: campaign.id, userId: buyer._id, type: 'impression', placement: 'dashboard_home', sessionId: 'd1' });
+    await recordAdEvent({ campaignId: campaign.id, userId: buyer._id, type: 'dismiss', placement: 'dashboard_home', sessionId: 'd1' });
+
+    // Buyer converts on the promoted product after clicking → attributed lead.
+    await ProductQuote.create({
+      product: product._id,
+      buyer: buyer._id,
+      seller: seller._id,
+      sellerCompany: sellerCompany._id,
+      status: 'pending',
+      request: { quantity: 5, requirements: 'Need a bulk quote' }
+    });
+
+    const insights = await getCampaignInsights({ campaignId: campaign.id });
+
+    expect(insights.dismissRate).toBe(50); // 1 dismiss / 2 impressions
+    const hero = insights.byPlacement.find((p) => p.placement === 'hero_banner');
+    const home = insights.byPlacement.find((p) => p.placement === 'dashboard_home');
+    expect(hero.click).toBe(1);
+    expect(hero.ctr).toBe(100);
+    expect(home.dismiss).toBe(1);
+    expect(insights.attribution.clickers).toBe(1);
+    expect(insights.attribution.quotes).toBe(1);
+    expect(insights.attribution.leads).toBe(1);
   });
 
   test('service request conversion produces campaign prefill and created campaign', async () => {

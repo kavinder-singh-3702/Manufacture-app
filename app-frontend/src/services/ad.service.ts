@@ -58,6 +58,7 @@ export type AdCampaign = {
     badge?: string;
     bannerImageUrl?: string;
     bannerVideoUrl?: string;
+    bannerPosterUrl?: string;
     bannerMediaType?: AdMediaType;
   };
   sourceServiceRequest?: string;
@@ -90,6 +91,7 @@ export type AdFeedCard = {
   product: AdProductSummary;
   bannerImageUrl?: string;
   bannerVideoUrl?: string;
+  bannerPosterUrl?: string;
   bannerMediaType?: AdMediaType;
   deepLink?: string;
 };
@@ -130,6 +132,7 @@ export type UpsertAdCampaignInput = {
     bannerImageBase64?: string;
     bannerVideoUrl?: string;
     bannerVideoBase64?: string;
+    bannerPosterBase64?: string;
     bannerMediaType?: AdMediaType;
   };
   sourceServiceRequest?: string;
