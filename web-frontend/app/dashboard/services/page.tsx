@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { ServicesOverview } from "@/src/features/services/components/ServicesOverview";
 
 export const metadata: Metadata = {
-  title: "Manufacture Command — Services",
+  title: "ARVANN — Services",
   description: "Job-work, logistics, and operations services marketplace.",
 };
 

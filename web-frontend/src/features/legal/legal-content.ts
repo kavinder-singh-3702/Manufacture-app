@@ -17,7 +17,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
   eyebrow: "Privacy Policy",
   title: "ARVANN Privacy Policy",
   summary:
-    "This Privacy Policy explains how ARVANN collects, uses, stores, and shares information when you use Manufacture Command, our B2B manufacturing workspace and marketplace services.",
+    "This Privacy Policy explains how ARVANN collects, uses, stores, and shares information when you use ARVANN, our B2B manufacturing workspace and marketplace services.",
   effectiveDate: "April 5, 2026",
   reviewerNote:
     "This page is public and can be reviewed without signing in. It is intended to describe the current web and backend data practices reflected in the live product codebase.",
@@ -25,7 +25,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: "1. Scope",
       paragraphs: [
-        "This Privacy Policy applies to Manufacture Command web experiences operated by ARVANN, related backend APIs, and supporting account, verification, order, service, and communication workflows.",
+        "This Privacy Policy applies to ARVANN web experiences operated by ARVANN, related backend APIs, and supporting account, verification, order, service, and communication workflows.",
         "By using the service, you understand that your information may be processed in connection with account creation, business onboarding, verification, operations management, and transaction support."
       ]
     },
@@ -65,7 +65,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: "4. Cookies, Sessions, and Similar Technologies",
       paragraphs: [
-        "Manufacture Command uses session cookies to keep web users signed in and to support secure authenticated requests. These cookies are used for account continuity, session management, and security controls.",
+        "ARVANN uses session cookies to keep web users signed in and to support secure authenticated requests. These cookies are used for account continuity, session management, and security controls.",
         "We may also maintain related authentication state for compatible clients through issued tokens where supported by the relevant client flow."
       ]
     },
@@ -114,7 +114,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: "10. Children and Business Use",
       paragraphs: [
-        "Manufacture Command is designed for business and professional use in manufacturing, sourcing, operations, and trade workflows. It is not intended for children.",
+        "ARVANN is designed for business and professional use in manufacturing, sourcing, operations, and trade workflows. It is not intended for children.",
         "If you believe personal information was submitted inappropriately, contact us at arvann100@gmail.com so we can review the request."
       ]
     },
@@ -138,7 +138,7 @@ export const termsAndConditionsContent: LegalDocumentContent = {
   eyebrow: "Terms & Conditions",
   title: "ARVANN Terms & Conditions",
   summary:
-    "These Terms & Conditions govern access to and use of Manufacture Command, a business-focused manufacturing workspace and marketplace service operated by ARVANN.",
+    "These Terms & Conditions govern access to and use of ARVANN, a business-focused manufacturing workspace and marketplace service operated by ARVANN.",
   effectiveDate: "April 5, 2026",
   reviewerNote:
     "This page is public and available without login. It describes the current platform rules for business users, company verification, payments, and operational use.",
@@ -146,14 +146,14 @@ export const termsAndConditionsContent: LegalDocumentContent = {
     {
       title: "1. Acceptance of Terms",
       paragraphs: [
-        "By accessing or using Manufacture Command, you agree to be bound by these Terms & Conditions and any additional policies referenced by the service, including our Privacy Policy.",
+        "By accessing or using ARVANN, you agree to be bound by these Terms & Conditions and any additional policies referenced by the service, including our Privacy Policy.",
         "If you use the service on behalf of a company, firm, or other organization, you represent that you have authority to bind that organization to these terms."
       ]
     },
     {
       title: "2. Service Description",
       paragraphs: [
-        "Manufacture Command is a B2B manufacturing workspace and marketplace environment that may include account onboarding, company management, verification workflows, operational dashboards, service requests, notifications, product-order support, and related business tooling.",
+        "ARVANN is a B2B manufacturing workspace and marketplace environment that may include account onboarding, company management, verification workflows, operational dashboards, service requests, notifications, product-order support, and related business tooling.",
         "Features may change over time, and certain capabilities may be limited by user role, company status, verification status, geographic availability, or platform policy."
       ]
     },
@@ -218,7 +218,7 @@ export const termsAndConditionsContent: LegalDocumentContent = {
     {
       title: "9. Disclaimers",
       paragraphs: [
-        "Manufacture Command is provided on an \"as is\" and \"as available\" basis to the maximum extent permitted by law. We do not guarantee uninterrupted operation, error-free availability, or the conduct, quality, legality, or performance of any user, buyer, supplier, service provider, or third-party integration.",
+        "ARVANN is provided on an \"as is\" and \"as available\" basis to the maximum extent permitted by law. We do not guarantee uninterrupted operation, error-free availability, or the conduct, quality, legality, or performance of any user, buyer, supplier, service provider, or third-party integration.",
         "Verification, review, moderation, or payment support provided through the platform does not amount to legal, tax, financial, or regulatory advice."
       ]
     },

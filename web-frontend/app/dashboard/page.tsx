@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { DashboardOverview } from "@/src/features/dashboard";
 
 export const metadata: Metadata = {
-  title: "Manufacture Command — Dashboard",
-  description: "Personalized workspace overview for Manufacture Command users",
+  title: "ARVANN — Dashboard",
+  description: "Personalized workspace overview for ARVANN users",
 };
 
 export default function DashboardPage() {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LegalDocumentContent } from "./legal-content";
 import { LegalLinks } from "./LegalLinks";
 import { SiteFooter } from "@/src/features/marketing/components/SiteFooter";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 type LegalDocumentPageProps = {
   document: LegalDocumentContent;
@@ -19,23 +20,8 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
       }}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3.5">
-        <Link href="/" className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
-            style={{ background: "var(--gradient-brand-strong)", boxShadow: "var(--shadow-primary)" }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-              ARVANN
-            </p>
-            <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>
-              Manufacture Command
-            </p>
-          </div>
+        <Link href="/" className="flex items-center" aria-label="ARVANN home">
+          <BrandWordmark height={30} priority />
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <LegalLinks compact />
@@ -104,7 +90,7 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
               </p>
               <p className="mt-3 text-2xl font-bold" style={{ color: "var(--foreground)" }}>ARVANN</p>
               <p className="mt-2 text-sm leading-6" style={{ color: "var(--medium-gray)" }}>
-                Manufacture Command is operated for business users managing sourcing, manufacturing, operations,
+                ARVANN is operated for business users managing sourcing, manufacturing, operations,
                 verification, and transaction workflows.
               </p>
             </div>

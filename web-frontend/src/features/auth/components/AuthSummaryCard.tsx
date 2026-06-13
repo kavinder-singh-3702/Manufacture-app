@@ -45,7 +45,7 @@ export const AuthSummaryCard = () => {
             {user ? `Hi, ${user.displayName ?? user.email}` : "Guest explorer"}
           </h3>
           <p className="text-sm text-[var(--foreground)]">
-            {user ? user.email : "Authenticate to sync with your Manufacture backend."}
+            {user ? user.email : "Authenticate to sync with your ARVANN backend."}
           </p>
         </div>
       </div>

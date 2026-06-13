@@ -37,10 +37,14 @@ const requestPasswordReset = (payload: ForgotPasswordPayload) =>
 const resetPassword = (payload: ResetPasswordPayload) =>
   httpClient.post<ResetPasswordResponse>("/auth/password/reset", payload);
 
+const updatePhone = (phone: string) =>
+  httpClient.post<AuthUser>("/auth/profile/phone", { phone });
+
 export const authService = {
   signup,
   login,
   logout,
   requestPasswordReset,
   resetPassword,
+  updatePhone,
 };

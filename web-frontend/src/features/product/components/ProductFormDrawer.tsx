@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { CreateProductInput, Product, ProductStatus, ProductVisibility } from "@/src/types/product";
 import { PRODUCT_CATEGORIES } from "../utils/categories";
+import { ProductImageUploader, type PendingImage } from "./ProductImageUploader";
 
 type FormState = {
   name: string;
@@ -87,15 +88,17 @@ export const ProductFormDrawer = ({
   open: boolean;
   product?: Product | null;
   onClose: () => void;
-  onSubmit: (data: CreateProductInput) => Promise<void>;
+  onSubmit: (data: CreateProductInput, pendingImages: PendingImage[]) => Promise<void>;
 }) => {
   const [form, setForm] = useState<FormState>(emptyState);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(product ? stateFromProduct(product) : emptyState());
+      setPendingImages([]);
       setError(null);
       setSaving(false);
     }
@@ -138,7 +141,7 @@ export const ProductFormDrawer = ({
 
     try {
       setSaving(true);
-      await onSubmit(payload);
+      await onSubmit(payload, pendingImages);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save product");
     } finally {
@@ -198,6 +201,20 @@ export const ProductFormDrawer = ({
             {/* Body */}
             <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
               <div className="flex-1 space-y-5 overflow-y-auto p-6" style={{ overscrollBehavior: "none" }}>
+                {/* Section: Images */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--medium-gray)" }}>
+                    Photos
+                  </p>
+                  <ProductImageUploader
+                    existing={product?.images}
+                    pending={pendingImages}
+                    onAdd={(imgs) => setPendingImages((prev) => [...prev, ...imgs])}
+                    onRemovePending={(id) => setPendingImages((prev) => prev.filter((p) => p.id !== id))}
+                    disabled={saving}
+                  />
+                </section>
+
                 {/* Section: Basics */}
                 <section className="space-y-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--medium-gray)" }}>

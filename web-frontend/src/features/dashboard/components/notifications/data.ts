@@ -14,79 +14,36 @@ export type NotificationItem = {
   actionLabel?: string;
 };
 
-const now = Date.now();
+export const countUnread = (items: NotificationItem[] = []) =>
+  items.filter((item) => item.status === "unread").length;
 
-export const mockNotifications: NotificationItem[] = [
-  {
-    id: "n-001",
-    title: "Dispatch slot confirmed",
-    body: "Trucking partner assigned for PO-2239. Driver ETA 45 mins; manifest locked.",
-    timestamp: new Date(now - 15 * 60 * 1000).toISOString(),
-    category: "orders",
-    severity: "success",
-    status: "unread",
-    actor: "Logistics Desk",
-    tags: ["Dispatch", "PO-2239"],
-    actionLabel: "View manifest",
-  },
-  {
-    id: "n-002",
-    title: "Compliance doc expiring",
-    body: "GST certificate for Goyal Metals expires in 5 days. Upload the renewed copy to avoid delays.",
-    timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-    category: "compliance",
-    severity: "warning",
-    status: "unread",
-    actor: "Compliance Bot",
-    tags: ["Compliance", "GST"],
-    actionLabel: "Upload now",
-  },
-  {
-    id: "n-003",
-    title: "Quality check failed",
-    body: "Batch #204 failed torque test at station A3. Review deviation notes and re-run inspection.",
-    timestamp: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
-    category: "product",
-    severity: "critical",
-    status: "read",
-    actor: "QA Station A3",
-    tags: ["QA", "Batch #204"],
-    actionLabel: "View report",
-  },
-  {
-    id: "n-004",
-    title: "Invoice ready",
-    body: "Invoice INV-7781 generated for order #1189. Amount: ₹6,40,000. Due in 7 days.",
-    timestamp: new Date(now - 26 * 60 * 60 * 1000).toISOString(),
-    category: "billing",
-    severity: "info",
-    status: "read",
-    actor: "Billing",
-    tags: ["Invoice", "Order #1189"],
-    actionLabel: "Download PDF",
-  },
-  {
-    id: "n-005",
-    title: "System maintenance window",
-    body: "Planned downtime on Saturday, 22:00–23:00 IST. Live tracking will be paused.",
-    timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    category: "system",
-    severity: "info",
-    status: "read",
-    actor: "Platform",
-    tags: ["System", "Maintenance"],
-  },
-  {
-    id: "n-006",
-    title: "Supplier approved",
-    body: "Prima Exports passed verification and is now eligible for private RFQs.",
-    timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    category: "compliance",
-    severity: "success",
-    status: "read",
-    actor: "VendorOps",
-    tags: ["Suppliers", "RFQ"],
-  },
-];
+const CATEGORY_MAP: Record<string, NotificationCategory> = {
+  order: "orders", orders: "orders",
+  compliance: "compliance", verification: "compliance",
+  billing: "billing", invoice: "billing", payment: "billing",
+  product: "product", inventory: "product",
+};
 
-export const countUnread = (items: NotificationItem[] = mockNotifications) => items.filter((item) => item.status === "unread").length;
+const SEVERITY_MAP: Record<string, NotificationSeverity> = {
+  created: "success", approved: "success", completed: "success",
+  failed: "critical", rejected: "critical", error: "critical",
+  warning: "warning", expiring: "warning", pending: "warning",
+};
+
+export const categoryFromAction = (action: string, category?: string): NotificationCategory => {
+  const raw = (category ?? action ?? "").toLowerCase();
+  for (const [key, val] of Object.entries(CATEGORY_MAP)) {
+    if (raw.includes(key)) return val;
+  }
+  return "system";
+};
+
+export const severityFromAction = (action: string): NotificationSeverity => {
+  const parts = action.toLowerCase().split(".");
+  for (const part of parts) {
+    for (const [key, val] of Object.entries(SEVERITY_MAP)) {
+      if (part.includes(key)) return val;
+    }
+  }
+  return "info";
+};

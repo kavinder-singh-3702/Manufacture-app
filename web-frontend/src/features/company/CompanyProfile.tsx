@@ -211,7 +211,7 @@ export const CompanyProfile = () => {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[var(--border)] bg-white/95 p-6 text-[var(--foreground)]">
+      <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 text-[var(--foreground)]">
         Please sign in to view your company.
       </div>
     );
@@ -219,7 +219,7 @@ export const CompanyProfile = () => {
 
   if (!activeCompanyId) {
     return (
-      <div className="rounded-3xl border border-[var(--border)] bg-white/95 p-6 text-[var(--foreground)]">
+      <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 text-[var(--foreground)]">
         <p className="text-lg font-semibold text-[var(--foreground)]">No active company selected</p>
         <p className="mt-2 text-sm">
           Create or select a company from the admin console to see its profile here.
@@ -300,7 +300,7 @@ export const CompanyProfile = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
                 Company
               </p>
-              <p className="text-2xl font-semibold text-[#1f1422]">{company?.displayName ?? "Loading…"}</p>
+              <p className="text-2xl font-semibold text-[var(--foreground)]">{company?.displayName ?? "Loading…"}</p>
               <p className="text-sm text-[var(--medium-gray)]">{company?.legalName ?? "Add legal name"}</p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--medium-gray)]">
                 {company?.type ? (
@@ -331,15 +331,15 @@ export const CompanyProfile = () => {
       </div>
 
       {loading ? (
-        <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5 text-sm text-[var(--foreground)]">Loading company…</div>
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 text-sm text-[var(--foreground)]">Loading company…</div>
       ) : company ? (
         <>
           <div className="space-y-5">
-            <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+            <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
               <SectionHeader title="Profile overview" subtitle="Company" />
               <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {companySummary.map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-[var(--border)] bg-white/90 p-4 shadow-sm shadow-[rgba(20,141,178,0.10)]">
+                  <div key={item.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm shadow-[rgba(20,141,178,0.10)]">
                     <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
                       {item.label}
                     </p>
@@ -351,7 +351,7 @@ export const CompanyProfile = () => {
 
             <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-5">
-                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
@@ -365,7 +365,7 @@ export const CompanyProfile = () => {
                   </p>
                 </section>
 
-                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
@@ -383,7 +383,7 @@ export const CompanyProfile = () => {
               </div>
 
               <div className="space-y-5">
-                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
@@ -409,7 +409,7 @@ export const CompanyProfile = () => {
                   ) : null}
                 </section>
 
-                <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+                <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
@@ -430,7 +430,7 @@ export const CompanyProfile = () => {
           </div>
 
           {editing ? (
-            <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-5 shadow-sm shadow-[#e7ddea]">
+            <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
@@ -635,7 +635,7 @@ const TextField = ({
       {label}
       {multiline ? (
         <textarea
-          className={`${baseClasses} border-[var(--border)] bg-white`}
+          className={`${baseClasses} border-[var(--border)] bg-[var(--card)]`}
           rows={rows}
           value={value}
           placeholder={placeholder}
@@ -643,7 +643,7 @@ const TextField = ({
         />
       ) : (
         <input
-          className={`${baseClasses} border-[var(--border)] bg-white`}
+          className={`${baseClasses} border-[var(--border)] bg-[var(--card)]`}
           type={type}
           value={value}
           placeholder={placeholder}
@@ -669,7 +669,7 @@ const SelectField = ({
   <label className="text-sm font-semibold text-[var(--foreground)]">
     {label}
     <select
-      className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground)] focus:outline-none"
+      className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] focus:outline-none"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >

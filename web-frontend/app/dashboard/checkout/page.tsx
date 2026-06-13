@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { CheckoutContainer } from "@/src/features/checkout/components/CheckoutContainer";
 
 export const metadata: Metadata = {
-  title: "Manufacture Command — Checkout",
+  title: "ARVANN — Checkout",
   description: "Complete your purchase securely via Razorpay.",
 };
 

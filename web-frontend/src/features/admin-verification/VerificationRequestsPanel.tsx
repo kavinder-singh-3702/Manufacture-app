@@ -211,7 +211,7 @@ export const VerificationRequestsPanel = () => {
                 ) : null}
               </div>
 
-              <dl className="mt-4 grid gap-3 text-sm text-[#453440] md:grid-cols-2">
+              <dl className="mt-4 grid gap-3 text-sm text-[var(--foreground)] md:grid-cols-2">
                 <div>
                   <dt className="font-semibold uppercase tracking-wide text-xs text-[#9e7d8b]">Submitted</dt>
                   <dd className="mt-1">{formatDateTime(request.createdAt)}</dd>
@@ -230,7 +230,7 @@ export const VerificationRequestsPanel = () => {
 
               <div className="mt-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(90,48,66,0.2)" }}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#9e7d8b]">Documents</p>
-                <ul className="mt-2 space-y-1 text-[#453440]">
+                <ul className="mt-2 space-y-1 text-[var(--foreground)]">
                   {[
                     { label: "GST certificate", doc: request.documents?.gstCertificate },
                     { label: "Aadhaar card", doc: request.documents?.aadhaarCard },

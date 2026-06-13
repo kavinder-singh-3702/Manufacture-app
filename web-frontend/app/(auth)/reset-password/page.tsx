@@ -5,8 +5,8 @@ import { ResetPasswordCard } from "@/src/features/auth";
 import { LegalLinks } from "@/src/features/legal";
 
 export const metadata = {
-  title: "Manufacture Command — Reset password",
-  description: "Use your reset token to choose a new Manufacture Command password.",
+  title: "ARVANN — Reset password",
+  description: "Use your reset token to choose a new ARVANN password.",
 };
 
 const ResetPasswordCardFallback = () => (

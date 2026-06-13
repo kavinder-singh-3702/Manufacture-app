@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 export const SignInFormPanel = ({ children }: { children: ReactNode }) => (
   <motion.div
@@ -13,20 +14,12 @@ export const SignInFormPanel = ({ children }: { children: ReactNode }) => (
   >
     {/* Mobile logo */}
     <motion.div
-      className="mb-10 flex items-center gap-2.5 lg:hidden"
+      className="mb-10 flex items-center lg:hidden"
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
     >
-      <div
-        className="flex h-9 w-9 items-center justify-center rounded-xl"
-        style={{ background: "var(--gradient-brand-strong)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <span className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Manufacture</span>
+      <BrandWordmark height={28} priority />
     </motion.div>
 
     <div className="w-full max-w-[380px]">

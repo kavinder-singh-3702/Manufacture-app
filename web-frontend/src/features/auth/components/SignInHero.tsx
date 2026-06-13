@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 const FEATURES = [
   "Connect with verified manufacturers & traders",
@@ -51,16 +52,13 @@ export const SignInHero = () => (
     />
 
     {/* Logo */}
-    <motion.div {...slideLeft(0.1)} className="relative flex items-center gap-3">
+    <motion.div {...slideLeft(0.1)} className="relative flex items-center">
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-xl"
-        style={{ backgroundColor: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
+        className="flex items-center rounded-2xl px-4 py-2.5"
+        style={{ backgroundColor: "rgba(255,255,255,0.92)", border: "1px solid rgba(255,255,255,0.3)" }}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <BrandWordmark height={28} priority />
       </div>
-      <span className="text-xl font-bold text-white">Manufacture</span>
     </motion.div>
 
     {/* Hero */}
@@ -115,7 +113,7 @@ export const SignInHero = () => (
       style={{ backgroundColor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)" }}
     >
       <div>
-        <p className="text-sm font-semibold text-white">New to Manufacture?</p>
+        <p className="text-sm font-semibold text-white">New to ARVANN?</p>
         <p className="text-xs text-white/60">Create your workspace in 3 minutes</p>
       </div>
       <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>

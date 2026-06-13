@@ -1,8 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { countUnread, mockNotifications, NotificationItem, NotificationCategory } from "./data";
+import { activityService } from "@/src/services/activity";
+import { ApiError } from "@/src/lib/api-error";
+import {
+  countUnread,
+  categoryFromAction,
+  severityFromAction,
+  NotificationItem,
+  NotificationCategory,
+} from "./data";
+import type { ActivityEvent } from "@/src/types/activity";
 
 type FilterState = {
   category: NotificationCategory | "all";
@@ -10,18 +19,18 @@ type FilterState = {
 };
 
 const severityStyles = {
-  info: { badge: "bg-[#eef2ff] text-[#4338ca]", dot: "bg-[#4338ca]" },
-  warning: { badge: "bg-[#fff4e5] text-[#b45309]", dot: "bg-[#b45309]" },
+  info:     { badge: "bg-[#eef2ff] text-[#4338ca]", dot: "bg-[#4338ca]" },
+  warning:  { badge: "bg-[#fff4e5] text-[#b45309]", dot: "bg-[#b45309]" },
   critical: { badge: "bg-[#ffeef1] text-[#b4234d]", dot: "bg-[#b4234d]" },
-  success: { badge: "bg-[#ecfdf3] text-[#166534]", dot: "bg-[#166534]" },
+  success:  { badge: "bg-[#ecfdf3] text-[#166534]", dot: "bg-[#166534]" },
 } as const;
 
 const categoryLabels: Record<NotificationCategory, string> = {
-  orders: "Orders",
+  orders:     "Orders",
   compliance: "Compliance",
-  system: "System",
-  billing: "Billing",
-  product: "Product",
+  system:     "System",
+  billing:    "Billing",
+  product:    "Product",
 };
 
 const formatRelativeTime = (iso: string) => {
@@ -39,19 +48,58 @@ const formatRelativeTime = (iso: string) => {
   return new Date(timestamp).toLocaleDateString();
 };
 
+const toNotification = (event: ActivityEvent): NotificationItem => ({
+  id:        event.id,
+  title:     event.label,
+  body:      event.description ?? "",
+  timestamp: event.createdAt,
+  category:  categoryFromAction(event.action, event.category),
+  severity:  severityFromAction(event.action),
+  status:    "unread",
+  actor:     event.companyName,
+  tags:      event.action ? [event.action.split(".").pop() ?? ""].filter(Boolean) : undefined,
+});
+
 export const DashboardNotifications = () => {
-  const [items, setItems] = useState<NotificationItem[]>(mockNotifications);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterState>({ category: "all", unreadOnly: false });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await activityService.list({ limit: 50 });
+      setEvents(res.activities ?? []);
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const items: NotificationItem[] = useMemo(
+    () => events.map((e) => ({ ...toNotification(e), status: readIds.has(e.id) ? "read" : "unread" })),
+    [events, readIds]
+  );
+
+  const markAllRead  = () => setReadIds(new Set(events.map((e) => e.id)));
+  const markItemRead = (id: string) => setReadIds((prev) => new Set([...prev, id]));
 
   const unreadCount = useMemo(() => countUnread(items), [items]);
 
-  const filtered = useMemo(() => {
-    return items.filter((item) => {
+  const filtered = useMemo(() =>
+    items.filter((item) => {
       const matchesCategory = filter.category === "all" || item.category === filter.category;
       const matchesUnread = !filter.unreadOnly || item.status === "unread";
       return matchesCategory && matchesUnread;
-    });
-  }, [filter, items]);
+    }),
+    [filter, items]
+  );
 
   const grouped = useMemo(() => {
     const byDay = filtered.reduce<Record<string, NotificationItem[]>>((acc, item) => {
@@ -63,26 +111,27 @@ export const DashboardNotifications = () => {
     return Object.entries(byDay).map(([label, groupItems]) => ({ label, items: groupItems }));
   }, [filtered]);
 
-  const markAllRead = () => setItems((prev) => prev.map((item) => ({ ...item, status: "read" })));
-  const markItemRead = (id: string) =>
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: "read",
-            }
-          : item
-      )
-    );
-
   return (
     <div className="space-y-6">
-      <Header unreadCount={unreadCount} onMarkAllRead={markAllRead} />
-      <SummaryRow items={items} />
+      <Header unreadCount={unreadCount} onMarkAllRead={markAllRead} onRefresh={load} refreshing={loading} />
+      {!loading && <SummaryRow items={items} />}
       <FilterBar filter={filter} onChange={setFilter} />
+
+      {error && (
+        <div className="flex items-center justify-between rounded-3xl border border-[#f5d0dc] bg-[#fff1f4] px-4 py-3 text-sm text-[#7a3a4a]">
+          <span>{error}</span>
+          <button type="button" onClick={load} className="text-xs font-semibold underline">Retry</button>
+        </div>
+      )}
+
       <div className="space-y-4">
-        {grouped.length ? (
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 h-24" />
+            ))}
+          </div>
+        ) : grouped.length ? (
           grouped.map((group) => (
             <div key={group.label} className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
@@ -103,12 +152,17 @@ export const DashboardNotifications = () => {
   );
 };
 
-const Header = ({ unreadCount, onMarkAllRead }: { unreadCount: number; onMarkAllRead: () => void }) => (
+const Header = ({
+  unreadCount, onMarkAllRead, onRefresh, refreshing,
+}: {
+  unreadCount: number;
+  onMarkAllRead: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
+}) => (
   <div className="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-        Notifications
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>Notifications</p>
       <h2 className="text-2xl font-semibold text-[var(--foreground)]">Inbox & alerts</h2>
       <p className="text-sm text-[var(--foreground)]">Workspace updates, orders, and compliance nudges.</p>
     </div>
@@ -118,8 +172,16 @@ const Header = ({ unreadCount, onMarkAllRead }: { unreadCount: number; onMarkAll
       </span>
       <button
         type="button"
+        onClick={onRefresh}
+        disabled={refreshing}
+        className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-semibold text-[var(--primary-dark)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-60"
+      >
+        <span aria-hidden="true">↻</span> {refreshing ? "Loading…" : "Refresh"}
+      </button>
+      <button
+        type="button"
         onClick={onMarkAllRead}
-        className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-3 py-2 text-xs font-semibold text-[var(--primary-dark)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-semibold text-[var(--primary-dark)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
       >
         <span aria-hidden="true">✓</span> Mark all read
       </button>
@@ -128,16 +190,16 @@ const Header = ({ unreadCount, onMarkAllRead }: { unreadCount: number; onMarkAll
 );
 
 const SummaryRow = ({ items }: { items: NotificationItem[] }) => {
-  const unread = items.filter((item) => item.status === "unread");
-  const critical = items.filter((item) => item.severity === "critical");
+  const unread     = items.filter((item) => item.status === "unread");
+  const critical   = items.filter((item) => item.severity === "critical");
   const compliance = items.filter((item) => item.category === "compliance");
-  const billing = items.filter((item) => item.category === "billing");
+  const billing    = items.filter((item) => item.category === "billing");
 
   const cards = [
-    { label: "Unread", value: unread.length, hint: "new updates", tone: "primary" as const },
-    { label: "Critical", value: critical.length, hint: "needs attention", tone: "danger" as const },
-    { label: "Compliance", value: compliance.length, hint: "docs & checks", tone: "muted" as const },
-    { label: "Billing", value: billing.length, hint: "payments & invoices", tone: "muted" as const },
+    { label: "Unread",     value: unread.length,     hint: "new updates",        tone: "primary" as const },
+    { label: "Critical",   value: critical.length,   hint: "needs attention",    tone: "danger"  as const },
+    { label: "Compliance", value: compliance.length, hint: "docs & checks",      tone: "muted"   as const },
+    { label: "Billing",    value: billing.length,    hint: "payments & invoices", tone: "muted"  as const },
   ];
 
   return (
@@ -145,7 +207,7 @@ const SummaryRow = ({ items }: { items: NotificationItem[] }) => {
       {cards.map((card) => (
         <motion.div
           key={card.label}
-          className="rounded-3xl border border-[var(--border)] bg-white/85 p-4 shadow-sm shadow-[rgba(20,141,178,0.06)]"
+          className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm shadow-[rgba(20,141,178,0.06)]"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
@@ -155,11 +217,9 @@ const SummaryRow = ({ items }: { items: NotificationItem[] }) => {
             <p className="text-2xl font-bold text-[var(--foreground)]">{card.value}</p>
             <span
               className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
-                card.tone === "primary"
-                  ? "bg-[var(--primary-light)] text-[var(--primary)]"
-                  : card.tone === "danger"
-                  ? "bg-[#ffeef1] text-[#b4234d]"
-                  : "bg-[var(--background)] text-[var(--primary-dark)]"
+                card.tone === "primary" ? "bg-[var(--primary-light)] text-[var(--primary)]"
+                : card.tone === "danger" ? "bg-[#ffeef1] text-[#b4234d]"
+                : "bg-[var(--background)] text-[var(--primary-dark)]"
               }`}
             >
               {card.hint}
@@ -174,7 +234,7 @@ const SummaryRow = ({ items }: { items: NotificationItem[] }) => {
 const FilterBar = ({ filter, onChange }: { filter: FilterState; onChange: (next: FilterState) => void }) => {
   const categories: (NotificationCategory | "all")[] = ["all", "orders", "compliance", "product", "billing", "system"];
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-[var(--border)] bg-white/70 p-3 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm">
       <div className="flex flex-wrap gap-2">
         {categories.map((category) => {
           const isActive = filter.category === category;
@@ -185,7 +245,7 @@ const FilterBar = ({ filter, onChange }: { filter: FilterState; onChange: (next:
               className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize transition ${
                 isActive
                   ? "border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)] shadow-sm"
-                  : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)]"
+                  : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--primary)]"
               }`}
             >
               {category === "all" ? "All" : categoryLabels[category]}
@@ -217,13 +277,13 @@ const NotificationCard = ({ item, onMarkRead }: { item: NotificationItem; onMark
       initial={{ opacity: 0.8, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`rounded-3xl border bg-white/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
+      className={`rounded-3xl border bg-[var(--card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
         isUnread ? "border-[var(--primary)]" : "border-[var(--border)]"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className={`mt-1 h-2.5 w-2.5 rounded-full ${severityStyle.dot}`} aria-hidden />
+          <span className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${severityStyle.dot}`} aria-hidden />
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
@@ -232,28 +292,20 @@ const NotificationCard = ({ item, onMarkRead }: { item: NotificationItem; onMark
               <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${severityStyle.badge}`}>
                 {item.severity}
               </span>
-              {isUnread ? (
+              {isUnread && (
                 <span className="rounded-full bg-[#ffeef1] px-3 py-1 text-[11px] font-semibold text-[#b4234d]">New</span>
-              ) : null}
+              )}
             </div>
-            <p className="text-lg font-semibold text-[var(--foreground)]">{item.title}</p>
-            <p className="text-sm text-[var(--foreground)]">{item.body}</p>
+            <p className="text-base font-semibold text-[var(--foreground)]">{item.title}</p>
+            {item.body && <p className="text-sm text-[var(--foreground)]">{item.body}</p>}
             <div className="flex flex-wrap items-center gap-2">
-              {item.actor ? <Badge label={item.actor} tone="muted" /> : null}
+              {item.actor && <Badge label={item.actor} tone="muted" />}
               {item.tags?.map((tag) => <Badge key={`${item.id}-${tag}`} label={tag} tone="outline" />)}
             </div>
             <p className="text-xs text-[#9a7a8b]">{formatRelativeTime(item.timestamp)}</p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {item.actionLabel ? (
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)] bg-[var(--primary-light)] px-3 py-2 text-xs font-semibold text-[var(--primary)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              {item.actionLabel} →
-            </button>
-          ) : null}
           {isUnread ? (
             <button
               type="button"
@@ -263,7 +315,7 @@ const NotificationCard = ({ item, onMarkRead }: { item: NotificationItem; onMark
               Mark read
             </button>
           ) : (
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9a7a8b]">Archived</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9a7a8b]">Read</span>
           )}
         </div>
       </div>
@@ -272,15 +324,14 @@ const NotificationCard = ({ item, onMarkRead }: { item: NotificationItem; onMark
 };
 
 const Badge = ({ label, tone }: { label: string; tone?: "muted" | "outline" }) => {
-  const classes =
-    tone === "outline"
-      ? "border border-[var(--border)] bg-white text-[var(--foreground)]"
-      : "bg-[var(--background)] text-[var(--primary-dark)]";
+  const classes = tone === "outline"
+    ? "border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+    : "bg-[var(--background)] text-[var(--primary-dark)]";
   return <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${classes}`}>{label}</span>;
 };
 
 const EmptyState = () => (
-  <div className="rounded-3xl border border-dashed border-[var(--border)] bg-white/80 px-6 py-8 text-center">
+  <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-8 text-center">
     <p className="text-base font-semibold text-[var(--foreground)]">All caught up</p>
     <p className="mt-1 text-sm text-[var(--foreground)]">
       No notifications match your filter. We will surface new workspace updates here.

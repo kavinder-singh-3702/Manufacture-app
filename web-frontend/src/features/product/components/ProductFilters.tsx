@@ -34,10 +34,12 @@ export const ProductFilters = ({
   value,
   onChange,
   totalResults,
+  isGuest = false,
 }: {
   value: FiltersState;
   onChange: (next: FiltersState) => void;
   totalResults?: number;
+  isGuest?: boolean;
 }) => {
   const [searchDraft, setSearchDraft] = useState(value.search);
 
@@ -91,7 +93,8 @@ export const ProductFilters = ({
           )}
         </div>
 
-        {/* Scope toggle */}
+        {/* Scope toggle — hidden for guests (they only see marketplace) */}
+        {!isGuest && (
         <div
           role="tablist"
           aria-label="Product scope"
@@ -155,6 +158,7 @@ export const ProductFilters = ({
             );
           })}
         </div>
+        )}
 
         {/* Sort */}
         <div className="relative">

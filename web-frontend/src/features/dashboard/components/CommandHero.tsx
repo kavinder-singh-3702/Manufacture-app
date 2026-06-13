@@ -8,7 +8,7 @@ type CommandHeroProps = {
 };
 
 export const CommandHero = ({
-  brandName = "Manufacture Command",
+  brandName = "ARVANN",
   headline,
   description,
   pillars = brandPillars,

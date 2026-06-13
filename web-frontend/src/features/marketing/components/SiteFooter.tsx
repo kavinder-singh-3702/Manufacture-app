@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 const FOOTER_LINKS = {
   Platform: [
@@ -26,21 +27,8 @@ export const SiteFooter = ({ className = "" }: { className?: string }) => (
       <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         {/* Brand */}
         <div className="space-y-4">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: "var(--gradient-brand-strong)", boxShadow: "var(--shadow-primary)" }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
-                Manufacture
-              </p>
-              <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>Command</p>
-            </div>
+          <Link href="/" className="inline-flex items-center" aria-label="ARVANN home">
+            <BrandWordmark height={32} />
           </Link>
           <p className="max-w-xs text-sm leading-relaxed" style={{ color: "var(--medium-gray)" }}>
             The command center built for Indian manufacturers — manage sourcing, compliance, and partner comms in one workspace.

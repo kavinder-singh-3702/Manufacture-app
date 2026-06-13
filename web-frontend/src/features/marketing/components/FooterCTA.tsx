@@ -21,7 +21,7 @@ export const FooterCTA = () => (
             Ready to join?
           </p>
           <h3 className="text-3xl font-bold leading-tight" style={{ color: "var(--foreground)" }}>
-            Launch your Manufacture workspace today
+            Launch your ARVANN workspace today
           </h3>
           <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
             Join verified exporters and sourcing leaders already onboarding teams across devices.

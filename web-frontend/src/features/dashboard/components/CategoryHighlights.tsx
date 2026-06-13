@@ -43,7 +43,7 @@ export const CategoryHighlights = ({ sections = categorySections }: CategoryHigh
               background: gradients[index % gradients.length],
             }}
           >
-            <div className="space-y-1 rounded-2xl bg-white/80 p-4 backdrop-blur">
+            <div className="space-y-1 rounded-2xl bg-[var(--card)] p-4 backdrop-blur">
               <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
                 {section.highlight}
               </p>

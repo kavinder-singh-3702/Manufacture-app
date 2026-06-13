@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { categoryId } = await params;
   const cat = getCategoryMeta(categoryId);
   return {
-    title: `Manufacture — ${cat?.title ?? "Category"} Products`,
+    title: `ARVANN — ${cat?.title ?? "Category"} Products`,
     description: `Browse ${cat?.title ?? categoryId} products from verified Indian manufacturers.`,
   };
 }

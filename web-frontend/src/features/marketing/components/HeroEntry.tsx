@@ -57,7 +57,7 @@ export const HeroEntry = () => (
               <span style={{ color: "var(--primary)" }}>on the web.</span>
             </h1>
             <p className="text-lg leading-relaxed md:text-xl" style={{ color: "var(--medium-gray)" }}>
-              Manufacture Command gives India&apos;s factories a single workspace for sourcing, compliance,
+              ARVANN gives India&apos;s factories a single workspace for sourcing, compliance,
               inventory, and supplier comms — built for teams who move fast.
             </p>
           </motion.div>
@@ -136,7 +136,7 @@ export const HeroEntry = () => (
               </div>
               <div className="flex-1 rounded-lg px-3 py-1.5 text-xs text-white/60"
                 style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                manufacture.command / dashboard
+                arvann.app / dashboard
               </div>
             </div>
 

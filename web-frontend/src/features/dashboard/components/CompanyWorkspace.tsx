@@ -28,7 +28,7 @@ const CompanyBadge = ({
   return (
     <motion.div
       key={company.id}
-      className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white/90 px-4 py-3 shadow-sm"
+      className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
@@ -157,7 +157,7 @@ export const CompanyWorkspace = () => {
   }, [companies, activeCompanyId]);
 
   return (
-    <section className="rounded-3xl border border-[var(--border)] bg-white/95 p-4">
+    <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
@@ -209,7 +209,7 @@ export const CompanyWorkspace = () => {
 
         <form
           onSubmit={handleCreate}
-          className="space-y-4 rounded-2xl border border-[var(--border)] bg-white p-4 shadow-sm shadow-[rgba(20,141,178,0.06)]"
+          className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm shadow-[rgba(20,141,178,0.06)]"
         >
           <p className="text-sm font-semibold text-[var(--foreground)]">Create a company</p>
           <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
@@ -236,7 +236,7 @@ export const CompanyWorkspace = () => {
           <label className="block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
             Type
             <select
-              className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none"
+              className="mt-2 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none"
               value={form.type}
               onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
             >

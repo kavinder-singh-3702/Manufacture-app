@@ -151,7 +151,12 @@ export const SignupCard = () => {
         fullName: profile.fullName.trim(), email: profile.email.trim().toLowerCase(), phone: profile.phone.trim(),
       });
       setUser(res.user);
-      router.push(res.user.role === "admin" ? "/admin" : "/dashboard");
+      // Return to a gated origin if one was supplied (internal paths only).
+      const rawNext = typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("next")
+        : null;
+      const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+      router.push(next ?? (res.user.role === "admin" ? "/admin" : "/dashboard"));
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Could not complete signup");
     } finally { setLoading(false); }

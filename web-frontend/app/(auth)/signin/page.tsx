@@ -5,8 +5,8 @@ import { SignInHero } from "@/src/features/auth/components/SignInHero";
 import { SignInFormPanel } from "@/src/features/auth/components/SignInFormPanel";
 
 export const metadata = {
-  title: "Manufacture — Sign in",
-  description: "Log into your Manufacture Command workspace",
+  title: "ARVANN — Sign in",
+  description: "Log into your ARVANN workspace",
 };
 
 export default function SignInPage() {

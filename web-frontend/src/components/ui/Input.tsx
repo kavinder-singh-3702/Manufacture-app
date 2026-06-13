@@ -76,7 +76,7 @@ export const AnimatedInput = forwardRef<HTMLInputElement, AnimatedInputProps>(
           transition={{ duration: 0.2 }}
           className={`
             relative flex items-center rounded-2xl border px-4
-            ${disabled ? "bg-white/70" : "bg-white"}
+            ${disabled ? "bg-[var(--surface)]" : "bg-[var(--surface)]"}
           `}
           style={{ borderWidth: 1.5 }}
         >
@@ -230,7 +230,7 @@ export const AnimatedTextarea = forwardRef<HTMLTextAreaElement, AnimatedTextarea
           className={`
             w-full rounded-2xl border px-4 py-3 text-sm text-[var(--foreground)]
             placeholder:text-[var(--medium-gray)] focus:outline-none resize-none
-            ${disabled ? "bg-white/70 cursor-not-allowed" : "bg-white"}
+            ${disabled ? "bg-[var(--surface)] cursor-not-allowed" : "bg-[var(--surface)]"}
           `}
           style={{ borderWidth: 1.5 }}
           {...props}
@@ -303,7 +303,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
               : "var(--border)",
             boxShadow: isFocused ? "0 0 0 3px rgba(90, 48, 66, 0.1)" : "none",
           }}
-          className="relative rounded-2xl border bg-white"
+          className="relative rounded-2xl border bg-[var(--surface)]"
           style={{ borderWidth: 1.5 }}
         >
           <input
@@ -366,7 +366,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         animate={{
           boxShadow: isFocused ? "0 4px 20px rgba(90, 48, 66, 0.15)" : "0 2px 8px rgba(90, 48, 66, 0.08)",
         }}
-        className={`flex items-center gap-3 rounded-full bg-white px-4 py-2.5 ${className}`}
+        className={`flex items-center gap-3 rounded-full bg-[var(--surface)] px-4 py-2.5 ${className}`}
         style={{ border: "1px solid var(--border)" }}
       >
         {/* Search icon */}

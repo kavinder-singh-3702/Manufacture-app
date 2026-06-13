@@ -4,8 +4,8 @@ import { ForgotPasswordCard } from "@/src/features/auth";
 import { LegalLinks } from "@/src/features/legal";
 
 export const metadata = {
-  title: "Manufacture Command — Forgot password",
-  description: "Request a password reset token for your Manufacture Command workspace.",
+  title: "ARVANN — Forgot password",
+  description: "Request a password reset token for your ARVANN workspace.",
 };
 
 export default function ForgotPasswordPage() {

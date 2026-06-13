@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { CartPageContent } from "@/src/features/cart/components/CartPageContent";
 
 export const metadata: Metadata = {
-  title: "Manufacture Command — Cart",
+  title: "ARVANN — Cart",
   description: "Review your shortlisted and checkout-ready products.",
 };
 

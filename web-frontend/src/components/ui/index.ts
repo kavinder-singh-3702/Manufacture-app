@@ -14,3 +14,4 @@ export * from "./Confetti";
 export * from "./Loader";
 export * from "./List";
 export * from "./Onboarding";
+export * from "./ThemeSwitcher";

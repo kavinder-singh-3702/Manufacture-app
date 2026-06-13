@@ -34,8 +34,8 @@ export const ProfileInputField = ({
   rows = 1,
 }: ProfileInputFieldProps) => {
   const baseClasses = "mt-2 w-full rounded-2xl border px-4 py-3 text-sm focus:outline-none";
-  const enabledClasses = "border-[var(--border)] bg-white text-[var(--foreground)]";
-  const disabledClasses = "border-dashed border-[var(--border)] bg-white/70 text-[var(--medium-gray)]";
+  const enabledClasses = "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]";
+  const disabledClasses = "border-dashed border-[var(--border)] bg-[var(--card)] text-[var(--medium-gray)]";
   const className = `${baseClasses} ${disabled ? disabledClasses : enabledClasses}`;
 
   return (

@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { formatCurrency } from "@/src/features/product/utils/categories";
 
 export const OrderConfirmation = () => {
@@ -12,8 +13,16 @@ export const OrderConfirmation = () => {
   const paymentId = params.get("paymentId") ?? "";
   const amount = params.get("amount") ? parseFloat(params.get("amount")!) : null;
   const message = params.get("message") ? decodeURIComponent(params.get("message")!) : null;
+  const [copied, setCopied] = useState(false);
 
   const shortOrderId = orderId ? orderId.slice(-8).toUpperCase() : "";
+
+  const copyOrderId = () => {
+    navigator.clipboard.writeText(shortOrderId || orderId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center py-16">
@@ -64,9 +73,16 @@ export const OrderConfirmation = () => {
               {shortOrderId && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm" style={{ color: "var(--medium-gray)" }}>Order ID</span>
-                  <span className="font-mono text-sm font-bold" style={{ color: "var(--foreground)" }}>
-                    #{shortOrderId}
-                  </span>
+                  <button type="button" onClick={copyOrderId}
+                    className="flex items-center gap-1.5 rounded-lg px-2 py-1 transition-all hover:opacity-70"
+                    style={{ backgroundColor: copied ? "#DCFCE7" : "var(--background)", border: "1px solid var(--border)" }}>
+                    <span className="font-mono text-sm font-bold" style={{ color: "var(--foreground)" }}>
+                      #{shortOrderId}
+                    </span>
+                    <span className="text-xs" style={{ color: copied ? "#15803D" : "var(--medium-gray)" }}>
+                      {copied ? "✓ Copied" : "Copy"}
+                    </span>
+                  </button>
                 </div>
               )}
               {paymentId && (
@@ -119,7 +135,7 @@ export const OrderConfirmation = () => {
                 style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
                 View my orders →
               </Link>
-              <Link href="/dashboard/products"
+              <Link href="/products"
                 className="w-full rounded-2xl py-3 text-sm font-semibold transition-opacity hover:opacity-70"
                 style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
                 Continue shopping
@@ -132,7 +148,7 @@ export const OrderConfirmation = () => {
                 style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}>
                 Try again
               </Link>
-              <Link href="/dashboard/products"
+              <Link href="/products"
                 className="w-full rounded-2xl py-3 text-sm font-semibold transition-opacity hover:opacity-70"
                 style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
                 Back to products

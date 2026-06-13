@@ -122,7 +122,7 @@ export const ProfileSection = ({
     <div className="space-y-6">
       <SectionHeader title="Profile & identity" subtitle="Profile" action={headerAction} />
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <form onSubmit={onSubmit} className="space-y-6 rounded-3xl border border-[var(--border)] bg-white/90 p-5">
+        <form onSubmit={onSubmit} className="space-y-6 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Profile photo</h3>
             <ProfilePhotoUploader
@@ -157,7 +157,7 @@ export const ProfileSection = ({
                 label="Username"
                 value={user.username ?? "Not set"}
                 disabled
-                helperText="Unique handle shared across Manufacture."
+                helperText="Unique handle shared across ARVANN."
               />
             </div>
           </div>
@@ -276,7 +276,7 @@ export const ProfileSection = ({
           </button>
         </form>
         <div className="space-y-4">
-          <div className="rounded-3xl border border-[var(--border)] bg-white/85 p-5">
+          <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Linked companies</h3>
             <div className="mt-4 flex flex-wrap gap-2">
               {companyList.map((company) => (
@@ -289,7 +289,7 @@ export const ProfileSection = ({
               ))}
             </div>
           </div>
-          <div className="rounded-3xl border border-[var(--border)] bg-white/85 p-5">
+          <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Activity tags</h3>
             {currentTagPreview.length ? (
               <div className="mt-3 flex flex-wrap gap-2">

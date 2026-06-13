@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 const features = [
   { icon: "🏭", text: "Create manufacturer, trader, or buyer workspaces" },
@@ -35,15 +36,9 @@ export const SignupHero = () => (
 
     <div className="relative space-y-8">
       {/* Brand */}
-      <motion.div {...fade(0)} className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">Manufacture</p>
-          <p className="text-lg font-bold">Command</p>
+      <motion.div {...fade(0)} className="flex items-center">
+        <div className="flex items-center rounded-2xl bg-white/90 px-4 py-2.5 backdrop-blur-sm">
+          <BrandWordmark height={28} priority />
         </div>
       </motion.div>
 

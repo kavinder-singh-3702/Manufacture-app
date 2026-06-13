@@ -15,6 +15,10 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.18, delay, ease: [0.22, 1, 0.36, 1] },
 });
 
+// Only honour internal, non-protocol-relative paths to avoid open-redirects.
+const safeNext = (raw: string | null): string | null =>
+  raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+
 const EyeIcon = ({ open }: { open: boolean }) =>
   open ? (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -55,7 +59,12 @@ export const LoginCard = () => {
         credentialMode === "email"
           ? await login({ email: trimmedIdentifier, password: trimmedPassword, remember: true })
           : await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
-      router.push(authenticatedUser.role === "admin" ? "/admin" : "/dashboard");
+      // Return the user to where they were gated (e.g. a product they wanted to
+      // contact a seller about), falling back to the role-based home.
+      const next = typeof window !== "undefined"
+        ? safeNext(new URLSearchParams(window.location.search).get("next"))
+        : null;
+      router.push(next ?? (authenticatedUser.role === "admin" ? "/admin" : "/dashboard"));
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to sign in.";
       setError(message);
@@ -72,7 +81,7 @@ export const LoginCard = () => {
           Welcome back
         </h1>
         <p className="mt-1.5 text-[15px]" style={{ color: "var(--medium-gray)" }}>
-          Sign in to your Manufacture workspace
+          Sign in to your ARVANN workspace
         </p>
       </motion.div>
 

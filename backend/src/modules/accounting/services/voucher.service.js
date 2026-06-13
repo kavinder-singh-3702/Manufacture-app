@@ -302,14 +302,8 @@ const persistVoucherArtifacts = async ({
 }) => {
   let stockMoves = [];
   if (artifacts.stockMoves.length) {
-    // Allow sales-side vouchers to go through even when stock isn't reconciled
-    // (backorders, pre-orders, services). Purchase-side vouchers add stock so
-    // the check doesn't apply to them anyway.
-    const allowOverSell = ['sales_invoice', 'delivery_challan', 'credit_note'].includes(
-      voucher.voucherType
-    );
     stockMoves = await applyStockMoves(companyId, artifacts.stockMoves, {
-      preventNegativeStock: !allowOverSell,
+      preventNegativeStock: true,
       session
     });
 

@@ -53,7 +53,7 @@ export const useRazorpay = () => {
       order_id: options.orderId,
       amount: options.amount,
       currency: options.currency,
-      name: options.name ?? "Manufacture Command",
+      name: options.name ?? "ARVANN",
       description: options.description ?? "Product Purchase",
       prefill: options.prefill ?? {},
       theme: { color: "#148DB2" },

@@ -144,6 +144,8 @@ export type ListProductsParams = {
   minPrice?: number;
   maxPrice?: number;
   includeVariantSummary?: boolean;
+  /** Filter by owning company ID — used for seller profile pages */
+  companyId?: string;
 };
 
 export type UploadProductImagePayload = {

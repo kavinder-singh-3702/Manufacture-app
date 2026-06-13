@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
 import { buildInitials, resolveCompanyLabel } from "./helpers";
+import { BrandWordmark } from "@/src/components/BrandLogo";
 
 type NavItem = {
   id: string;
@@ -18,18 +19,21 @@ const workspaceNav: NavItem[] = [
   { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
   { id: "products",      label: "Products",      description: "Catalog & stock",     href: "/dashboard/products" },
   { id: "company",       label: "Company",       description: "Profile & details",   href: "/dashboard/company" },
+  { id: "profile",       label: "Profile",       description: "Your account",        href: "/dashboard/profile" },
   { id: "activity",      label: "Activity",      description: "Recent timeline",     href: "/dashboard/activity" },
   { id: "notifications", label: "Notifications", description: "Alerts & updates",    href: "/dashboard/notifications" },
   { id: "settings",      label: "Settings",      description: "Account settings",    href: "/dashboard/settings" },
 ];
 
 const modulesNav: NavItem[] = [
-  { id: "orders",     label: "My Orders",  description: "Order history",       href: "/dashboard/orders" },
-  { id: "accounting", label: "Accounting", description: "P&L, GST & reports",  href: "/dashboard/accounting" },
-  { id: "services",   label: "Services",   description: "Job-work marketplace", href: "/dashboard/services" },
-  { id: "inventory",  label: "Inventory",  description: "Stock & warehouses",  href: "/dashboard/inventory",  soon: true },
-  { id: "quotes",     label: "Quotes",     description: "RFQs & negotiation",  href: "/dashboard/quotes",     soon: true },
-  { id: "chat",       label: "Chat",       description: "Messages & threads",  href: "/dashboard/chat",       soon: true },
+  { id: "orders",             label: "My Orders",         description: "Order history",         href: "/dashboard/orders" },
+  { id: "cart",               label: "Cart",              description: "Items & checkout",       href: "/dashboard/cart" },
+  { id: "accounting",         label: "Accounting",        description: "P&L, GST & reports",    href: "/dashboard/accounting" },
+  { id: "services",           label: "Services",          description: "Job-work marketplace",  href: "/dashboard/services" },
+  { id: "inventory",          label: "Inventory",         description: "Stock & warehouses",    href: "/dashboard/inventory" },
+  { id: "internal-inventory", label: "Internal Stock",    description: "Internal ops tracking", href: "/dashboard/internal-inventory" },
+  { id: "quotes",             label: "Quotes",            description: "RFQs & negotiation",    href: "/dashboard/quotes" },
+  { id: "chat",               label: "Chat",              description: "Messages & threads",    href: "/dashboard/chat" },
 ];
 
 export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav];
@@ -107,6 +111,34 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "cart":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "internal-inventory":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="9" y="3" width="6" height="4" rx="1" stroke={color} strokeWidth="1.8" />
+          <path d="M9 12h6M9 16h4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    case "profile":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" stroke={color} strokeWidth="1.8" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke={color} strokeWidth="1.8" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     default:
@@ -227,19 +259,9 @@ const SidebarContent = ({
   return (
     <div className="flex h-full flex-col">
       {/* ── Brand ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-        <div
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "var(--gradient-brand-strong)", boxShadow: "0 3px 10px rgba(20,141,178,0.35)" }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 20V8l8-4 8 4v12H4zm8-12v12M10 14h4M10 17h4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-[15px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>Manufacture</p>
-          <p className="text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>Command Center</p>
-        </div>
+      <div className="flex items-center gap-2.5 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+        <BrandWordmark height={26} priority />
+        <span className="text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>Command Center</span>
       </div>
 
       {/* ── Company switcher ──────────────────────────────────────── */}

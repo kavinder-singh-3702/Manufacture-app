@@ -3,7 +3,7 @@ import { CompanySwitcherSection } from "@/src/features/company/components/Compan
 import { CompanyProfile } from "@/src/features/company";
 
 export const metadata: Metadata = {
-  title: "Manufacture Command — Company",
+  title: "ARVANN — Company",
   description: "Manage and switch between your company workspaces.",
 };
 

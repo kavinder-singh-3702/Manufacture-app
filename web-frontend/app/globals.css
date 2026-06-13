@@ -53,8 +53,20 @@
   --background: #0D1B22;
   --foreground: #F0F7FA;
   --surface: #132330;
+  --card: #162834;
   --border: rgba(25, 184, 230, 0.15);
-  --medium-gray: #6B8899;
+  --medium-gray: #8AA3B2;
+  --dark-gray: #B7C7D1;
+
+  /* Neutrals remapped so raw var(--light-gray)/var(--off-white) usages
+     don't render as light surfaces on the dark canvas. */
+  --off-white: #162834;
+  --light-gray: #24333E;
+
+  /* Form-validation tones tuned for the dark canvas */
+  --danger: #F08A93;
+  --danger-strong: #FF6B7E;
+  --danger-bg: rgba(245, 110, 121, 0.12);
 }
 
 @theme inline {

@@ -80,6 +80,10 @@ export class HttpClient {
     return this.request<T>({ path, method: "POST", data, ...config });
   }
 
+  put<T>(path: string, data?: unknown, config?: Omit<RequestConfig, "path" | "method" | "data">) {
+    return this.request<T>({ path, method: "PUT", data, ...config });
+  }
+
   patch<T>(path: string, data?: unknown, config?: Omit<RequestConfig, "path" | "method" | "data">) {
     return this.request<T>({ path, method: "PATCH", data, ...config });
   }

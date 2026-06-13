@@ -21,3 +21,5 @@ export const useDashboardContext = () => {
   }
   return context;
 };
+
+export const useOptionalDashboardContext = () => useContext(DashboardContext);

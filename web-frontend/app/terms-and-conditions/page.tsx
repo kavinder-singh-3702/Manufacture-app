@@ -3,7 +3,7 @@ import { LegalDocumentPage, termsAndConditionsContent } from "@/src/features/leg
 
 export const metadata: Metadata = {
   title: "ARVANN Terms & Conditions",
-  description: "Public terms and conditions for ARVANN and Manufacture Command.",
+  description: "Public terms and conditions for ARVANN.",
   robots: {
     index: true,
     follow: true,

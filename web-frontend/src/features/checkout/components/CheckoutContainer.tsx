@@ -89,7 +89,7 @@ export const CheckoutContainer = () => {
         orderId: intent.payment.razorpayOrderId,
         amount: intent.payment.amount,
         currency: intent.payment.currency,
-        name: "Manufacture Command",
+        name: "ARVANN",
         description: `Order ${intent.order._id.slice(-8).toUpperCase()}`,
         prefill: {
           name: user.displayName ?? undefined,
