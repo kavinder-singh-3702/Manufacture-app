@@ -274,13 +274,25 @@ build_release_apk() {
     [ -f "$APK_RELEASE_PATH" ] || die "Gradle finished without producing ${APK_RELEASE_PATH}"
     BUILT_APK_PATH="$APK_RELEASE_PATH"
   else
-    log "Building dev APK with Gradle (clean + assembleDebug, signed with debug.keystore)"
+    # Build the RELEASE variant (bundles JS via Hermes — runs offline on any
+    # phone) but sign it with the auto-generated Android debug.keystore so we
+    # don't need credentials.json. Previous version of this branch ran
+    # assembleDebug which produces a build that tries to fetch its JS bundle
+    # from a Metro server at runtime — fine on the same Wi-Fi as the dev
+    # machine, but the APK shared with someone else just hangs on the splash.
+    log "Building dev APK with Gradle (clean + assembleRelease, signed with debug.keystore)"
+    local debug_ks="${ANDROID_APP_DIR}/debug.keystore"
+    [ -f "$debug_ks" ] || die "Expected debug keystore missing: ${debug_ks}"
     (
       cd "$ANDROID_DIR"
-      ./gradlew clean app:assembleDebug --no-build-cache
+      ./gradlew clean app:assembleRelease --no-build-cache \
+        -Pandroid.injected.signing.store.file="$debug_ks" \
+        -Pandroid.injected.signing.store.password=android \
+        -Pandroid.injected.signing.key.alias=androiddebugkey \
+        -Pandroid.injected.signing.key.password=android
     )
-    [ -f "$APK_DEBUG_PATH" ] || die "Gradle finished without producing ${APK_DEBUG_PATH}"
-    BUILT_APK_PATH="$APK_DEBUG_PATH"
+    [ -f "$APK_RELEASE_PATH" ] || die "Gradle finished without producing ${APK_RELEASE_PATH}"
+    BUILT_APK_PATH="$APK_RELEASE_PATH"
   fi
 }
 
