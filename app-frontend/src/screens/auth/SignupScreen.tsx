@@ -22,6 +22,7 @@ import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from
 import { SignupStepper } from "../../components/auth/SignupStepper";
 import { OtpCodeInput, OtpInputChangeMeta } from "../../components/auth/OtpCodeInput";
 import { authService } from "../../services/auth.service";
+import { ApiError } from "../../services/http/errors";
 import { ProductCategory, productService } from "../../services/product.service";
 import { tokenStorage } from "../../services/tokenStorage";
 import { useAuth } from "../../hooks/useAuth";
@@ -545,9 +546,53 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       setStatus(`Email verified for ${normalizedIdentity.email}.`);
       setStep("contact");
     } catch (otpSubmitError) {
-      const message = otpSubmitError instanceof Error ? otpSubmitError.message : "Unable to verify code";
-      setError(message);
-      setOtpError("Enter the latest code from your inbox");
+      const fallbackMessage =
+        otpSubmitError instanceof Error ? otpSubmitError.message : "Unable to verify code";
+      // The backend distinguishes:
+      //   400 — wrong code, retries remaining
+      //   410 — code expired (5-minute TTL elapsed)
+      //   429 — too many invalid attempts, lock-out
+      // Previously the UI showed a static "Enter the latest code from your
+      // inbox" for all three, which left the user confused about whether
+      // to retype, request a new code, or wait. Surface the real backend
+      // message and — for expired/locked cases — auto-clear the field and
+      // auto-trigger a fresh OTP send if the resend cooldown is up.
+      const status = otpSubmitError instanceof ApiError ? otpSubmitError.status : null;
+      const isExpired = status === 410;
+      const isLocked = status === 429;
+
+      if (isExpired || isLocked) {
+        setOtp("");
+        const friendly = isLocked
+          ? "Too many wrong tries. Sending a fresh code..."
+          : "That code has expired. Sending a fresh one...";
+        setOtpError(friendly);
+        setError(friendly);
+
+        // Re-issue the OTP automatically when the resend cooldown is
+        // already past. If we're still in cooldown, the user sees the
+        // friendly message above and can hit Resend manually once the
+        // counter reaches zero.
+        if (canResendOtp) {
+          try {
+            await handleResendOtp();
+            setStatus("Fresh code sent. Check your email.");
+          } catch {
+            /* if resend fails the user can still tap the button */
+          }
+        }
+      } else if (status === 400) {
+        // Wrong code with retries remaining. Show the backend's actual
+        // message ("Invalid OTP provided") rather than a generic one,
+        // and clear only the field so the user can re-enter.
+        setOtp("");
+        setOtpError(fallbackMessage);
+        setError(fallbackMessage);
+      } else {
+        // Network failure or unknown error path.
+        setOtpError(fallbackMessage);
+        setError(fallbackMessage);
+      }
     } finally {
       setLoading(false);
       lastAutoSubmittedOtpRef.current = null;
