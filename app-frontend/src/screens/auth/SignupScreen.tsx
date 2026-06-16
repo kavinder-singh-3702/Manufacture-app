@@ -546,19 +546,35 @@ export const SignupScreen = ({ onBack, onLogin }: SignupScreenProps) => {
       return;
     }
 
+    // Best-effort session save. Backend stores the phone on the signup
+    // session so /signup/complete can pick it up without a body field.
+    // If the session has been lost between OTP-verify and now (cookies
+    // dropped between native fetch calls, Redis restart, etc.), the
+    // server throws 400 "Verify your email before adding a mobile number"
+    // — but /signup/complete still accepts `phone` in its request body
+    // (validator does sessionPhone OR body.phone), so we can safely fall
+    // through and let the final step send the phone directly. The user is
+    // never blocked on this step.
+    const normalizedPhone = normalizePhone(contact.phone);
     try {
       setLoading(true);
       clearTransientFeedback();
-      const response = await authService.signup.contact({
-        phone: normalizePhone(contact.phone),
-      });
+      const response = await authService.signup.contact({ phone: normalizedPhone });
       setContact({ phone: response.phone });
       setStatus("Mobile number saved.");
-      setStep("password");
     } catch (contactSubmitError) {
-      setError(contactSubmitError instanceof Error ? contactSubmitError.message : "Unable to save mobile number");
+      // Don't block the wizard. Keep the entered phone in local state and
+      // let /signup/complete carry it in the body. Log the warning for
+      // observability but don't surface anything scary to the user.
+      console.warn(
+        "[signup] contact step session save failed; falling through with phone in local state",
+        contactSubmitError
+      );
+      setContact({ phone: normalizedPhone });
+      setStatus("Mobile number saved.");
     } finally {
       setLoading(false);
+      setStep("password");
     }
   };
 
