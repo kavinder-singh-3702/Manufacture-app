@@ -131,7 +131,21 @@ const createInitialAccount = (): AccountState => ({
 
 const normalizeNamePart = (value: string) => value.trim().replace(/\s+/g, " ");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
-const normalizePhone = (value: string) => value.trim();
+/**
+ * Strip everything except digits and a leading + sign. Most Indian users
+ * type their number as "+91 98765 43210" or "+91-98765-43210" — the
+ * spaces and dashes used to silently fail the regex check on the contact
+ * step (only [0-9+]{7,15} was allowed), so the wizard wouldn't advance
+ * even though the number was logically valid.
+ */
+const normalizePhone = (value: string) => {
+  const trimmed = value.trim();
+  // Preserve a leading + if present (international prefix), then strip all
+  // non-digit characters from the rest.
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^0-9]/g, "");
+  return hasPlus ? `+${digits}` : digits;
+};
 const composeFullName = (firstName: string, lastName: string) =>
   [firstName, lastName].filter(Boolean).join(" ").trim();
 const OTP_LENGTH = 6;
