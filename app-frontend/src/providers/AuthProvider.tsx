@@ -67,6 +67,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAuthView(null);
     setBootstrapError(null);
     setBootstrapWarning(null);
+    // Reconcile gate flags with server truth. Previously the AppNavigator
+    // gate `(pendingSocialPhoneCollection && !user.phone)` cleared
+    // implicitly via the && short-circuit when phone became truthy, but
+    // the flag was left stuck on true for the rest of the session. That's
+    // fragile — if the gate condition ever changes (or a user clears their
+    // phone) the stale flag would mis-fire. Clear it deterministically.
+    if (normalized.phone) {
+      setPendingSocialPhoneCollection(false);
+    }
     return normalized;
   }, []);
 

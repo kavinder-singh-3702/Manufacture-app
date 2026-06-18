@@ -49,6 +49,21 @@ export const AddMobileNumberScreen = () => {
     setSubmitting(true);
     setError(null);
 
+    // Belt-and-suspenders watchdog: even with the 30s timeout in httpClient,
+    // if anything else in the await chain wedges (refreshUser, a
+    // synchronous bridge stall, etc.) the button could stay disabled
+    // forever. Force the loading state off after 35s no matter what and
+    // surface a recoverable error so the user can tap again instead of
+    // having to force-close the app.
+    const watchdog = setTimeout(() => {
+      setSubmitting((still) => {
+        if (still) {
+          setError("That took too long. Tap Save to try again.");
+        }
+        return false;
+      });
+    }, 35000);
+
     let updated: AuthUser | null = null;
     try {
       updated = await authService.updatePhone(trimmed);
@@ -82,6 +97,7 @@ export const AddMobileNumberScreen = () => {
         setError(refreshErr?.message || "Could not refresh your account.");
       }
     } finally {
+      clearTimeout(watchdog);
       setSubmitting(false);
     }
   };

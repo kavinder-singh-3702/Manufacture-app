@@ -1,4 +1,4 @@
-export type ApiErrorKind = "network" | "http" | "unknown";
+export type ApiErrorKind = "network" | "http" | "timeout" | "unknown";
 
 type ApiErrorOptions = {
   kind?: ApiErrorKind;

@@ -68,6 +68,25 @@ export class HttpClient {
       requestHeaders["Authorization"] = `Bearer ${token}`;
     }
 
+    // Compose a per-request AbortController with a 30s timeout. Without this
+    // a hung request (cold backend, lost TCP packet, JS bridge drop) just
+    // never resolves and the caller's await sits forever — most visibly
+    // observed on the AddMobileNumberScreen save flow where the user taps
+    // Save, sees nothing happen, and has to force-close the app to escape.
+    // We OR-merge the timeout signal with any externally-supplied signal so
+    // both cancel paths still work.
+    const timeoutController = new AbortController();
+    const timeoutMs = 30000;
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+    const externalAbortListener = () => timeoutController.abort();
+    if (signal) {
+      if (signal.aborted) {
+        timeoutController.abort();
+      } else {
+        signal.addEventListener("abort", externalAbortListener, { once: true });
+      }
+    }
+
     let response: Response;
     try {
       console.log(`[HTTP] ${method} ${endpoint}`, isFormData ? "(FormData)" : "");
@@ -75,24 +94,40 @@ export class HttpClient {
         method,
         headers: requestHeaders,
         body: data ? (isFormData ? (data as BodyInit) : JSON.stringify(data)) : undefined,
-        signal,
+        signal: timeoutController.signal,
         credentials: "include",
       });
       console.log(`[HTTP] Response status: ${response.status}`);
     } catch (networkError: unknown) {
-      // Network error - couldn't connect at all
+      // Distinguish a real network failure from a timeout-induced abort so
+      // the caller can surface the right message. fetch throws an
+      // AbortError when the controller fires; we treat it as a timeout
+      // rather than a generic "network failure".
       const errorMessage = networkError instanceof Error ? networkError.message : String(networkError);
-      console.error("Network error:", errorMessage, "URL:", endpoint);
-      console.error("Full error:", networkError);
+      const isAbort =
+        (networkError instanceof Error && networkError.name === "AbortError") ||
+        timeoutController.signal.aborted;
+      console.error(isAbort ? "Request timed out:" : "Network error:", errorMessage, "URL:", endpoint);
       throw new ApiError(
-        "Network request failed. Please check your connection and try again.",
+        isAbort
+          ? "Request took too long and was cancelled. Please check your connection and try again."
+          : "Network request failed. Please check your connection and try again.",
         0,
         undefined,
         {
-          kind: "network",
-          debug: { endpoint, method, networkError: errorMessage },
+          kind: isAbort ? "timeout" : "network",
+          debug: { endpoint, method, networkError: errorMessage, timedOut: isAbort },
         }
       );
+    } finally {
+      // Always clear the timeout and detach the external-abort listener,
+      // even on success — otherwise the timeout would still fire later
+      // and trying to abort an already-completed fetch is a no-op but the
+      // memory holds onto the listener.
+      clearTimeout(timeoutId);
+      if (signal) {
+        signal.removeEventListener("abort", externalAbortListener);
+      }
     }
 
     let parsedBody: unknown;
