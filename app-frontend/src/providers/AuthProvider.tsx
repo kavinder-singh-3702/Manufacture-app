@@ -61,20 +61,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [pendingSocialPhoneCollection, setPendingSocialPhoneCollection] = useState(false);
 
   const refreshUser = useCallback(async () => {
+    console.log("[AuthProvider] refreshUser: calling GET /users/me");
     const { user: currentUser } = await userService.getCurrentUser();
+    console.log("[AuthProvider] refreshUser: response phone=", currentUser?.phone, "id=", currentUser?.id);
     const normalized = normalizeUser(currentUser);
     setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
     setBootstrapWarning(null);
-    // Reconcile gate flags with server truth. Previously the AppNavigator
-    // gate `(pendingSocialPhoneCollection && !user.phone)` cleared
-    // implicitly via the && short-circuit when phone became truthy, but
-    // the flag was left stuck on true for the rest of the session. That's
-    // fragile — if the gate condition ever changes (or a user clears their
-    // phone) the stale flag would mis-fire. Clear it deterministically.
     if (normalized.phone) {
+      console.log("[AuthProvider] refreshUser: clearing pendingSocialPhoneCollection");
       setPendingSocialPhoneCollection(false);
+    } else {
+      console.log("[AuthProvider] refreshUser: NOT clearing — normalized.phone is falsy:", JSON.stringify(normalized.phone));
     }
     return normalized;
   }, []);
@@ -224,19 +223,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const setUser = useCallback((next: AuthUser | null, options?: { requiresVerification?: boolean }) => {
+    console.log("[AuthProvider] setUser called, phone=", next?.phone, "id=", next?.id, "keys=", next ? Object.keys(next) : "null");
     setUserState(next ? normalizeUser(next) : null);
     if (next) {
       setAuthView(null);
-      // If this is a signup that requires verification, set the redirect
       if (options?.requiresVerification && next.activeCompany) {
         setPendingVerificationRedirect(next.activeCompany);
       }
-      // Auto-clear the social-signup phone-collection gate once the user
-      // record carries a phone (the only way out of AddMobileNumberScreen
-      // is to either submit successfully — which updates user.phone — or
-      // log out, which we already handle in logout()).
       if (next.phone) {
+        console.log("[AuthProvider] setUser: clearing pendingSocialPhoneCollection");
         setPendingSocialPhoneCollection(false);
+      } else {
+        console.log("[AuthProvider] setUser: NOT clearing — next.phone is falsy:", JSON.stringify(next.phone));
       }
     }
   }, []);

@@ -41,6 +41,7 @@ export const AddMobileNumberScreen = () => {
 
   const handleSubmit = async () => {
     const trimmed = phone.trim();
+    console.log("[AddMobile] handleSubmit START, phone=", trimmed);
     if (!/^[0-9+]{7,15}$/.test(trimmed)) {
       setError("Use 7-15 digits, optionally starting with +");
       return;
@@ -49,56 +50,44 @@ export const AddMobileNumberScreen = () => {
     setSubmitting(true);
     setError(null);
 
-    // Belt-and-suspenders watchdog: even with the 30s timeout in httpClient,
-    // if anything else in the await chain wedges (refreshUser, a
-    // synchronous bridge stall, etc.) the button could stay disabled
-    // forever. Force the loading state off after 35s no matter what and
-    // surface a recoverable error so the user can tap again instead of
-    // having to force-close the app.
     const watchdog = setTimeout(() => {
+      console.log("[AddMobile] WATCHDOG FIRED — submit took >8s");
       setSubmitting((still) => {
         if (still) {
           setError("That took too long. Tap Save to try again.");
         }
         return false;
       });
-    }, 35000);
+    }, 8000);
 
     let updated: AuthUser | null = null;
     try {
+      console.log("[AddMobile] calling updatePhone…");
       updated = await authService.updatePhone(trimmed);
+      console.log("[AddMobile] updatePhone OK, phone=", updated?.phone, "id=", updated?.id, "keys=", updated ? Object.keys(updated) : "null");
     } catch (saveErr: any) {
-      // Surface the actual backend message (rate limit, duplicate phone,
-      // 401 stale token, etc.) so the user can act instead of staring at
-      // a silent screen. The post-save refreshUser() below ALSO runs even
-      // on this branch — if the backend in fact persisted the phone but
-      // the response was unparseable, refreshUser will pick that up and
-      // the gate will clear anyway.
+      console.log("[AddMobile] updatePhone FAILED:", saveErr?.message);
       setError(saveErr?.message || "Could not save mobile number. Try again.");
     }
 
-    // ALWAYS reconcile with server truth. setUser(updated) alone is fragile:
-    // if the response body is malformed/missing `phone`, the gate flag
-    // doesn't clear and the user stays stuck on this screen forever even
-    // though backend has saved the number. Calling refreshUser() pulls
-    // GET /users/me directly and feeds the canonical user record into
-    // AuthProvider, which then clears pendingSocialPhoneCollection and
-    // unblocks the navigator gate.
     try {
       if (updated) {
+        console.log("[AddMobile] calling setUser(updated)…");
         setUser(updated);
+        console.log("[AddMobile] setUser returned");
       }
-      await refreshUser();
+      console.log("[AddMobile] calling refreshUser()…");
+      const refreshed = await refreshUser();
+      console.log("[AddMobile] refreshUser OK, phone=", refreshed?.phone);
     } catch (refreshErr: any) {
-      // refreshUser is best-effort — if the GET fails we already have
-      // whatever updated returned (if anything). Only surface a fresh
-      // error if we don't already have one + setUser also didn't fire.
+      console.log("[AddMobile] refreshUser FAILED:", refreshErr?.message);
       if (!updated && !error) {
         setError(refreshErr?.message || "Could not refresh your account.");
       }
     } finally {
       clearTimeout(watchdog);
       setSubmitting(false);
+      console.log("[AddMobile] handleSubmit END");
     }
   };
 

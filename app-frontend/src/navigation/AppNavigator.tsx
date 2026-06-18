@@ -104,6 +104,8 @@ export const AppNavigator = () => {
   const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect, pendingSocialPhoneCollection } = useAuth();
   const { colors } = useTheme();
 
+  console.log("[AppNavigator] render: user.phone=", user?.phone, "pendingSocialPhoneCollection=", pendingSocialPhoneCollection, "gate=", !!user && pendingSocialPhoneCollection && !user.phone);
+
   const navigationTheme = useMemo(
     () => ({
       ...DefaultTheme,
