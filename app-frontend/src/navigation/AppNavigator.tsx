@@ -104,7 +104,17 @@ export const AppNavigator = () => {
   const { user, initializing, pendingVerificationRedirect, clearPendingVerificationRedirect, pendingSocialPhoneCollection } = useAuth();
   const { colors } = useTheme();
 
-  console.log("[AppNavigator] render: user.phone=", user?.phone, "pendingSocialPhoneCollection=", pendingSocialPhoneCollection, "gate=", !!user && pendingSocialPhoneCollection && !user.phone);
+  // Auth section key. Used as `key` on RootStack.Navigator to FORCE
+  // React Navigation to fully remount the navigator when transitioning
+  // between sections. Without this, conditional Stack.Screen children
+  // (auth / gate / main) sometimes don't unmount cleanly when the
+  // condition flips — observed on the Apple-signin → save-phone path
+  // where pendingSocialPhoneCollection clears + user.phone becomes
+  // truthy but AddMobileNumberScreen stayed mounted, requiring a
+  // force-quit + relaunch to land on Main. A key change is a hard
+  // remount that React Navigation cannot ignore.
+  const authSection = !user ? "auth" : (pendingSocialPhoneCollection && !user.phone) ? "gate" : "main";
+  console.log("[AppNavigator] render: user.phone=", user?.phone, "pendingSocialPhoneCollection=", pendingSocialPhoneCollection, "section=", authSection);
 
   const navigationTheme = useMemo(
     () => ({
@@ -144,7 +154,7 @@ export const AppNavigator = () => {
   return (
     <AppQueryClientProvider>
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
-      <RootStack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+      <RootStack.Navigator key={authSection} screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
           // Not authenticated: Show login/signup screens
           <RootStack.Screen name="Auth" component={AuthScreen} />
@@ -317,6 +327,18 @@ export const AppNavigator = () => {
               component={BusinessSetupRequestScreen}
               options={{ animation: "slide_from_right" }}
             />
+            {/* NOTE: This is a SECOND registration of "AddMobileNumber" —
+                the first is in the gate branch above (line 161). Both
+                registrations are intentional and must stay: the gate
+                branch handles the social-signup hard gate (no goBack),
+                this one handles the soft-banner navigation from Dashboard
+                (canGoBack = true). The duplicate route name across
+                branches is the reason the gate screen failed to unmount
+                without the `key={authSection}` on RootStack.Navigator
+                above — native-stack's child diffing kept the focused
+                route alive across the branch flip. If you ever dedupe
+                this, remove the navigator key too OR you'll re-break the
+                Apple-signin → save-phone path. */}
             <RootStack.Screen
               name="AddMobileNumber"
               component={AddMobileNumberScreen}

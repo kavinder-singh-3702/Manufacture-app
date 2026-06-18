@@ -72,8 +72,19 @@ export const AddMobileNumberScreen = () => {
 
     try {
       if (updated) {
-        console.log("[AddMobile] calling setUser(updated)…");
-        setUser(updated);
+        // Optimistically guarantee user.phone becomes truthy. Even when
+        // the response is parseable (commit cdf025c's path), we layer
+        // the trimmed phone we just sent on top — that way if any field
+        // in the response body is missing/empty the gate's `!user.phone`
+        // check still flips false. Spreading current `user` first
+        // preserves all fields the response might not echo back.
+        const withPhone: AuthUser = {
+          ...(user as AuthUser),
+          ...updated,
+          phone: updated.phone || trimmed,
+        };
+        console.log("[AddMobile] calling setUser(withPhone), phone=", withPhone.phone);
+        setUser(withPhone);
         console.log("[AddMobile] setUser returned");
       }
       console.log("[AddMobile] calling refreshUser()…");
