@@ -155,6 +155,20 @@ const resetPasswordValidation = [
     .withMessage('Password must be at least 8 characters long')
 ];
 
+const phoneChangeStartValidation = [
+  body('newPhone')
+    .trim()
+    .matches(/^[0-9+]{7,15}$/)
+    .withMessage('Mobile number must be 7-15 digits and may start with +')
+];
+
+const phoneChangeVerifyValidation = [
+  body('otp')
+    .trim()
+    .matches(/^[0-9]{6}$/)
+    .withMessage('Code must be a 6-digit number')
+];
+
 module.exports = {
   signupStartValidation,
   signupVerifyValidation,
@@ -163,5 +177,7 @@ module.exports = {
   adminCreateValidation,
   loginValidation,
   forgotPasswordValidation,
-  resetPasswordValidation
+  resetPasswordValidation,
+  phoneChangeStartValidation,
+  phoneChangeVerifyValidation
 };

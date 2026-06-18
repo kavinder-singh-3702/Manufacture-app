@@ -77,6 +77,19 @@ const resetPassword = (payload: ResetPasswordPayload) =>
 const updatePhone = (phone: string) =>
   apiClient.post<AuthUser>("/auth/profile/phone", { phone });
 
+type PhoneChangeStartResponse = {
+  message: string;
+  expiresInMs: number;
+  resendAvailableInMs?: number;
+  emailMasked?: string;
+};
+
+const startPhoneChange = (newPhone: string) =>
+  apiClient.post<PhoneChangeStartResponse>("/auth/profile/phone/change/start", { newPhone });
+
+const verifyPhoneChange = (otp: string) =>
+  apiClient.post<AuthUser>("/auth/profile/phone/change/verify", { otp });
+
 export const authService = {
   signup,
   login,
@@ -85,4 +98,6 @@ export const authService = {
   requestPasswordReset,
   resetPassword,
   updatePhone,
+  startPhoneChange,
+  verifyPhoneChange,
 };

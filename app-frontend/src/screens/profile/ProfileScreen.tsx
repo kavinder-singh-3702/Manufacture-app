@@ -11,7 +11,9 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { isAdminRole } from "../../constants/roles";
 import { userService } from "../../services/user.service";
+import { authService } from "../../services/auth.service";
 import { UpdateUserPayload, AuthUser } from "../../types/auth";
+import { OtpCodeInput } from "../../components/auth/OtpCodeInput";
 import { RootStackParamList } from "../../navigation/types";
 import { FormField } from "./components/ProfileForm";
 import { ProfileEditorModal } from "./components/ProfileEditorModal";
@@ -38,6 +40,14 @@ export const ProfileScreen = () => {
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  // Phone-change OTP sub-flow. Engaged only when the user changes the
+  // phone field in the identity editor. We send an OTP to their verified
+  // email and swap the modal body to an OTP entry step. Cancelling
+  // discards only the phone change — other identity fields are already
+  // saved to the server before the OTP step opens.
+  const [phoneOtpStep, setPhoneOtpStep] = useState<"idle" | "verifying">("idle");
+  const [phoneOtpCode, setPhoneOtpCode] = useState("");
+  const [phoneOtpPending, setPhoneOtpPending] = useState<{ newPhone: string; emailMasked?: string } | null>(null);
 
   useEffect(() => {
     setIdentityForm(createIdentityFormState(user));
@@ -74,7 +84,12 @@ export const ProfileScreen = () => {
   const closeEditor = () => {
     setActiveEditor(null);
     setEditorError(null);
+    setPhoneOtpStep("idle");
+    setPhoneOtpCode("");
+    setPhoneOtpPending(null);
   };
+
+  const PHONE_REGEX = /^[0-9+]{7,15}$/;
 
   const submitUpdate = async (payload: UpdateUserPayload) => {
     try {
@@ -93,16 +108,98 @@ export const ProfileScreen = () => {
     }
   };
 
-  const handleSaveIdentity = () => {
-    const payload: UpdateUserPayload = {
+  const handleSaveIdentity = async () => {
+    const trimmedPhone = identityForm.phone.trim();
+    const currentPhone = (user?.phone ?? "").trim();
+    const phoneChanged = trimmedPhone !== currentPhone;
+
+    // Format-validate before doing anything else. Backend also enforces
+    // this — duplicated client-side so the user sees the error inline
+    // instead of after a roundtrip.
+    if (phoneChanged && trimmedPhone && !PHONE_REGEX.test(trimmedPhone)) {
+      setEditorError("Mobile number must be 7-15 digits and may start with +");
+      return;
+    }
+
+    // Save the non-phone fields first. If the user cancels the OTP step
+    // they keep these saves; only the phone change requires verification.
+    const basePayload: UpdateUserPayload = {
       firstName: identityForm.firstName.trim() || undefined,
       lastName: identityForm.lastName.trim() || undefined,
       displayName: identityForm.displayName.trim() || undefined,
-      phone: identityForm.phone.trim() || undefined,
     };
+    if (!phoneChanged) {
+      basePayload.phone = trimmedPhone || undefined;
+    }
     const address = buildAddressPayload(identityForm);
-    if (address) payload.address = address;
-    void submitUpdate(payload);
+    if (address) basePayload.address = address;
+
+    if (!phoneChanged) {
+      void submitUpdate(basePayload);
+      return;
+    }
+
+    // Phone changed: save the rest, then start the OTP flow for the phone.
+    try {
+      setSaving(true);
+      setEditorError(null);
+      await userService.updateCurrentUser(basePayload);
+      const startResult = await authService.startPhoneChange(trimmedPhone);
+      setPhoneOtpPending({ newPhone: trimmedPhone, emailMasked: startResult.emailMasked });
+      setPhoneOtpCode("");
+      setPhoneOtpStep("verifying");
+      // refreshUser pulls in the non-phone saves so if the user cancels
+      // the OTP step, they still see the firstName/etc updates.
+      await refreshUser();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start phone change";
+      setEditorError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtpPending) return;
+    if (!/^[0-9]{6}$/.test(phoneOtpCode)) {
+      setEditorError("Enter the 6-digit code from your email");
+      return;
+    }
+    try {
+      setSaving(true);
+      setEditorError(null);
+      const updated = await authService.verifyPhoneChange(phoneOtpCode);
+      // Optimistic + server-truth refresh, same belt-and-suspenders pattern
+      // as the social-signup gate fix.
+      if (updated && user) {
+        setUser({ ...user, ...updated, phone: updated.phone || phoneOtpPending.newPhone });
+      }
+      await refreshUser();
+      setBanner({ type: "success", message: "Mobile number updated." });
+      closeEditor();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Verification failed";
+      setEditorError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResendPhoneOtp = async () => {
+    if (!phoneOtpPending) return;
+    try {
+      setSaving(true);
+      setEditorError(null);
+      const startResult = await authService.startPhoneChange(phoneOtpPending.newPhone);
+      setPhoneOtpPending({ newPhone: phoneOtpPending.newPhone, emailMasked: startResult.emailMasked });
+      setPhoneOtpCode("");
+      setBanner({ type: "success", message: "A new code was sent to your email." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not resend code";
+      setEditorError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveProfessional = () => {
@@ -330,23 +427,47 @@ export const ProfileScreen = () => {
       </ScrollView>
 
       <ProfileEditorModal
-        title="Edit Personal Info"
+        title={phoneOtpStep === "verifying" ? "Verify mobile number" : "Edit Personal Info"}
         visible={activeEditor === "identity"}
         onClose={closeEditor}
-        onSubmit={handleSaveIdentity}
+        onSubmit={phoneOtpStep === "verifying" ? handleVerifyPhoneOtp : handleSaveIdentity}
         saving={saving}
         error={editorError}
       >
-        <FormField label="First name" value={identityForm.firstName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, firstName: v }))} />
-        <FormField label="Last name" value={identityForm.lastName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, lastName: v }))} />
-        <FormField label="Display name" value={identityForm.displayName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, displayName: v }))} />
-        <FormField label="Phone" value={identityForm.phone} onChangeText={(v) => setIdentityForm((p) => ({ ...p, phone: v }))} keyboardType="phone-pad" />
-        <FormField label="Address line 1" value={identityForm.line1} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line1: v }))} />
-        <FormField label="Address line 2" value={identityForm.line2} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line2: v }))} />
-        <FormField label="City" value={identityForm.city} onChangeText={(v) => setIdentityForm((p) => ({ ...p, city: v }))} />
-        <FormField label="State" value={identityForm.state} onChangeText={(v) => setIdentityForm((p) => ({ ...p, state: v }))} />
-        <FormField label="Postal code" value={identityForm.postalCode} onChangeText={(v) => setIdentityForm((p) => ({ ...p, postalCode: v }))} keyboardType="numbers-and-punctuation" />
-        <FormField label="Country" value={identityForm.country} onChangeText={(v) => setIdentityForm((p) => ({ ...p, country: v }))} />
+        {phoneOtpStep === "verifying" ? (
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 14, color: colors.text }}>
+              We sent a 6-digit code to{" "}
+              <Text style={{ fontWeight: "700" }}>{phoneOtpPending?.emailMasked || user?.email || "your email"}</Text>
+              {". "}
+              Enter it below to confirm changing your mobile number to{" "}
+              <Text style={{ fontWeight: "700" }}>{phoneOtpPending?.newPhone}</Text>.
+            </Text>
+            <OtpCodeInput
+              value={phoneOtpCode}
+              onChange={(next) => {
+                setPhoneOtpCode(next);
+                if (editorError) setEditorError(null);
+              }}
+            />
+            <TouchableOpacity onPress={handleResendPhoneOtp} disabled={saving} style={{ alignSelf: "flex-start", paddingVertical: 8 }}>
+              <Text style={{ color: colors.primary, fontWeight: "700", opacity: saving ? 0.5 : 1 }}>Resend code</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <FormField label="First name" value={identityForm.firstName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, firstName: v }))} />
+            <FormField label="Last name" value={identityForm.lastName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, lastName: v }))} />
+            <FormField label="Display name" value={identityForm.displayName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, displayName: v }))} />
+            <FormField label="Phone" value={identityForm.phone} onChangeText={(v) => setIdentityForm((p) => ({ ...p, phone: v }))} keyboardType="phone-pad" helperText="Changing phone sends a code to your email to confirm." />
+            <FormField label="Address line 1" value={identityForm.line1} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line1: v }))} />
+            <FormField label="Address line 2" value={identityForm.line2} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line2: v }))} />
+            <FormField label="City" value={identityForm.city} onChangeText={(v) => setIdentityForm((p) => ({ ...p, city: v }))} />
+            <FormField label="State" value={identityForm.state} onChangeText={(v) => setIdentityForm((p) => ({ ...p, state: v }))} />
+            <FormField label="Postal code" value={identityForm.postalCode} onChangeText={(v) => setIdentityForm((p) => ({ ...p, postalCode: v }))} keyboardType="numbers-and-punctuation" />
+            <FormField label="Country" value={identityForm.country} onChangeText={(v) => setIdentityForm((p) => ({ ...p, country: v }))} />
+          </>
+        )}
       </ProfileEditorModal>
 
       <ProfileEditorModal
