@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
@@ -77,6 +77,15 @@ export const CompanyVerificationWidget: React.FC<Props> = ({ companyId }) => {
   };
 
   const handlePress = () => {
+    // Block normal accounts from opening the verification screen.
+    // Mirrors the gate in CompanyProfileScreen.openVerification.
+    if (company?.type === 'normal') {
+      Alert.alert(
+        'Verification not available',
+        'Only trader or manufacturer companies can request verification.'
+      );
+      return;
+    }
     navigation.navigate('CompanyVerification', { companyId });
   };
 

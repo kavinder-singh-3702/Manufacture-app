@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -160,8 +161,20 @@ export const CompanyProfileScreen = () => {
       return;
     }
 
+    // Only business accounts can request verification. Normal accounts
+    // never go through the doc-upload + compliance review flow, so the
+    // screen is irrelevant — block it with a popup instead of letting
+    // them navigate to an empty/confusing form.
+    if (company?.type === "normal") {
+      Alert.alert(
+        "Verification not available",
+        "Only trader or manufacturer companies can request verification."
+      );
+      return;
+    }
+
     navigation.push("CompanyVerification", { companyId });
-  }, [companyId, navigation]);
+  }, [companyId, navigation, company?.type]);
 
   const handleUploadLogo = async () => {
     if (!company?.id || !canEdit) return;
