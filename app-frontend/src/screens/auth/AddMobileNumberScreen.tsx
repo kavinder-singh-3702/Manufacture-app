@@ -19,6 +19,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useAuth } from "../../hooks/useAuth";
 import { authService } from "../../services/auth.service";
+import type { AuthUser } from "../../types/auth";
 
 export const AddMobileNumberScreen = () => {
   const { colors } = useTheme();
@@ -32,7 +33,7 @@ export const AddMobileNumberScreen = () => {
   // the stack (the social-signup gate path), there's no goBack target and
   // we only show "Sign out" as the escape hatch.
   const canDismiss = navigation.canGoBack();
-  const { user, setUser, logout } = useAuth();
+  const { user, setUser, logout, refreshUser } = useAuth();
 
   const [phone, setPhone] = useState(user?.phone || "");
   const [submitting, setSubmitting] = useState(false);
@@ -45,16 +46,41 @@ export const AddMobileNumberScreen = () => {
       return;
     }
 
+    setSubmitting(true);
+    setError(null);
+
+    let updated: AuthUser | null = null;
     try {
-      setSubmitting(true);
-      setError(null);
-      const updated = await authService.updatePhone(trimmed);
-      // No navigation call needed — AppNavigator's hard phone gate falls
-      // through to Main as soon as user.phone is populated. Less surface
-      // for race conditions / Alert dismiss flake.
-      setUser(updated);
-    } catch (err: any) {
-      setError(err?.message || "Could not save mobile number. Try again.");
+      updated = await authService.updatePhone(trimmed);
+    } catch (saveErr: any) {
+      // Surface the actual backend message (rate limit, duplicate phone,
+      // 401 stale token, etc.) so the user can act instead of staring at
+      // a silent screen. The post-save refreshUser() below ALSO runs even
+      // on this branch — if the backend in fact persisted the phone but
+      // the response was unparseable, refreshUser will pick that up and
+      // the gate will clear anyway.
+      setError(saveErr?.message || "Could not save mobile number. Try again.");
+    }
+
+    // ALWAYS reconcile with server truth. setUser(updated) alone is fragile:
+    // if the response body is malformed/missing `phone`, the gate flag
+    // doesn't clear and the user stays stuck on this screen forever even
+    // though backend has saved the number. Calling refreshUser() pulls
+    // GET /users/me directly and feeds the canonical user record into
+    // AuthProvider, which then clears pendingSocialPhoneCollection and
+    // unblocks the navigator gate.
+    try {
+      if (updated) {
+        setUser(updated);
+      }
+      await refreshUser();
+    } catch (refreshErr: any) {
+      // refreshUser is best-effort — if the GET fails we already have
+      // whatever updated returned (if anything). Only surface a fresh
+      // error if we don't already have one + setUser also didn't fire.
+      if (!updated && !error) {
+        setError(refreshErr?.message || "Could not refresh your account.");
+      }
     } finally {
       setSubmitting(false);
     }
