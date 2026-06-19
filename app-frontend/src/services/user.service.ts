@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system/legacy";
 import { apiClient } from "./apiClient";
 import { AuthUser, UpdateUserPayload } from "../types/auth";
 import { UploadedFile } from "../types/uploads";
@@ -12,16 +13,22 @@ const updateCurrentUser = (payload: UpdateUserPayload) =>
   apiClient.patch<UserResponse>("/users/me", payload);
 
 const uploadUserFile = async (payload: { fileName: string; mimeType?: string; uri: string; purpose?: string }) => {
-  const response = await fetch(payload.uri);
-  const blob = await response.blob();
+  // Backend expects JSON { fileName, mimeType, content (base64), purpose }
+  // via express-validator's `body('content').isString().notEmpty()`. The
+  // previous FormData/blob path silently dropped `content`, so the
+  // validator failed with "Base64 content is required" the moment a
+  // user tried to upload a company logo (or avatar). Read the local
+  // file as base64 and send it inline.
+  const content = await FileSystem.readAsStringAsync(payload.uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
 
-  const form = new FormData();
-  form.append("file", blob, payload.fileName);
-  if (payload.purpose) {
-    form.append("purpose", payload.purpose);
-  }
-
-  return apiClient.post<{ file: UploadedFile }>("/users/me/uploads", form);
+  return apiClient.post<{ file: UploadedFile }>("/users/me/uploads", {
+    fileName: payload.fileName,
+    mimeType: payload.mimeType,
+    content,
+    purpose: payload.purpose,
+  });
 };
 
 export const userService = {
