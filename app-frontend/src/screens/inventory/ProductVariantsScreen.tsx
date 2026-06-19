@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -164,6 +165,42 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading variants...</Text>
         </View>
+      ) : variants.length === 0 ? (
+        // Empty state rendered OUTSIDE the FlatList. Previously this lived in
+        // ListEmptyComponent which on iOS can swallow taps on the CTA button
+        // (admin reported "Create first variant" was unreactable). As a plain
+        // ScrollView'd View the TouchableOpacity gets the press cleanly.
+        <ScrollView
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        >
+          {error ? (
+            <View style={[styles.errorBox, { borderColor: colors.error + "55", backgroundColor: colors.error + "14", borderRadius: radius.md }]}>
+              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+              <TouchableOpacity onPress={loadVariants}>
+                <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <View style={[styles.emptyWrap, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
+            <Ionicons name="albums-outline" size={32} color={colors.textMuted} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No variants yet</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+              {isReadOnly
+                ? "This product has no variants."
+                : "Add options like size, weight, or packaging to manage pricing precisely."}
+            </Text>
+            {!isReadOnly && (
+              <TouchableOpacity
+                onPress={openCreate}
+                hitSlop={10}
+                style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}
+              >
+                <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary }]}>Create first variant</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={variants}
@@ -178,22 +215,6 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
           )}
           contentContainerStyle={{ padding: spacing.md, gap: spacing.sm, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-          ListEmptyComponent={
-            <View style={[styles.emptyWrap, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}>
-              <Ionicons name="albums-outline" size={32} color={colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No variants yet</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                {isReadOnly
-                  ? "This product has no variants."
-                  : "Add options like size, weight, or packaging to manage pricing precisely."}
-              </Text>
-              {!isReadOnly && (
-                <TouchableOpacity onPress={openCreate} style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md }]}>
-                  <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary }]}>Create first variant</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          }
           ListHeaderComponent={
             error ? (
               <View style={[styles.errorBox, { borderColor: colors.error + "55", backgroundColor: colors.error + "14", borderRadius: radius.md }]}>
