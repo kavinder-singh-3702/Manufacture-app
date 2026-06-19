@@ -377,55 +377,6 @@ ${appName} Team
   });
 };
 
-const sendPhoneChangeOtpEmail = async ({ to, fullName, otp, newPhone, expiresInMs }) => {
-  const appName = getAppName();
-  const safeName = toSafeString(fullName) || 'there';
-  const safeOtp = toSafeString(otp);
-  const safePhone = toSafeString(newPhone);
-  const expiresInMinutes = Math.max(1, Math.ceil(Number(expiresInMs || 0) / 60000));
-  const subject = `${appName} mobile number change code`;
-
-  const text = `
-Hi ${safeName},
-
-Someone (hopefully you) is trying to change the mobile number on your ${appName} account to ${safePhone}.
-
-Use this verification code to confirm the change:
-
-${safeOtp}
-
-This code expires in ${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}.
-
-If you did not request this change, ignore this email and your existing mobile number stays unchanged.
-
-Regards,
-${appName} Team
-  `.trim();
-
-  const html = buildEmailLayout({
-    preheader: 'Confirm your mobile number change',
-    title: 'Confirm mobile number change',
-    subtitle: `Verify the change request from your ${appName} account`,
-    bodyHtml: `
-      <p style="margin: 0;">Hi <strong>${escapeHtml(safeName)}</strong>,</p>
-      <p style="margin: 14px 0 0;">Someone (hopefully you) is trying to change the mobile number on your ${escapeHtml(appName)} account to <strong>${escapeHtml(safePhone)}</strong>.</p>
-      <p style="margin: 10px 0 0;">Use this verification code to confirm the change.</p>
-      ${buildOtpCodePanel(safeOtp)}
-      <p style="margin: 0;">This code expires in <strong>${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}</strong>.</p>
-      <p style="margin: 10px 0 0; color: ${EMAIL_STYLES.mutedText};">If you did not request this change, ignore this email and your existing mobile number stays unchanged.</p>
-    `,
-    ctaLabel: `Open ${appName}`,
-    ctaHref: config.appUrl
-  });
-
-  return sendEmail({
-    to,
-    subject,
-    text,
-    html
-  });
-};
-
 const sendBusinessSetupSubmissionEmail = async ({
   to,
   contactName,
@@ -565,7 +516,6 @@ module.exports = {
   sendEmail,
   sendDocumentRequestEmail,
   sendSignupOtpEmail,
-  sendPhoneChangeOtpEmail,
   sendBusinessSetupSubmissionEmail,
   sendBusinessSetupStatusEmail,
   verifyConnection

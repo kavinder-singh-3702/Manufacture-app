@@ -1,13 +1,7 @@
 const { Router } = require('express');
 const { createAdmin } = require('../controllers/admin.controller');
 const { beginSignup, verifyOtp, saveContact, finalizeSignup } = require('../controllers/signup.controller');
-const {
-  loginUser,
-  logoutUser,
-  updatePhoneController,
-  startPhoneChangeController,
-  verifyPhoneChangeController
-} = require('../controllers/session.controller');
+const { loginUser, logoutUser, updatePhoneController } = require('../controllers/session.controller');
 const { appleSignInController } = require('../controllers/appleSignIn.controller');
 const {
   requestPasswordResetController,
@@ -23,9 +17,7 @@ const {
   adminCreateValidation,
   loginValidation,
   forgotPasswordValidation,
-  resetPasswordValidation,
-  phoneChangeStartValidation,
-  phoneChangeVerifyValidation
+  resetPasswordValidation
 } = require('../validators/auth.validators');
 
 const router = Router();
@@ -41,8 +33,6 @@ router.post('/logout', logoutUser);
 router.post('/password/forgot', validate(forgotPasswordValidation), requestPasswordResetController);
 router.post('/password/reset', validate(resetPasswordValidation), resetPasswordController);
 router.post('/profile/phone', authenticate, updatePhoneController);
-router.post('/profile/phone/change/start', authenticate, validate(phoneChangeStartValidation), startPhoneChangeController);
-router.post('/profile/phone/change/verify', authenticate, validate(phoneChangeVerifyValidation), verifyPhoneChangeController);
 
 // Public — returns the canonical support-admin user id used by the
 // frontend SupportFab to start support conversations. Sourced from

@@ -3,10 +3,6 @@ const {
   loginWithPassword,
   logout,
 } = require("../services/session-auth.service");
-const {
-  startPhoneChange,
-  verifyPhoneChange
-} = require("../services/phoneChange.service");
 const { signToken } = require("../../../utils/token");
 const User = require("../../../models/user.model");
 const { buildUserResponse } = require("../utils/response.util");
@@ -63,32 +59,8 @@ const updatePhoneController = async (req, res, next) => {
   }
 };
 
-const startPhoneChangeController = async (req, res, next) => {
-  try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) throw createError(401, "Authentication required");
-    const result = await startPhoneChange(req.body, req.session, userId);
-    return res.json(result);
-  } catch (error) {
-    return next(error);
-  }
-};
-
-const verifyPhoneChangeController = async (req, res, next) => {
-  try {
-    const userId = req.user?.id || req.user?._id;
-    if (!userId) throw createError(401, "Authentication required");
-    const user = await verifyPhoneChange(req.body, req.session, userId);
-    return res.json(user);
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   loginUser,
   logoutUser,
   updatePhoneController,
-  startPhoneChangeController,
-  verifyPhoneChangeController,
 };
