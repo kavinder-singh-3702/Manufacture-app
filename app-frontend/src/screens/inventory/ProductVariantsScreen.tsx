@@ -74,7 +74,6 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
   }, [loadVariants]);
 
   const openCreate = () => {
-    console.log("[Variants] openCreate fired");
     setEditingVariant(null);
     setFormVisible(true);
   };
@@ -199,7 +198,7 @@ export const ProductVariantsScreen = ({ mode = "company" }: ProductVariantsScree
                 style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: radius.md, minWidth: 200 }]}
               >
                 <Text style={[styles.emptyBtnText, { color: colors.textOnPrimary, textAlign: "center" }]}>
-                  ▶ Create first variant
+                  Create first variant
                 </Text>
               </TouchableOpacity>
             )}

@@ -234,7 +234,14 @@ const styles = StyleSheet.create({
   },
   sheet: {
     borderTopWidth: 1,
-    maxHeight: "88%",
+    // Explicit height — NOT just maxHeight. With maxHeight alone, the
+    // KeyboardAvoidingView sized to its content (header + footer); the
+    // inner ScrollView's `flex: 1` then had no parent height to fill and
+    // collapsed to zero. Result: the sheet appeared as just the title +
+    // submit button with no form fields. Admin reported "just a
+    // clickable label and nothing else". Setting an explicit height
+    // gives the ScrollView the space it needs.
+    height: "85%",
     flexDirection: "column",
   },
   header: {
