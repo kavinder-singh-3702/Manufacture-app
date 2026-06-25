@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { AuthUser, LoginPayload } from "../types/auth";
@@ -14,6 +15,7 @@ import { authService } from "../services/auth";
 import { userService } from "../services/user";
 import { companyService } from "../services/company";
 import { ApiError } from "../lib/api-error";
+import { setUnauthorizedHandler } from "../lib/http-client";
 
 export type AuthView = "intro" | "login" | "signup";
 
@@ -37,6 +39,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [initializing, setInitializing] = useState(true);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [activeAuthView, setActiveAuthView] = useState<AuthView>("intro");
+
+  // Mirror the user into a ref so the global 401 handler (registered once) can
+  // read the latest value without re-registering on every user change.
+  const userRef = useRef<AuthUser | null>(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  // React to session expiry from anywhere: if a request 401s while we believe a
+  // user is signed in, drop the session and send protected views to sign-in.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (!userRef.current) return; // bad-login / bootstrap 401s are handled locally
+      userRef.current = null;
+      setUser(null);
+      setActiveAuthView("login");
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (path.startsWith("/dashboard") || path.startsWith("/admin")) {
+          const next = encodeURIComponent(path + window.location.search);
+          window.location.assign(`/signin?next=${next}`);
+        }
+      }
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const refreshUser = useCallback(async () => {
     try {
