@@ -6,6 +6,7 @@ const { connectRedis, disconnectRedis } = require('./config/redis');
 const createLogger = require('./utils/logger');
 const { initSocket } = require('./socket');
 const { startNotificationDispatcher, stopNotificationDispatcher } = require('./modules/notifications/services/notificationDispatcher.service');
+const { startAdScheduler, stopAdScheduler } = require('./modules/ads/services/adScheduler.service');
 const { assertStorageConfig } = require('./config/startupValidation');
 
 const logger = createLogger('server');
@@ -36,6 +37,8 @@ const start = async () => {
     if (isDispatcherLeader) {
       startNotificationDispatcher();
       logger.info('Notification dispatcher started on this process');
+      startAdScheduler();
+      logger.info('Ad campaign scheduler started on this process');
     } else {
       logger.info(`Notification dispatcher disabled on worker instance ${process.env.NODE_APP_INSTANCE}`);
     }
@@ -56,6 +59,7 @@ const shutdown = async (signal) => {
   }
   if (isDispatcherLeader) {
     stopNotificationDispatcher();
+    stopAdScheduler();
   }
   await disconnectRedis();
   await disconnectDatabase();

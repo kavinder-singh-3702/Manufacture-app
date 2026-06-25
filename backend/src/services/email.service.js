@@ -218,9 +218,10 @@ const initTransporter = () => {
   return transporter;
 };
 
-const sendEmail = async ({ to, subject, text, html }) => {
+const sendEmail = async ({ to, subject, text, html, replyTo }) => {
   const recipient = toSafeString(to);
   const normalizedSubject = toSafeString(subject);
+  const normalizedReplyTo = toSafeString(replyTo);
 
   if (!recipient) {
     return buildFailureResult({
@@ -256,7 +257,8 @@ const sendEmail = async ({ to, subject, text, html }) => {
       to: recipient,
       subject: normalizedSubject,
       text: text || '',
-      html: html || text || ''
+      html: html || text || '',
+      ...(normalizedReplyTo ? { replyTo: normalizedReplyTo } : {})
     });
 
     return buildSuccessResult({
@@ -512,11 +514,58 @@ const verifyConnection = async () => {
   }
 };
 
+const sendContactMessageEmail = async ({ name, email, company, topic, message }) => {
+  const appName = getAppName();
+  const safeName = toSafeString(name) || 'Someone';
+  const safeEmail = toSafeString(email);
+  const safeCompany = toSafeString(company);
+  const safeTopic = toSafeString(topic) || 'General enquiry';
+  const safeMessage = toSafeString(message);
+  const subject = `[Contact · ${safeTopic}] ${safeName}`;
+
+  const text = `
+New contact message from ${appName}.
+
+Name: ${safeName}
+Email: ${safeEmail}
+${safeCompany ? `Company: ${safeCompany}\n` : ''}Topic: ${safeTopic}
+
+Message:
+${safeMessage}
+  `.trim();
+
+  const detailsHtml = [
+    `<p style="margin: 0;"><strong>Name:</strong> ${escapeHtml(safeName)}</p>`,
+    `<p style="margin: 8px 0 0;"><strong>Email:</strong> ${escapeHtml(safeEmail)}</p>`,
+    safeCompany ? `<p style="margin: 8px 0 0;"><strong>Company:</strong> ${escapeHtml(safeCompany)}</p>` : '',
+    `<p style="margin: 8px 0 0;"><strong>Topic:</strong> ${escapeHtml(safeTopic)}</p>`,
+  ].join('');
+
+  const html = buildEmailLayout({
+    preheader: `New contact message from ${safeName}`,
+    title: 'New contact message',
+    subtitle: safeTopic,
+    bodyHtml: `
+      ${buildPanel({ title: 'From', contentHtml: detailsHtml })}
+      ${buildPanel({ title: 'Message', contentHtml: `<p style="margin: 0; white-space: pre-wrap;">${escapeHtml(safeMessage)}</p>` })}
+    `,
+  });
+
+  return sendEmail({
+    to: config.supportEmail,
+    subject,
+    text,
+    html,
+    replyTo: safeEmail || undefined,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendDocumentRequestEmail,
   sendSignupOtpEmail,
   sendBusinessSetupSubmissionEmail,
   sendBusinessSetupStatusEmail,
+  sendContactMessageEmail,
   verifyConnection
 };

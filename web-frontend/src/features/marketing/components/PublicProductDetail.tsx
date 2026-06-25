@@ -7,7 +7,7 @@ import { productService } from "@/src/services/product";
 import { chatService } from "@/src/services/chat";
 import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
-import { formatCurrency, getCategoryMeta, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
+import { formatCurrency, getCategoryMeta, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
 import { VariantSelector, type SelectedVariant } from "@/src/features/product/components/VariantSelector";
 import { ProductInquiryForm } from "@/src/features/product/components/ProductInquiryForm";
 import { RelatedProducts } from "@/src/features/product/components/RelatedProducts";
@@ -166,6 +166,12 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
     ? selectedVariant.variant.availableQuantity
     : product.availableQuantity;
   const activeUnit = activePrice?.unit ?? product.price.unit;
+  // Buyer-facing stock: status only (no exact quantity). Buyers contact the
+  // seller to ask about quantity & pricing — mirrors the app's public listing.
+  const buyerStock = getBuyerStock(
+    selectedVariant ? undefined : product.stockStatus,
+    activeStock
+  );
 
   return (
     <div className="mx-auto max-w-[1200px] px-6 py-8 lg:px-10">
@@ -192,9 +198,9 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
           whileTap={{ scale: 0.95 }}
           className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
           style={{
-            border: "1px solid var(--border)",
-            backgroundColor: copied ? "#DCFCE7" : "var(--surface)",
-            color: copied ? "#15803D" : "var(--foreground)",
+            border: `1px solid ${copied ? "color-mix(in srgb, var(--success) 30%, transparent)" : "var(--border)"}`,
+            backgroundColor: copied ? "color-mix(in srgb, var(--success) 13%, transparent)" : "var(--surface)",
+            color: copied ? "var(--success)" : "var(--foreground)",
           }}>
           {copied ? "✓ Copied!" : (
             <>
@@ -344,19 +350,18 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
                 </div>
               )}
 
-              {/* Availability */}
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
-                style={{
-                  backgroundColor: activeStock > 0 ? "#DCFCE7" : "#FEE2E2",
-                  border: `1px solid ${activeStock > 0 ? "#BBF7D0" : "#FCA5A5"}`,
-                }}>
-                <span>{activeStock > 0 ? "✅" : "❌"}</span>
-                <p className="text-xs font-semibold"
-                  style={{ color: activeStock > 0 ? "#15803D" : "#991B1B" }}>
-                  {activeStock > 0
-                    ? `${activeStock.toLocaleString("en-IN")} ${activeUnit ?? "units"} available`
-                    : "Currently out of stock"}
-                </p>
+              {/* Availability — status only; buyers contact for exact quantity */}
+              <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
+                style={{ backgroundColor: buyerStock.bg, border: `1px solid ${buyerStock.border}` }}>
+                <span className="leading-none">{buyerStock.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold" style={{ color: buyerStock.fg }}>
+                    {buyerStock.label}
+                  </p>
+                  <p className="text-[11px] leading-snug" style={{ color: "var(--medium-gray)" }}>
+                    {buyerStock.hint}
+                  </p>
+                </div>
               </div>
 
               {/* Inquiry sent confirmation */}
@@ -364,10 +369,13 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
                 {inquirySent && (
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="rounded-2xl p-4 text-center"
-                    style={{ backgroundColor: "#DCFCE7", border: "1px solid #BBF7D0" }}>
+                    style={{
+                      backgroundColor: "color-mix(in srgb, var(--success) 13%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--success) 30%, transparent)",
+                    }}>
                     <p className="text-2xl mb-1">✅</p>
-                    <p className="text-sm font-bold" style={{ color: "#15803D" }}>Inquiry sent!</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#166534" }}>
+                    <p className="text-sm font-bold" style={{ color: "var(--success)" }}>Inquiry sent!</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--medium-gray)" }}>
                       The seller will contact you soon.
                     </p>
                   </motion.div>
@@ -385,9 +393,15 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg"
                         style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>💬</span>
                       <div>
-                        <p className="text-sm font-bold text-left">Inquire to buy</p>
+                        <p className="text-sm font-bold text-left">
+                          {buyerStock.available ? "Inquire to buy" : "Ask about availability"}
+                        </p>
                         <p className="text-xs opacity-75 text-left">
-                          {selectedVariant ? `For: ${selectedVariant.variant.name}` : "Get pricing, MOQ & delivery info"}
+                          {selectedVariant
+                            ? `For: ${selectedVariant.variant.name}`
+                            : buyerStock.available
+                              ? "Get quantity, pricing & delivery info"
+                              : "Request quantity & restocking details"}
                         </p>
                       </div>
                     </button>
@@ -435,15 +449,18 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
             {!user && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="rounded-2xl p-4 text-center"
-                style={{ border: "1px solid rgba(124,58,237,0.2)", background: "linear-gradient(135deg, #F5F3FF 0%, #EEF2FF 100%)" }}>
-                <p className="text-xs font-semibold" style={{ color: "#6D28D9" }}>
+                style={{
+                  border: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)",
+                  background: "linear-gradient(135deg, var(--primary-light) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 100%)",
+                }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--primary-dark)" }}>
                   Sign in for faster checkout, order tracking & verified seller access
                 </p>
                 <div className="mt-2 flex gap-2 justify-center">
                   <Link href={`/signin?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-bold text-white"
-                    style={{ backgroundColor: "#7C3AED" }}>Sign in</Link>
+                    style={{ backgroundColor: "var(--primary)" }}>Sign in</Link>
                   <Link href={`/signup?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                    style={{ border: "1px solid #DDD6FE", color: "#6D28D9" }}>Register free</Link>
+                    style={{ border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)", color: "var(--primary-dark)" }}>Register free</Link>
                 </div>
               </motion.div>
             )}

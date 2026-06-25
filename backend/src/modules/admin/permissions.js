@@ -23,6 +23,8 @@ const ADMIN_PERMISSIONS = Object.freeze({
   HARD_DELETE_COMPANY: 'admin.mutate.hard-delete-company',
   READ_PRODUCT_INQUIRIES: 'admin.read.product-inquiries',
   MUTATE_PRODUCT_INQUIRIES: 'admin.mutate.product-inquiries',
+  READ_CONTACT_MESSAGES: 'admin.read.contact-messages',
+  MUTATE_CONTACT_MESSAGES: 'admin.mutate.contact-messages',
 });
 
 const PERMISSIONS_BY_ROLE = Object.freeze({
@@ -46,6 +48,8 @@ const PERMISSIONS_BY_ROLE = Object.freeze({
     ADMIN_PERMISSIONS.REQUEST_COMPANY_DOCUMENTS,
     ADMIN_PERMISSIONS.READ_PRODUCT_INQUIRIES,
     ADMIN_PERMISSIONS.MUTATE_PRODUCT_INQUIRIES,
+    ADMIN_PERMISSIONS.READ_CONTACT_MESSAGES,
+    ADMIN_PERMISSIONS.MUTATE_CONTACT_MESSAGES,
   ]),
   'super-admin': new Set(Object.values(ADMIN_PERMISSIONS))
 });

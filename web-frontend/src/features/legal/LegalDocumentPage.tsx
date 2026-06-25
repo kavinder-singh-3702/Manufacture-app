@@ -15,7 +15,7 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
       className="sticky top-0 z-20 backdrop-blur-md"
       style={{
         borderBottom: "1px solid var(--border)",
-        backgroundColor: "rgba(248,250,251,0.92)",
+        backgroundColor: "color-mix(in srgb, var(--background) 82%, transparent)",
         boxShadow: "0 1px 0 var(--border), 0 4px 20px rgba(20,141,178,0.05)",
       }}
     >

@@ -2,6 +2,7 @@ import { createContext, ReactNode, useCallback, useMemo, useRef, useState } from
 import { Product, productService } from "../services/product.service";
 import { productVariantService } from "../services/productVariant.service";
 import { preferenceService } from "../services/preference.service";
+import { crossSellEvents } from "../services/cartCrossSell.events";
 
 export type CartVariantSnapshot = {
   id: string;
@@ -97,6 +98,13 @@ export const CartProvider = ({ children }: CartProviderProps) => {
           variantTitle: variant?.title,
         },
       } as any);
+
+      // Signal the global cross-sell host so it can surface a same-category ad.
+      crossSellEvents.emit({
+        productId: item._id,
+        category: item.category,
+        subCategory: item.subCategory,
+      });
     },
     [logEventSafe]
   );

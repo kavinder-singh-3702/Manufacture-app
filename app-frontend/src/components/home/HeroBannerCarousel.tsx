@@ -49,7 +49,7 @@ type HeroBannerCarouselProps = {
   onMessagePress?: (card: AdFeedCard) => void;
 };
 
-const BannerVideo = ({ uri, shouldPlay }: { uri: string; shouldPlay: boolean }) => {
+const BannerVideo = ({ uri, poster, shouldPlay }: { uri: string; poster?: string; shouldPlay: boolean }) => {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
     p.muted = true;
@@ -65,12 +65,18 @@ const BannerVideo = ({ uri, shouldPlay }: { uri: string; shouldPlay: boolean }) 
   }, [shouldPlay, player]);
 
   return (
-    <VideoView
-      player={player}
-      style={StyleSheet.absoluteFill}
-      contentFit="cover"
-      nativeControls={false}
-    />
+    <>
+      {/* Poster sits behind the video so viewers see an image instantly while it loads. */}
+      {poster ? (
+        <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : null}
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+      />
+    </>
   );
 };
 
@@ -244,6 +250,8 @@ export const HeroBannerCarousel = ({
 
     // Full banner image mode (admin uploaded a banner)
     if (hasFullBanner || (isVideoMedia(card) && card.bannerVideoUrl)) {
+      const poster = card.bannerPosterUrl || card.bannerImageUrl || productImage;
+      const isActive = index === activeIndex;
       return (
         <TouchableOpacity
           key={slide.id}
@@ -252,10 +260,14 @@ export const HeroBannerCarousel = ({
           style={{ width, height: bannerHeight }}
         >
           {isVideoMedia(card) && card.bannerVideoUrl ? (
-            <BannerVideo
-              uri={card.bannerVideoUrl}
-              shouldPlay={index === activeIndex}
-            />
+            // Data-saver: only the visible slide loads the video; others show the poster.
+            isActive ? (
+              <BannerVideo uri={card.bannerVideoUrl} poster={poster} shouldPlay />
+            ) : poster ? (
+              <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            ) : (
+              <BannerVideo uri={card.bannerVideoUrl} poster={poster} shouldPlay={false} />
+            )
           ) : (
             <Image
               source={{ uri: bannerImage! }}

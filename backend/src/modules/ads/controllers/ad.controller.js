@@ -17,7 +17,10 @@ const getAdFeedController = async (req, res, next) => {
     const feed = await getFeed({
       userId: req.user?.id,
       placement: req.query.placement,
-      limit: req.query.limit
+      limit: req.query.limit,
+      matchCategory: req.query.category,
+      matchSubCategory: req.query.subCategory,
+      excludeProductId: req.query.excludeProductId
     });
     return res.json(feed);
   } catch (error) {
@@ -123,7 +126,9 @@ const pauseCampaignController = async (req, res, next) => {
 const getCampaignInsightsController = async (req, res, next) => {
   try {
     const insights = await getCampaignInsights({
-      campaignId: req.params.campaignId
+      campaignId: req.params.campaignId,
+      from: req.query.from,
+      to: req.query.to
     });
     if (!insights) {
       return next(createError(404, 'Campaign not found'));

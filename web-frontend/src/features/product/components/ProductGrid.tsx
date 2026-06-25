@@ -155,6 +155,7 @@ export const ProductGrid = ({
   onClearFilters,
   onSwitchToMarketplace,
   companyName,
+  buyerView = false,
 }: {
   products: Product[];
   loading: boolean;
@@ -169,6 +170,8 @@ export const ProductGrid = ({
   onClearFilters?: () => void;
   onSwitchToMarketplace?: () => void;
   companyName?: string;
+  /** Buyer-facing browse: hide exact quantity on cards. */
+  buyerView?: boolean;
 }) => {
   if (loading && products.length === 0) {
     return (
@@ -199,7 +202,7 @@ export const ProductGrid = ({
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {products.map((p, i) => (
-          <ProductCard key={p._id} product={p} index={i} />
+          <ProductCard key={p._id} product={p} index={i} buyerView={buyerView} />
         ))}
       </div>
 

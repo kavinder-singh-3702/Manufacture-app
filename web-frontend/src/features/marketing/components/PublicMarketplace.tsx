@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
-import { getCategoryMeta, PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
+import { getBuyerStock, getCategoryMeta, PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
 
 type StockFilter = "" | "in_stock" | "low_stock";
 
@@ -87,16 +87,17 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
               )}
             </div>
 
-            {/* Availability */}
+            {/* Availability — status only; buyers contact for exact quantity */}
             <div className="flex items-center justify-between text-xs">
-              <span style={{ color: "var(--medium-gray)" }}>
-                {product.availableQuantity > 0
-                  ? <span className="font-semibold" style={{ color: "#16A34A" }}>
-                      {product.availableQuantity.toLocaleString("en-IN")} {product.unit ?? "units"} available
-                    </span>
-                  : <span style={{ color: "#DC2626" }}>Out of stock</span>
-                }
-              </span>
+              {(() => {
+                const s = getBuyerStock(product.stockStatus, product.availableQuantity);
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold"
+                    style={{ backgroundColor: s.bg, color: s.fg }}>
+                    {s.icon} {s.label}
+                  </span>
+                );
+              })()}
               {(product.variantSummary?.totalVariants ?? 0) > 0 && (
                 <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                   style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>

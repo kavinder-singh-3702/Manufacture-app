@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const {
   AD_CAMPAIGN_STATUSES,
   AD_PLACEMENTS,
+  AD_MEDIA_TYPES,
   AD_TARGETING_MODES,
   AD_EVENT_TYPES
 } = require('../../../constants/ad');
@@ -56,7 +57,16 @@ const adCreativeValidation = [
   body('creative.title').optional().isString().isLength({ max: 140 }),
   body('creative.subtitle').optional().isString().isLength({ max: 220 }),
   body('creative.ctaLabel').optional().isString().isLength({ max: 60 }),
-  body('creative.badge').optional().isString().isLength({ max: 40 })
+  body('creative.badge').optional().isString().isLength({ max: 40 }),
+  body('creative.bannerMediaType').optional({ nullable: true }).isIn(AD_MEDIA_TYPES),
+  body('creative.bannerImageUrl').optional({ nullable: true }).isString().isLength({ max: 2048 }),
+  body('creative.bannerVideoUrl').optional({ nullable: true }).isString().isLength({ max: 2048 }),
+  body('creative.bannerImageBase64').optional({ nullable: true }).isString(),
+  body('creative.bannerVideoBase64').optional({ nullable: true }).isString(),
+  body('creative.bannerMimeType').optional({ nullable: true }).isString().isLength({ max: 120 }),
+  body('creative.bannerPosterUrl').optional({ nullable: true }).isString().isLength({ max: 2048 }),
+  body('creative.bannerPosterBase64').optional({ nullable: true }).isString(),
+  body('creative.bannerPosterMimeType').optional({ nullable: true }).isString().isLength({ max: 120 })
 ];
 
 const adScheduleValidation = [
@@ -105,7 +115,17 @@ const listCampaignsValidation = [
 
 const feedValidation = [
   query('placement').optional().isIn(AD_PLACEMENTS),
-  query('limit').optional().isInt({ min: 1, max: 10 })
+  query('limit').optional().isInt({ min: 1, max: 10 }),
+  // Cross-sell placement: category + sub-category of the cart item that triggered the feed.
+  query('category').optional().isString().trim().isLength({ max: 120 }),
+  query('subCategory').optional().isString().trim().isLength({ max: 120 }),
+  query('excludeProductId').optional().custom(isObjectId).withMessage('excludeProductId must be valid id')
+];
+
+const insightsValidation = [
+  ...campaignIdParamValidation,
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601()
 ];
 
 const recordEventValidation = [
@@ -129,6 +149,7 @@ module.exports = {
   updateCampaignValidation,
   listCampaignsValidation,
   feedValidation,
+  insightsValidation,
   recordEventValidation,
   fromRequestValidation
 };

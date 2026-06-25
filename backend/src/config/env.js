@@ -81,6 +81,7 @@ const config = {
   smtpSocketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 20000),
   smtpGreetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
   emailFrom: process.env.EMAIL_FROM || 'ARVANN <noreply@arvann.com>',
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@manufacture.run',
   appName: process.env.APP_NAME || 'ARVANN',
   appUrl: process.env.APP_URL || 'http://localhost:3000',
   notificationsEmailEnabled: process.env.NOTIFICATIONS_EMAIL_ENABLED !== 'false',

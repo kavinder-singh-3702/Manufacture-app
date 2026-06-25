@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
-import PagerView from "react-native-pager-view";
+import { SwipePager } from "../../components/SwipePager";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNotifications } from "../../providers/NotificationsProvider";
@@ -35,18 +35,21 @@ export const CommandCenterScreen = () => {
   // Default to 'requests' — this screen is now the admin Ops tab destination, so
   // landing on the request queue is what the admin expects.
   const [activeTab, setActiveTab] = useState<string>(TAB_KEYS[DEFAULT_TAB_INDEX]);
-  const pagerRef = useRef<PagerView>(null);
+  const activeIndex = TAB_KEYS.indexOf(activeTab);
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
 
-  // Tapping a tab header → tell the pager to scroll. Swiping the pager
-  // updates `activeTab` via onPageSelected. Both paths converge on the
-  // same state so the header underline tracks the visible page.
+  // Tapping a tab header and swiping the pager both funnel through activeTab,
+  // so the header underline always tracks the visible page. SwipePager is
+  // controlled by activeIndex (derived from activeTab).
   const handleTabChange = useCallback((key: string) => {
-    const idx = TAB_KEYS.indexOf(key);
-    if (idx < 0) return;
+    if (TAB_KEYS.indexOf(key) < 0) return;
     setActiveTab(key);
-    pagerRef.current?.setPage(idx);
+  }, []);
+
+  const handlePageChange = useCallback((index: number) => {
+    const next = TAB_KEYS[index];
+    if (next) setActiveTab(next);
   }, []);
 
   // Belt-and-suspenders refetch on screen focus so the inner Messages tab
@@ -82,14 +85,10 @@ export const CommandCenterScreen = () => {
       {/* Swipe left/right to switch sub-tabs — saves a lot of taps when the
           admin is cycling through Requests / Messages / Alerts. Tap on the
           header still works (handleTabChange tells the pager to seek). */}
-      <PagerView
-        ref={pagerRef}
+      <SwipePager
         style={styles.content}
-        initialPage={DEFAULT_TAB_INDEX}
-        onPageSelected={(event) => {
-          const next = TAB_KEYS[event.nativeEvent.position];
-          if (next) setActiveTab(next);
-        }}
+        pageIndex={activeIndex}
+        onPageChange={handlePageChange}
       >
         <View key="overview" style={styles.page}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -101,7 +100,7 @@ export const CommandCenterScreen = () => {
         <View key="trades" style={styles.page}><TradesTab /></View>
         <View key="alerts" style={styles.page}><AlertsTab /></View>
         <View key="logs" style={styles.page}><LogsTab /></View>
-      </PagerView>
+      </SwipePager>
     </View>
   );
 };

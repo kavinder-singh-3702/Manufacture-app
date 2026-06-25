@@ -10,7 +10,7 @@ import { ApiError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product } from "@/src/types/product";
 import { useToast } from "@/src/components/ui/Toast";
 import type { PendingImage } from "./ProductImageUploader";
-import { formatCurrency, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
 import { ProductFormDrawer } from "./ProductFormDrawer";
 import { ProductVariantsContainer } from "./ProductVariantsContainer";
 import { ProductInquiryDrawer } from "./ProductInquiryDrawer";
@@ -453,15 +453,23 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                 </p>
               )}
 
-              {/* Availability row */}
-              <div className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-                <span className="text-base">📦</span>
-                <div className="text-xs" style={{ color: "var(--medium-gray)" }}>
-                  <strong style={{ color: "var(--foreground)" }}>{product.availableQuantity.toLocaleString("en-IN")} {product.unit ?? "units"}</strong>
-                  {" "}currently available
-                </div>
-              </div>
+              {/* Availability row — status only; buyers contact for exact quantity */}
+              {(() => {
+                const s = getBuyerStock(
+                  selectedVariant ? undefined : product.stockStatus,
+                  selectedVariant ? selectedVariant.variant.availableQuantity : product.availableQuantity
+                );
+                return (
+                  <div className="flex items-start gap-3 rounded-xl px-3 py-2.5"
+                    style={{ backgroundColor: s.bg, border: `1px solid ${s.border}` }}>
+                    <span className="text-base leading-none">{s.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold" style={{ color: s.fg }}>{s.label}</p>
+                      <p className="text-[11px] leading-snug" style={{ color: "var(--medium-gray)" }}>{s.hint}</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

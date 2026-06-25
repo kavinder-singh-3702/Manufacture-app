@@ -4,11 +4,15 @@ const AdCampaign = require('../../../models/adCampaign.model');
 const AdEvent = require('../../../models/adEvent.model');
 const Product = require('../../../models/product.model');
 const ProductQuote = require('../../../models/productQuote.model');
+const ProductInquiry = require('../../../models/productInquiry.model');
+const ProductOrder = require('../../../models/productOrder.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
 const { UserPreferenceEvent } = require('../../../models/userPreferenceEvent.model');
+const { uploadAdBanner } = require('../../../services/storage.service');
 const {
   AD_CAMPAIGN_STATUSES,
   AD_PLACEMENTS,
+  AD_MEDIA_TYPES,
   AD_EVENT_TYPES,
   AD_TARGETING_MODES
 } = require('../../../constants/ad');
@@ -133,6 +137,27 @@ const normalizeCreative = (creative, fallbackPrice = {}) => {
     badge: typeof creative.badge === 'string' ? creative.badge.trim() : undefined
   };
 
+  if (AD_MEDIA_TYPES.includes(creative.bannerMediaType)) {
+    normalized.bannerMediaType = creative.bannerMediaType;
+  }
+
+  // Direct banner URLs (no upload). An explicit null/empty string clears the value.
+  if (Object.prototype.hasOwnProperty.call(creative, 'bannerImageUrl')) {
+    normalized.bannerImageUrl = typeof creative.bannerImageUrl === 'string' && creative.bannerImageUrl.trim()
+      ? creative.bannerImageUrl.trim()
+      : null;
+  }
+  if (Object.prototype.hasOwnProperty.call(creative, 'bannerVideoUrl')) {
+    normalized.bannerVideoUrl = typeof creative.bannerVideoUrl === 'string' && creative.bannerVideoUrl.trim()
+      ? creative.bannerVideoUrl.trim()
+      : null;
+  }
+  if (Object.prototype.hasOwnProperty.call(creative, 'bannerPosterUrl')) {
+    normalized.bannerPosterUrl = typeof creative.bannerPosterUrl === 'string' && creative.bannerPosterUrl.trim()
+      ? creative.bannerPosterUrl.trim()
+      : null;
+  }
+
   if (Object.prototype.hasOwnProperty.call(creative, 'priceOverride')) {
     if (creative.priceOverride === null) {
       normalized.priceOverride = null;
@@ -142,6 +167,48 @@ const normalizeCreative = (creative, fallbackPrice = {}) => {
   }
 
   return normalized;
+};
+
+// Uploads any base64 banner media (image or video) to storage and returns the
+// resolved creative fields. Image and video are mutually exclusive.
+const processBannerMedia = async ({ creative, campaignId }) => {
+  if (!creative || typeof creative !== 'object') return null;
+
+  let result = null;
+
+  if (typeof creative.bannerImageBase64 === 'string' && creative.bannerImageBase64.trim()) {
+    const uploaded = await uploadAdBanner({
+      campaignId,
+      kind: 'image',
+      base64: creative.bannerImageBase64,
+      mimeType: creative.bannerMimeType,
+      fileName: 'ad-banner.jpg'
+    });
+    result = { bannerImageUrl: uploaded.url, bannerVideoUrl: null, bannerMediaType: 'image' };
+  } else if (typeof creative.bannerVideoBase64 === 'string' && creative.bannerVideoBase64.trim()) {
+    const uploaded = await uploadAdBanner({
+      campaignId,
+      kind: 'video',
+      base64: creative.bannerVideoBase64,
+      mimeType: creative.bannerMimeType,
+      fileName: 'ad-banner.mp4'
+    });
+    result = { bannerVideoUrl: uploaded.url, bannerImageUrl: null, bannerMediaType: 'video' };
+  }
+
+  // Poster image (uploaded independently — typically paired with a video banner).
+  if (typeof creative.bannerPosterBase64 === 'string' && creative.bannerPosterBase64.trim()) {
+    const uploaded = await uploadAdBanner({
+      campaignId,
+      kind: 'image',
+      base64: creative.bannerPosterBase64,
+      mimeType: creative.bannerPosterMimeType || creative.bannerMimeType,
+      fileName: 'ad-poster.jpg'
+    });
+    result = { ...(result || {}), bannerPosterUrl: uploaded.url };
+  }
+
+  return result;
 };
 
 const assertPriceOverrideWithinListedPrice = (priceOverride, product) => {
@@ -227,6 +294,7 @@ const shapeCampaign = (doc) => {
     activatedAt: plain.activatedAt,
     pausedAt: plain.pausedAt,
     archivedAt: plain.archivedAt,
+    completedAt: plain.completedAt,
     metadata: plain.metadata instanceof Map ? Object.fromEntries(plain.metadata) : plain.metadata || {},
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt
@@ -307,6 +375,12 @@ const createCampaign = async ({ payload, actorId }) => {
     metadata: payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : undefined
   });
 
+  const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId: campaign._id });
+  if (bannerUpdate) {
+    campaign.creative = { ...(campaign.creative?.toObject?.() ?? campaign.creative ?? {}), ...bannerUpdate };
+    await campaign.save();
+  }
+
   return getCampaignById(campaign._id);
 };
 
@@ -382,7 +456,7 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
 
     const creative = normalizeCreative(payload.creative, resolvedProduct?.price || {});
     const nextCreative = {
-      ...campaign.creative,
+      ...(campaign.creative?.toObject?.() ?? campaign.creative ?? {}),
       ...Object.fromEntries(
         Object.entries(creative).filter(([key, value]) => key !== 'priceOverride' && value !== undefined)
       )
@@ -396,6 +470,17 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
         delete nextCreative.priceOverride;
       }
     }
+
+    // Resolve any uploaded banner media (overrides direct-URL fields above).
+    const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId: campaign._id });
+    if (bannerUpdate) {
+      Object.assign(nextCreative, bannerUpdate);
+    }
+
+    // Normalize cleared banner fields (null → unset) so stale media doesn't linger.
+    if (nextCreative.bannerImageUrl === null) delete nextCreative.bannerImageUrl;
+    if (nextCreative.bannerVideoUrl === null) delete nextCreative.bannerVideoUrl;
+    if (nextCreative.bannerPosterUrl === null) delete nextCreative.bannerPosterUrl;
 
     campaign.creative = nextCreative;
   }
@@ -633,7 +718,13 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
     'Recommended for you',
   ctaLabel: campaign.creative?.ctaLabel || 'View Product',
   badge: campaign.creative?.badge || undefined,
+  bannerMediaType: campaign.creative?.bannerMediaType || undefined,
+  bannerImageUrl: campaign.creative?.bannerImageUrl || undefined,
+  bannerVideoUrl: campaign.creative?.bannerVideoUrl || undefined,
+  bannerPosterUrl: campaign.creative?.bannerPosterUrl || undefined,
   priority: campaign.priority,
+  // Scarcity cue: when the campaign has an end date the client can show a countdown.
+  endsAt: campaign.schedule?.endAt || undefined,
   product: {
     id: campaign.product?._id?.toString?.() || campaign.product?.toString?.(),
     name: campaign.product?.name,
@@ -642,6 +733,9 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
     subCategory: campaign.product?.subCategory,
     price: campaign.product?.price,
     images: campaign.product?.images || [],
+    // Stock signals power the "Only N left" urgency cue on the client.
+    availableQuantity: campaign.product?.availableQuantity,
+    minStockQuantity: campaign.product?.minStockQuantity,
     contactPreferences: campaign.product?.contactPreferences || {},
     company: campaign.product?.company
       ? {
@@ -654,10 +748,29 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   }
 });
 
-const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
+const getFeed = async ({
+  userId,
+  placement = 'dashboard_home',
+  limit = 5,
+  matchCategory,
+  matchSubCategory,
+  excludeProductId
+} = {}) => {
   const safePlacement = AD_PLACEMENTS.includes(placement) ? placement : 'dashboard_home';
   const safeLimit = Math.min(Math.max(parseNumber(limit, 5), 1), 10);
   const now = new Date();
+
+  // Cross-sell is triggered by a specific cart item: only promote a *different*
+  // product that shares the same category AND sub-category as the added item.
+  const isCrossSell = safePlacement === 'cart_cross_sell';
+  const crossSellCategory = typeof matchCategory === 'string' ? matchCategory.trim().toLowerCase() : '';
+  const crossSellSubCategory = typeof matchSubCategory === 'string' ? matchSubCategory.trim().toLowerCase() : '';
+  const crossSellExcludeId = toObjectId(excludeProductId)?.toString();
+
+  // Without a category + sub-category there is nothing meaningful to match against.
+  if (isCrossSell && (!crossSellCategory || !crossSellSubCategory)) {
+    return { cards: [], placement: safePlacement };
+  }
 
   const activeCampaigns = await AdCampaign.find({
     status: 'active',
@@ -675,7 +788,7 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
   })
     .populate({
       path: 'product',
-      select: 'name createdBy category subCategory price images contactPreferences company status visibility deletedAt createdByRole',
+      select: 'name createdBy category subCategory price images contactPreferences company status visibility deletedAt createdByRole availableQuantity minStockQuantity',
       populate: { path: 'company', select: 'displayName complianceStatus contact.phone owner' }
     })
     .sort({ priority: -1, updatedAt: -1 })
@@ -752,6 +865,15 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
       return false;
     }
 
+    // Cross-sell gate: promoted product must match the added item's category +
+    // sub-category, and must not be the item the user just added.
+    if (isCrossSell) {
+      const product = campaign.product || {};
+      if (crossSellExcludeId && (product._id?.toString?.() === crossSellExcludeId)) return false;
+      if ((product.category || '').toLowerCase() !== crossSellCategory) return false;
+      if ((product.subCategory || '').toLowerCase() !== crossSellSubCategory) return false;
+    }
+
     return matchTargeting({
       campaign,
       userId,
@@ -787,35 +909,84 @@ const getFeed = async ({ userId, placement = 'dashboard_home', limit = 5 }) => {
   };
 };
 
-const getCampaignInsights = async ({ campaignId }) => {
+// Counts conversions on the promoted product by users who clicked the campaign,
+// where the conversion happened on/after the user's first click (a lightweight,
+// last-touch-ish attribution model — no extra tracking infrastructure required).
+const computeAttribution = async ({ campaignObjectId, productId, matchDate }) => {
+  const firstClicks = await AdEvent.aggregate([
+    { $match: { campaign: campaignObjectId, type: 'click', ...(matchDate ? { createdAt: matchDate } : {}) } },
+    { $group: { _id: '$user', firstClickAt: { $min: '$createdAt' } } }
+  ]);
+
+  const empty = { clickers: 0, quotes: 0, inquiries: 0, orders: 0, leads: 0, clickToLeadRate: 0 };
+  if (!firstClicks.length || !productId) return empty;
+
+  const clickAtByUser = new Map(firstClicks.map((row) => [row._id.toString(), row.firstClickAt]));
+  const userIds = firstClicks.map((row) => row._id);
+  const product = toObjectId(productId);
+
+  const conversionAfterClick = (rows, userPath) => {
+    let count = 0;
+    rows.forEach((row) => {
+      const uid = (userPath === 'buyer.user' ? row.buyer?.user : row.buyer)?.toString?.();
+      const clickAt = uid && clickAtByUser.get(uid);
+      if (clickAt && new Date(row.createdAt).getTime() >= new Date(clickAt).getTime()) count += 1;
+    });
+    return count;
+  };
+
+  const [quoteRows, inquiryRows, orderRows] = await Promise.all([
+    ProductQuote.find({ product, buyer: { $in: userIds }, deletedAt: { $exists: false } })
+      .select('buyer createdAt').lean(),
+    ProductInquiry.find({ product, buyer: { $in: userIds } })
+      .select('buyer createdAt').lean(),
+    ProductOrder.find({ product, 'buyer.user': { $in: userIds } })
+      .select('buyer.user createdAt').lean()
+  ]);
+
+  const quotes = conversionAfterClick(quoteRows, 'buyer');
+  const inquiries = conversionAfterClick(inquiryRows, 'buyer');
+  const orders = conversionAfterClick(orderRows, 'buyer.user');
+  const leads = quotes + inquiries + orders;
+  const clickToLeadRate = userIds.length ? Number(((leads / userIds.length) * 100).toFixed(2)) : 0;
+
+  return { clickers: userIds.length, quotes, inquiries, orders, leads, clickToLeadRate };
+};
+
+const getCampaignInsights = async ({ campaignId, from, to }) => {
   const campaignObjectId = toObjectId(campaignId);
   const campaign = await AdCampaign.findById(campaignObjectId).lean();
   if (!campaign) return null;
 
-  const [summaryRows, byDayRows] = await Promise.all([
+  // Optional date-range filter (inclusive). Invalid dates are ignored.
+  const fromDate = from ? new Date(from) : null;
+  const toDate = to ? new Date(to) : null;
+  const matchDate = {};
+  if (fromDate && !Number.isNaN(fromDate.getTime())) matchDate.$gte = fromDate;
+  if (toDate && !Number.isNaN(toDate.getTime())) matchDate.$lte = toDate;
+  const dateFilter = Object.keys(matchDate).length ? matchDate : null;
+  const baseMatch = { campaign: campaignObjectId, ...(dateFilter ? { createdAt: dateFilter } : {}) };
+
+  const [summaryRows, byDayRows, byPlacementRows, attribution] = await Promise.all([
     AdEvent.aggregate([
-      { $match: { campaign: campaignObjectId } },
-      {
-        $group: {
-          _id: '$type',
-          count: { $sum: 1 },
-          users: { $addToSet: '$user' }
-        }
-      }
+      { $match: baseMatch },
+      { $group: { _id: '$type', count: { $sum: 1 }, users: { $addToSet: '$user' } } }
     ]),
     AdEvent.aggregate([
-      { $match: { campaign: campaignObjectId } },
+      { $match: baseMatch },
       {
         $group: {
-          _id: {
-            day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            type: '$type'
-          },
+          _id: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, type: '$type' },
           count: { $sum: 1 }
         }
       },
       { $sort: { '_id.day': 1 } }
-    ])
+    ]),
+    AdEvent.aggregate([
+      { $match: baseMatch },
+      { $group: { _id: { placement: '$placement', type: '$type' }, count: { $sum: 1 } } }
+    ]),
+    computeAttribution({ campaignObjectId, productId: campaign.product, matchDate: dateFilter })
   ]);
 
   const summary = {
@@ -836,17 +1007,53 @@ const getCampaignInsights = async ({ campaignId }) => {
     ? Number(((summary.click.count / summary.impression.count) * 100).toFixed(2))
     : 0;
 
+  // Dismiss rate doubles as a creative-fatigue signal when it climbs.
+  const dismissRate = summary.impression.count > 0
+    ? Number(((summary.dismiss.count / summary.impression.count) * 100).toFixed(2))
+    : 0;
+
+  // Pivot placement rows into one entry per placement with its funnel + CTR.
+  const placementMap = {};
+  byPlacementRows.forEach((row) => {
+    const key = row._id.placement || 'dashboard_home';
+    placementMap[key] = placementMap[key] || { placement: key, impression: 0, click: 0, dismiss: 0 };
+    if (row._id.type in placementMap[key]) placementMap[key][row._id.type] += row.count;
+  });
+  const byPlacement = Object.values(placementMap).map((row) => ({
+    ...row,
+    ctr: row.impression > 0 ? Number(((row.click / row.impression) * 100).toFixed(2)) : 0
+  }));
+
   return {
     campaignId: campaign._id.toString(),
     status: campaign.status,
+    range: { from: dateFilter?.$gte || null, to: dateFilter?.$lte || null },
     summary,
     ctr,
+    dismissRate,
+    byPlacement,
+    attribution,
     byDay: byDayRows.map((row) => ({
       day: row._id.day,
       type: row._id.type,
       count: row.count
     }))
   };
+};
+
+// Flips active campaigns whose schedule has ended over to "completed" so portfolio
+// metrics stay accurate. Returns the number of campaigns updated.
+const sweepExpiredCampaigns = async ({ now = new Date() } = {}) => {
+  const result = await AdCampaign.updateMany(
+    {
+      status: 'active',
+      'schedule.endAt': { $ne: null, $lt: now }
+    },
+    {
+      $set: { status: 'completed', completedAt: now }
+    }
+  );
+  return result.modifiedCount || 0;
 };
 
 const createCampaignFromServiceRequest = async ({ serviceRequestId, actorId, activate = false, prefillOnly = false }) => {
@@ -931,5 +1138,6 @@ module.exports = {
   getFeed,
   recordAdEvent,
   getCampaignInsights,
+  sweepExpiredCampaigns,
   createCampaignFromServiceRequest
 };

@@ -49,9 +49,9 @@ const applyTheme = (resolved: ResolvedTheme) => {
  * in the root layout applies the stored theme pre-hydration to avoid a flash.
  */
 const readStoredMode = (): ThemeMode => {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-  return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+  return stored === "light" || stored === "dark" || stored === "system" ? stored : "light";
 };
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {

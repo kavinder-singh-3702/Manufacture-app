@@ -94,7 +94,7 @@ export const ResetPasswordCard = () => {
           Reset token
           <textarea
             className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
-            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
             placeholder="Paste the reset token from email or SMS"
             value={token}
             onChange={(event) => setToken(event.target.value)}
@@ -106,7 +106,7 @@ export const ResetPasswordCard = () => {
           New password
           <div
             className="mt-2 flex items-center rounded-2xl border px-4"
-            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
           >
             <input
               className="w-full bg-transparent py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
@@ -131,7 +131,7 @@ export const ResetPasswordCard = () => {
           Confirm password
           <div
             className="mt-2 flex items-center rounded-2xl border px-4"
-            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
           >
             <input
               className="w-full bg-transparent py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"

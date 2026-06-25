@@ -97,7 +97,7 @@ export const ForgotPasswordCard = () => {
                 className="flex-1 rounded-full px-3 py-2 transition"
                 style={{
                   backgroundColor: isActive ? "var(--primary-light)" : "transparent",
-                  color: isActive ? "var(--primary)" : "rgba(46, 44, 51, 0.7)",
+                  color: isActive ? "var(--primary)" : "var(--medium-gray)",
                   boxShadow: isActive ? "0 8px 20px rgba(246, 184, 168, 0.4)" : undefined,
                 }}
               >
@@ -111,7 +111,7 @@ export const ForgotPasswordCard = () => {
           {mode === "email" ? "Workspace email" : "Registered mobile number"}
           <input
             className="mt-2 w-full rounded-2xl border px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
-            style={{ borderColor: "var(--border)", backgroundColor: "white" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
             placeholder={mode === "email" ? "name@company.com" : "+12065550123"}
             type={mode === "email" ? "email" : "tel"}
             value={identifier}
@@ -136,7 +136,7 @@ export const ForgotPasswordCard = () => {
         {resetToken ? (
           <div
             className="rounded-2xl border px-4 py-3 text-sm"
-            style={{ borderColor: "var(--border)", backgroundColor: "white", color: "var(--primary)" }}
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--primary)" }}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "#a15068" }}>
               Dev shortcut
