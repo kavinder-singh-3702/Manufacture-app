@@ -1,12 +1,10 @@
-import type { Metadata } from "next";
-import { PublicProductDetailPageClient } from "@/src/features/marketing/components/PublicProductDetailPageClient";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "ARVANN — Product detail",
-  description: "View product details, pricing, and contact the seller on ARVANN marketplace.",
-  alternates: { canonical: "/products/detail" },
-};
+// Legacy query-param route kept for old links/bookmarks. Redirects to the
+// canonical, crawlable /products/[id] page.
+type Props = { searchParams: Promise<{ productId?: string }> };
 
-export default function PublicProductDetailPage() {
-  return <PublicProductDetailPageClient />;
+export default async function LegacyProductDetailRedirect({ searchParams }: Props) {
+  const { productId } = await searchParams;
+  redirect(productId ? `/products/${productId}` : "/products");
 }

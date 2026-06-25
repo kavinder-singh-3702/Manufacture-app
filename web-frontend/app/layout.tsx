@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://arvann.in"),
   title: "ARVANN",
   description: "Web console for the ARVANN marketplace workspace",
 };

@@ -136,7 +136,7 @@ export const RelatedProducts = ({
   const makeHref = useCallback(
     (p: Product) =>
       routePrefix === "/products"
-        ? `/products/detail/?productId=${encodeURIComponent(p._id)}`
+        ? `/products/${encodeURIComponent(p._id)}`
         : `/dashboard/products/detail?productId=${encodeURIComponent(p._id)}`,
     [routePrefix]
   );

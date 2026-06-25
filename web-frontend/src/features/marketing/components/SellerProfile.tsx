@@ -116,7 +116,7 @@ const CompanyHeader = ({ company }: { company: Company }) => {
           <div className="flex flex-col gap-2 sm:flex-shrink-0">
             {company.contact?.phone && (
               isGuest ? (
-                <Link href={`/signin?next=${encodeURIComponent(`/sellers/detail?companyId=${company.id}`)}`}
+                <Link href={`/signin?next=${encodeURIComponent(`/sellers/${company.id}`)}`}
                   className="flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80"
                   style={{ backgroundColor: "#EA580C" }}>
                   🔒 Sign in to call
@@ -131,7 +131,7 @@ const CompanyHeader = ({ company }: { company: Company }) => {
             )}
             {company.contact?.email && (
               isGuest ? (
-                <Link href={`/signin?next=${encodeURIComponent(`/sellers/detail?companyId=${company.id}`)}`}
+                <Link href={`/signin?next=${encodeURIComponent(`/sellers/${company.id}`)}`}
                   className="flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
                   style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
                   🔒 Sign in to email
@@ -153,24 +153,32 @@ const CompanyHeader = ({ company }: { company: Company }) => {
 
 // ── SellerProfile ─────────────────────────────────────────────────────────────
 
-export const SellerProfile = ({ companyId }: { companyId: string }) => {
-  const [company, setCompany] = useState<Company | null>(null);
-  const [loading, setLoading] = useState(true);
+export const SellerProfile = ({
+  companyId,
+  initialCompany,
+}: {
+  companyId: string;
+  /** Server-rendered seller (SSR/ISR) so the page paints instantly and is crawlable. */
+  initialCompany?: Company;
+}) => {
+  const [company, setCompany] = useState<Company | null>(initialCompany ?? null);
+  const [loading, setLoading] = useState(!initialCompany);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const { company: c } = await companyService.get(companyId);
       setCompany(c);
+      setError(null);
     } catch (err) {
-      setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load seller profile");
+      if (!silent) setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load seller profile");
     } finally {
       setLoading(false);
     }
   }, [companyId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(Boolean(initialCompany)); }, [load, initialCompany]);
 
   if (loading) {
     return (

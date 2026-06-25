@@ -47,15 +47,22 @@ const AuthToast = ({ action, returnTo, onDismiss }: { action: string; returnTo: 
 // InquiryForm extracted to src/features/product/components/ProductInquiryForm.tsx
 
 // ── Main PublicProductDetail ──────────────────────────────────────────────────
-export const PublicProductDetail = ({ productId }: { productId: string }) => {
+export const PublicProductDetail = ({
+  productId,
+  initialProduct,
+}: {
+  productId: string;
+  /** Server-rendered product (SSR/ISR) so the page paints instantly and is crawlable. */
+  initialProduct?: Product;
+}) => {
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
   // Where to send the user back after they sign in from a gated action.
-  const returnTo = `/products/detail/?productId=${productId}`;
+  const returnTo = `/products/${productId}`;
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<Product | null>(initialProduct ?? null);
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [showInquiry, setShowInquiry] = useState(false);
@@ -65,17 +72,20 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
   const [authToast, setAuthToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const load = useCallback(async () => {
+  // When server data is present we still refresh on mount (silently) so volatile
+  // fields like stock are current; otherwise we fetch with a full loading state.
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
-      const p = await productService.get(productId, { includeVariantSummary: true });
+      if (!silent) setLoading(true);
+      const p = await productService.get(productId, { scope: "marketplace", includeVariantSummary: true });
       setProduct(p);
+      setError(null);
     } catch (err) {
-      setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load product");
+      if (!silent) setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load product");
     } finally { setLoading(false); }
   }, [productId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(Boolean(initialProduct)); }, [load, initialProduct]);
 
   const handleInquirySuccess = () => {
     setShowInquiry(false);
@@ -304,7 +314,7 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
                 )}
                 <h1 className="text-xl font-bold leading-snug" style={{ color: "var(--foreground)" }}>{product.name}</h1>
                 {product.company?.displayName && (
-                  <Link href={`/sellers/detail/?companyId=${encodeURIComponent(product.company._id)}`}
+                  <Link href={`/sellers/${encodeURIComponent(product.company._id)}`}
                     className="mt-2 flex items-center gap-2 transition-opacity hover:opacity-70">
                     <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
                       style={{ backgroundColor: "var(--primary)" }}>

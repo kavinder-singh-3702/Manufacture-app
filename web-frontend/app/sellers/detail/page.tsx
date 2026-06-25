@@ -1,12 +1,10 @@
-import type { Metadata } from "next";
-import { SellerProfilePageClient } from "@/src/features/marketing/components/SellerProfilePageClient";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "ARVANN - Seller Profile",
-  description: "Browse all products from this verified manufacturer on ARVANN marketplace.",
-  alternates: { canonical: "/sellers/detail" },
-};
+// Legacy query-param route kept for old links/bookmarks. Redirects to the
+// canonical, crawlable /sellers/[id] page.
+type Props = { searchParams: Promise<{ companyId?: string }> };
 
-export default function SellerDetailPage() {
-  return <SellerProfilePageClient />;
+export default async function LegacySellerDetailRedirect({ searchParams }: Props) {
+  const { companyId } = await searchParams;
+  redirect(companyId ? `/sellers/${companyId}` : "/products");
 }

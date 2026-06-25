@@ -30,7 +30,7 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
 
   return (
     <motion.div {...fade(Math.min(index * 0.04, 0.32))} whileHover={{ y: -4 }}>
-      <Link href={`/products/detail/?productId=${encodeURIComponent(product._id)}`}
+      <Link href={`/products/${encodeURIComponent(product._id)}`}
         className="group flex flex-col overflow-hidden rounded-2xl transition-shadow duration-200 hover:shadow-xl"
         style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
         {/* Image */}

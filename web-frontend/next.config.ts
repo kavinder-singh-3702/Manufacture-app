@@ -1,26 +1,24 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV !== "production";
-
-// In dev, the static-export config is dropped and rewrites are enabled so that
-// the browser sees same-origin API calls (avoiding cross-domain cookie issues).
-// In production, the app is built as a static export and must reach the API
-// directly via NEXT_PUBLIC_API_URL.
-const nextConfig: NextConfig = isDev
-  ? {
-      async rewrites() {
-        const target = process.env.NEXT_PUBLIC_DEV_PROXY_TARGET ?? "https://api.arvann.in";
-        return [
-          {
-            source: "/api-proxy/:path*",
-            destination: `${target}/api/:path*`,
-          },
-        ];
+// The app runs as a Next server (SSR + ISR) so that public product/seller
+// detail pages can be server-rendered with per-item metadata, Open Graph tags
+// and JSON-LD for SEO and link unfurls. Dynamic detail routes regenerate on a
+// revalidate interval, so newly published products get a crawlable page without
+// a full rebuild.
+//
+// In dev we proxy API calls through the same origin (avoids cross-domain cookie
+// issues); in production the browser reaches the API directly via
+// NEXT_PUBLIC_API_URL.
+const nextConfig: NextConfig = {
+  async rewrites() {
+    const target = process.env.NEXT_PUBLIC_DEV_PROXY_TARGET ?? "https://api.arvann.in";
+    return [
+      {
+        source: "/api-proxy/:path*",
+        destination: `${target}/api/:path*`,
       },
-    }
-  : {
-      output: "export",
-      trailingSlash: true,
-    };
+    ];
+  },
+};
 
 export default nextConfig;

@@ -38,7 +38,7 @@ const MiniProductCard = ({ product, index }: { product: Product; index: number }
       transition={{ duration: 0.28, delay: Math.min(index * 0.05, 0.3), ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -4 }}
     >
-      <Link href={`/products/detail/?productId=${encodeURIComponent(product._id)}`}
+      <Link href={`/products/${encodeURIComponent(product._id)}`}
         className="group flex flex-col overflow-hidden rounded-2xl transition-shadow hover:shadow-xl"
         style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
         {/* Image */}
