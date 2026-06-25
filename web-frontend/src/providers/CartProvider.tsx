@@ -14,14 +14,16 @@ import { getCartLineKey } from "../types/cart";
 import type { Product } from "../types/product";
 
 const STORAGE_KEY = "manufacture:cart";
-const MAX_ITEMS = 30;
+export const MAX_CART_ITEMS = 30;
+
+export type AddToCartResult = "added" | "updated" | "limit";
 
 type CartContextValue = {
   items: CartItem[];
   totalCount: number;
   totalValue: number;
   eligibleItems: CartItem[];
-  addToCart: (product: Product, quantity?: number, variant?: CartVariantSnapshot) => void;
+  addToCart: (product: Product, quantity?: number, variant?: CartVariantSnapshot) => AddToCartResult;
   removeFromCart: (lineKey: string) => void;
   removeManyFromCart: (lineKeys: string[]) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
@@ -65,18 +67,27 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (hydrated) saveToStorage(items);
   }, [items, hydrated]);
 
-  const addToCart = useCallback((product: Product, quantity = 1, variant?: CartVariantSnapshot) => {
+  const addToCart = useCallback((product: Product, quantity = 1, variant?: CartVariantSnapshot): AddToCartResult => {
     const lineKey = getCartLineKey(product._id, variant?.id);
+    // Decide the outcome from current state so the caller gets a synchronous
+    // result (the setItems updater runs later, during render).
+    const existing = items.find((i) => i.lineKey === lineKey);
+    const result: AddToCartResult = existing
+      ? "updated"
+      : items.length >= MAX_CART_ITEMS
+        ? "limit"
+        : "added";
+
+    if (result === "limit") return result;
+
     setItems((prev) => {
-      const existing = prev.find((i) => i.lineKey === lineKey);
-      if (existing) {
+      const current = prev.find((i) => i.lineKey === lineKey);
+      if (current) {
         return prev.map((i) =>
-          i.lineKey === lineKey
-            ? { ...i, quantity: i.quantity + quantity }
-            : i
+          i.lineKey === lineKey ? { ...i, quantity: i.quantity + quantity } : i
         );
       }
-      if (prev.length >= MAX_ITEMS) return prev;
+      if (prev.length >= MAX_CART_ITEMS) return prev;
       const newItem: CartItem = {
         lineKey,
         product,
@@ -86,7 +97,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       };
       return [...prev, newItem];
     });
-  }, []);
+    return result;
+  }, [items]);
 
   const removeFromCart = useCallback((lineKey: string) =>
     setItems((prev) => prev.filter((i) => i.lineKey !== lineKey)), []);

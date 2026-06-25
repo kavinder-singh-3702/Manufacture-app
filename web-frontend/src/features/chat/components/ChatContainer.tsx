@@ -190,8 +190,33 @@ const MessageThread = ({ conversation, currentUserId }: ThreadProps) => {
   useEffect(() => {
     setMessages([]); setLoading(true); setHasMore(false); setOffset(0);
     loadMessages(0, false);
-    pollingRef.current = setInterval(pollMessages, 5000);
-    return () => { clearInterval(pollingRef.current); };
+
+    // Only poll while the tab is visible — an idle background tab otherwise
+    // hits the backend every 5s indefinitely. Resume (and fetch immediately)
+    // when the user returns to the tab.
+    const startPolling = () => {
+      if (pollingRef.current) return;
+      pollingRef.current = setInterval(pollMessages, 5000);
+    };
+    const stopPolling = () => {
+      clearInterval(pollingRef.current);
+      pollingRef.current = undefined;
+    };
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        pollMessages();
+        startPolling();
+      }
+    };
+
+    if (!document.hidden) startPolling();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [loadMessages, pollMessages]);
 
   useEffect(() => {

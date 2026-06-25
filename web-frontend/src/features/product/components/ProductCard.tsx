@@ -5,7 +5,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
-import { useCart } from "@/src/providers/CartProvider";
+import { useCart, MAX_CART_ITEMS } from "@/src/providers/CartProvider";
+import { useToast } from "@/src/components/ui/Toast";
 
 const StockBar = ({ available, min }: { available: number; min: number }) => {
   const ratio = min > 0 ? Math.min(available / Math.max(min * 2, 1), 1) : Math.min(available / 50, 1);
@@ -25,13 +26,18 @@ const StockBar = ({ available, min }: { available: number; min: number }) => {
 
 const AddToCartButton = ({ product }: { product: Product }) => {
   const { addToCart, isInCart } = useCart();
+  const toast = useToast();
   const [added, setAdded] = useState(false);
   const inCart = isInCart(product._id);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, 1);
+    const result = addToCart(product, 1);
+    if (result === "limit") {
+      toast.warning("Cart is full", `You can shortlist up to ${MAX_CART_ITEMS} items at a time.`);
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
