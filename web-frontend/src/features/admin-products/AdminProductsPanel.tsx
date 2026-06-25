@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminService, AdminInhouseProduct } from "@/src/services/admin";
 import type { ProductCategory, CreateProductInput, ProductStatus } from "@/src/types/product";
 import { ApiError } from "@/src/lib/api-error";
+import { useConfirm } from "@/src/components/ui/ConfirmDialog";
 
 const PAGE_SIZE = 24;
 const fmt = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -43,6 +44,7 @@ export const AdminProductsPanel = () => {
   const [formProduct, setFormProduct] = useState<AdminInhouseProduct | null | "new">(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirm = useConfirm();
 
   const load = useCallback(async (offset = 0, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
@@ -90,7 +92,13 @@ export const AdminProductsPanel = () => {
   };
 
   const removeProduct = async (p: AdminInhouseProduct) => {
-    if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${p.name}"?`,
+      message: "This cannot be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyId(p._id);
     try {
       await adminService.deleteInhouseProduct(p._id);

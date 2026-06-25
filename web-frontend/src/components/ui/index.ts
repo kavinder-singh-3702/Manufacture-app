@@ -6,6 +6,7 @@ export * from "./Button";
 export * from "./Skeleton";
 export * from "./KPICard";
 export * from "./Toast";
+export * from "./ConfirmDialog";
 export * from "./PageTransition";
 export * from "./EmptyState";
 export * from "./Input";
