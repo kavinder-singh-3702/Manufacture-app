@@ -13,6 +13,7 @@ import { AddressForm, emptyAddress, validateAddress } from "./AddressForm";
 import { CartSummary } from "@/src/features/cart/components/CartSummary";
 import { CartItemRow } from "@/src/features/cart/components/CartItemRow";
 import type { CheckoutAddressInput } from "@/src/types/cart";
+import type { CheckoutIntentResponse } from "@/src/types/order";
 
 type CheckoutStep = "address" | "payment" | "processing";
 
@@ -33,6 +34,11 @@ export const CheckoutContainer = () => {
   const [addressErrors, setAddressErrors] = useState<Partial<Record<keyof CheckoutAddressInput, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  // When the server's authoritative total differs from the displayed total
+  // (prices changed since items were added), we hold the created intent and ask
+  // the user to confirm the new amount before opening Razorpay.
+  const [pendingIntent, setPendingIntent] = useState<CheckoutIntentResponse | null>(null);
+  const [priceNotice, setPriceNotice] = useState<{ from: number; to: number } | null>(null);
 
   // Pre-fill address from user if available
   useEffect(() => {
@@ -81,9 +87,9 @@ export const CheckoutContainer = () => {
     setProcessing(true);
     setStep("processing");
 
+    let intent: CheckoutIntentResponse;
     try {
-      // 1. Create checkout intent
-      const intent = await checkoutService.createCheckoutIntent({
+      intent = await checkoutService.createCheckoutIntent({
         source: "cart",
         lines: eligibleItems.map((item) => ({
           lineKey: item.lineKey,
@@ -97,8 +103,35 @@ export const CheckoutContainer = () => {
         shippingAddress: address,
         clientRequestId,
       });
+    } catch (err) {
+      const msg = err instanceof ApiError || err instanceof Error ? err.message : "Checkout failed";
+      setError(msg);
+      setProcessing(false);
+      setStep("payment");
+      return;
+    }
 
-      // 2. Open Razorpay
+    // The intent is authoritative (server re-prices). If it differs from what we
+    // showed, pause and have the user confirm the new amount before paying.
+    const serverTotal = intent.payment.amount / 100;
+    if (Math.abs(serverTotal - eligibleValue) >= 1) {
+      setPendingIntent(intent);
+      setPriceNotice({ from: eligibleValue, to: serverTotal });
+      setProcessing(false);
+      setStep("payment");
+      return;
+    }
+
+    await launchPayment(intent);
+  };
+
+  const launchPayment = async (intent: CheckoutIntentResponse) => {
+    setError(null);
+    setProcessing(true);
+    setStep("processing");
+
+    const chargedTotal = intent.payment.amount / 100;
+    try {
       await openCheckout({
         keyId: intent.payment.keyId,
         orderId: intent.payment.razorpayOrderId,
@@ -123,7 +156,7 @@ export const CheckoutContainer = () => {
             removeManyFromCart(eligibleItems.map((i) => i.lineKey));
 
             const dest = verification.success
-              ? `/dashboard/orders/confirmation?orderId=${verification.orderId ?? intent.order._id}&success=true&paymentId=${response.razorpay_payment_id}&amount=${eligibleValue}`
+              ? `/dashboard/orders/confirmation?orderId=${verification.orderId ?? intent.order._id}&success=true&paymentId=${response.razorpay_payment_id}&amount=${chargedTotal}`
               : `/dashboard/orders/confirmation?orderId=${intent.order._id}&success=false&message=${encodeURIComponent(verification.message ?? "Payment could not be verified")}`;
 
             router.push(dest);
@@ -144,6 +177,14 @@ export const CheckoutContainer = () => {
       setProcessing(false);
       setStep("payment");
     }
+  };
+
+  const confirmUpdatedPrice = async () => {
+    if (!pendingIntent) return;
+    const intent = pendingIntent;
+    setPriceNotice(null);
+    setPendingIntent(null);
+    await launchPayment(intent);
   };
 
   // Empty cart redirect
@@ -239,7 +280,7 @@ export const CheckoutContainer = () => {
                           .filter(Boolean).join(", ")}
                       </p>
                     </div>
-                    <button type="button" onClick={() => { setStep("address"); setError(null); }}
+                    <button type="button" onClick={() => { setStep("address"); setError(null); setPriceNotice(null); setPendingIntent(null); }}
                       className="flex-shrink-0 text-xs font-semibold transition-opacity hover:opacity-70"
                       style={{ color: "var(--primary)" }}>
                       Change
@@ -265,6 +306,19 @@ export const CheckoutContainer = () => {
                   </motion.div>
                 )}
 
+                {priceNotice && (
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl px-4 py-3 text-sm"
+                    style={{ backgroundColor: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A" }}>
+                    <p className="font-bold">Price updated</p>
+                    <p className="mt-0.5">
+                      The total changed from ₹{priceNotice.from.toLocaleString("en-IN")} to{" "}
+                      <span className="font-bold">₹{priceNotice.to.toLocaleString("en-IN")}</span> based on the latest
+                      seller pricing. Review and confirm to continue.
+                    </p>
+                  </motion.div>
+                )}
+
                 {step === "processing" ? (
                   <div className="flex items-center justify-center gap-3 rounded-2xl py-6"
                     style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
@@ -275,14 +329,16 @@ export const CheckoutContainer = () => {
                     </p>
                   </div>
                 ) : (
-                  <button type="button" onClick={handlePay} disabled={processing}
+                  <button type="button" onClick={priceNotice ? confirmUpdatedPrice : handlePay} disabled={processing}
                     className="w-full rounded-2xl py-4 text-base font-bold text-white transition-all hover:-translate-y-0.5 disabled:opacity-60"
                     style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}>
                     <span className="flex items-center justify-center gap-2">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                         <path d="M21 4H3a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1zM2 9h20M8 15h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      Pay ₹{eligibleValue.toLocaleString("en-IN")} via Razorpay
+                      {priceNotice
+                        ? `Confirm & pay ₹${priceNotice.to.toLocaleString("en-IN")}`
+                        : `Pay ₹${eligibleValue.toLocaleString("en-IN")} via Razorpay`}
                     </span>
                   </button>
                 )}
