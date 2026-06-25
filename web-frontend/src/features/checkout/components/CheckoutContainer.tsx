@@ -53,6 +53,21 @@ export const CheckoutContainer = () => {
     [eligibleItems]
   );
 
+  // Deterministic idempotency key: a retry after a dismissed/failed payment
+  // (same cart, same address) reuses the same key so the backend can dedupe
+  // instead of creating a fresh order each attempt.
+  const clientRequestId = useMemo(() => {
+    const signature = eligibleItems
+      .map((i) => `${i.lineKey}:${i.quantity}:${i.variant?.price?.amount ?? i.product.price.amount}`)
+      .sort()
+      .join("|");
+    let hash = 0;
+    for (let idx = 0; idx < signature.length; idx += 1) {
+      hash = (hash * 31 + signature.charCodeAt(idx)) | 0;
+    }
+    return `web-${(hash >>> 0).toString(36)}`;
+  }, [eligibleItems]);
+
   const handleAddressContinue = () => {
     const errs = validateAddress(address);
     if (Object.keys(errs).length > 0) { setAddressErrors(errs); return; }
@@ -80,7 +95,7 @@ export const CheckoutContainer = () => {
           currency: "INR",
         })),
         shippingAddress: address,
-        clientRequestId: `web-${Date.now()}`,
+        clientRequestId,
       });
 
       // 2. Open Razorpay

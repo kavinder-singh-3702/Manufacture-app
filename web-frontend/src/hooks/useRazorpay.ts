@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 declare global {
   interface Window {
@@ -65,6 +65,19 @@ export const useRazorpay = () => {
 
     instanceRef.current = rzp;
     rzp.open();
+  }, []);
+
+  // Close any open checkout instance if the component unmounts mid-payment
+  // (e.g. the user navigates away) so it doesn't linger over the next screen.
+  useEffect(() => {
+    return () => {
+      const instance = instanceRef.current as { close?: () => void } | null;
+      try {
+        instance?.close?.();
+      } catch {
+        // ignore — instance may already be torn down
+      }
+    };
   }, []);
 
   return { openCheckout };
