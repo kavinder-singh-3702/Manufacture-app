@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product, ProductVisibility } from "@/src/types/product";
 import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 import { ProductGrid } from "./ProductGrid";
@@ -34,6 +34,7 @@ export const MyProductsContainer = () => {
   const [error, setError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -44,6 +45,11 @@ export const MyProductsContainer = () => {
 
   const load = useCallback(async (mode: "fresh" | "more" = "fresh") => {
     const isFresh = mode === "fresh";
+    // Cancel any in-flight load so a superseded search/filter change doesn't
+    // waste backend work or overwrite newer results.
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     try {
       if (isFresh) setLoading(true); else setLoadingMore(true);
       setError(null);
@@ -55,22 +61,26 @@ export const MyProductsContainer = () => {
         search: debouncedSearch || undefined,
         visibility: visibility !== "all" ? visibility : undefined,
         includeVariantSummary: true,
-      });
+      }, controller.signal);
       setProducts((prev) => isFresh ? res.products : [...prev, ...res.products]);
       setTotal(res.pagination.total);
       setHasMore(res.pagination.hasMore);
       setOffset(nextOffset);
     } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load products");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (loadAbortRef.current === controller) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [debouncedSearch, visibility, offset]);
 
   useEffect(() => {
     setOffset(0);
     load("fresh");
+    return () => loadAbortRef.current?.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, visibility]);
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductSort } from "@/src/types/product";
 import { getCategoryMeta, formatCurrency } from "../utils/categories";
 import { ProductCard } from "./ProductCard";
@@ -42,9 +42,15 @@ export const CategoryBrowseContainer = ({ categoryId }: { categoryId: string }) 
   const [appliedMin, setAppliedMin] = useState<number | undefined>();
   const [appliedMax, setAppliedMax] = useState<number | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async (mode: "fresh" | "more" = "fresh") => {
     const isFresh = mode === "fresh";
+    // Cancel any in-flight load so a superseded sort/filter change doesn't
+    // waste backend work or overwrite newer results.
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     try {
       if (isFresh) { setLoading(true); setError(null); }
       else setLoadingMore(true);
@@ -57,22 +63,26 @@ export const CategoryBrowseContainer = ({ categoryId }: { categoryId: string }) 
         maxPrice: appliedMax,
         scope: "marketplace",
         includeVariantSummary: true,
-      });
+      }, controller.signal);
       setProducts((prev) => isFresh ? res.products : [...prev, ...res.products]);
       setTotal(res.pagination.total);
       setHasMore(res.pagination.hasMore);
       setOffset(nextOffset);
     } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       if (isFresh) setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load products");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (loadAbortRef.current === controller) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [categoryId, sort, appliedMin, appliedMax, offset]);
 
   useEffect(() => {
     setOffset(0);
     void load("fresh");
+    return () => loadAbortRef.current?.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, appliedMin, appliedMax, categoryId]);
 

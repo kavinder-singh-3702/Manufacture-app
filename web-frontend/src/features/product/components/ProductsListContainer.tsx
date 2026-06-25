@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product, ProductStats } from "@/src/types/product";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useOptionalDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
@@ -113,6 +113,7 @@ export const ProductsListContainer = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [needsCompany, setNeedsCompany] = useState(false);
   const [showGuestBanner, setShowGuestBanner] = useState(false);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   // When user's auth state resolves, reset filters if needed
   useEffect(() => {
@@ -136,6 +137,11 @@ export const ProductsListContainer = () => {
   const loadProducts = useCallback(
     async (mode: "fresh" | "more" = "fresh") => {
       const isFresh = mode === "fresh";
+      // Cancel any in-flight load so a superseded filter change doesn't waste
+      // backend work or overwrite newer results.
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
       try {
         if (isFresh) setLoading(true);
         else setLoadingMore(true);
@@ -151,12 +157,13 @@ export const ProductsListContainer = () => {
           sort: filters.sort || undefined,
           scope: filters.scope,
           includeVariantSummary: true,
-        });
+        }, controller.signal);
         setProducts((prev) => (isFresh ? res.products : [...prev, ...res.products]));
         setTotal(res.pagination.total);
         setHasMore(res.pagination.hasMore);
         setOffset(nextOffset);
       } catch (err) {
+        if (isAbortError(err)) return; // superseded/unmounted — ignore
         if (isActiveCompanyRequired(err) && filters.scope === "company") {
           setNeedsCompany(true);
           setProducts([]);
@@ -166,8 +173,10 @@ export const ProductsListContainer = () => {
           setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load products");
         }
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (loadAbortRef.current === controller) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,6 +186,7 @@ export const ProductsListContainer = () => {
   useEffect(() => {
     setOffset(0);
     loadProducts("fresh");
+    return () => loadAbortRef.current?.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search, filters.category, filters.status, filters.sort, filters.scope]);
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductStockStatus } from "@/src/types/product";
 
 type StatusFilter = "all" | ProductStockStatus;
@@ -96,21 +96,28 @@ export const InventoryContainer = () => {
   const [stats, setStats] = useState<{ all: number; in_stock: number; low_stock: number; out_of_stock: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    // Cancel any in-flight load so a superseded filter/search change doesn't
+    // waste backend work or overwrite newer results.
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    const { signal } = controller;
     try {
       setLoading(true); setError(null);
       const [res, allRes] = await Promise.all([
-        productService.list({ scope: "company", status: filter === "all" ? undefined : filter, search: search || undefined, limit: 200, includeVariantSummary: true }),
-        filter !== "all" ? productService.list({ scope: "company", limit: 1 }) : Promise.resolve(null),
+        productService.list({ scope: "company", status: filter === "all" ? undefined : filter, search: search || undefined, limit: 200, includeVariantSummary: true }, signal),
+        filter !== "all" ? productService.list({ scope: "company", limit: 1 }, signal) : Promise.resolve(null),
       ]);
       setProducts(res.products ?? []);
 
       if (!stats || filter === "all") {
         const [inStock, lowStock, outStock] = await Promise.all([
-          productService.list({ scope: "company", status: "in_stock" as any, limit: 1 }),
-          productService.list({ scope: "company", status: "low_stock" as any, limit: 1 }),
-          productService.list({ scope: "company", status: "out_of_stock" as any, limit: 1 }),
+          productService.list({ scope: "company", status: "in_stock" as any, limit: 1 }, signal),
+          productService.list({ scope: "company", status: "low_stock" as any, limit: 1 }, signal),
+          productService.list({ scope: "company", status: "out_of_stock" as any, limit: 1 }, signal),
         ]);
         const total = filter === "all" ? (res.pagination?.total ?? res.products?.length ?? 0) : (allRes as any)?.pagination?.total ?? 0;
         setStats({
@@ -121,13 +128,17 @@ export const InventoryContainer = () => {
         });
       }
     } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load inventory");
     } finally {
-      setLoading(false);
+      if (loadAbortRef.current === controller) setLoading(false);
     }
   }, [filter, search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => loadAbortRef.current?.abort();
+  }, [load]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 300);
