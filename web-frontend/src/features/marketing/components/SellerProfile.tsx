@@ -34,7 +34,7 @@ const CompanyHeader = ({ company }: { company: Company }) => {
           <div className="flex-shrink-0">
             {company.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={company.logoUrl} alt={company.displayName}
+              <img loading="lazy" decoding="async" src={company.logoUrl} alt={company.displayName}
                 className="h-20 w-20 rounded-2xl object-cover"
                 style={{ border: "2px solid var(--border)" }} />
             ) : (

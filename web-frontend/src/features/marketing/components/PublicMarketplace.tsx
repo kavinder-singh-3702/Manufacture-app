@@ -38,7 +38,7 @@ const ProductCard = ({ product, index }: { product: Product; index: number }) =>
           style={{ background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--light-gray)" }}>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={product.name}
+            <img loading="lazy" decoding="async" src={img} alt={product.name}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-5xl">{cat?.icon ?? "📦"}</div>

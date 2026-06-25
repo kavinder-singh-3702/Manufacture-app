@@ -56,7 +56,7 @@ export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: Profil
     <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3">
       <div className="flex items-center gap-4">
         <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--card)] text-sm font-semibold text-[var(--primary)]">
-          {preview ? <img src={preview} alt="Avatar preview" className="h-full w-full object-cover" /> : initials}
+          {preview ? <img loading="lazy" decoding="async" src={preview} alt="Avatar preview" className="h-full w-full object-cover" /> : initials}
         </div>
         <div className="flex flex-1 flex-col gap-2 text-sm text-[var(--foreground)]">
           <label

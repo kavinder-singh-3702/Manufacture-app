@@ -241,7 +241,7 @@ export const AdStudioPanel = () => {
                   <div className="relative h-28" style={{ backgroundColor: "var(--surface)" }}>
                     {banner ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={banner} alt={c.name} className="h-full w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={banner} alt={c.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-3xl">📦</div>
                     )}
@@ -563,7 +563,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
             <div className="flex items-center gap-3 rounded-xl p-3" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
               {productDisplay.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={productDisplay.image} alt="" className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
+                <img loading="lazy" decoding="async" src={productDisplay.image} alt="" className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
               ) : (
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--background)" }}>📦</div>
               )}
@@ -677,7 +677,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
                 {bannerPreview ? (
                   <div className="relative overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={bannerPreview} alt="banner" className="h-28 w-full object-cover" />
+                    <img loading="lazy" decoding="async" src={bannerPreview} alt="banner" className="h-28 w-full object-cover" />
                     <button type="button" onClick={() => { setBannerPreview(null); setBannerBase64(null); setAspectWarning(null); }}
                       className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-bold text-white">Remove</button>
                   </div>
@@ -709,7 +709,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
                   {posterPreview ? (
                     <div className="relative overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={posterPreview} alt="poster" className="h-24 w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={posterPreview} alt="poster" className="h-24 w-full object-cover" />
                       <button type="button" onClick={() => { setPosterPreview(null); setPosterBase64(null); }}
                         className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-bold text-white">Remove</button>
                     </div>
@@ -908,7 +908,7 @@ const HeroPreview = ({ bannerImage, videoUrl, poster, productImage, title, subti
       <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9", border: "1px solid var(--border)", background: "linear-gradient(135deg,#1B1464,#2E3192,#0071BC)" }}>
         {fullBleed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={fullBleed} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img loading="lazy" decoding="async" src={fullBleed} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : videoUrl ? (
           <video src={videoUrl} muted className="absolute inset-0 h-full w-full object-cover" />
         ) : (
@@ -928,7 +928,7 @@ const HeroPreview = ({ bannerImage, videoUrl, poster, productImage, title, subti
             </div>
             {productImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={productImage} alt="" className="h-16 w-16 flex-shrink-0 rounded-xl border-2 border-white/15 object-cover" />
+              <img loading="lazy" decoding="async" src={productImage} alt="" className="h-16 w-16 flex-shrink-0 rounded-xl border-2 border-white/15 object-cover" />
             ) : (
               <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border-2 border-white/15 bg-white/10 text-2xl">📦</div>
             )}
@@ -1107,7 +1107,7 @@ const ProductPicker = ({ onSelect, onClose }: { onSelect: (p: Product) => void; 
               style={{ borderBottom: "1px solid var(--border)" }}>
               {p.images?.[0]?.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.images[0].url} alt="" className="h-9 w-9 flex-shrink-0 rounded-lg object-cover" />
+                <img loading="lazy" decoding="async" src={p.images[0].url} alt="" className="h-9 w-9 flex-shrink-0 rounded-lg object-cover" />
               ) : (
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--background)" }}>📦</div>
               )}

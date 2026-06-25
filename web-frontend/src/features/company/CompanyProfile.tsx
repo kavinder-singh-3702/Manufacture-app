@@ -291,7 +291,7 @@ export const CompanyProfile = () => {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-[var(--primary)] shadow-lg shadow-[rgba(20,141,178,0.23)]">
               {company?.logoUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={company.logoUrl} alt={company.displayName ?? "Company"} className="h-full w-full rounded-2xl object-cover" />
+                <img loading="lazy" decoding="async" src={company.logoUrl} alt={company.displayName ?? "Company"} className="h-full w-full rounded-2xl object-cover" />
               ) : (
                 (company?.displayName ?? "CO").slice(0, 2).toUpperCase()
               )}

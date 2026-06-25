@@ -182,7 +182,7 @@ export const AdminProductsPanel = () => {
                   <div className="relative h-28" style={{ backgroundColor: "var(--surface)" }}>
                     {p.images?.[0]?.url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.images[0].url} alt={p.name} className="h-full w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={p.images[0].url} alt={p.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-3xl">📦</div>
                     )}

@@ -41,7 +41,7 @@ const ProductRow = ({ product, delay }: { product: Product; delay: number }) => 
       <Link href={`/dashboard/products/detail?productId=${product._id}`}
         className="flex items-start gap-3 p-4 hover:opacity-90 transition-opacity">
         {img ? (
-          <img src={img} alt={product.name} className="h-14 w-14 rounded-xl object-cover flex-shrink-0" />
+          <img loading="lazy" decoding="async" src={img} alt={product.name} className="h-14 w-14 rounded-xl object-cover flex-shrink-0" />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-xl flex-shrink-0 text-2xl"
             style={{ backgroundColor: "var(--background)" }}>📦</div>

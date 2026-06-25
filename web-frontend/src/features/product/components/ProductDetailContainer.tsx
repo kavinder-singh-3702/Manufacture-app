@@ -270,7 +270,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
             style={{ background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--background)" }}>
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={cover} alt={product.name} className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={cover} alt={product.name} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-7xl">{cat?.icon ?? "📦"}</div>
             )}
@@ -281,7 +281,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                 <button key={img.url || i} type="button" onClick={() => setActiveImage(i)}
                   className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg transition-all"
                   style={{ border: i === activeImage ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                  {img.url && <img src={img.url} alt="" className="h-full w-full object-cover" />}
+                  {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
                 </button>
               ))}
             </div>

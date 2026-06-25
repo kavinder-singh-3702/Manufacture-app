@@ -278,7 +278,7 @@ const SidebarContent = ({
           >
             {companyLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={companyLogo} alt={companyLabel} className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={companyLogo} alt={companyLabel} className="h-full w-full object-cover" />
             ) : (
               companyInitials
             )}
@@ -383,7 +383,7 @@ const SidebarContent = ({
           >
             {userAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={userAvatar} alt="" className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={userAvatar} alt="" className="h-full w-full object-cover" />
             ) : (
               <span className="text-[13px] font-bold" style={{ color: "var(--primary)" }}>{userInitials}</span>
             )}

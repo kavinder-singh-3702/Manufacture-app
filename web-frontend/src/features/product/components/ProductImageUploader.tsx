@@ -106,7 +106,7 @@ export const ProductImageUploader = ({
             style={{ border: "1px solid var(--border)" }}>
             {img.url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={img.url} alt="" className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-2xl"
                 style={{ backgroundColor: "var(--light-gray)" }}>🖼️</div>
@@ -137,7 +137,7 @@ export const ProductImageUploader = ({
               className="group relative aspect-square overflow-hidden rounded-xl"
               style={{ border: "1px solid var(--primary)" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.dataUrl} alt="" className="h-full w-full object-cover" />
+              <img loading="lazy" decoding="async" src={img.dataUrl} alt="" className="h-full w-full object-cover" />
               {/* Upload pending indicator */}
               <div className="absolute inset-0 flex items-center justify-center"
                 style={{ backgroundColor: "rgba(20,141,178,0.15)" }}>

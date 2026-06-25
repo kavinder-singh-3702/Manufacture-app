@@ -315,7 +315,7 @@ export const CompanyCreateDrawer = ({
                           >
                             {form.logoUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={form.logoUrl} alt="" className="h-full w-full object-cover" />
+                              <img loading="lazy" decoding="async" src={form.logoUrl} alt="" className="h-full w-full object-cover" />
                             ) : (
                               (form.displayName || "Co").slice(0, 2).toUpperCase()
                             )}

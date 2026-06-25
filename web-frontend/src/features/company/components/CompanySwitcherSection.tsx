@@ -81,7 +81,7 @@ const CompanyCard = ({
         >
           {company.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={company.logoUrl} alt="" className="h-full w-full object-cover" />
+            <img loading="lazy" decoding="async" src={company.logoUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             initials
           )}

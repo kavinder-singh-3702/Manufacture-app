@@ -32,7 +32,7 @@ export const CartItemRow = ({ item }: { item: CartItem }) => {
       >
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={product.name} className="h-full w-full object-cover" />
+          <img loading="lazy" decoding="async" src={cover} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           cat?.icon ?? "📦"
         )}

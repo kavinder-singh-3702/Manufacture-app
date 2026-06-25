@@ -227,7 +227,7 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
               }}>
               {cover ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={cover} alt={product.name} className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={cover} alt={product.name} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-8xl min-h-[280px]">
                   {cat?.icon ?? "📦"}
@@ -248,7 +248,7 @@ export const PublicProductDetail = ({ productId }: { productId: string }) => {
                   <button key={img.url ?? i} type="button" onClick={() => setActiveImage(i)}
                     className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl transition-all"
                     style={{ border: i === activeImage ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                    {img.url && <img src={img.url} alt="" className="h-full w-full object-cover" />}
+                    {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
                   </button>
                 ))}
               </div>

@@ -44,7 +44,7 @@ export const QuoteCard = ({ quote, tab, delay = 0, onRespond, onAccept, onReject
         {/* Product row */}
         <div className="flex items-start gap-3">
           {img ? (
-            <img src={img} alt={quote.product.name} className="h-12 w-12 rounded-xl object-cover flex-shrink-0" />
+            <img loading="lazy" decoding="async" src={img} alt={quote.product.name} className="h-12 w-12 rounded-xl object-cover flex-shrink-0" />
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-xl flex-shrink-0 text-xl"
               style={{ backgroundColor: "var(--background)" }}>📦</div>
