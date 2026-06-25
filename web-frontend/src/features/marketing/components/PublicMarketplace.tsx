@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
 import { getBuyerStock, getCategoryMeta, PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
 
@@ -160,8 +160,14 @@ export const PublicMarketplace = ({ initialCategory = "", initialSearch = "", co
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async (off = 0, append = false) => {
+    // Cancel any in-flight load so a superseded filter/search change doesn't
+    // waste backend work or overwrite newer results.
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     try {
       setError(null);
       if (append) setLoadingMore(true); else setLoading(true);
@@ -175,20 +181,27 @@ export const PublicMarketplace = ({ initialCategory = "", initialSearch = "", co
         sort: (sort as any) || undefined,
         companyId: companyId || undefined,
         includeVariantSummary: true,
-      });
+      }, controller.signal);
       setProducts((p) => append ? [...p, ...(res.products ?? [])] : (res.products ?? []));
       setTotal(res.pagination?.total ?? 0);
       setHasMore(res.pagination?.hasMore ?? false);
       setOffset(off);
     } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load products");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (loadAbortRef.current === controller) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [search, category, sort, stockFilter, companyId]);
 
-  useEffect(() => { setOffset(0); load(0, false); }, [load]);
+  useEffect(() => {
+    setOffset(0);
+    load(0, false);
+    return () => loadAbortRef.current?.abort();
+  }, [load]);
 
   // Debounce search input
   useEffect(() => {

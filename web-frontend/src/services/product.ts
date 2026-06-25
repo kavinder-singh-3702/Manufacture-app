@@ -42,13 +42,14 @@ const getProductsByCategory = async (
     maxPrice?: number;
     scope?: ProductListScope;
     includeVariantSummary?: boolean;
-  }
+  },
+  signal?: AbortSignal
 ) => {
-  return httpClient.get<ProductListResponse>(`/products/categories/${categoryId}/products`, { params: toQuery(params) });
+  return httpClient.get<ProductListResponse>(`/products/categories/${categoryId}/products`, { params: toQuery(params), signal });
 };
 
-const list = async (params?: ListProductsParams) => {
-  return httpClient.get<ProductListResponse>("/products", { params: toQuery(params) });
+const list = async (params?: ListProductsParams, signal?: AbortSignal) => {
+  return httpClient.get<ProductListResponse>("/products", { params: toQuery(params), signal });
 };
 
 const get = async (productId: string, params?: { scope?: ProductListScope; includeVariantSummary?: boolean }) => {

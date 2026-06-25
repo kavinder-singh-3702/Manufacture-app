@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductCategory } from "@/src/types/product";
 import { PRODUCT_CATEGORIES } from "../utils/categories";
 import { ProductCard } from "./ProductCard";
@@ -51,6 +51,7 @@ export const ProductSearchContainer = () => {
   const [categoryStats, setCategoryStats] = useState<ProductCategory[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Load recent searches on mount
@@ -76,6 +77,11 @@ export const ProductSearchContainer = () => {
   const search = useCallback(async (q: string, mode: "fresh" | "more" = "fresh") => {
     if (!q.trim()) { setProducts([]); setTotal(0); return; }
     const isFresh = mode === "fresh";
+    // Cancel any in-flight search so superseded keystrokes don't waste backend
+    // work or land out of order.
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     try {
       if (isFresh) { setLoading(true); setError(null); }
       else setLoadingMore(true);
@@ -86,22 +92,26 @@ export const ProductSearchContainer = () => {
         limit: PAGE_SIZE,
         offset: nextOffset,
         includeVariantSummary: true,
-      });
+      }, controller.signal);
       setProducts((prev) => isFresh ? res.products : [...prev, ...res.products]);
       setTotal(res.pagination.total);
       setHasMore(res.pagination.hasMore);
       setOffset(nextOffset);
     } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       if (isFresh) setError(err instanceof ApiError || err instanceof Error ? err.message : "Search failed");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (searchAbortRef.current === controller) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [offset]);
 
   useEffect(() => {
     setOffset(0);
     void search(debouncedQuery, "fresh");
+    return () => searchAbortRef.current?.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 

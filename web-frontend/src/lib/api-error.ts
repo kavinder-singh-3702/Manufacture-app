@@ -9,3 +9,8 @@ export class ApiError extends Error {
     this.data = data;
   }
 }
+
+// True when an error is a caller-initiated AbortController cancellation, which
+// callers should ignore rather than surface as a failure.
+export const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === "AbortError";
