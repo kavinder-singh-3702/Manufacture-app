@@ -14,7 +14,7 @@ import { productService } from "@/src/services/product";
 import { adminService, type AdminUser } from "@/src/services/admin";
 import type { Product } from "@/src/types/product";
 import { PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 import { DonutChart, DonutLegend, GroupedBars, FunnelBar, AnimatedNumber, type DonutSegment, type BarGroup } from "@/src/components/ui/charts";
 
 const PAGE_SIZE = 24;
@@ -1063,16 +1063,21 @@ const ProductPicker = ({ onSelect, onClose }: { onSelect: (p: Product) => void; 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async (q: string) => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     setLoading(true);
     try {
-      const res = await productService.list({ scope: "marketplace", search: q || undefined, limit: 40 });
+      const res = await productService.list({ scope: "marketplace", search: q || undefined, limit: 40 }, controller.signal);
       setResults(res.products ?? []);
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       setResults([]);
     } finally {
-      setLoading(false);
+      if (loadAbortRef.current === controller) setLoading(false);
     }
   }, []);
 

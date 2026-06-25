@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { tallyService, VoucherType, VoucherItemLine, Party } from "@/src/services/tally";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
-import { ApiError } from "@/src/lib/api-error";
+import { ApiError, isAbortError } from "@/src/lib/api-error";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -39,16 +39,21 @@ const ProductPicker = ({ onSelect, onClose }: ProductPickerProps) => {
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async (q: string) => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     try {
       setLoading(true);
-      const res = await productService.list({ scope: "company", search: q || undefined, limit: 40 });
+      const res = await productService.list({ scope: "company", search: q || undefined, limit: 40 }, controller.signal);
       setResults(res.products ?? []);
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) return; // superseded/unmounted — ignore
       setResults([]);
     } finally {
-      setLoading(false);
+      if (loadAbortRef.current === controller) setLoading(false);
     }
   }, []);
 
