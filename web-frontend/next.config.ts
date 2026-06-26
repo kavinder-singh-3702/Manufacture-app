@@ -19,6 +19,29 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Permanent (308) redirects from the legacy query-param detail routes to the
+  // canonical clean URLs. Handled at the routing layer so crawlers and old
+  // bookmarks get a real HTTP redirect (a page-level redirect() would only be a
+  // soft client-side redirect under the streaming loading boundary).
+  async redirects() {
+    return [
+      {
+        source: "/products/detail",
+        has: [{ type: "query", key: "productId", value: "(?<productId>[^&]+)" }],
+        destination: "/products/:productId",
+        permanent: true,
+      },
+      {
+        source: "/sellers/detail",
+        has: [{ type: "query", key: "companyId", value: "(?<companyId>[^&]+)" }],
+        destination: "/sellers/:companyId",
+        permanent: true,
+      },
+      // Fallbacks when the id is missing.
+      { source: "/products/detail", destination: "/products", permanent: false },
+      { source: "/sellers/detail", destination: "/products", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
