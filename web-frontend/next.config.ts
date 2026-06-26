@@ -42,6 +42,29 @@ const nextConfig: NextConfig = {
       { source: "/sellers/detail", destination: "/products", permanent: false },
     ];
   },
+  // Baseline security headers on every response. Deliberately conservative: no
+  // strict CSP and no Permissions-Policy `payment` restriction, so the Razorpay
+  // checkout script, its iframe, and S3-hosted images keep working.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Force HTTPS for two years (api.arvann.in is already HTTPS).
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          // Block MIME sniffing.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Disallow the site being framed by other origins (clickjacking).
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Send only the origin on cross-origin navigations.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Drop powerful features the app doesn't use (leaves payment untouched).
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
