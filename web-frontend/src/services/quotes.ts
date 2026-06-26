@@ -88,6 +88,17 @@ export type RespondQuotePayload = {
   notes?: string;
 };
 
+export type CreateQuotePayload = {
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  targetPrice?: number;
+  currency?: string;
+  requirements: string;
+  requiredBy?: string;
+  buyerContact?: { name?: string; phone?: string; email?: string };
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const toQuery = (params?: Record<string, unknown>): QueryParams | undefined => {
@@ -106,10 +117,13 @@ const toQuery = (params?: Record<string, unknown>): QueryParams | undefined => {
 const list = (params?: QuoteListParams) =>
   httpClient.get<QuoteListResponse>("/quotes", { params: toQuery(params) });
 
+const create = (payload: CreateQuotePayload) =>
+  httpClient.post<{ quote: Quote }>("/quotes", payload).then((r) => r.quote);
+
 const respond = (quoteId: string, payload: RespondQuotePayload) =>
   httpClient.patch<{ quote: Quote }>(`/quotes/${quoteId}/respond`, payload).then((r) => r.quote);
 
 const updateStatus = (quoteId: string, payload: { status: "accepted" | "rejected" | "cancelled" | "expired"; note?: string }) =>
   httpClient.patch<{ quote: Quote }>(`/quotes/${quoteId}/status`, payload).then((r) => r.quote);
 
-export const quoteService = { list, respond, updateStatus };
+export const quoteService = { list, create, respond, updateStatus };

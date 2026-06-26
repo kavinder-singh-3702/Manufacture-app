@@ -10,6 +10,7 @@ import type { Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
 import { VariantSelector, type SelectedVariant } from "@/src/features/product/components/VariantSelector";
 import { ProductInquiryForm } from "@/src/features/product/components/ProductInquiryForm";
+import { QuoteRequestForm } from "@/src/features/product/components/QuoteRequestForm";
 import { RelatedProducts } from "@/src/features/product/components/RelatedProducts";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/components/ui/Toast";
@@ -67,6 +68,7 @@ export const PublicProductDetail = ({
   const [activeImage, setActiveImage] = useState(0);
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquirySent, setInquirySent] = useState(false);
+  const [showQuote, setShowQuote] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [authToast, setAuthToast] = useState<string | null>(null);
@@ -91,6 +93,18 @@ export const PublicProductDetail = ({
     setShowInquiry(false);
     setInquirySent(true);
     toast.success("Inquiry sent!", "The seller will contact you shortly.");
+  };
+
+  // Requesting a formal quote requires an authenticated buyer (backend POST
+  // /quotes is auth-gated), so gate guests behind the sign-in toast.
+  const handleRequestQuote = () => {
+    if (!user) { setAuthToast("request a quote"); return; }
+    setShowInquiry(false);
+    setShowQuote(true);
+  };
+
+  const handleQuoteSuccess = () => {
+    toast.success("Quote requested", "The seller will respond with pricing. Track it under your quotes.");
   };
 
   const handleChat = async () => {
@@ -395,61 +409,85 @@ export const PublicProductDetail = ({
               {/* Action buttons */}
               {!inquirySent && (
                 <div className="space-y-3">
-                  {/* Primary: Inquire */}
-                  {!showInquiry ? (
-                    <button type="button" onClick={() => setShowInquiry(true)}
-                      className="flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: "var(--primary)", boxShadow: "0 6px 20px rgba(20,141,178,0.35)" }}>
-                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg"
-                        style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>💬</span>
-                      <div>
-                        <p className="text-sm font-bold text-left">
-                          {buyerStock.available ? "Inquire to buy" : "Ask about availability"}
-                        </p>
-                        <p className="text-xs opacity-75 text-left">
-                          {selectedVariant
-                            ? `For: ${selectedVariant.variant.name}`
-                            : buyerStock.available
-                              ? "Get quantity, pricing & delivery info"
-                              : "Request quantity & restocking details"}
-                        </p>
-                      </div>
-                    </button>
-                  ) : (
+                  {showQuote ? (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                      <ProductInquiryForm
+                      <QuoteRequestForm
                         product={product}
                         selectedVariant={selectedVariant}
                         user={user}
-                        onSuccess={handleInquirySuccess}
-                        onCancel={() => setShowInquiry(false)}
+                        onSuccess={handleQuoteSuccess}
+                        onCancel={() => setShowQuote(false)}
                       />
                     </motion.div>
-                  )}
+                  ) : (
+                    <>
+                      {/* Primary: Inquire */}
+                      {!showInquiry ? (
+                        <button type="button" onClick={() => setShowInquiry(true)}
+                          className="flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: "var(--primary)", boxShadow: "0 6px 20px rgba(20,141,178,0.35)" }}>
+                          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg"
+                            style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>💬</span>
+                          <div>
+                            <p className="text-sm font-bold text-left">
+                              {buyerStock.available ? "Inquire to buy" : "Ask about availability"}
+                            </p>
+                            <p className="text-xs opacity-75 text-left">
+                              {selectedVariant
+                                ? `For: ${selectedVariant.variant.name}`
+                                : buyerStock.available
+                                  ? "Get quantity, pricing & delivery info"
+                                  : "Request quantity & restocking details"}
+                            </p>
+                          </div>
+                        </button>
+                      ) : (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <ProductInquiryForm
+                            product={product}
+                            selectedVariant={selectedVariant}
+                            user={user}
+                            onSuccess={handleInquirySuccess}
+                            onCancel={() => setShowInquiry(false)}
+                          />
+                        </motion.div>
+                      )}
 
-                  {/* Secondary: Chat + Call */}
-                  {!showInquiry && (
-                    <div className="flex gap-2">
-                      {allowChat && (
-                        <button type="button" onClick={handleChat} disabled={chatLoading}
-                          className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                          style={{ backgroundColor: "#16A34A" }}>
-                          {chatLoading
-                            ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-white" />
-                            : "💬"
-                          }
-                          Chat
+                      {/* Request a formal quote (RFQ) */}
+                      {!showInquiry && (
+                        <button type="button" onClick={handleRequestQuote}
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition-opacity hover:opacity-80"
+                          style={{ border: "1.5px solid var(--primary)", color: "var(--primary)", backgroundColor: "var(--primary-light)" }}>
+                          📋 Request a quote (RFQ)
                         </button>
                       )}
-                      {allowCall && (
-                        <button type="button" onClick={handleCall}
-                          className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80"
-                          style={{ backgroundColor: "#EA580C" }}>
-                          📞 Call
-                        </button>
+
+                      {/* Secondary: Chat + Call */}
+                      {!showInquiry && (
+                        <div className="flex gap-2">
+                          {allowChat && (
+                            <button type="button" onClick={handleChat} disabled={chatLoading}
+                              className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+                              style={{ backgroundColor: "#16A34A" }}>
+                              {chatLoading
+                                ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-white" />
+                                : "💬"
+                              }
+                              Chat
+                            </button>
+                          )}
+                          {allowCall && (
+                            <button type="button" onClick={handleCall}
+                              className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80"
+                              style={{ backgroundColor: "#EA580C" }}>
+                              📞 Call
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               )}
