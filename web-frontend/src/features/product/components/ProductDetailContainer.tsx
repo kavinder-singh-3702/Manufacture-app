@@ -14,6 +14,7 @@ import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_ST
 import { ProductFormDrawer } from "./ProductFormDrawer";
 import { ProductVariantsContainer } from "./ProductVariantsContainer";
 import { ProductInquiryDrawer } from "./ProductInquiryDrawer";
+import { QuoteRequestDrawer } from "./QuoteRequestDrawer";
 import { VariantSelector, type SelectedVariant } from "./VariantSelector";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useOptionalDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
@@ -117,6 +118,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
   const [activeImage, setActiveImage] = useState(0);
   const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [showAuthToast, setShowAuthToast] = useState(false);
@@ -202,6 +204,13 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   // Inquiry is a lead form (open to guests, mirrors the public marketplace).
   // Only direct contact — chat & call — requires sign-in.
   const handleInquiry = () => setInquiryOpen(true);
+
+  // Formal quotes require an authenticated buyer (backend POST /quotes is
+  // auth-gated), so gate guests via the same sign-in toast as chat/call.
+  const handleRequestQuote = () => {
+    if (isGuest) { setShowAuthToast(true); return; }
+    setQuoteOpen(true);
+  };
 
   // ── Loading skeleton ─────────────────────────────────────────────────────────
   if (loading) {
@@ -423,6 +432,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                 </div>
               </button>
 
+              {/* Request a formal quote (RFQ) */}
+              {!isOwnProduct && (
+                <button type="button" onClick={handleRequestQuote}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition-opacity hover:opacity-80"
+                  style={{ border: "1.5px solid var(--primary)", color: "var(--primary)", backgroundColor: "var(--primary-light)" }}>
+                  📋 Request a quote (RFQ)
+                </button>
+              )}
+
               {/* Secondary: Chat + Call side by side */}
               <div className="flex gap-2">
                 {allowChat && (
@@ -524,6 +542,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
           user={user ?? undefined}
           selectedVariant={selectedVariant}
           onClose={() => setInquiryOpen(false)}
+        />
+      )}
+      {!isOwnProduct && (
+        <QuoteRequestDrawer
+          open={quoteOpen}
+          product={product}
+          user={user ?? undefined}
+          selectedVariant={selectedVariant}
+          onClose={() => setQuoteOpen(false)}
         />
       )}
 
