@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://arvann.in"),
   title: "ARVANN",
   description: "Web console for the ARVANN marketplace workspace",
+};
+
+// Colors the mobile browser chrome to match the app's light/dark themes.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#148DB2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D1B22" },
+  ],
 };
 
 export default function RootLayout({
