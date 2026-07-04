@@ -324,12 +324,19 @@ export const AdStudioScreen = () => {
 
     try {
       setProductsLoading(true);
+      // Drop status=active + visibility=public filters when picking a
+      // user's products. Admins routinely need to advertise items that
+      // are still in draft or private state — the previous strict filter
+      // returned an empty list even for users with plenty of products.
+      // Keep the strict filter for admin_listings since those are meant
+      // to be published catalog items.
+      const isUserListings = wizard.productSource === "user_listings";
       const response = await productService.getAll({
         scope: "marketplace",
-        status: "active",
-        visibility: "public",
-        createdByRole: wizard.productSource === "admin_listings" ? "admin" : "user",
-        createdBy: wizard.productSource === "user_listings" ? wizard.ownerUserId : undefined,
+        status: isUserListings ? undefined : "active",
+        visibility: isUserListings ? undefined : "public",
+        createdByRole: isUserListings ? "user" : "admin",
+        createdBy: isUserListings ? wizard.ownerUserId : undefined,
         search: productSearch.trim() || undefined,
         limit: 80,
         offset: 0,
