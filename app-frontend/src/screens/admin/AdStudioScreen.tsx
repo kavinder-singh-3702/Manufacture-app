@@ -1560,21 +1560,22 @@ export const AdStudioScreen = () => {
                           });
                           if (!result.canceled && result.assets[0]) {
                             const asset = result.assets[0];
-                            // asset.fileSize is often undefined from iOS
-                            // PHPicker. Measure reliably via expo-file-system
-                            // so the size check actually runs and the user
-                            // gets a clear error instead of a silent 413.
-                            let sizeBytes = asset.fileSize;
-                            if (!sizeBytes) {
-                              try {
-                                const info = await FileSystem.getInfoAsync(asset.uri);
-                                if (info.exists && "size" in info && typeof info.size === "number") {
-                                  sizeBytes = info.size;
-                                }
-                              } catch {
-                                // If we can't measure, let the upload try
-                                // — the backend still enforces the cap.
+                            // Always measure the actual exported temp file
+                            // via getInfoAsync — asset.fileSize on iOS
+                            // PHPicker reports the ORIGINAL master's size
+                            // (the 4K/60 Photos library asset), not the
+                            // smaller downsampled clip iOS just wrote to
+                            // disk for upload. A 5-sec 11 MB export was
+                            // reporting as 100+ MB from asset.fileSize.
+                            let sizeBytes: number | undefined;
+                            try {
+                              const info = await FileSystem.getInfoAsync(asset.uri);
+                              if (info.exists && "size" in info && typeof info.size === "number") {
+                                sizeBytes = info.size;
                               }
+                            } catch {
+                              // If we can't measure, let the upload try
+                              // — the backend still enforces the cap.
                             }
                             const MAX_BYTES = 100 * 1024 * 1024;
                             if (sizeBytes && sizeBytes > MAX_BYTES) {
