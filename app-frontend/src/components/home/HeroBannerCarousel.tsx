@@ -112,7 +112,18 @@ export const HeroBannerCarousel = ({
 
   const slides: BannerSlide[] = useMemo(() => {
     if (cards.length > 0) {
-      return cards.map((card) => ({ id: card.id, type: "ad" as const, card }));
+      // Dedupe by card.id. The dashboard merges two ad feeds
+      // (hero_banner + dashboard_home) and the backend can return the
+      // same campaign in both, producing duplicate React keys → React
+      // renders one instance correctly and blanks the other (visible as
+      // a white slide in the carousel).
+      const seen = new Set<string>();
+      const uniqueCards = cards.filter((card) => {
+        if (!card?.id || seen.has(card.id)) return false;
+        seen.add(card.id);
+        return true;
+      });
+      return uniqueCards.map((card) => ({ id: card.id, type: "ad" as const, card }));
     }
     // While loading, don't show default slides to avoid the flash
     if (loading) return [];
