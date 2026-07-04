@@ -1530,19 +1530,29 @@ export const AdStudioScreen = () => {
                           { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
                         ]}
                         onPress={async () => {
-                          const result = await DocumentPicker.getDocumentAsync({
-                            type: "video/*",
-                            copyToCacheDirectory: true,
+                          // Use PHPicker (iOS) / Photos gallery (Android) via
+                          // expo-image-picker instead of DocumentPicker's
+                          // Files-app "Recents" browser. Matches the Pick
+                          // Image + Pick Poster buttons above and the
+                          // company/profile media pickers.
+                          const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ["videos"],
+                            quality: 0.8,
+                            allowsMultipleSelection: false,
                           });
                           if (!result.canceled && result.assets[0]) {
                             const asset = result.assets[0];
+                            const derivedName =
+                              asset.fileName ||
+                              asset.uri.split("/").pop() ||
+                              "video.mp4";
                             setWizard((prev) => ({
                               ...prev,
                               bannerMediaUri: asset.uri,
                               bannerMediaBase64: "",
                               bannerMediaType: "video",
                               bannerMediaMimeType: asset.mimeType || "video/mp4",
-                              bannerMediaFileName: asset.name || "video.mp4",
+                              bannerMediaFileName: derivedName,
                             }));
                           }
                         }}
