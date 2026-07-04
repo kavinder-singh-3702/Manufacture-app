@@ -922,7 +922,14 @@ export const AdStudioScreen = () => {
       await openCampaign(created.id);
     } catch (err: any) {
       console.error("[AdStudio] Campaign creation failed:", err?.status, JSON.stringify(err?.data ?? err?.message ?? err, null, 2));
-      setWizardError(err?.message || "Failed to create campaign");
+      // Surface the actual reason instead of a generic "Request failed"
+      // when possible. 413 in particular used to bury the size cap and
+      // leave the admin guessing.
+      let message = err?.message || "Failed to create campaign";
+      if (err?.status === 413) {
+        message = "Video is too large for the server (over 100 MB). Pick a shorter clip.";
+      }
+      setWizardError(message);
     } finally {
       setSubmitting(false);
     }
@@ -1569,11 +1576,11 @@ export const AdStudioScreen = () => {
                                 // — the backend still enforces the cap.
                               }
                             }
-                            const MAX_BYTES = 30 * 1024 * 1024;
+                            const MAX_BYTES = 100 * 1024 * 1024;
                             if (sizeBytes && sizeBytes > MAX_BYTES) {
                               const mb = (sizeBytes / (1024 * 1024)).toFixed(1);
                               setWizardError(
-                                `That video is ${mb} MB — the limit is 30 MB. Pick a shorter clip.`
+                                `That video is ${mb} MB — the limit is 100 MB. Pick a shorter clip.`
                               );
                               return;
                             }
