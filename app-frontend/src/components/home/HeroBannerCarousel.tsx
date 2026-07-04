@@ -105,6 +105,9 @@ export const HeroBannerCarousel = ({
   const searchAreaHeight = onSearchPress ? 56 : 0;
   const bannerHeight = baseBannerHeight + searchAreaHeight + topInset;
   const [activeIndex, setActiveIndex] = useState(0);
+  // URLs that failed to load. When a banner image errors out we drop
+  // that ad back to product-card mode so the slide isn't blank white.
+  const [failedBannerUrls, setFailedBannerUrls] = useState<Set<string>>(() => new Set());
   const scrollRef = useRef<ScrollView>(null);
   const autoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const isUserDragging = useRef(false);
@@ -242,7 +245,7 @@ export const HeroBannerCarousel = ({
     const card = slide.card;
     const bannerImage = card.bannerImageUrl;
     const productImage = card.product?.images?.[0]?.url;
-    const hasFullBanner = Boolean(bannerImage);
+    const hasFullBanner = Boolean(bannerImage) && !failedBannerUrls.has(bannerImage!);
     const productName = card.title || card.product?.name || "";
     const companyName = card.subtitle || card.product?.company?.displayName || "";
     const currencySymbol = (p?: { currency?: string }) =>
@@ -284,6 +287,14 @@ export const HeroBannerCarousel = ({
               source={{ uri: bannerImage! }}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
+              onError={() =>
+                setFailedBannerUrls((prev) => {
+                  if (prev.has(bannerImage!)) return prev;
+                  const next = new Set(prev);
+                  next.add(bannerImage!);
+                  return next;
+                })
+              }
             />
           )}
         </TouchableOpacity>
