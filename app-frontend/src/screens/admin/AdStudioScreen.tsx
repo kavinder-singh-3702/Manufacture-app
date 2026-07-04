@@ -1535,17 +1535,32 @@ export const AdStudioScreen = () => {
                           // Files-app "Recents" browser. Matches the Pick
                           // Image + Pick Poster buttons above and the
                           // company/profile media pickers.
+                          // Cap to Medium quality + 30s duration so the
+                          // exported file stays under the backend's 30 MB
+                          // multer limit — modern iPhone 4K/60 clips can be
+                          // 50-100 MB even for a few seconds.
                           const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ["videos"],
-                            quality: 0.8,
+                            videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+                            videoMaxDuration: 30,
                             allowsMultipleSelection: false,
                           });
                           if (!result.canceled && result.assets[0]) {
                             const asset = result.assets[0];
+                            // Backend limit is 30 MB (middleware/upload.js).
+                            // Fail fast with a clear message instead of a
+                            // silent 413 from the server.
+                            if (asset.fileSize && asset.fileSize > 30 * 1024 * 1024) {
+                              setWizardError(
+                                "That video is over 30 MB. Please pick a shorter clip or lower-quality video."
+                              );
+                              return;
+                            }
                             const derivedName =
                               asset.fileName ||
                               asset.uri.split("/").pop() ||
                               "video.mp4";
+                            setWizardError(null);
                             setWizard((prev) => ({
                               ...prev,
                               bannerMediaUri: asset.uri,
