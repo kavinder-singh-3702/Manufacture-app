@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "../../../hooks/useTheme";
+import { useAuth } from "../../../hooks/useAuth";
 import { ReasonInputModal } from "../../../components/admin";
 import { AdminRequestDetail } from "../../../hooks/queries/useAdminRequestDetail";
 import { useUpdateRequestWorkflow } from "../../../hooks/queries/useUpdateRequestWorkflow";
@@ -33,6 +34,7 @@ type Props = {
  */
 export const AdminRequestActions = ({ detail, onAdvanced }: Props) => {
   const { colors, spacing, radius } = useTheme();
+  const { user } = useAuth();
   const mutation = useUpdateRequestWorkflow(detail.kind, detail.id);
 
   const [pendingTarget, setPendingTarget] = useState<AllowedTransition | null>(null);
@@ -77,10 +79,22 @@ export const AdminRequestActions = ({ detail, onAdvanced }: Props) => {
     }
 
     try {
+      // Backend requires contextCompanyId for any non-super-admin actor
+      // (permissions.js validateMutationContext). When the request has
+      // no company attached (e.g. a service request from a normal user),
+      // detail.company?.id is undefined and the PATCH 400s with
+      // "contextCompanyId is required for admin mutations". Fall back
+      // to the admin's own activeCompany so the mutation proceeds.
+      // The backend's "must match target" check only fires when
+      // targetCompanyId is also set, so this is safe for company-less
+      // requests.
+      const contextCompanyId =
+        detail.company?.id ||
+        (typeof user?.activeCompany === "string" ? user.activeCompany : undefined);
       await mutation.mutateAsync({
         status: pendingTarget.status,
         reason: trimmed,
-        contextCompanyId: detail.company?.id || undefined,
+        contextCompanyId,
         expectedUpdatedAt: detail.updatedAt,
       });
       setPendingTarget(null);
