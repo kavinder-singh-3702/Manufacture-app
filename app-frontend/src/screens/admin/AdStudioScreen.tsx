@@ -16,6 +16,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
@@ -1539,27 +1540,40 @@ export const AdStudioScreen = () => {
                         onPress={async () => {
                           // Use PHPicker (iOS) / Photos gallery (Android) via
                           // expo-image-picker instead of DocumentPicker's
-                          // Files-app "Recents" browser. Matches the Pick
-                          // Image + Pick Poster buttons above and the
-                          // company/profile media pickers.
-                          // Cap to Medium quality + 30s duration so the
-                          // exported file stays under the backend's 30 MB
-                          // multer limit — modern iPhone 4K/60 clips can be
-                          // 50-100 MB even for a few seconds.
+                          // Files-app "Recents" browser.
+                          // Cap to Low quality + 30s duration so the exported
+                          // file stays under the backend's 30 MB multer limit
+                          // — iOS "Medium" is device-dependent and can still
+                          // emit 40+ MB for a 30s high-motion clip.
                           const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ["videos"],
-                            videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+                            videoQuality: ImagePicker.UIImagePickerControllerQualityType.Low,
                             videoMaxDuration: 30,
                             allowsMultipleSelection: false,
                           });
                           if (!result.canceled && result.assets[0]) {
                             const asset = result.assets[0];
-                            // Backend limit is 30 MB (middleware/upload.js).
-                            // Fail fast with a clear message instead of a
-                            // silent 413 from the server.
-                            if (asset.fileSize && asset.fileSize > 30 * 1024 * 1024) {
+                            // asset.fileSize is often undefined from iOS
+                            // PHPicker. Measure reliably via expo-file-system
+                            // so the size check actually runs and the user
+                            // gets a clear error instead of a silent 413.
+                            let sizeBytes = asset.fileSize;
+                            if (!sizeBytes) {
+                              try {
+                                const info = await FileSystem.getInfoAsync(asset.uri);
+                                if (info.exists && "size" in info && typeof info.size === "number") {
+                                  sizeBytes = info.size;
+                                }
+                              } catch {
+                                // If we can't measure, let the upload try
+                                // — the backend still enforces the cap.
+                              }
+                            }
+                            const MAX_BYTES = 30 * 1024 * 1024;
+                            if (sizeBytes && sizeBytes > MAX_BYTES) {
+                              const mb = (sizeBytes / (1024 * 1024)).toFixed(1);
                               setWizardError(
-                                "That video is over 30 MB. Please pick a shorter clip or lower-quality video."
+                                `That video is ${mb} MB — the limit is 30 MB. Pick a shorter clip.`
                               );
                               return;
                             }
