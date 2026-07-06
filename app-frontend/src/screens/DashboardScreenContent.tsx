@@ -931,6 +931,7 @@ const UserDashboardContent = () => {
       setAdFeedLoading(true);
       const feed = await adService.getFeed({ placement: "dashboard_home", limit: 5 });
       seenImpressionCampaigns.current.clear();
+      console.log("[Feed] dashboard_home cards=", feed.cards?.length || 0, "types=", (feed.cards || []).map((c: any) => c.bannerMediaType || (c.bannerVideoUrl ? "video?" : c.bannerImageUrl ? "image?" : "none")));
       setAdCards(feed.cards || []);
       if (feed.cards?.length) {
         trackAdImpression(feed.cards[0]);
@@ -951,6 +952,7 @@ const UserDashboardContent = () => {
     try {
       setHeroBannerLoading(true);
       const feed = await adService.getFeed({ placement: "hero_banner", limit: 5 });
+      console.log("[Feed] hero_banner cards=", feed.cards?.length || 0, "types=", (feed.cards || []).map((c: any) => c.bannerMediaType || (c.bannerVideoUrl ? "video?" : c.bannerImageUrl ? "image?" : "none")));
       setHeroBannerCards(feed.cards || []);
       if (feed.cards?.length) {
         trackAdImpression(feed.cards[0]);
