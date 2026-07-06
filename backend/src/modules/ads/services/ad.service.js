@@ -801,12 +801,27 @@ const getFeed = async ({
 
   const campaigns = activeCampaigns.filter((campaign) => {
     const product = campaign.product;
-    if (!product) return false;
-    if (product.deletedAt) return false;
-    if (product.status !== 'active') return false;
-    if (product.visibility !== 'public') return false;
+    if (!product) {
+      console.log('[FeedFilter] drop: no product for campaign', campaign._id);
+      return false;
+    }
+    if (product.deletedAt) {
+      console.log('[FeedFilter] drop: product deleted for campaign', campaign._id);
+      return false;
+    }
+    if (product.status !== 'active') {
+      console.log('[FeedFilter] drop: product.status=', product.status, 'campaign=', campaign._id);
+      return false;
+    }
+    if (product.visibility !== 'public') {
+      console.log('[FeedFilter] drop: product.visibility=', product.visibility, 'campaign=', campaign._id);
+      return false;
+    }
     const creatorRole = String(product.createdByRole || 'user').toLowerCase();
-    if (!['user', 'admin'].includes(creatorRole)) return false;
+    if (!['user', 'admin'].includes(creatorRole)) {
+      console.log('[FeedFilter] drop: createdByRole=', creatorRole, 'campaign=', campaign._id);
+      return false;
+    }
     return true;
   });
 
