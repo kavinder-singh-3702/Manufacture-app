@@ -50,19 +50,35 @@ type HeroBannerCarouselProps = {
 };
 
 const BannerVideo = ({ uri, poster, shouldPlay }: { uri: string; poster?: string; shouldPlay: boolean }) => {
+  // Track ready state so we don't call play() before the video has
+  // buffered enough to actually start. Previously we called play() in
+  // the useVideoPlayer callback AND in a useEffect on mount — both
+  // fired before the source was loaded on iOS, so the play command
+  // was silently dropped and the poster stayed frozen ("mute").
+  const [isReady, setIsReady] = useState(false);
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
     p.muted = true;
-    if (shouldPlay) p.play();
   });
 
   useEffect(() => {
+    // The 'statusChange' event fires whenever the player transitions
+    // between idle / loading / readyToPlay / error. We flip our own
+    // ready flag on readyToPlay so the effect below can react.
+    const subscription = player.addListener("statusChange", ({ status }) => {
+      setIsReady(status === "readyToPlay");
+    });
+    return () => subscription.remove();
+  }, [player]);
+
+  useEffect(() => {
+    if (!isReady) return;
     if (shouldPlay) {
       player.play();
     } else {
       player.pause();
     }
-  }, [shouldPlay, player]);
+  }, [isReady, shouldPlay, player]);
 
   return (
     <>
