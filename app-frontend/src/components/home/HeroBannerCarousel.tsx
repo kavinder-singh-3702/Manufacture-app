@@ -49,7 +49,17 @@ type HeroBannerCarouselProps = {
   onMessagePress?: (card: AdFeedCard) => void;
 };
 
-const BannerVideo = ({ uri, poster, shouldPlay }: { uri: string; poster?: string; shouldPlay: boolean }) => {
+const BannerVideo = ({
+  uri,
+  poster,
+  shouldPlay,
+  onError,
+}: {
+  uri: string;
+  poster?: string;
+  shouldPlay: boolean;
+  onError?: (uri: string) => void;
+}) => {
   // Track ready state so we don't call play() before the video has
   // buffered enough to actually start. Previously we called play() in
   // the useVideoPlayer callback AND in a useEffect on mount — both
@@ -62,14 +72,16 @@ const BannerVideo = ({ uri, poster, shouldPlay }: { uri: string; poster?: string
   });
 
   useEffect(() => {
-    // The 'statusChange' event fires whenever the player transitions
-    // between idle / loading / readyToPlay / error. We flip our own
-    // ready flag on readyToPlay so the effect below can react.
-    const subscription = player.addListener("statusChange", ({ status }) => {
-      setIsReady(status === "readyToPlay");
+    const subscription = player.addListener("statusChange", ({ status, error }) => {
+      console.log("[BannerVideo] status=", status, "uri=", uri, error ? `error=${error?.message}` : "");
+      if (status === "readyToPlay") {
+        setIsReady(true);
+      } else if (status === "error") {
+        onError?.(uri);
+      }
     });
     return () => subscription.remove();
-  }, [player]);
+  }, [player, uri, onError]);
 
   useEffect(() => {
     if (!isReady) return;
@@ -124,6 +136,19 @@ export const HeroBannerCarousel = ({
   // URLs that failed to load. When a banner image errors out we drop
   // that ad back to product-card mode so the slide isn't blank white.
   const [failedBannerUrls, setFailedBannerUrls] = useState<Set<string>>(() => new Set());
+  // Same pattern for videos — if the player reports 'error' status
+  // (mp4 URL 404, wrong Content-Type, DRM issue, etc.) we mark it and
+  // the slide falls through to product-card mode instead of freezing
+  // on the poster forever.
+  const [failedVideoUrls, setFailedVideoUrls] = useState<Set<string>>(() => new Set());
+  const markVideoFailed = useCallback((url: string) => {
+    setFailedVideoUrls((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  }, []);
   const scrollRef = useRef<ScrollView>(null);
   const autoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const isUserDragging = useRef(false);
@@ -262,6 +287,9 @@ export const HeroBannerCarousel = ({
     const bannerImage = card.bannerImageUrl;
     const productImage = card.product?.images?.[0]?.url;
     const hasFullBanner = Boolean(bannerImage) && !failedBannerUrls.has(bannerImage!);
+    const videoUrl = card.bannerVideoUrl;
+    const hasPlayableVideo =
+      isVideoMedia(card) && Boolean(videoUrl) && !failedVideoUrls.has(videoUrl!);
     const productName = card.title || card.product?.name || "";
     const companyName = card.subtitle || card.product?.company?.displayName || "";
     const currencySymbol = (p?: { currency?: string }) =>
@@ -279,7 +307,7 @@ export const HeroBannerCarousel = ({
     const originalPriceText = isDiscounted ? formatPrice(listedPrice) : "";
 
     // Full banner image mode (admin uploaded a banner)
-    if (hasFullBanner || (isVideoMedia(card) && card.bannerVideoUrl)) {
+    if (hasFullBanner || hasPlayableVideo) {
       const poster = card.bannerPosterUrl || card.bannerImageUrl || productImage;
       const isActive = index === activeIndex;
       return (
@@ -289,14 +317,14 @@ export const HeroBannerCarousel = ({
           onPress={() => onCardPress?.(card)}
           style={{ width, height: bannerHeight }}
         >
-          {isVideoMedia(card) && card.bannerVideoUrl ? (
+          {hasPlayableVideo ? (
             // Data-saver: only the visible slide loads the video; others show the poster.
             isActive ? (
-              <BannerVideo uri={card.bannerVideoUrl} poster={poster} shouldPlay />
+              <BannerVideo uri={videoUrl!} poster={poster} shouldPlay onError={markVideoFailed} />
             ) : poster ? (
               <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
-              <BannerVideo uri={card.bannerVideoUrl} poster={poster} shouldPlay={false} />
+              <BannerVideo uri={videoUrl!} poster={poster} shouldPlay={false} onError={markVideoFailed} />
             )
           ) : (
             <Image
