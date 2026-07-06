@@ -278,6 +278,23 @@ export const AdStudioScreen = () => {
     try {
       setCampaignError(null);
       const response = await adService.listCampaigns({ limit: 50, offset: 0 });
+      // Diagnostic: dump each campaign's feed-relevant fields so we can
+      // see exactly what's saved on the server and identify which filter
+      // drops it from /ads/feed.
+      console.log("[AdStudio] campaigns loaded:", (response.campaigns || []).map((c: any) => ({
+        name: c.name,
+        status: c.status,
+        placements: c.placements,
+        startAt: c.schedule?.startAt,
+        endAt: c.schedule?.endAt,
+        targetingMode: c.targeting?.mode,
+        targetingUsers: c.targeting?.userIds?.length || 0,
+        productName: c.product?.name,
+        productStatus: c.product?.status,
+        productVisibility: c.product?.visibility,
+        bannerMediaType: c.creative?.bannerMediaType,
+        bannerVideoUrl: c.creative?.bannerVideoUrl ? "yes" : "no",
+      })));
       setCampaigns(response.campaigns || []);
     } catch (err: any) {
       setCampaignError(err?.message || "Failed to load campaigns");
