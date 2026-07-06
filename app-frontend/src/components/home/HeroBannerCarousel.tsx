@@ -72,8 +72,7 @@ const BannerVideo = ({
   });
 
   useEffect(() => {
-    const subscription = player.addListener("statusChange", ({ status, error }) => {
-      console.log("[BannerVideo] status=", status, "uri=", uri, error ? `error=${error?.message}` : "");
+    const subscription = player.addListener("statusChange", ({ status }) => {
       if (status === "readyToPlay") {
         setIsReady(true);
       } else if (status === "error") {

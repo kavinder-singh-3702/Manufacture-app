@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
@@ -278,23 +277,6 @@ export const AdStudioScreen = () => {
     try {
       setCampaignError(null);
       const response = await adService.listCampaigns({ limit: 50, offset: 0 });
-      // Diagnostic: dump each campaign's feed-relevant fields so we can
-      // see exactly what's saved on the server and identify which filter
-      // drops it from /ads/feed.
-      console.log("[AdStudio] campaigns loaded:", (response.campaigns || []).map((c: any) => ({
-        name: c.name,
-        status: c.status,
-        placements: c.placements,
-        startAt: c.schedule?.startAt,
-        endAt: c.schedule?.endAt,
-        targetingMode: c.targeting?.mode,
-        targetingUsers: c.targeting?.userIds?.length || 0,
-        productName: c.product?.name,
-        productStatus: c.product?.status,
-        productVisibility: c.product?.visibility,
-        bannerMediaType: c.creative?.bannerMediaType,
-        bannerVideoUrl: c.creative?.bannerVideoUrl ? "yes" : "no",
-      })));
       setCampaigns(response.campaigns || []);
     } catch (err: any) {
       setCampaignError(err?.message || "Failed to load campaigns");
@@ -342,17 +324,16 @@ export const AdStudioScreen = () => {
 
     try {
       setProductsLoading(true);
-      // Drop status=active + visibility=public filters when picking a
-      // user's products. Admins routinely need to advertise items that
-      // are still in draft or private state — the previous strict filter
-      // returned an empty list even for users with plenty of products.
-      // Keep the strict filter for admin_listings since those are meant
-      // to be published catalog items.
+      // Only surface products that pass the backend's ad-eligibility gate
+      // (ensureProductIsEligible: status=active + visibility=public). A
+      // draft or private product would be rejected at create time and
+      // silently dropped by the feed if the visibility ever changes.
+      // Applies to both user_listings and admin_listings.
       const isUserListings = wizard.productSource === "user_listings";
       const response = await productService.getAll({
         scope: "marketplace",
-        status: isUserListings ? undefined : "active",
-        visibility: isUserListings ? undefined : "public",
+        status: "active",
+        visibility: "public",
         createdByRole: isUserListings ? "user" : "admin",
         createdBy: isUserListings ? wizard.ownerUserId : undefined,
         search: productSearch.trim() || undefined,
@@ -908,6 +889,11 @@ export const AdStudioScreen = () => {
       },
       sourceServiceRequest: wizard.sourceRequestId.trim() || undefined,
     };
+
+    if (!payload.status || !payload.placements?.length) {
+      setWizardError("Missing placement or status. Reload the wizard and try again.");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -1565,10 +1551,8 @@ export const AdStudioScreen = () => {
                           // Use PHPicker (iOS) / Photos gallery (Android) via
                           // expo-image-picker instead of DocumentPicker's
                           // Files-app "Recents" browser.
-                          // Cap to Low quality + 30s duration so the exported
-                          // file stays under the backend's 30 MB multer limit
-                          // — iOS "Medium" is device-dependent and can still
-                          // emit 40+ MB for a 30s high-motion clip.
+                          // Cap to Low quality + 30s duration to keep the
+                          // exported file well under the 100 MB backend cap.
                           const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ["videos"],
                             videoQuality: ImagePicker.UIImagePickerControllerQualityType.Low,
@@ -1602,6 +1586,19 @@ export const AdStudioScreen = () => {
                               );
                               return;
                             }
+                            // Only allow MP4 (H.264). iOS QuickTime .mov and
+                            // Android HEVC/webm may not play on every device
+                            // and there's no server-side transcode yet.
+                            const mime = (asset.mimeType || "").toLowerCase();
+                            const uri = asset.uri.toLowerCase();
+                            const looksLikeMp4 =
+                              mime === "video/mp4" || (mime === "" && uri.endsWith(".mp4"));
+                            if (!looksLikeMp4) {
+                              setWizardError(
+                                "Only MP4 videos are supported right now. Export the clip as MP4 (H.264) from your editor and try again."
+                              );
+                              return;
+                            }
                             const derivedName =
                               asset.fileName ||
                               asset.uri.split("/").pop() ||
@@ -1612,7 +1609,7 @@ export const AdStudioScreen = () => {
                               bannerMediaUri: asset.uri,
                               bannerMediaBase64: "",
                               bannerMediaType: "video",
-                              bannerMediaMimeType: asset.mimeType || "video/mp4",
+                              bannerMediaMimeType: "video/mp4",
                               bannerMediaFileName: derivedName,
                             }));
                           }

@@ -5,7 +5,7 @@ const { assertStorageConfig, STORAGE_NOT_CONFIGURED_CODE } = require('../config/
 
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB guardrail for compliance files.
 const MAX_AD_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB for ad banner images.
-const MAX_AD_VIDEO_SIZE_BYTES = 30 * 1024 * 1024; // 30 MB for ad banner videos.
+const MAX_AD_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB for ad banner videos — matches uploadAdMedia multer cap.
 const STORAGE_ERROR_CODES = Object.freeze({
   NOT_CONFIGURED: STORAGE_NOT_CONFIGURED_CODE,
   ACCESS_DENIED: 'STORAGE_ACCESS_DENIED',
@@ -258,6 +258,9 @@ const buildAdBannerObjectKey = ({ campaignId, kind = 'image', fileName }) => {
   return `${prefix}/ad-banners/${campaignId}/${kind}-${timeSegment}-${normalizedFileName}`;
 };
 
+const ALLOWED_AD_VIDEO_MIME_TYPES = ['video/mp4'];
+const ALLOWED_AD_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
 //=====>>>Upload ad banner media (image or video) <<<===-
 const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, base64 }) => {
   if (!base64 || typeof base64 !== 'string') {
@@ -267,6 +270,18 @@ const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, 
   const isVideo = kind === 'video';
   const maxBytes = isVideo ? MAX_AD_VIDEO_SIZE_BYTES : MAX_AD_IMAGE_SIZE_BYTES;
   const defaultMime = isVideo ? 'video/mp4' : 'image/jpeg';
+
+  // MIME allowlist — reject formats we can't reliably play on both
+  // platforms (iOS QuickTime .mov, Android HEVC/webm). Server-side
+  // transcode is out of scope for v1.0.
+  const normalizedMime = (mimeType || defaultMime).toLowerCase();
+  const allowedMimes = isVideo ? ALLOWED_AD_VIDEO_MIME_TYPES : ALLOWED_AD_IMAGE_MIME_TYPES;
+  if (!allowedMimes.includes(normalizedMime)) {
+    const suggestion = isVideo
+      ? 'Please upload an MP4 video (H.264). QuickTime .mov and HEVC are not supported yet — export from your editor as MP4.'
+      : `Please upload one of: ${allowedMimes.join(', ')}.`;
+    throw createError(415, `Unsupported ${isVideo ? 'video' : 'image'} format "${normalizedMime}". ${suggestion}`);
+  }
 
   const s3 = getS3Client();
   const objectKey = buildAdBannerObjectKey({ campaignId, kind, fileName });

@@ -231,19 +231,32 @@ const assertPriceOverrideWithinListedPrice = (priceOverride, product) => {
 };
 
 const ensureProductIsEligible = async (productId) => {
-  const product = await Product.findOne({
-    _id: toObjectId(productId),
-    deletedAt: { $exists: false },
-    createdByRole: { $in: ['user', 'admin'] },
-    status: 'active',
-    visibility: 'public'
-  })
+  const objectId = toObjectId(productId);
+  if (!objectId) {
+    throw createError(400, 'Promoted product id is missing or invalid');
+  }
+
+  // Fetch the raw doc first so we can surface exactly WHY it's ineligible.
+  const raw = await Product.findById(objectId).lean();
+  if (!raw) {
+    throw createError(400, 'Promoted product was not found');
+  }
+  if (raw.deletedAt) {
+    throw createError(400, 'Promoted product has been deleted');
+  }
+  if (!['user', 'admin'].includes(raw.createdByRole)) {
+    throw createError(400, `Promoted product must be a user or admin listing (found createdByRole="${raw.createdByRole}")`);
+  }
+  if (raw.status !== 'active') {
+    throw createError(400, `Promoted product must be active (found status="${raw.status}"). Publish it from Inventory first.`);
+  }
+  if (raw.visibility !== 'public') {
+    throw createError(400, `Promoted product must be public (found visibility="${raw.visibility}"). Set it to public from Inventory first.`);
+  }
+
+  const product = await Product.findById(objectId)
     .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner' })
     .lean();
-
-  if (!product) {
-    throw createError(400, 'Promoted product must be an active public user/admin listing');
-  }
 
   return product;
 };
@@ -262,6 +275,10 @@ const shapeCampaign = (doc) => {
         id: plain.product._id?.toString?.() || plain.product.toString(),
         name: plain.product.name,
         createdBy: plain.product.createdBy?.toString?.() || plain.product.createdBy,
+        createdByRole: plain.product.createdByRole,
+        status: plain.product.status,
+        visibility: plain.product.visibility,
+        deletedAt: plain.product.deletedAt,
         category: plain.product.category,
         subCategory: plain.product.subCategory,
         price: plain.product.price,
@@ -322,7 +339,7 @@ const listAdminCampaigns = async (filters = {}) => {
     AdCampaign.find(query)
       .populate({
         path: 'product',
-        select: 'name createdBy category subCategory price images contactPreferences company',
+        select: 'name createdBy createdByRole status visibility deletedAt category subCategory price images contactPreferences company',
         populate: { path: 'company', select: 'displayName complianceStatus contact.phone owner' }
       })
       .sort({ updatedAt: -1 })
@@ -352,7 +369,15 @@ const createCampaign = async ({ payload, actorId }) => {
   const targeting = normalizeTargeting(payload.targeting);
   const schedule = normalizeSchedule(payload.schedule);
 
+  // Pre-generate the campaign id so we can namespace uploaded media under it
+  // and upload BEFORE the DB row is written. A media-upload failure now aborts
+  // the whole request instead of leaving an orphan campaign with no bannerUrl.
+  const campaignId = new mongoose.Types.ObjectId();
+  const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId });
+  const finalCreative = bannerUpdate ? { ...creative, ...bannerUpdate } : creative;
+
   const campaign = await AdCampaign.create({
+    _id: campaignId,
     name: payload.name,
     description: payload.description,
     status,
@@ -366,7 +391,7 @@ const createCampaign = async ({ payload, actorId }) => {
     schedule,
     frequencyCapPerDay: Math.min(Math.max(parseNumber(payload.frequencyCapPerDay, 3), 1), 50),
     priority: Math.min(Math.max(parseNumber(payload.priority, 50), 1), 100),
-    creative,
+    creative: finalCreative,
     sourceServiceRequest: toObjectId(payload.sourceServiceRequest),
     createdBy: toObjectId(actorId),
     lastUpdatedBy: toObjectId(actorId),
@@ -375,12 +400,6 @@ const createCampaign = async ({ payload, actorId }) => {
     metadata: payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : undefined
   });
 
-  const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId: campaign._id });
-  if (bannerUpdate) {
-    campaign.creative = { ...(campaign.creative?.toObject?.() ?? campaign.creative ?? {}), ...bannerUpdate };
-    await campaign.save();
-  }
-
   return getCampaignById(campaign._id);
 };
 
@@ -388,7 +407,7 @@ const getCampaignById = async (campaignId) => {
   const campaign = await AdCampaign.findById(toObjectId(campaignId))
     .populate({
       path: 'product',
-      select: 'name createdBy category subCategory price images contactPreferences company',
+      select: 'name createdBy createdByRole status visibility deletedAt category subCategory price images contactPreferences company',
       populate: { path: 'company', select: 'displayName complianceStatus contact.phone owner' }
     })
     .lean();
@@ -801,27 +820,12 @@ const getFeed = async ({
 
   const campaigns = activeCampaigns.filter((campaign) => {
     const product = campaign.product;
-    if (!product) {
-      console.log('[FeedFilter] drop: no product for campaign', campaign._id);
-      return false;
-    }
-    if (product.deletedAt) {
-      console.log('[FeedFilter] drop: product deleted for campaign', campaign._id);
-      return false;
-    }
-    if (product.status !== 'active') {
-      console.log('[FeedFilter] drop: product.status=', product.status, 'campaign=', campaign._id);
-      return false;
-    }
-    if (product.visibility !== 'public') {
-      console.log('[FeedFilter] drop: product.visibility=', product.visibility, 'campaign=', campaign._id);
-      return false;
-    }
+    if (!product) return false;
+    if (product.deletedAt) return false;
+    if (product.status !== 'active') return false;
+    if (product.visibility !== 'public') return false;
     const creatorRole = String(product.createdByRole || 'user').toLowerCase();
-    if (!['user', 'admin'].includes(creatorRole)) {
-      console.log('[FeedFilter] drop: createdByRole=', creatorRole, 'campaign=', campaign._id);
-      return false;
-    }
+    if (!['user', 'admin'].includes(creatorRole)) return false;
     return true;
   });
 
