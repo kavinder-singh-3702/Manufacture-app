@@ -1,0 +1,26 @@
+# systemd unit for the Next.js (SSR + ISR) web frontend.
+# Install: sudo cp manufacture-web.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now manufacture-web
+# The .next build must already exist (run `npm ci && npm run build` in
+# /srv/manufacture/web-frontend with the production NEXT_PUBLIC_* env first).
+[Unit]
+Description=Manufacture web frontend (Next.js SSR)
+Documentation=https://nextjs.org/docs/app/building-your-application/deploying
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/srv/manufacture/web-frontend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

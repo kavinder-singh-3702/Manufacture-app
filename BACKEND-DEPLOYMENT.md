@@ -13,27 +13,37 @@ EC2 public IP:     13.206.204.61
 EC2 SSH user:      ubuntu
 SSH key path:      /Users/kavin/Documents/ssl keys/Arvann.pem
 Backend path:      /srv/manufacture/backend
-PM2 app name:      manufacture-backend
-Backend port:      4000
+Frontend path:     /srv/manufacture/web-frontend
+Backend service:   manufacture-backend (systemd, pm2-runtime cluster, 2 workers)
+Frontend service:  manufacture-web (systemd, Next.js server)
+Backend port:      4000 (proxied by Nginx for api.arvann.in)
+Frontend port:     3000 (proxied by Nginx for arvann.in)
 Reverse proxy:     Nginx
-Process manager:   systemd service running pm2-runtime
 Database:          MongoDB Atlas, database `manufacture`
-Redis:             Docker container on same EC2 host
+Redis:             Native redis-server (systemd) on 127.0.0.1:6379 (NOT Docker)
 S3 bucket:         arvann-prod-uploads
 S3 region:         ap-south-1
 Uploads prefix:    uploads
 Support email:     arvann100@gmail.com
 ```
 
+The frontend is a Next.js server (SSR + ISR), not a static export. Public
+product/seller detail pages are server-rendered for per-item metadata, Open
+Graph tags and JSON-LD, and `next.config.ts` owns redirects, rewrites and
+security headers — so Nginx must proxy to the running Next server, not serve
+static files.
+
 Request flow:
 
 ```text
-Client -> api.arvann.in HTTPS -> Nginx -> 127.0.0.1:4000 -> PM2 cluster workers
+Client -> api.arvann.in HTTPS -> Nginx -> 127.0.0.1:4000 -> PM2 cluster workers (backend)
                                               |
                                               +-> MongoDB Atlas
-                                              +-> Redis
+                                              +-> Redis (native redis-server)
                                               +-> AWS S3 via EC2 IAM role
                                               +-> SMTP
+
+Client -> arvann.in HTTPS     -> Nginx -> 127.0.0.1:3000 -> Next.js server (web-frontend)
 ```
 
 ## Credential Policy
@@ -208,7 +218,8 @@ The second form may default to the wrong database.
 
 ## Redis
 
-Redis runs in Docker on the EC2 host and is used for:
+Redis runs as a native `redis-server` (systemd unit `redis-server`) bound to
+`127.0.0.1:6379`. Docker is not installed on this host. Redis is used for:
 
 ```text
 Express sessions
@@ -216,17 +227,13 @@ Socket.IO Redis adapter
 Cross-worker session/socket consistency under PM2 cluster mode
 ```
 
-Expected Redis container:
-
-```text
-manufacture-redis
-```
-
 Check it:
 
 ```bash
 ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  docker ps --filter name=manufacture-redis
+  sudo systemctl is-active redis-server
+  pgrep -a redis-server
+  sudo ss -ltnp | grep 6379
 '
 ```
 
@@ -279,6 +286,10 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
     --exclude=/srv/manufacture/backend/.env \
     -czf /srv/manufacture/backups/backend.bak.$ts.tar.gz \
     -C /srv/manufacture backend
+  # Frontend rollback aids: current static-release pointer (legacy) and the
+  # live Nginx config (so the SSR proxy switch can be reverted).
+  readlink -f /var/www/arvann/current > /srv/manufacture/backups/frontend-current.$ts.txt 2>/dev/null || true
+  sudo cp /etc/nginx/sites-enabled/arvann.in /srv/manufacture/backups/nginx-arvann.in.$ts.conf
   printf "backup_ts=%s\n" "$ts"
   curl -fsS https://api.arvann.in/api/health
 '
@@ -319,11 +330,21 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 
 ## Frontend Deployment
 
-Frontend is a static Next.js export behind Nginx.
+Frontend is a **Next.js server (SSR + ISR)**, not a static export. It runs under
+the `manufacture-web` systemd service (`next start` on port 3000) and Nginx
+proxies `arvann.in` to `127.0.0.1:3000`.
 
-Use this when backend changes need matching web changes or when deploying both apps.
+`NEXT_PUBLIC_*` values are inlined at build time, so the production API URL and
+app variant must be passed to the build, not just the runtime.
 
-### 1. Build Locally First
+> Historical note: the frontend used to be a static export served from
+> `/var/www/arvann/current`. Commit `53cbd54` migrated public product/seller
+> detail pages to SSR/ISR, and later commits moved redirects + security headers
+> into `next.config.ts`. Static export (`out/`) is no longer produced. The
+> deploy artifacts for the server runtime live in `web-frontend/deploy/`
+> (`manufacture-web.service`, `nginx-arvann.in.conf`).
+
+### 1. Build Locally First (validation)
 
 ```bash
 cd web-frontend
@@ -343,7 +364,7 @@ rsync -az --delete \
   web-frontend/ ubuntu@13.206.204.61:/srv/manufacture/web-frontend/
 ```
 
-### 3. Build and Publish on EC2
+### 3. Build on EC2 and Restart the Next Server
 
 ```bash
 ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
@@ -351,13 +372,39 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
   cd /srv/manufacture/web-frontend
   npm ci
   NEXT_PUBLIC_API_URL=https://api.arvann.in/api APP_VARIANT=production npm run build
-  release=/var/www/arvann/releases/$(date +%Y%m%d%H%M%S)
-  mkdir -p "$release"
-  rsync -a --delete out/ "$release"/
-  ln -sfn "$release" /var/www/arvann/current
-  printf "frontend_release=%s\n" "$release"
+  sudo systemctl restart manufacture-web
+  sleep 6
+  sudo systemctl is-active manufacture-web
+  curl -fsS -o /dev/null -w "next_local %{http_code}\n" http://127.0.0.1:3000/
 '
 ```
+
+### 4. First-Time Setup Only (already done in production)
+
+Only needed when provisioning a fresh host or re-migrating from static export.
+
+Install the systemd unit and Nginx config (both tracked in
+`web-frontend/deploy/`):
+
+```bash
+ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
+  set -euo pipefail
+  # Next server service
+  sudo cp /srv/manufacture/web-frontend/deploy/manufacture-web.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now manufacture-web
+  # Nginx: proxy arvann.in -> 127.0.0.1:3000
+  sudo cp /srv/manufacture/web-frontend/deploy/nginx-arvann.in.conf /etc/nginx/sites-enabled/arvann.in
+  sudo nginx -t && sudo systemctl reload nginx
+'
+```
+
+The Nginx config keeps the legacy `/dashboard/products/<id>` and
+`/admin/users/<id>` query-param redirects, but deliberately has **no**
+`/sellers/<id>` redirect: `/sellers/<id>` and `/products/<id>` are now real SSR
+pages, and `next.config.ts` already 308-canonicalizes the legacy
+`?companyId` / `?productId` forms. Re-adding a `/sellers/<id>` Nginx redirect
+would create a redirect loop.
 
 ## Smoke Checks
 
@@ -412,31 +459,69 @@ Expected:
 
 ### Frontend
 
+The Next server defaults to `trailingSlash: false`, so trailing-slash URLs
+(`/about/`) 308-redirect to the no-slash form (`/about`). Use no-slash URLs to
+get a direct 200:
+
 ```bash
+# Next server is up locally on the host
+ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
+  sudo systemctl is-active manufacture-web
+  curl -fsS -o /dev/null -w "next_local %{http_code}\n" http://127.0.0.1:3000/
+'
+
+# Public pages (expect 200)
 for url in \
   "https://arvann.in/" \
-  "https://arvann.in/about/" \
-  "https://arvann.in/contact/" \
-  "https://arvann.in/support/" \
-  "https://arvann.in/products/" \
-  "https://arvann.in/products/detail/?productId=detail" \
-  "https://arvann.in/admin/ad-studio/"; do
-  curl -k -sS -o /tmp/arvann-smoke-body -w "$url -> %{http_code}\n" "$url"
+  "https://arvann.in/about" \
+  "https://arvann.in/contact" \
+  "https://arvann.in/support" \
+  "https://arvann.in/products" \
+  "https://arvann.in/signin" \
+  "https://arvann.in/admin/ad-studio" \
+  "https://arvann.in/robots.txt" \
+  "https://arvann.in/sitemap.xml" \
+  "https://arvann.in/manifest.webmanifest"; do
+  curl -sS -o /dev/null -w "$url -> %{http_code}\n" "$url"
 done
+
+# A real SSR product detail page (pulled from the sitemap) should be 200 and
+# carry per-item <title>/og:title (proves SSR, not a static fallback).
+prod_url=$(curl -sS https://arvann.in/sitemap.xml \
+  | grep -oE "https://arvann.in/products/[^<]+" | grep -vE "/category/" | head -1)
+curl -sS -o /tmp/arvann-prod.html -w "$prod_url -> %{http_code}\n" "$prod_url"
+grep -oE "<title>[^<]*</title>" /tmp/arvann-prod.html | head -1
 ```
 
 Redirect checks:
 
 ```bash
-curl -k -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" https://www.arvann.in/contact/
-curl -k -sS -L --max-redirs 8 -o /dev/null -w "%{http_code} redirects=%{num_redirects} final=%{url_effective}\n" https://arvann.in/dashboard/products/legacy-id/
+# www -> apex (301)
+curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" https://www.arvann.in/contact
+# legacy detail query params -> clean SSR URLs (308, via next.config.ts)
+curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" "https://arvann.in/products/detail?productId=abc123"
+curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" "https://arvann.in/sellers/detail?companyId=xyz789"
+# legacy dashboard id -> detail query param (302, via Nginx)
+curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" "https://arvann.in/dashboard/products/legacy-id/"
+# /sellers/<id> must resolve directly with NO redirect loop
+curl -sS -L --max-redirs 5 -o /dev/null -w "final=%{http_code} redirects=%{num_redirects}\n" "https://arvann.in/sellers/some-id"
 ```
 
 Expected:
 
 ```text
 www -> 301 to https://arvann.in/...
-old dashboard product URL -> one redirect to /dashboard/products/detail/?productId=...
+/products/detail?productId=X  -> 308 to /products/X
+/sellers/detail?companyId=X   -> 308 to /sellers/X
+old dashboard product URL     -> 302 to /dashboard/products/detail/?productId=...
+/sellers/<id>                 -> 200, redirects=0 (no loop)
+```
+
+Security headers (now set by `next.config.ts`, not Nginx):
+
+```bash
+curl -sSI https://arvann.in/ | grep -iE \
+  "strict-transport|x-frame|x-content-type|referrer-policy|permissions-policy"
 ```
 
 ## Rollback
@@ -465,13 +550,32 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 
 ### Frontend Rollback
 
+The frontend is now a server, so rollback is restoring the previous code/build
+and restarting the Next server. Re-sync the previous working tree (or restore
+from a backup tar), then:
+
+```bash
+ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
+  set -euo pipefail
+  cd /srv/manufacture/web-frontend
+  npm ci
+  NEXT_PUBLIC_API_URL=https://api.arvann.in/api APP_VARIANT=production npm run build
+  sudo systemctl restart manufacture-web
+  sleep 6
+  sudo systemctl is-active manufacture-web
+  curl -fsS -o /dev/null -w "next_local %{http_code}\n" http://127.0.0.1:3000/
+'
+```
+
+If the Nginx proxy change itself needs reverting (e.g. to fall back to the old
+static export), restore the saved Nginx config and reload:
+
 ```bash
 ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
   set -euo pipefail
   ts=<backup_ts>
-  previous=$(cat /srv/manufacture/backups/frontend-current.$ts.txt)
-  test -d "$previous"
-  ln -sfn "$previous" /var/www/arvann/current
+  sudo cp /srv/manufacture/backups/nginx-arvann.in.$ts.conf /etc/nginx/sites-enabled/arvann.in
+  sudo nginx -t && sudo systemctl reload nginx
   curl -fsSI https://arvann.in/
 '
 ```
@@ -494,6 +598,16 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
+Frontend (Next server) status, restart, and logs:
+
+```bash
+ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
+  sudo systemctl status manufacture-web --no-pager
+  sudo systemctl restart manufacture-web
+  sudo journalctl -u manufacture-web --since "30 minutes ago" --no-pager
+'
+```
+
 Nginx status:
 
 ```bash
@@ -503,11 +617,12 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-Current frontend release:
+Current frontend build:
 
 ```bash
 ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  readlink -f /var/www/arvann/current
+  cat /srv/manufacture/web-frontend/.next/BUILD_ID
+  sudo ss -ltnp | grep ":3000"
 '
 ```
 
@@ -613,6 +728,15 @@ sudo systemctl restart manufacture-backend
 - Never replace production `.env` wholesale during rsync.
 - Always run local tests and a production smoke pass.
 - Always create backups before restart.
-- Frontend is static and does not need PM2.
-- Backend is PM2 cluster mode and depends on Redis for sessions and Socket.IO cross-worker behavior.
+- Frontend is a Next.js server (`manufacture-web` systemd unit, port 3000),
+  NOT a static export. `npm run build` does not produce `out/`. Nginx must
+  proxy `arvann.in` to `127.0.0.1:3000`.
+- `NEXT_PUBLIC_*` is inlined at build time, so always pass
+  `NEXT_PUBLIC_API_URL` / `APP_VARIANT` to the build, then restart
+  `manufacture-web`.
+- Redirects, rewrites and security headers live in `next.config.ts`; do not
+  duplicate them in Nginx, and never add a `/sellers/<id>` or `/products/<id>`
+  redirect in Nginx (would loop with the next.config canonicalization).
+- Backend is PM2 cluster mode and depends on Redis (native `redis-server`, not
+  Docker) for sessions and Socket.IO cross-worker behavior.
 - If a secret leaks into git, rotate it immediately.

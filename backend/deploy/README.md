@@ -5,6 +5,8 @@ This folder contains deployment assets for `api.arvann.in`:
 - `docker-compose.infrastructure.yml` for local MongoDB + Redis (Docker).
 - `ecosystem.config.cjs` for PM2 cluster process management.
 - `nginx-api.arvann.in.conf` for Nginx reverse proxy.
+- The API Nginx site must keep `client_max_body_size 100M;` so ad banner
+  videos reach Express/Multer instead of being rejected by Nginx first.
 
 Runtime settings expected in backend `.env`:
 
@@ -27,6 +29,11 @@ Runtime settings expected in backend `.env`:
 
 ## Upload troubleshooting
 
+- `413 Request Entity Too Large` before backend logs: Nginx body size is too
+  small. Apply `client_max_body_size 100M;` to the `api.arvann.in` server block
+  and reload Nginx.
+- `LIMIT_FILE_SIZE`: request reached Multer, but the file exceeded the
+  endpoint-specific backend limit.
 - `STORAGE_NOT_CONFIGURED`: missing `AWS_S3_BUCKET` or `AWS_S3_REGION`.
 - `STORAGE_INVALID_CREDENTIALS`: invalid key pair or unavailable IAM provider chain credentials.
 - `STORAGE_ACCESS_DENIED`: IAM principal lacks write access to the bucket/prefix.
