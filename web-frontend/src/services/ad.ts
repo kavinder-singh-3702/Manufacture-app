@@ -41,6 +41,7 @@ export type AdCreative = {
   bannerImageUrl?: string;
   bannerImageBase64?: string;
   bannerVideoUrl?: string;
+  bannerVideoBase64?: string;
   bannerMediaType?: AdMediaType;
   bannerPosterUrl?: string;
   bannerPosterBase64?: string;
@@ -142,6 +143,31 @@ const createCampaign = (payload: UpsertAdCampaignInput) =>
 const updateCampaign = (campaignId: string, payload: Partial<UpsertAdCampaignInput>) =>
   httpClient.patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, payload).then((r) => r.campaign);
 
+// Long timeout for uploads — banner videos can be up to ~100MB.
+const UPLOAD_TIMEOUT_MS = 120_000;
+
+// Multipart variants: send the JSON campaign payload alongside a banner video
+// file. The backend (parseAdMultipart) JSON-parses `payload` and stores the
+// uploaded `bannerVideo` as the campaign's video creative.
+const buildMediaForm = (payload: UpsertAdCampaignInput, video: File) => {
+  const form = new FormData();
+  form.append("payload", JSON.stringify(payload));
+  form.append("bannerVideo", video);
+  return form;
+};
+
+const createCampaignWithMedia = (payload: UpsertAdCampaignInput, video: File) =>
+  httpClient
+    .post<{ campaign: AdCampaign }>(BASE, buildMediaForm(payload, video), { timeoutMs: UPLOAD_TIMEOUT_MS })
+    .then((r) => r.campaign);
+
+const updateCampaignWithMedia = (campaignId: string, payload: Partial<UpsertAdCampaignInput>, video: File) =>
+  httpClient
+    .patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, buildMediaForm(payload as UpsertAdCampaignInput, video), {
+      timeoutMs: UPLOAD_TIMEOUT_MS,
+    })
+    .then((r) => r.campaign);
+
 const activateCampaign = (campaignId: string) =>
   httpClient.post<{ campaign: AdCampaign }>(`${BASE}/${campaignId}/activate`).then((r) => r.campaign);
 
@@ -160,7 +186,9 @@ export const adService = {
   listCampaigns,
   getCampaign,
   createCampaign,
+  createCampaignWithMedia,
   updateCampaign,
+  updateCampaignWithMedia,
   activateCampaign,
   pauseCampaign,
   stopCampaign,

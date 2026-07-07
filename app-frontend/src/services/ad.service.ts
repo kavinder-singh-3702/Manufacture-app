@@ -220,6 +220,22 @@ class AdService {
     return response.campaign;
   }
 
+  async updateCampaignWithMedia(
+    campaignId: string,
+    payload: UpdateAdCampaignInput,
+    videoFile: { uri: string; type: string; name: string },
+  ): Promise<AdCampaign> {
+    const formData = new FormData();
+    formData.append("payload", JSON.stringify(payload));
+    formData.append("bannerVideo", {
+      uri: videoFile.uri,
+      type: videoFile.type,
+      name: videoFile.name,
+    } as unknown as Blob);
+    const response = await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, formData);
+    return response.campaign;
+  }
+
   async activateCampaign(campaignId: string): Promise<AdCampaign> {
     const response = await apiClient.post<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}/activate`);
     return response.campaign;

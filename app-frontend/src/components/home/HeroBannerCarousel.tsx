@@ -45,8 +45,6 @@ type HeroBannerCarouselProps = {
   onCardPress?: (card: AdFeedCard) => void;
   onCardVisible?: (card: AdFeedCard) => void;
   onSearchPress?: () => void;
-  onCallPress?: (card: AdFeedCard) => void;
-  onMessagePress?: (card: AdFeedCard) => void;
 };
 
 const BannerVideo = ({
@@ -124,8 +122,6 @@ export const HeroBannerCarousel = ({
   onCardPress,
   onCardVisible,
   onSearchPress,
-  onCallPress,
-  onMessagePress,
 }: HeroBannerCarouselProps) => {
   const { width } = useWindowDimensions();
   const baseBannerHeight = Math.min(Math.round(width * 0.6), 330);
@@ -285,29 +281,18 @@ export const HeroBannerCarousel = ({
     const card = slide.card;
     const bannerImage = card.bannerImageUrl;
     const productImage = card.product?.images?.[0]?.url;
-    const hasFullBanner = Boolean(bannerImage) && !failedBannerUrls.has(bannerImage!);
+    const hasBanner = Boolean(bannerImage) && !failedBannerUrls.has(bannerImage!);
     const videoUrl = card.bannerVideoUrl;
     const hasPlayableVideo =
       isVideoMedia(card) && Boolean(videoUrl) && !failedVideoUrls.has(videoUrl!);
+    // Full-bleed media: the admin banner if uploaded, otherwise the product image.
+    const heroImage = hasBanner ? bannerImage : productImage;
     const productName = card.title || card.product?.name || "";
-    const companyName = card.subtitle || card.product?.company?.displayName || "";
-    const currencySymbol = (p?: { currency?: string }) =>
-      p?.currency === "INR" || !p?.currency ? "₹" : p.currency;
-    const formatPrice = (p?: { amount?: number | string; currency?: string }) =>
-      p?.amount ? `${currencySymbol(p)}${Number(p.amount).toLocaleString("en-IN")}` : "";
 
-    const listedPrice = card.pricing?.listed || card.product?.price;
-    const advertised = card.pricing?.advertised || card.priceOverride;
-    const isDiscounted =
-      card.pricing?.isDiscounted ||
-      (advertised?.amount && listedPrice?.amount && Number(advertised.amount) < Number(listedPrice.amount));
-    const displayPrice = advertised || listedPrice;
-    const priceText = formatPrice(displayPrice);
-    const originalPriceText = isDiscounted ? formatPrice(listedPrice) : "";
-
-    // Full banner image mode (admin uploaded a banner)
-    if (hasFullBanner || hasPlayableVideo) {
-      const poster = card.bannerPosterUrl || card.bannerImageUrl || productImage;
+    // Clean image banner — banner or product image filling the whole space,
+    // tappable straight through to the product. No view / call / chat buttons.
+    if (hasPlayableVideo || heroImage) {
+      const poster = card.bannerPosterUrl || bannerImage || productImage;
       const isActive = index === activeIndex;
       return (
         <TouchableOpacity
@@ -316,6 +301,7 @@ export const HeroBannerCarousel = ({
           onPress={() => onCardPress?.(card)}
           style={{ width, height: bannerHeight }}
         >
+          <View style={[StyleSheet.absoluteFill, styles.bannerBackdrop]} />
           {hasPlayableVideo ? (
             // Data-saver: only the visible slide loads the video; others show the poster.
             isActive ? (
@@ -327,24 +313,30 @@ export const HeroBannerCarousel = ({
             )
           ) : (
             <Image
-              source={{ uri: bannerImage! }}
+              source={{ uri: heroImage! }}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
-              onError={() =>
-                setFailedBannerUrls((prev) => {
-                  if (prev.has(bannerImage!)) return prev;
-                  const next = new Set(prev);
-                  next.add(bannerImage!);
-                  return next;
-                })
-              }
+              onError={() => {
+                if (hasBanner) {
+                  setFailedBannerUrls((prev) => {
+                    if (prev.has(bannerImage!)) return prev;
+                    const next = new Set(prev);
+                    next.add(bannerImage!);
+                    return next;
+                  });
+                }
+              }}
             />
           )}
+          {/* Sponsored disclosure — not a CTA */}
+          <View style={[styles.adTag, { top: topInset + 12 }]}>
+            <Text style={styles.adTagText}>AD</Text>
+          </View>
         </TouchableOpacity>
       );
     }
 
-    // Product card mode — styled promotional banner with product info
+    // No banner and no product image — minimal branded card with just the name.
     return (
       <TouchableOpacity
         key={slide.id}
@@ -359,85 +351,13 @@ export const HeroBannerCarousel = ({
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Decorative shapes */}
         <View style={[styles.decoCircle1, { backgroundColor: "rgba(255,255,255,0.06)" }]} />
         <View style={[styles.decoCircle2, { backgroundColor: "rgba(255,255,255,0.04)" }]} />
-
-        <View style={[styles.adCardContent, { paddingTop: 16 + topInset }, onSearchPress && { paddingBottom: 20 + searchAreaHeight }]}>
-          {/* Top row: text + image */}
-          <View style={styles.adCardTopRow}>
-            <View style={styles.adCardTextSection}>
-              <View style={styles.adBadgeSmall}>
-                <Text style={styles.adBadgeSmallText}>AD</Text>
-              </View>
-              <Text style={styles.adCardTitle} numberOfLines={2}>
-                {productName}
-              </Text>
-              {companyName ? (
-                <Text style={styles.adCardCompany} numberOfLines={1}>
-                  by {companyName}
-                </Text>
-              ) : null}
-              {priceText ? (
-                <View style={styles.adPricePill}>
-                  {originalPriceText ? (
-                    <Text style={styles.adPriceOriginal}>{originalPriceText}</Text>
-                  ) : null}
-                  <Text style={styles.adPriceText}>{priceText}</Text>
-                  {displayPrice?.unit ? <Text style={styles.adPriceUnit}>/{displayPrice.unit}</Text> : null}
-                </View>
-              ) : null}
-            </View>
-
-            {/* Product image */}
-            {productImage ? (
-              <View style={styles.adCardImageWrap}>
-                <Image
-                  source={{ uri: productImage }}
-                  style={styles.adCardImage}
-                  resizeMode="cover"
-                />
-              </View>
-            ) : (
-              <View style={[styles.adCardImageWrap, styles.adCardImagePlaceholder]}>
-                <Text style={{ fontSize: 40 }}>📦</Text>
-              </View>
-            )}
+        <View style={[styles.adFallbackContent, { top: 36 + topInset }, onSearchPress ? { bottom: 36 + searchAreaHeight } : null]}>
+          <View style={styles.adBadgeSmall}>
+            <Text style={styles.adBadgeSmallText}>AD</Text>
           </View>
-
-          {/* Bottom row: action buttons — full width */}
-          <View style={styles.adActionsRow}>
-            <TouchableOpacity
-              style={styles.adCtaButton}
-              activeOpacity={0.8}
-              onPress={() => onCardPress?.(card)}
-            >
-              <Ionicons name="eye-outline" size={14} color="#1B1464" />
-              <Text style={styles.adCtaText}>{card.ctaLabel || "View"}</Text>
-            </TouchableOpacity>
-            {card.product?.contactPreferences?.allowCall !== false &&
-              card.product?.company?.contact?.phone && onCallPress ? (
-              <TouchableOpacity
-                style={styles.adCtaButtonOutline}
-                activeOpacity={0.8}
-                onPress={() => onCallPress(card)}
-              >
-                <Ionicons name="call-outline" size={12} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.adCtaTextOutline}>Call</Text>
-              </TouchableOpacity>
-            ) : null}
-            {card.product?.contactPreferences?.allowChat !== false &&
-              card.product?.createdBy && onMessagePress ? (
-              <TouchableOpacity
-                style={styles.adCtaButtonOutline}
-                activeOpacity={0.8}
-                onPress={() => onMessagePress(card)}
-              >
-                <Ionicons name="chatbubble-outline" size={12} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.adCtaTextOutline}>Chat</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <Text style={styles.adCardTitle} numberOfLines={2}>{productName}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -602,6 +522,28 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.2)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  // Full-bleed image banner
+  bannerBackdrop: { backgroundColor: "#0E1230" },
+  adTag: {
+    position: "absolute",
+    left: 16,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  adTagText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  adFallbackContent: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    gap: 8,
   },
   // Ad card layout (product card mode — no banner image)
   adCardContent: {

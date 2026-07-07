@@ -11,6 +11,8 @@ export type RequestConfig = {
   params?: QueryParams;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Overrides the client default for this request (e.g. long file uploads). */
+  timeoutMs?: number;
 };
 
 export type HttpClientConfig = {
@@ -65,9 +67,14 @@ export class HttpClient {
     return `${this.baseURL}${sanitizedPath}${serializeParams(params)}`;
   }
 
-  async request<T>({ path, method = "GET", data, params, headers, signal }: RequestConfig): Promise<T> {
+  async request<T>({ path, method = "GET", data, params, headers, signal, timeoutMs }: RequestConfig): Promise<T> {
     const endpoint = this.buildUrl(path, params);
     const requestHeaders = { ...this.defaultHeaders, ...headers };
+
+    // FormData bodies (file uploads) must be sent raw so the browser sets the
+    // multipart boundary itself — forcing application/json would corrupt them.
+    const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+    if (isFormData) delete requestHeaders["Content-Type"];
 
     let response: Response;
     try {
@@ -75,8 +82,8 @@ export class HttpClient {
         method,
         headers: requestHeaders,
         credentials: "include",
-        body: data ? JSON.stringify(data) : undefined,
-        signal: buildSignal(this.timeoutMs, signal),
+        body: isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined,
+        signal: buildSignal(timeoutMs ?? this.timeoutMs, signal),
       });
     } catch (error) {
       // Caller-initiated aborts propagate untouched so callers can ignore them.

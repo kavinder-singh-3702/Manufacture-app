@@ -1153,8 +1153,6 @@ const UserDashboardContent = () => {
             onCardVisible={trackAdImpression}
             onSearchPress={() => navigation.navigate("ProductSearch", {})}
             topInset={insets.top + 60}
-            onCallPress={handleAdCall}
-            onMessagePress={handleAdMessage}
           />
         </Animated.View>
 

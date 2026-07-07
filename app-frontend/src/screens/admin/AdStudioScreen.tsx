@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "react-native";
 import { useTheme } from "../../hooks/useTheme";
@@ -144,6 +145,46 @@ const inferAudiencePreset = (prefill: UpsertAdCampaignInput): AudiencePreset => 
 
 const categoryTitle = (category: ProductCategory) => category.title || category.id;
 
+// Downscale + compress banner artwork before upload so the base64 payload stays
+// small — much faster to upload for the admin and faster to load in the home
+// banner. Banners render full-width on phones, so 1280px wide is plenty.
+const compressBannerImage = async (uri: string): Promise<{ uri: string; base64: string } | null> => {
+  try {
+    const result = await manipulateAsync(uri, [{ resize: { width: 1280 } }], {
+      compress: 0.6,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+    return { uri: result.uri, base64: result.base64 || "" };
+  } catch {
+    return null;
+  }
+};
+
+// A freshly-picked file has a local uri (file://, content://, ph://); an existing
+// campaign's banner is a remote https URL we must NOT try to re-upload.
+const isLocalMediaUri = (uri?: string) => !!uri && !/^https?:\/\//i.test(uri);
+
+// Shapes a saved campaign back into the wizard's prefill input so Edit can reuse
+// the same mapping the "create from request" flow already relies on.
+const campaignToPrefill = (campaign: AdCampaign): UpsertAdCampaignInput => ({
+  name: campaign.name,
+  description: campaign.description,
+  productId: campaign.product?.id || "",
+  placements: campaign.placements,
+  targeting: campaign.targeting,
+  schedule: campaign.schedule,
+  frequencyCapPerDay: campaign.frequencyCapPerDay,
+  priority: campaign.priority,
+  creative: {
+    title: campaign.creative?.title,
+    subtitle: campaign.creative?.subtitle,
+    ctaLabel: campaign.creative?.ctaLabel,
+    badge: campaign.creative?.badge,
+    priceOverride: campaign.creative?.priceOverride,
+  },
+});
+
 const stepLabels = ["Source & Owner", "Select Product", "Audience", "Creative", "Schedule & Launch"];
 
 // Ad Studio accent color
@@ -239,6 +280,8 @@ export const AdStudioScreen = () => {
   const [campaignError, setCampaignError] = useState<string | null>(null);
 
   const [selectedCampaign, setSelectedCampaign] = useState<AdCampaign | null>(null);
+  // When set, the wizard is editing this campaign instead of creating a new one.
+  const [editingCampaign, setEditingCampaign] = useState<AdCampaign | null>(null);
   const [selectedInsights, setSelectedInsights] = useState<AdInsights | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -675,6 +718,52 @@ export const AdStudioScreen = () => {
     }));
   }, [selectedProduct?.price?.currency]);
 
+  // Open the wizard prefilled from an existing campaign (Edit).
+  const beginEditCampaign = useCallback(
+    async (summary: AdCampaign) => {
+      setActionModalCampaign(null);
+      setWizardError(null);
+      try {
+        setDetailsLoading(true);
+        const campaign = await adService.getCampaign(summary.id);
+        const creative = campaign.creative || {};
+        const existingType: WizardState["bannerMediaType"] =
+          creative.bannerMediaType === "image" || creative.bannerMediaType === "video" ? creative.bannerMediaType : "";
+        setEditingCampaign(campaign);
+        setWizard(initialWizardState);
+        mapPrefillToWizard(campaignToPrefill(campaign));
+        // Fields the shared prefill mapper doesn't cover: product source (admin so
+        // the owner step isn't required for an already-chosen product), placement,
+        // and the existing banner shown as a preview (kept unless new media is picked).
+        setWizard((prev) => ({
+          ...prev,
+          productSource: "admin_listings",
+          selectedPlacement: campaign.placements?.[0] === "hero_banner" ? "hero_banner" : "dashboard_home",
+          bannerMediaType: existingType,
+          bannerMediaUri:
+            existingType === "image"
+              ? creative.bannerImageUrl || ""
+              : existingType === "video"
+                ? creative.bannerVideoUrl || ""
+                : "",
+          bannerMediaBase64: "",
+          bannerMediaMimeType: "",
+          bannerMediaFileName: "",
+          bannerPosterUri: creative.bannerPosterUrl || "",
+          bannerPosterBase64: "",
+        }));
+        setSelectedProductDetail(null); // the productId effect hydrates the product
+        setWizardStep(0);
+        setCreateMode(true);
+      } catch (err: any) {
+        setWizardError(err?.message || "Couldn't load this campaign for editing.");
+      } finally {
+        setDetailsLoading(false);
+      }
+    },
+    [initialWizardState, mapPrefillToWizard],
+  );
+
   const applyRequestPrefill = useCallback(
     async (serviceRequestId: string) => {
       const trimmed = serviceRequestId.trim();
@@ -836,7 +925,7 @@ export const AdStudioScreen = () => {
       name: wizard.name.trim(),
       description: wizard.description.trim() || undefined,
       productId: wizard.productId.trim(),
-      status: wizard.launchNow ? "active" : "draft",
+      status: editingCampaign ? editingCampaign.status : wizard.launchNow ? "active" : "draft",
       placements: [wizard.selectedPlacement],
       targeting: {
         mode: wizard.targetingMode,
@@ -873,17 +962,14 @@ export const AdStudioScreen = () => {
         ctaLabel: wizard.creativeCtaLabel.trim() || undefined,
         badge: wizard.creativeBadge.trim() || undefined,
         bannerImageBase64:
-          wizard.selectedPlacement === "hero_banner" && wizard.bannerMediaType === "image" && wizard.bannerMediaBase64
+          wizard.bannerMediaType === "image" && wizard.bannerMediaBase64
             ? wizard.bannerMediaBase64
             : undefined,
-        bannerMediaType:
-          wizard.selectedPlacement === "hero_banner" && wizard.bannerMediaType
-            ? (wizard.bannerMediaType as "image" | "video")
-            : undefined,
+        bannerMediaType: wizard.bannerMediaType
+          ? (wizard.bannerMediaType as "image" | "video")
+          : undefined,
         bannerPosterBase64:
-          wizard.selectedPlacement === "hero_banner" &&
-          wizard.bannerMediaType === "video" &&
-          wizard.bannerPosterBase64
+          wizard.bannerMediaType === "video" && wizard.bannerPosterBase64
             ? wizard.bannerPosterBase64
             : undefined,
       },
@@ -899,23 +985,27 @@ export const AdStudioScreen = () => {
       setSubmitting(true);
       setWizardError(null);
 
-      const hasVideoFile =
-        wizard.selectedPlacement === "hero_banner" &&
-        wizard.bannerMediaType === "video" &&
-        wizard.bannerMediaUri;
+      const videoFile = {
+        uri: wizard.bannerMediaUri,
+        type: wizard.bannerMediaMimeType || "video/mp4",
+        name: wizard.bannerMediaFileName || "video.mp4",
+      };
+      // Only a freshly-picked local file uploads; an existing remote video stays as-is.
+      const hasNewVideoFile = wizard.bannerMediaType === "video" && isLocalMediaUri(wizard.bannerMediaUri);
 
       let created: AdCampaign;
-      if (hasVideoFile) {
-        created = await adService.createCampaignWithMedia(payload, {
-          uri: wizard.bannerMediaUri,
-          type: wizard.bannerMediaMimeType || "video/mp4",
-          name: wizard.bannerMediaFileName || "video.mp4",
-        });
+      if (editingCampaign) {
+        created = hasNewVideoFile
+          ? await adService.updateCampaignWithMedia(editingCampaign.id, payload, videoFile)
+          : await adService.updateCampaign(editingCampaign.id, payload);
+      } else if (hasNewVideoFile) {
+        created = await adService.createCampaignWithMedia(payload, videoFile);
       } else {
         created = await adService.createCampaign(payload);
       }
 
       setCreateMode(false);
+      setEditingCampaign(null);
       setWizard(initialWizardState);
       setWizardStep(0);
       setProductSearch("");
@@ -928,7 +1018,7 @@ export const AdStudioScreen = () => {
       // Surface the actual reason instead of a generic "Request failed"
       // when possible. 413 in particular used to bury the size cap and
       // leave the admin guessing.
-      let message = err?.message || "Failed to create campaign";
+      let message = err?.message || (editingCampaign ? "Failed to update campaign" : "Failed to create campaign");
       if (err?.status === 413) {
         message = "Video is too large for the server (over 100 MB). Pick a shorter clip.";
       }
@@ -936,7 +1026,7 @@ export const AdStudioScreen = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [initialWizardState, loadCampaigns, openCampaign, validateStep, wizard]);
+  }, [editingCampaign, initialWizardState, loadCampaigns, openCampaign, validateStep, wizard]);
 
   const stepSummary = useMemo(() => {
     if (wizard.audiencePreset === "everyone") return "Everyone";
@@ -969,6 +1059,7 @@ export const AdStudioScreen = () => {
 
   const closeCreate = () => {
     setCreateMode(false);
+    setEditingCampaign(null);
     setWizardError(null);
     setWizard(initialWizardState);
     setWizardStep(0);
@@ -1023,36 +1114,20 @@ export const AdStudioScreen = () => {
       >
         {createMode ? (
           <View style={[styles.card, neuRaised(isDark), { borderColor: "transparent", borderRadius: radius.xl, backgroundColor: neuCardBg(isDark) }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Create Campaign</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Step {wizardStep + 1} of {stepLabels.length}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{editingCampaign ? "Edit Campaign" : "Create Campaign"}</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Step {wizardStep + 1} of {stepLabels.length} · {stepLabels[wizardStep]}</Text>
 
-            <View style={styles.stepHeader}>
-              {stepLabels.map((label, index) => {
-                const active = wizardStep === index;
-                const done = wizardStep > index;
-                return (
-                  <View key={label} style={styles.stepItem}>
-                    <View
-                      style={[
-                        styles.stepDot,
-                        done ? neuRaised(isDark) : neuPressed(isDark),
-                        {
-                          borderRadius: radius.pill,
-                          borderColor: "transparent",
-                          backgroundColor: done ? `${AD_ACCENT}20` : active ? `${AD_ACCENT}14` : neuInsetBg(isDark),
-                        },
-                      ]}
-                    >
-                      {done ? (
-                        <Ionicons name="checkmark" size={13} color={AD_ACCENT} />
-                      ) : (
-                        <Text style={[styles.stepDotText, { color: active ? AD_ACCENT : colors.textMuted }]}>{index + 1}</Text>
-                      )}
-                    </View>
-                    <Text style={[styles.stepLabel, { color: active ? colors.text : colors.textMuted }]}>{label}</Text>
-                  </View>
-                );
-              })}
+            {/* Slim segmented progress — one calm bar instead of five crowded labels. */}
+            <View style={styles.progressRow}>
+              {stepLabels.map((label, index) => (
+                <View
+                  key={label}
+                  style={[
+                    styles.progressSeg,
+                    { backgroundColor: wizardStep >= index ? AD_ACCENT : neuInsetBg(isDark) },
+                  ]}
+                />
+              ))}
             </View>
 
             {wizardStep === 0 ? (
@@ -1121,7 +1196,8 @@ export const AdStudioScreen = () => {
                       <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>No users found.</Text>
                     ) : (
                       <View style={{ gap: 8 }}>
-                        {users.slice(0, 8).map((entry) => {
+                        {/* Keep it minimal: top 3 recent users until the admin searches. */}
+                        {users.slice(0, userSearch.trim() ? 8 : 3).map((entry) => {
                           const active = wizard.ownerUserId === entry.id;
                           return (
                             <TouchableOpacity
@@ -1149,6 +1225,9 @@ export const AdStudioScreen = () => {
                             </TouchableOpacity>
                           );
                         })}
+                        {!userSearch.trim() && users.length > 3 ? (
+                          <Text style={[styles.optionMeta, { color: colors.textMuted }]}>Showing 3 recent — search to find anyone.</Text>
+                        ) : null}
                       </View>
                     )}
                     {wizard.ownerUserId ? (
@@ -1489,17 +1568,7 @@ export const AdStudioScreen = () => {
                     subtitle="Shows in sponsored spotlight feed"
                     active={wizard.selectedPlacement === "dashboard_home"}
                     onPress={() =>
-                      setWizard((prev) => ({
-                        ...prev,
-                        selectedPlacement: "dashboard_home",
-                        bannerMediaUri: "",
-                        bannerMediaBase64: "",
-                        bannerMediaType: "",
-                        bannerMediaMimeType: "",
-                        bannerMediaFileName: "",
-                        bannerPosterUri: "",
-                        bannerPosterBase64: "",
-                      }))
+                      setWizard((prev) => ({ ...prev, selectedPlacement: "dashboard_home" }))
                     }
                   />
                   <SelectCard
@@ -1513,9 +1582,10 @@ export const AdStudioScreen = () => {
                   />
                 </View>
 
-                {wizard.selectedPlacement === "hero_banner" && (
+                {(
                   <View style={styles.stack}>
-                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Banner media</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Banner media (optional)</Text>
+                    <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Image or video shown full-screen in the home banner. Leave empty to auto-build from the product.</Text>
                     <View style={styles.row}>
                       <TouchableOpacity
                         style={[
@@ -1525,15 +1595,19 @@ export const AdStudioScreen = () => {
                         onPress={async () => {
                           const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ["images"],
-                            quality: 0.7,
-                            base64: true,
+                            quality: 1,
                           });
                           if (!result.canceled && result.assets[0]) {
-                            const asset = result.assets[0];
+                            const optimized = await compressBannerImage(result.assets[0].uri);
+                            if (!optimized?.base64) {
+                              setWizardError("Couldn't process that image. Try another one.");
+                              return;
+                            }
+                            setWizardError(null);
                             setWizard((prev) => ({
                               ...prev,
-                              bannerMediaUri: asset.uri,
-                              bannerMediaBase64: asset.base64 || "",
+                              bannerMediaUri: optimized.uri,
+                              bannerMediaBase64: optimized.base64,
                               bannerMediaType: "image",
                             }));
                           }
@@ -1681,15 +1755,19 @@ export const AdStudioScreen = () => {
                             onPress={async () => {
                               const result = await ImagePicker.launchImageLibraryAsync({
                                 mediaTypes: ["images"],
-                                quality: 0.7,
-                                base64: true,
+                                quality: 1,
                               });
                               if (!result.canceled && result.assets[0]) {
-                                const asset = result.assets[0];
+                                const optimized = await compressBannerImage(result.assets[0].uri);
+                                if (!optimized?.base64) {
+                                  setWizardError("Couldn't process that image. Try another one.");
+                                  return;
+                                }
+                                setWizardError(null);
                                 setWizard((prev) => ({
                                   ...prev,
-                                  bannerPosterUri: asset.uri,
-                                  bannerPosterBase64: asset.base64 || "",
+                                  bannerPosterUri: optimized.uri,
+                                  bannerPosterBase64: optimized.base64,
                                 }));
                               }
                             }}
@@ -1850,11 +1928,13 @@ export const AdStudioScreen = () => {
                   keyboardType="number-pad"
                 />
 
-                <Toggle
-                  label={wizard.launchNow ? "Launch immediately after create" : "Save as draft (default)"}
-                  value={wizard.launchNow}
-                  onPress={() => setWizard((prev) => ({ ...prev, launchNow: !prev.launchNow }))}
-                />
+                {!editingCampaign ? (
+                  <Toggle
+                    label={wizard.launchNow ? "Launch immediately after create" : "Save as draft (default)"}
+                    value={wizard.launchNow}
+                    onPress={() => setWizard((prev) => ({ ...prev, launchNow: !prev.launchNow }))}
+                  />
+                ) : null}
 
                 <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Review</Text>
@@ -1874,7 +1954,7 @@ export const AdStudioScreen = () => {
                   <InfoLine label="Logic" value={wizard.targetingMode.toUpperCase()} />
                   <InfoLine
                     label="Launch mode"
-                    value={wizard.launchNow ? "Create and activate" : "Create draft"}
+                    value={editingCampaign ? `Keep status: ${editingCampaign.status}` : wizard.launchNow ? "Create and activate" : "Create draft"}
                   />
                 </View>
               </View>
@@ -1921,7 +2001,7 @@ export const AdStudioScreen = () => {
                   style={[styles.primaryBtn, neuRaised(isDark), { borderRadius: radius.lg, backgroundColor: AD_ACCENT, opacity: submitting ? 0.7 : 1 }]}
                 >
                   <Text style={[styles.primaryBtnText, { color: "#FFFFFF" }]}>
-                    {submitting ? "Saving..." : wizard.launchNow ? "Create & Launch" : "Create Draft"}
+                    {submitting ? "Saving..." : editingCampaign ? "Save Changes" : wizard.launchNow ? "Create & Launch" : "Create Draft"}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -2051,6 +2131,16 @@ export const AdStudioScreen = () => {
 
                 {/* Actions */}
                 <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    onPress={() => beginEditCampaign(actionModalCampaign)}
+                    disabled={actionLoading}
+                    activeOpacity={0.85}
+                    style={[styles.modalActionBtn, { backgroundColor: AD_ACCENT, borderRadius: radius.lg, opacity: actionLoading ? 0.6 : 1 }]}
+                  >
+                    <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.modalActionText}>Edit</Text>
+                  </TouchableOpacity>
+
                   {actionModalCampaign.status !== "active" && actionModalCampaign.status !== "archived" && actionModalCampaign.status !== "completed" ? (
                     <TouchableOpacity
                       onPress={() => onCampaignAction(actionModalCampaign, "activate")}
@@ -2602,6 +2692,8 @@ const createStyles = (fs: (size: number) => number) =>
     subtitle: { marginTop: 2, fontSize: fs(12), fontWeight: "600" },
     card: { borderWidth: 1, padding: 12, gap: 10 },
     stepHeader: { flexDirection: "row", justifyContent: "space-between", gap: 6 },
+    progressRow: { flexDirection: "row", gap: 6, marginTop: 8, marginBottom: 4 },
+    progressSeg: { flex: 1, height: 4, borderRadius: 2 },
     stepItem: { flex: 1, alignItems: "center", gap: 6 },
     stepDot: {
       width: 28,

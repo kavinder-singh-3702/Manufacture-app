@@ -255,7 +255,11 @@ const buildAdBannerObjectKey = ({ campaignId, kind = 'image', fileName }) => {
   const prefix = buildStoragePrefix();
   const normalizedFileName = sanitizeFileName(fileName) || `${kind}-${Date.now()}`;
   const timeSegment = Date.now();
-  return `${prefix}/ad-banners/${campaignId}/${kind}-${timeSegment}-${normalizedFileName}`;
+  // Nest ad banners under the `products/` prefix so they inherit the same
+  // anonymous public-read bucket policy that already serves product images.
+  // A top-level `ad-banners/` prefix isn't covered by that policy, so those
+  // objects come back AccessDenied to the app/browser.
+  return `${prefix}/products/ad-banners/${campaignId}/${kind}-${timeSegment}-${normalizedFileName}`;
 };
 
 const ALLOWED_AD_VIDEO_MIME_TYPES = ['video/mp4'];

@@ -7,6 +7,7 @@ import {
   AdCampaign,
   AdCampaignStatus,
   AdInsights,
+  AdMediaType,
   AdPlacement,
   UpsertAdCampaignInput,
 } from "@/src/services/ad";
@@ -361,6 +362,31 @@ const inferAudiencePreset = (t?: AdCampaign["targeting"]): AudiencePreset => {
   return "everyone";
 };
 
+// Wizard steps — one focused card per screen so the form never feels crowded.
+const STEPS = ["Product", "Creative", "Placement", "Audience", "Delivery"] as const;
+
+const StepRail = ({ steps, current, maxReached, onJump }: {
+  steps: readonly string[]; current: number; maxReached: number; onJump: (i: number) => void;
+}) => (
+  <div className="flex items-center gap-1.5 px-5 py-3" style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+    {steps.map((label, i) => {
+      const active = i === current;
+      const done = i < current;
+      const reachable = i <= maxReached;
+      return (
+        <button key={label} type="button" disabled={!reachable} onClick={() => reachable && onJump(i)}
+          className="flex flex-1 flex-col items-start gap-1 disabled:cursor-default">
+          <span className="h-1 w-full rounded-full transition-colors" style={{ backgroundColor: active || done ? "var(--primary)" : "var(--border)" }} />
+          <span className="hidden text-[10px] font-bold uppercase tracking-wide sm:block"
+            style={{ color: active ? "var(--primary)" : done ? "var(--foreground)" : "var(--medium-gray)" }}>
+            {label}
+          </span>
+        </button>
+      );
+    })}
+  </div>
+);
+
 const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign | null; onClose: () => void; onSaved: () => void }) => {
   const isEdit = !!campaign;
   const [product, setProduct] = useState<Product | null>(null);
@@ -372,10 +398,13 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
   const [ctaLabel, setCtaLabel] = useState(campaign?.creative?.ctaLabel ?? "View product");
   const [badge, setBadge] = useState(campaign?.creative?.badge ?? "");
 
-  // Banner (hero placement only)
+  // Banner media — one full-bleed image or video, shown as-is in the home banner.
+  const [mediaType, setMediaType] = useState<AdMediaType>(campaign?.creative?.bannerMediaType === "video" ? "video" : "image");
   const [bannerBase64, setBannerBase64] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(campaign?.creative?.bannerImageUrl ?? null);
   const [bannerVideoUrl, setBannerVideoUrl] = useState(campaign?.creative?.bannerVideoUrl ?? "");
+  const [bannerVideoFile, setBannerVideoFile] = useState<File | null>(null);
+  const [bannerVideoFilePreview, setBannerVideoFilePreview] = useState<string | null>(null);
   const [aspectWarning, setAspectWarning] = useState<string | null>(null);
   // Poster (shown before/while a banner video loads)
   const [posterBase64, setPosterBase64] = useState<string | null>(null);
@@ -404,6 +433,8 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
   const [freqCap, setFreqCap] = useState(String(campaign?.frequencyCapPerDay ?? 3));
   const [startAt, setStartAt] = useState(isoToLocalInput(campaign?.schedule?.startAt));
   const [endAt, setEndAt] = useState(isoToLocalInput(campaign?.schedule?.endAt));
+  const [step, setStep] = useState(0);
+  const [maxStep, setMaxStep] = useState(isEdit ? STEPS.length - 1 : 0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -417,8 +448,6 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
     : campaign?.product
       ? { name: campaign.product.name ?? "Product", image: campaign.product.images?.[0]?.url, price: campaign.product.price?.amount }
       : null;
-
-  const isHero = placements.includes("hero_banner");
 
   // Edit mode: hydrate display names for already-targeted users so chips don't show raw ids.
   useEffect(() => {
@@ -473,26 +502,61 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
     reader.readAsDataURL(file);
   };
 
-  // Validation surfaced inline so the save button explains itself.
-  const validationError = (() => {
-    if (!productId) return "Select a product to promote.";
-    if (!name.trim()) return "Give the campaign an internal name.";
-    if (!placements.length) return "Pick at least one placement.";
-    if (audience === "specific_users" && !specificUserIds.length) return "Pick at least one user to target.";
-    if (audience === "shopper_category" && !shopperCategories.length) return "Choose at least one shopper category.";
-    if (audience === "buy_intent" && !buyIntentCategories.length) return "Choose at least one buying-signal category.";
-    if (useDiscount) {
-      const amt = Number(discountAmount);
-      if (!Number.isFinite(amt) || amt <= 0) return "Discounted price must be greater than 0.";
-      if (listedPrice != null && amt > listedPrice) return "Discounted price can't exceed the listed price.";
-    }
+  // Banner video is uploaded as a file (multipart) rather than base64-inlined —
+  // videos are large, so we keep just the File + a local object-URL preview.
+  const handleVideoFile = (file: File) => {
+    if (file.size > 100 * 1024 * 1024) { setError("Video must be under 100MB."); return; }
+    setError(null);
+    setBannerVideoFilePreview((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    setBannerVideoFile(file);
+    setBannerVideoUrl("");
+  };
+  const clearVideoFile = () => {
+    setBannerVideoFilePreview((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setBannerVideoFile(null);
+  };
+
+  // Per-step validation — each entry maps to a wizard step and gates "Continue".
+  const discountError = (() => {
+    if (!useDiscount) return null;
+    const amt = Number(discountAmount);
+    if (!Number.isFinite(amt) || amt <= 0) return "Discounted price must be greater than 0.";
+    if (listedPrice != null && amt > listedPrice) return "Discounted price can't exceed the listed price.";
     return null;
   })();
+  const stepErrors: (string | null)[] = [
+    !productId ? "Select a product to promote." : !name.trim() ? "Give the campaign an internal name." : null,
+    discountError,
+    !placements.length ? "Pick at least one placement." : null,
+    audience === "specific_users" && !specificUserIds.length ? "Pick at least one user to target."
+      : audience === "shopper_category" && !shopperCategories.length ? "Choose at least one shopper category."
+      : audience === "buy_intent" && !buyIntentCategories.length ? "Choose at least one buying-signal category."
+      : null,
+    null,
+  ];
+  const validationError = stepErrors.find(Boolean) ?? null;
   const canSave = !validationError;
+  const stepError = stepErrors[step];
+
+  const goNext = () => {
+    if (stepError) { setError(stepError); return; }
+    setError(null);
+    setStep((s) => {
+      const n = Math.min(s + 1, STEPS.length - 1);
+      setMaxStep((m) => Math.max(m, n));
+      return n;
+    });
+  };
+  const goBack = () => { setError(null); setStep((s) => Math.max(s - 1, 0)); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSave) { setError(validationError); return; }
+    if (!canSave) {
+      const bad = stepErrors.findIndex(Boolean);
+      if (bad >= 0) setStep(bad);
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -509,6 +573,17 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
         lookbackDays: Math.min(Math.max(parseInt(lookbackDays, 10) || 60, 1), 365),
       };
 
+      // Banner media: image inlines as base64; a picked video ships via multipart
+      // (below), so here we only flag the media type / any hosted URL.
+      const bannerMedia: Partial<NonNullable<UpsertAdCampaignInput["creative"]>> =
+        mediaType === "image"
+          ? (bannerBase64 ? { bannerMediaType: "image", bannerImageBase64: bannerBase64 } : {})
+          : bannerVideoFile
+            ? { bannerMediaType: "video" }
+            : bannerVideoUrl.trim()
+              ? { bannerMediaType: "video", bannerVideoUrl: bannerVideoUrl.trim() }
+              : {};
+
       const creative: UpsertAdCampaignInput["creative"] = {
         title: title.trim() || productDisplay?.name,
         subtitle: subtitle.trim() || undefined,
@@ -517,16 +592,8 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
         priceOverride: useDiscount && Number(discountAmount) > 0
           ? { amount: Number(discountAmount), currency: productCurrency }
           : null,
-        ...(isHero
-          ? {
-              ...(bannerBase64
-                ? { bannerMediaType: "image" as const, bannerImageBase64: bannerBase64 }
-                : bannerVideoUrl.trim()
-                  ? { bannerMediaType: "video" as const, bannerVideoUrl: bannerVideoUrl.trim() }
-                  : {}),
-              ...(posterBase64 ? { bannerPosterBase64: posterBase64 } : {}),
-            }
-          : {}),
+        ...bannerMedia,
+        ...(mediaType === "video" && posterBase64 ? { bannerPosterBase64: posterBase64 } : {}),
       };
 
       const payload: UpsertAdCampaignInput = {
@@ -541,8 +608,15 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
         creative,
       };
 
-      if (isEdit && campaign) await adService.updateCampaign(campaign.id, payload);
-      else await adService.createCampaign(payload);
+      const videoFile = mediaType === "video" ? bannerVideoFile : null;
+      if (isEdit && campaign) {
+        if (videoFile) await adService.updateCampaignWithMedia(campaign.id, payload, videoFile);
+        else await adService.updateCampaign(campaign.id, payload);
+      } else if (videoFile) {
+        await adService.createCampaignWithMedia(payload, videoFile);
+      } else {
+        await adService.createCampaign(payload);
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} campaign`);
@@ -555,10 +629,11 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
 
   return (
     <Drawer onClose={onClose}>
-      <DrawerHeader title={isEdit ? "Edit campaign" : "New campaign"} subtitle="Promote a product across placements" onClose={onClose} />
+      <DrawerHeader title={isEdit ? "Edit campaign" : "New campaign"} subtitle={`Step ${step + 1} of ${STEPS.length} · ${STEPS[step]}`} onClose={onClose} />
+      <StepRail steps={STEPS} current={step} maxReached={maxStep} onJump={setStep} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
-        {/* 1 ─ Product */}
-        <Section title="Product" step={1}>
+        {step === 0 && (
+        <Section>
           {productDisplay ? (
             <div className="flex items-center gap-3 rounded-xl p-3" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
               {productDisplay.image ? (
@@ -593,9 +668,10 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
           </Field>
         </Section>
+        )}
 
-        {/* 2 ─ Creative */}
-        <Section title="Creative" step={2}>
+        {step === 1 && (
+        <Section>
           <Field label="Headline">
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Defaults to product name"
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
@@ -635,9 +711,10 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
             </div>
           )}
         </Section>
+        )}
 
-        {/* 3 ─ Placement + banner */}
-        <Section title="Placement" step={3}>
+        {step === 2 && (
+        <Section>
           <div className="flex gap-2">
             {PLACEMENTS.map((p) => (
               <button key={p.key} type="button" onClick={() => togglePlacement(p.key)}
@@ -652,28 +729,35 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
             ))}
           </div>
 
-          {isHero && (
-            <div className="space-y-3 rounded-xl p-3" style={{ border: "1px dashed var(--border)", backgroundColor: "var(--surface)" }}>
-              <p className="text-[11px] font-semibold" style={{ color: "var(--medium-gray)" }}>
-                Hero banner uses a full-bleed image or video. Leave empty to auto-build a card from the product.
-              </p>
+          {/* Banner media — a full-bleed image or video shown as-is in the home banner.
+              Leave empty to auto-build a card from the product. */}
+          <div className="space-y-3 rounded-xl p-3" style={{ border: "1px dashed var(--border)", backgroundColor: "var(--surface)" }}>
+            <HeroPreview
+              bannerImage={mediaType === "image" ? bannerPreview : null}
+              videoUrl={mediaType === "video" ? (bannerVideoFilePreview ?? (bannerVideoUrl.trim() || undefined)) : undefined}
+              poster={posterPreview}
+              productImage={productDisplay?.image}
+              title={title.trim() || productDisplay?.name || "Featured product"}
+              subtitle={subtitle.trim()}
+              ctaLabel={ctaLabel.trim() || "View product"}
+              badge={badge.trim()}
+              price={listedPrice}
+              discount={useDiscount && Number(discountAmount) > 0 ? Number(discountAmount) : undefined}
+              currency={productCurrency}
+            />
 
-              {/* Live preview — exactly how the hero slide renders (16:9). */}
-              <HeroPreview
-                bannerImage={bannerPreview}
-                videoUrl={bannerVideoUrl.trim() && !bannerBase64 ? bannerVideoUrl.trim() : undefined}
-                poster={posterPreview}
-                productImage={productDisplay?.image}
-                title={title.trim() || productDisplay?.name || "Featured product"}
-                subtitle={subtitle.trim()}
-                ctaLabel={ctaLabel.trim() || "View product"}
-                badge={badge.trim()}
-                price={listedPrice}
-                discount={useDiscount && Number(discountAmount) > 0 ? Number(discountAmount) : undefined}
-                currency={productCurrency}
-              />
+            <div className="flex gap-2">
+              {(["image", "video"] as const).map((m) => (
+                <button key={m} type="button" onClick={() => setMediaType(m)}
+                  className="flex-1 rounded-lg py-2 text-xs font-bold transition-all"
+                  style={{ backgroundColor: mediaType === m ? "var(--primary)" : "var(--background)", color: mediaType === m ? "#fff" : "var(--foreground)", border: "1px solid var(--border)" }}>
+                  {m === "image" ? "🖼 Image" : "🎬 Video"}
+                </button>
+              ))}
+            </div>
 
-              <Field label="Banner image (recommended 16:9)">
+            {mediaType === "image" ? (
+              <div>
                 {bannerPreview ? (
                   <div className="relative overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -684,7 +768,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
                 ) : (
                   <label className="flex cursor-pointer items-center justify-center rounded-xl py-4 text-sm font-semibold transition-opacity hover:opacity-70"
                     style={{ border: "1px dashed var(--border)", color: "var(--primary)", backgroundColor: "var(--background)" }}>
-                    + Upload banner image
+                    + Upload banner image (16:9)
                     <input type="file" accept="image/*" className="hidden"
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleBanner(f); }} />
                   </label>
@@ -692,20 +776,30 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
                 {aspectWarning && (
                   <p className="mt-1 text-[11px] font-semibold" style={{ color: "#B45309" }}>⚠ {aspectWarning}</p>
                 )}
-              </Field>
-
-              <Field label="…or banner video URL">
-                <input value={bannerVideoUrl} onChange={(e) => setBannerVideoUrl(e.target.value)}
-                  placeholder="https://… (used when no image is set)" type="url"
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-                {bannerVideoUrl.trim() && !bannerBase64 && (
-                  <p className="mt-1 text-[11px] font-semibold" style={{ color: "var(--primary)" }}>▶ Video creative will be used.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bannerVideoFilePreview ? (
+                  <div className="relative overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
+                    <video src={bannerVideoFilePreview} muted playsInline controls className="h-32 w-full object-cover" />
+                    <button type="button" onClick={clearVideoFile}
+                      className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-[11px] font-bold text-white">Remove</button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center justify-center rounded-xl py-4 text-sm font-semibold transition-opacity hover:opacity-70"
+                    style={{ border: "1px dashed var(--border)", color: "var(--primary)", backgroundColor: "var(--background)" }}>
+                    + Upload video (mp4, ≤ 100MB)
+                    <input type="file" accept="video/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoFile(f); }} />
+                  </label>
                 )}
-              </Field>
-
-              {/* Poster — recommended for video so mobiles see an image before the video loads. */}
-              {bannerVideoUrl.trim() && !bannerBase64 && (
-                <Field label="Video poster image (data-saver fallback)">
+                {!bannerVideoFile && (
+                  <Field label="or paste a hosted video URL">
+                    <input value={bannerVideoUrl} onChange={(e) => setBannerVideoUrl(e.target.value)} placeholder="https://…" type="url"
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                  </Field>
+                )}
+                <Field label="Poster image (shown before the video plays)">
                   {posterPreview ? (
                     <div className="relative overflow-hidden rounded-xl" style={{ border: "1px solid var(--border)" }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -722,13 +816,14 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
                     </label>
                   )}
                 </Field>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </Section>
+        )}
 
-        {/* 4 ─ Audience */}
-        <Section title="Audience" step={4}>
+        {step === 3 && (
+        <Section>
           <div className="grid grid-cols-2 gap-2">
             {AUDIENCE_PRESETS.map((a) => {
               const active = audience === a.key;
@@ -821,9 +916,10 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
             </>
           )}
         </Section>
+        )}
 
-        {/* 5 ─ Delivery & schedule */}
-        <Section title="Delivery & schedule" step={5}>
+        {step === 4 && (
+        <Section>
           <div>
             <div className="flex items-center justify-between">
               <Label>Priority</Label>
@@ -856,20 +952,31 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
           </div>
           <p className="text-[11px]" style={{ color: "var(--medium-gray)" }}>Leave blank to run indefinitely once activated.</p>
         </Section>
+        )}
 
         {error && (
           <div className="rounded-xl px-3 py-2.5 text-xs font-semibold" style={{ backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", color: "#991B1B" }}>{error}</div>
         )}
 
-        <div className="sticky bottom-0 -mx-5 flex gap-3 px-5 py-4" style={{ backgroundColor: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-          <button type="button" onClick={onClose}
-            className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>Cancel</button>
-          <button type="submit" disabled={!canSave || saving} title={validationError ?? undefined}
-            className="flex-[2] rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ backgroundColor: "var(--primary)" }}>
-            {saving ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save changes" : "Create as draft")}
+        <div className="sticky bottom-0 -mx-5 flex items-center gap-3 px-5 py-4" style={{ backgroundColor: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+          <button type="button" onClick={step === 0 ? onClose : goBack}
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>
+            {step === 0 ? "Cancel" : "Back"}
           </button>
+          {step < STEPS.length - 1 ? (
+            <button type="button" onClick={goNext} disabled={!!stepError} title={stepError ?? undefined}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ backgroundColor: "var(--primary)" }}>
+              Continue
+            </button>
+          ) : (
+            <button type="submit" disabled={!canSave || saving} title={validationError ?? undefined}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ backgroundColor: "var(--primary)" }}>
+              {saving ? (isEdit ? "Saving…" : "Creating…") : (isEdit ? "Save changes" : "Create as draft")}
+            </button>
+          )}
         </div>
       </form>
 
@@ -949,7 +1056,8 @@ const UserPicker = ({ selectedIds, onToggle, onClose }: { selectedIds: string[];
   const load = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const res = await adminService.listUsers({ search: q || undefined, limit: 40, sort: "updatedAt:desc" });
+      // Keep it minimal: show only the 3 most-recent users until the admin searches.
+      const res = await adminService.listUsers({ search: q || undefined, limit: q ? 40 : 3, sort: "updatedAt:desc" });
       setResults(res.users ?? []);
     } catch {
       setResults([]);
@@ -960,6 +1068,8 @@ const UserPicker = ({ selectedIds, onToggle, onClose }: { selectedIds: string[];
 
   useEffect(() => { load(""); }, [load]);
   useEffect(() => { const t = setTimeout(() => load(search), 250); return () => clearTimeout(t); }, [load, search]);
+
+  const showingTop = !search.trim();
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
@@ -975,6 +1085,9 @@ const UserPicker = ({ selectedIds, onToggle, onClose }: { selectedIds: string[];
           <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus placeholder="Search by name, email, phone…"
             className="w-full rounded-xl px-3 py-2 text-sm outline-none"
             style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          {showingTop && (
+            <p className="mt-2 text-[11px]" style={{ color: "var(--medium-gray)" }}>Showing 3 recent users — search to find anyone.</p>
+          )}
         </div>
         <div className="max-h-72 overflow-y-auto">
           {loading ? (
@@ -1011,12 +1124,8 @@ const UserPicker = ({ selectedIds, onToggle, onClose }: { selectedIds: string[];
 
 // ── Drawer form helpers ────────────────────────────────────────────────────────
 
-const Section = ({ title, step, children }: { title: string; step: number; children: React.ReactNode }) => (
+const Section = ({ children }: { children: React.ReactNode }) => (
   <div className="rounded-2xl p-4 space-y-3" style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
-    <div className="flex items-center gap-2">
-      <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>{step}</span>
-      <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>{title}</p>
-    </div>
     {children}
   </div>
 );

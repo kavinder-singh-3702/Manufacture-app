@@ -9,6 +9,7 @@ import { NotificationsProvider } from "./NotificationsProvider";
 import { PushNotificationsProvider } from "./PushNotificationsProvider";
 import { ToastProvider } from "../components/ui/Toast";
 import { CrossSellAdHost } from "../components/cart/CrossSellAdHost";
+import { LoginAdPopupHost } from "../components/ads/LoginAdPopupHost";
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -27,6 +28,7 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
                     <ToastProvider>
                       {children}
                       <CrossSellAdHost />
+                      <LoginAdPopupHost />
                     </ToastProvider>
                   </NotificationsProvider>
                 </PushNotificationsProvider>
