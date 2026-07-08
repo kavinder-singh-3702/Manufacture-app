@@ -101,13 +101,6 @@ export const CategoryProductsScreen = () => {
 
   const loadProducts = useCallback(
     async (offset = 0, append = false, overrides?: { sort?: typeof appliedSort; minPrice?: number; maxPrice?: number }) => {
-      if (isGuest) {
-        setItems([]);
-        setPagination({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
-        setLoading(false);
-        return;
-      }
-
       if (append) {
         setLoadingMore(true);
       } else {
@@ -142,7 +135,7 @@ export const CategoryProductsScreen = () => {
         }
       }
     },
-    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId, isGuest]
+    [appliedMaxPrice, appliedMinPrice, appliedSort, categoryId]
   );
 
   // Refresh list whenever screen comes into focus

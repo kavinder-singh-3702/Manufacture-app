@@ -31,6 +31,30 @@ export type AdminNotificationListResponse = {
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
 };
 
+// ── End-user inbox ──────────────────────────────────────────────────────────
+
+export type Notification = AdminNotification & {
+  readAt: string | null;
+  archivedAt?: string | null;
+  requiresAck?: boolean;
+  ackAt?: string | null;
+};
+
+export type NotificationListParams = {
+  status?: "read" | "unread";
+  topic?: string;
+  priority?: NotificationPriority;
+  archived?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type NotificationListResponse = {
+  notifications: Notification[];
+  pagination: { total: number; limit: number; offset: number; hasMore: boolean };
+};
+
 export type AdminDispatchPayload = {
   audience?: "user" | "company" | "broadcast";
   userId?: string;
@@ -97,6 +121,29 @@ const cancelAdmin = (notificationId: string) =>
 const resendAdmin = (notificationId: string) =>
   httpClient.post<AdminDispatchResponse>(`/notifications/admin/${notificationId}/resend`);
 
+// End-user inbox — same endpoints the mobile app's notification.service.ts uses.
+
+const list = (params?: NotificationListParams) =>
+  httpClient.get<NotificationListResponse>("/notifications", { params: toQuery(params as Record<string, unknown>) });
+
+const getUnreadCount = () =>
+  httpClient.get<{ count: number }>("/notifications/unread-count").then((r) => r.count);
+
+const markAsRead = (notificationId: string) =>
+  httpClient.patch<{ notification: Notification }>(`/notifications/${notificationId}/read`).then((r) => r.notification);
+
+const markAllAsRead = () =>
+  httpClient.patch<{ success: boolean; modifiedCount: number }>("/notifications/read-all");
+
+const archive = (notificationId: string) =>
+  httpClient.patch<{ notification: Notification }>(`/notifications/${notificationId}/archive`).then((r) => r.notification);
+
+const unarchive = (notificationId: string) =>
+  httpClient.patch<{ notification: Notification }>(`/notifications/${notificationId}/unarchive`).then((r) => r.notification);
+
+const acknowledge = (notificationId: string) =>
+  httpClient.post<{ notification: Notification }>(`/notifications/${notificationId}/ack`).then((r) => r.notification);
+
 const getPreferences = () =>
   httpClient
     .get<{ preferences: NotificationPreferences }>("/notifications/preferences")
@@ -112,6 +159,13 @@ export const notificationService = {
   listAdmin,
   cancelAdmin,
   resendAdmin,
+  list,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  archive,
+  unarchive,
+  acknowledge,
   getPreferences,
   updatePreferences,
 };

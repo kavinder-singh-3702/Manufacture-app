@@ -11,6 +11,8 @@ import { ApiError } from "../../../lib/api-error";
 const STEPS = ["Profile", "Verify OTP", "Workspace"] as const;
 type SignupStep = (typeof STEPS)[number];
 
+const OTP_LENGTH = 6;
+
 type ProfileState = { fullName: string; email: string; phone: string };
 type AccountState = { password: string; accountType: BusinessAccountType; companyName: string; categories: string[] };
 type FieldErrors<T> = Partial<Record<keyof T, string>>;
@@ -72,7 +74,7 @@ export const SignupCard = () => {
   const { setUser } = useAuth();
   const [step, setStep] = useState<SignupStep>("Profile");
   const [profile, setProfile] = useState<ProfileState>({ fullName: "", email: "", phone: "" });
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [account, setAccount] = useState<AccountState>({ password: "", accountType: "normal", companyName: "", categories: [] });
   const [showPassword, setShowPassword] = useState(false);
   const [profileErrors, setProfileErrors] = useState<FieldErrors<ProfileState>>({});
@@ -81,7 +83,7 @@ export const SignupCard = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expiresInMs, setExpiresInMs] = useState<number | null>(null);
-  const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const stepIndex = STEPS.indexOf(step);
   const requiresCompany = account.accountType !== "normal";
@@ -89,7 +91,7 @@ export const SignupCard = () => {
 
   const reset = () => {
     setStep("Profile"); setProfile({ fullName: "", email: "", phone: "" });
-    setOtp(["", "", "", ""]); setAccount({ password: "", accountType: "normal", companyName: "", categories: [] });
+    setOtp(Array(OTP_LENGTH).fill("")); setAccount({ password: "", accountType: "normal", companyName: "", categories: [] });
     setProfileErrors({}); setAccountErrors({}); setStatus(null); setError(null); setExpiresInMs(null);
   };
 
@@ -128,7 +130,7 @@ export const SignupCard = () => {
 
   const handleOtpSubmit = async () => {
     const code = otp.join("");
-    if (code.length < 4) { setError("Enter the 4-digit OTP"); return; }
+    if (code.length < OTP_LENGTH) { setError(`Enter the ${OTP_LENGTH}-digit OTP`); return; }
     try {
       setLoading(true); setError(null);
       await authService.signup.verify({ otp: code });
@@ -165,11 +167,11 @@ export const SignupCard = () => {
   const handleOtpInput = (i: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
     const next = [...otp]; next[i] = digit; setOtp(next);
-    if (digit && i < 3) otpRefs[i + 1]?.current?.focus();
+    if (digit && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
   };
 
   const handleOtpKey = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs[i - 1]?.current?.focus();
+    if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
   };
 
   const toggleCategory = (cat: string) =>
@@ -286,17 +288,17 @@ export const SignupCard = () => {
               <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
                 Expires in {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
               </p>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-2.5">
                 {otp.map((digit, i) => (
                   <input
                     key={i}
-                    ref={otpRefs[i]}
+                    ref={(el) => { otpRefs.current[i] = el; }}
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpInput(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKey(i, e)}
-                    className="h-14 w-14 rounded-2xl text-center text-xl font-bold focus:outline-none transition-all"
+                    className="h-14 w-11 rounded-2xl text-center text-xl font-bold focus:outline-none transition-all"
                     style={{
                       border: `2px solid ${digit ? "var(--primary)" : "var(--border)"}`,
                       backgroundColor: digit ? "var(--primary-light)" : "var(--surface)",
