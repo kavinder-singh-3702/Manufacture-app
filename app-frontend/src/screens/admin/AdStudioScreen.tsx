@@ -22,6 +22,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { RootStackParamList } from "../../navigation/types";
+import { isAdminRole } from "../../constants/roles";
 import {
   adService,
   AdCampaign,
@@ -339,7 +340,11 @@ export const AdStudioScreen = () => {
         search: userSearch.trim() || undefined,
         sort: "updatedAt:desc",
       });
-      setUsers(response.users || []);
+      // Exclude admin/super-admin accounts from ad targeting and product
+      // ownership pickers — ads are meant for end users, and admins don't
+      // own marketplace listings.
+      const filtered = (response.users || []).filter((u) => !isAdminRole(u.role));
+      setUsers(filtered);
     } catch {
       setUsers([]);
     } finally {
@@ -465,6 +470,20 @@ export const AdStudioScreen = () => {
     const timer = setTimeout(loadUsers, 220);
     return () => clearTimeout(timer);
   }, [createMode, loadUsers]);
+
+  // Defensive re-fetch when the wizard actually enters a step that needs
+  // the user list. The initial createMode-transition fetch can be missed
+  // or stale by the time the admin reaches the audience/owner picker,
+  // which shows up as an empty list until the admin starts typing.
+  useEffect(() => {
+    if (!createMode) return;
+    const needsUsers =
+      wizard.audiencePreset === "specific_users" ||
+      wizard.productSource === "user_listings";
+    if (!needsUsers) return;
+    if (users.length > 0 || usersLoading) return;
+    loadUsers();
+  }, [createMode, wizard.audiencePreset, wizard.productSource, users.length, usersLoading, loadUsers]);
 
   useEffect(() => {
     if (!createMode) return;

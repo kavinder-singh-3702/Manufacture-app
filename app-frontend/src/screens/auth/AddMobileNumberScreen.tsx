@@ -41,7 +41,6 @@ export const AddMobileNumberScreen = () => {
 
   const handleSubmit = async () => {
     const trimmed = phone.trim();
-    console.log("[AddMobile] handleSubmit START, phone=", trimmed);
     if (!/^[0-9+]{7,15}$/.test(trimmed)) {
       setError("Use 7-15 digits, optionally starting with +");
       return;
@@ -51,7 +50,6 @@ export const AddMobileNumberScreen = () => {
     setError(null);
 
     const watchdog = setTimeout(() => {
-      console.log("[AddMobile] WATCHDOG FIRED — submit took >8s");
       setSubmitting((still) => {
         if (still) {
           setError("That took too long. Tap Save to try again.");
@@ -62,43 +60,34 @@ export const AddMobileNumberScreen = () => {
 
     let updated: AuthUser | null = null;
     try {
-      console.log("[AddMobile] calling updatePhone…");
       updated = await authService.updatePhone(trimmed);
-      console.log("[AddMobile] updatePhone OK, phone=", updated?.phone, "id=", updated?.id, "keys=", updated ? Object.keys(updated) : "null");
     } catch (saveErr: any) {
-      console.log("[AddMobile] updatePhone FAILED:", saveErr?.message);
       setError(saveErr?.message || "Could not save mobile number. Try again.");
     }
 
     try {
       if (updated) {
         // Optimistically guarantee user.phone becomes truthy. Even when
-        // the response is parseable (commit cdf025c's path), we layer
-        // the trimmed phone we just sent on top — that way if any field
-        // in the response body is missing/empty the gate's `!user.phone`
-        // check still flips false. Spreading current `user` first
-        // preserves all fields the response might not echo back.
+        // the response is parseable, we layer the trimmed phone we just
+        // sent on top — that way if any field in the response body is
+        // missing/empty the gate's `!user.phone` check still flips false.
+        // Spreading current `user` first preserves all fields the
+        // response might not echo back.
         const withPhone: AuthUser = {
           ...(user as AuthUser),
           ...updated,
           phone: updated.phone || trimmed,
         };
-        console.log("[AddMobile] calling setUser(withPhone), phone=", withPhone.phone);
         setUser(withPhone);
-        console.log("[AddMobile] setUser returned");
       }
-      console.log("[AddMobile] calling refreshUser()…");
-      const refreshed = await refreshUser();
-      console.log("[AddMobile] refreshUser OK, phone=", refreshed?.phone);
+      await refreshUser();
     } catch (refreshErr: any) {
-      console.log("[AddMobile] refreshUser FAILED:", refreshErr?.message);
       if (!updated && !error) {
         setError(refreshErr?.message || "Could not refresh your account.");
       }
     } finally {
       clearTimeout(watchdog);
       setSubmitting(false);
-      console.log("[AddMobile] handleSubmit END");
     }
   };
 

@@ -19,6 +19,7 @@ const adsRouter = require('../modules/ads/routes/ad.routes');
 const productOrderRouter = require('../modules/productOrders/routes/productOrder.routes');
 const productInquiryRouter = require('../modules/productInquiry/routes/productInquiry.routes');
 const contactRouter = require('../modules/contact/routes/contact.routes');
+const feedbackRouter = require('../modules/feedback/routes/feedback.routes');
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/ads', adsRouter);
 router.use('/product-orders', productOrderRouter);
 router.use('/product-inquiries', productInquiryRouter);
 router.use('/contact', contactRouter);
+router.use('/feedback', feedbackRouter);
 
 module.exports = router;

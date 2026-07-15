@@ -48,6 +48,8 @@ export type RootStackParamList = {
   CompanyVerification: { companyId: string };
   VerificationSubmit: { companyId: string };
   Notifications: undefined;
+  Feedback: undefined;
+  FeedbackInbox: undefined;
   AddProduct: undefined;
   InternalInventoryItemCreate: undefined;
   InternalInventoryItemEdit: { itemId: string };

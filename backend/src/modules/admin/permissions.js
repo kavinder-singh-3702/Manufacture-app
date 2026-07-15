@@ -25,6 +25,8 @@ const ADMIN_PERMISSIONS = Object.freeze({
   MUTATE_PRODUCT_INQUIRIES: 'admin.mutate.product-inquiries',
   READ_CONTACT_MESSAGES: 'admin.read.contact-messages',
   MUTATE_CONTACT_MESSAGES: 'admin.mutate.contact-messages',
+  READ_FEEDBACK: 'admin.read.feedback',
+  MUTATE_FEEDBACK: 'admin.mutate.feedback',
 });
 
 const PERMISSIONS_BY_ROLE = Object.freeze({
@@ -50,6 +52,8 @@ const PERMISSIONS_BY_ROLE = Object.freeze({
     ADMIN_PERMISSIONS.MUTATE_PRODUCT_INQUIRIES,
     ADMIN_PERMISSIONS.READ_CONTACT_MESSAGES,
     ADMIN_PERMISSIONS.MUTATE_CONTACT_MESSAGES,
+    ADMIN_PERMISSIONS.READ_FEEDBACK,
+    ADMIN_PERMISSIONS.MUTATE_FEEDBACK,
   ]),
   'super-admin': new Set(Object.values(ADMIN_PERMISSIONS))
 });

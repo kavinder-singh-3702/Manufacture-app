@@ -198,6 +198,12 @@ export const ProfileScreen = () => {
       icon: "options-outline" as const,
       onPress: () => navigation.navigate("NotificationPreferences"),
     },
+    {
+      key: "send-feedback",
+      label: "Send feedback",
+      icon: "chatbubble-ellipses-outline" as const,
+      onPress: () => navigation.navigate("Feedback"),
+    },
     ...(isAdminRole(user?.role)
       ? [
           {

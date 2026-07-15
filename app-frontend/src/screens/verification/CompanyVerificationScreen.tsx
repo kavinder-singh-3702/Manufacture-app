@@ -10,6 +10,8 @@ import { verificationService } from "../../services/verificationService";
 import { Company, VerificationRequest } from "../../types/company";
 import { useTheme } from "../../hooks/useTheme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../../hooks/useAuth";
+import { isAdminRole } from "../../constants/roles";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'CompanyVerification'>;
 type RouteParams = RouteProp<RootStackParamList, 'CompanyVerification'>;
@@ -21,14 +23,26 @@ export const CompanyVerificationScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const isAdmin = isAdminRole(user?.role);
 
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
   const [request, setRequest] = useState<VerificationRequest | null>(null);
 
+  // Admins landing here (typically via a mis-routed notification whose action
+  // pointed at CompanyVerification) get redirected to the read-only company
+  // profile — which already renders in admin mode via isAdminRole check.
+  // This screen is the customer-onboarding form; admins should never see it.
   useEffect(() => {
+    if (!isAdmin) return;
+    navigation.replace("CompanyProfile", { companyId });
+  }, [isAdmin, companyId, navigation]);
+
+  useEffect(() => {
+    if (isAdmin) return;
     loadVerificationStatus();
-  }, [companyId]);
+  }, [companyId, isAdmin]);
 
   const loadVerificationStatus = async () => {
     try {

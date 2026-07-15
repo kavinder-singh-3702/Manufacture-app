@@ -77,6 +77,12 @@ export const AdminSettingsScreen = () => {
           description: "Create targeted advertisements",
           onPress: () => navigation.navigate("AdStudio"),
         },
+        {
+          icon: "chatbubbles",
+          label: "Feedback",
+          description: "Review user feedback (new + resolved)",
+          onPress: () => navigation.navigate("FeedbackInbox"),
+        },
       ],
     },
     {

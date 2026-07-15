@@ -6,6 +6,11 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 
 type AppleSignInButtonProps = {
   onError?: (message: string) => void;
+  // Fires the moment the user taps the button — before the Apple sheet
+  // opens. Parents use this to clear stale error text from a prior
+  // attempt so the retry doesn't render with the last error still
+  // visible under the button.
+  onAttempt?: () => void;
   width?: number | "100%";
   height?: number;
   cornerRadius?: number;
@@ -13,6 +18,7 @@ type AppleSignInButtonProps = {
 
 export const AppleSignInButton = ({
   onError,
+  onAttempt,
   width = "100%",
   height = 50,
   cornerRadius = 14,
@@ -33,6 +39,7 @@ export const AppleSignInButton = ({
 
   const handlePress = async () => {
     try {
+      onAttempt?.();
       setLoading(true);
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -60,7 +67,16 @@ export const AppleSignInButton = ({
     } catch (error: unknown) {
       const code = (error as { code?: string })?.code;
       if (code === "ERR_REQUEST_CANCELED") return;
-      const message = error instanceof Error ? error.message : "Apple sign-in failed";
+      const raw = error instanceof Error ? error.message : "";
+      // Cap the message. A raw backend body or a JSON-parse error can be
+      // hundreds of characters and blow past the inline error slot,
+      // pushing later UI (Skip button) off-screen on compact devices.
+      const trimmed = raw.trim();
+      const message = trimmed.length === 0
+        ? "Apple sign-in failed. Please try again."
+        : trimmed.length > 140
+          ? "Apple sign-in failed. Please try again."
+          : trimmed;
       onError?.(message);
     } finally {
       setLoading(false);

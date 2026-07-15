@@ -3,6 +3,7 @@ import { FC } from "react";
 import { Pressable, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { AdaptiveSingleLineText } from "../../../../components/text/AdaptiveSingleLineText";
 import { useAuth } from "../../../../hooks/useAuth";
+import { isAdminRole } from "../../../../constants/roles";
 import { useTheme } from "../../../../hooks/useTheme";
 import { useThemeMode } from "../../../../hooks/useThemeMode";
 import { Company } from "../../../../types/company";
@@ -58,6 +59,7 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
     fontScale,
   });
   const { user } = useAuth();
+  const isAdmin = isAdminRole(user?.role);
   const avatarSize = tokens.topBar.density === "xCompact" ? 36 : tokens.topBar.density === "compact" ? 38 : 40;
 
   const buildInitials = () => {
@@ -203,7 +205,12 @@ export const HomeToolbar: FC<HomeToolbarProps> = ({
             accessibilityLabel="Profile"
           >
             {activeCompany ? (
-              <CompanyAvatar company={activeCompany} size={avatarSize} style={{ borderWidth: 2, borderColor: transparent ? "rgba(255,255,255,0.3)" : colors.border }} />
+              <CompanyAvatar
+                company={activeCompany}
+                size={avatarSize}
+                style={{ borderWidth: 2, borderColor: transparent ? "rgba(255,255,255,0.3)" : colors.border }}
+                showComplianceState={!isAdmin}
+              />
             ) : (
               <LogoBadge label={avatarLabel} imageUri={avatarUri} style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }} />
             )}

@@ -167,6 +167,10 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const { isCompact, isXCompact, clamp, fs, sp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+  // Apple sign-in errors used to be swallowed here because the button
+  // was mounted without an onError prop. A silent 400 / 401 / timeout
+  // looked like a "hang" — spinner cleared, no navigation, no message.
+  const [appleError, setAppleError] = useState<string | null>(null);
   const orbAPulse = useRef(new Animated.Value(0)).current;
   const orbBPulse = useRef(new Animated.Value(0.35)).current;
   const beamProgress = useRef(new Animated.Value(0)).current;
@@ -555,8 +559,21 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
           </Animated.View>
 
           <View style={styles.appleButtonWrap}>
-            <AppleSignInButton />
+            <AppleSignInButton
+              onError={setAppleError}
+              onAttempt={() => setAppleError(null)}
+            />
           </View>
+
+          {appleError ? (
+            <Text
+              style={[styles.appleErrorText, { color: colors.error, fontSize: fs(13) }]}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {appleError}
+            </Text>
+          ) : null}
 
           <Pressable
             style={({ pressed }) => [
@@ -734,6 +751,13 @@ const styles = StyleSheet.create({
     width: "82%",
     maxWidth: 320,
     marginTop: 14,
+  },
+  appleErrorText: {
+    marginTop: 10,
+    marginHorizontal: 24,
+    textAlign: "center",
+    fontWeight: "500",
+    maxWidth: 320,
   },
   skipButton: {
     marginTop: 16,

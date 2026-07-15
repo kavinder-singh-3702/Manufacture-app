@@ -8,6 +8,11 @@ type Props = {
   company: Company;
   size?: number;
   style?: ViewStyle;
+  // When false, the "verified" checkmark and the "needs verification"
+  // alert badge are both hidden. Used for admin avatars where the
+  // company-verification signal is not meaningful (admins don't run
+  // manufacturer/trader accounts and don't own the verification flow).
+  showComplianceState?: boolean;
 };
 
 const requiresVerification = (type: Company["type"]): boolean => {
@@ -32,12 +37,16 @@ export const CompanyAvatar: React.FC<Props> = ({
   company,
   size = 80,
   style,
+  showComplianceState = true,
 }) => {
   const { colors, nativeGradients } = useTheme();
-  const borderColor = getStatusColor(company.complianceStatus, colors);
+  const borderColor = showComplianceState
+    ? getStatusColor(company.complianceStatus, colors)
+    : colors.border;
   const badgeSize = Math.max(20, size * 0.3);
-  const isVerified = company.complianceStatus === "approved";
-  const needsVerification = requiresVerification(company.type) && !isVerified;
+  const isVerified = showComplianceState && company.complianceStatus === "approved";
+  const needsVerification =
+    showComplianceState && requiresVerification(company.type) && !isVerified;
 
   return (
     <View

@@ -34,6 +34,12 @@ export type AuthUser = {
   lastLoginAt?: string | Date;
   lastLoginIp?: string;
   onboardingCompletedAt?: string | Date;
+  // Present when the account was provisioned via Sign in with Apple.
+  // Backend (buildUserResponse / sanitizeUser) passes it through on
+  // both /auth/apple and /users/me. Used to drive a durable phone-
+  // collection gate that survives force-quit + relaunch, since
+  // pendingSocialPhoneCollection is in-memory only.
+  appleUserId?: string;
   [key: string]: unknown;
 };
 

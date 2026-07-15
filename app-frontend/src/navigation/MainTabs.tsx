@@ -351,6 +351,15 @@ export const MainTabs = () => {
     stackNavigation.navigate("Help");
   }, [stackNavigation]);
 
+  const handleSendFeedback = useCallback(() => {
+    setSidebarVisible(false);
+    if (!isAuthenticated) {
+      requestLogin();
+      return;
+    }
+    stackNavigation.navigate(isAdmin ? "FeedbackInbox" : "Feedback");
+  }, [isAdmin, isAuthenticated, requestLogin, stackNavigation]);
+
   const handleLogout = useCallback(async () => {
     setSidebarVisible(false);
     await logout();
@@ -374,9 +383,8 @@ export const MainTabs = () => {
       requestLogin();
       return;
     }
-    if (isAdmin) return;
     stackNavigation.navigate("Profile");
-  }, [isAdmin, isAuthenticated, requestLogin, stackNavigation]);
+  }, [isAuthenticated, requestLogin, stackNavigation]);
 
   const handleOpenNotifications = useCallback(() => {
     if (!isAuthenticated) {
@@ -433,11 +441,18 @@ export const MainTabs = () => {
         description: isAdmin ? "Dispatch and track notifications" : "Manage push and quiet hours",
         onPress: handleNotificationStudio,
       },
+      {
+        label: isAdmin ? "User Feedback" : "Send feedback",
+        description: isAdmin
+          ? "Review new and resolved feedback"
+          : "Tell us what's working and what isn't",
+        onPress: handleSendFeedback,
+      },
       ...(isAuthenticated
         ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
         : []),
     ];
-  }, [handleHelp, handleLogout, handleNotificationStudio, handlePreferences, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
+  }, [handleHelp, handleLogout, handleNotificationStudio, handlePreferences, handleSendFeedback, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
 
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
 

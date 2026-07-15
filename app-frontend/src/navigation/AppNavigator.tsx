@@ -22,6 +22,8 @@ import { CompanyProfileScreen } from "../screens/company/CompanyProfileScreen";
 import { CompanyCreateScreen } from "../screens/company/CompanyCreateScreen";
 import { CompanyContextPickerScreen } from "../screens/company/CompanyContextPickerScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
+import { FeedbackScreen } from "../screens/feedback/FeedbackScreen";
+import { FeedbackInboxScreen } from "../screens/admin/FeedbackInboxScreen";
 import {
   AddProductScreen,
   EditProductScreen,
@@ -114,7 +116,6 @@ export const AppNavigator = () => {
   // force-quit + relaunch to land on Main. A key change is a hard
   // remount that React Navigation cannot ignore.
   const authSection = !user ? "auth" : (pendingSocialPhoneCollection && !user.phone) ? "gate" : "main";
-  console.log("[AppNavigator] render: user.phone=", user?.phone, "pendingSocialPhoneCollection=", pendingSocialPhoneCollection, "section=", authSection);
 
   const navigationTheme = useMemo(
     () => ({
@@ -231,6 +232,16 @@ export const AppNavigator = () => {
               name="Notifications"
               component={NotificationsScreen}
               options={{ presentation: "modal", animation: "slide_from_bottom", gestureDirection: "vertical" }}
+            />
+            <RootStack.Screen
+              name="Feedback"
+              component={FeedbackScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="FeedbackInbox"
+              component={FeedbackInboxScreen}
+              options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen
               name="AddProduct"

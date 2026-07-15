@@ -284,7 +284,15 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
               </TouchableOpacity>
             </View>
 
-            {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
+            {error ? (
+              <Text
+                style={[styles.errorText, { color: colors.error }]}
+                numberOfLines={3}
+                ellipsizeMode="tail"
+              >
+                {error}
+              </Text>
+            ) : null}
 
             <Animated.View
               style={[
@@ -319,7 +327,7 @@ export const LoginScreen = ({ onBack, onSignup, onForgot }: LoginScreenProps) =>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
-            <AppleSignInButton onError={setError} />
+            <AppleSignInButton onError={setError} onAttempt={() => setError(null)} />
 
             <TouchableOpacity onPress={onForgot} style={styles.helperLink}>
               <Text style={[styles.helperText, { color: subheadingColor, fontSize: fs(13) }]}>Forgotten your password?</Text>

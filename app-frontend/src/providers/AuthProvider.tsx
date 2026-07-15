@@ -4,7 +4,7 @@ import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { companyService } from "../services/company.service";
 import { ApiError } from "../services/http";
-import { AppRole, AppRoleType } from "../constants/roles";
+import { AppRole, AppRoleType, isAdminRole } from "../constants/roles";
 import { tokenStorage } from "../services/tokenStorage";
 import { disconnectChatSocket } from "../services/chatSocket";
 
@@ -16,6 +16,19 @@ const normalizeUser = (user: AuthUser): AuthUser => ({
   ...user,
   role: (user.role as AppRoleType) || AppRole.USER,
 });
+
+/**
+ * True when a user needs to complete the one-time phone-collection gate:
+ * created via a social provider (Apple today) AND non-admin AND no phone.
+ * Used to hydrate pendingSocialPhoneCollection on bootstrap so a user who
+ * force-quit right after Apple sign-in still lands on AddMobileNumberScreen
+ * on relaunch instead of falling through to Dashboard.
+ */
+const shouldGatePhoneForUser = (user: AuthUser): boolean => {
+  if (isAdminRole(user.role)) return false;
+  if (user.phone) return false;
+  return typeof user.appleUserId === "string" && user.appleUserId.length > 0;
+};
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -61,19 +74,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [pendingSocialPhoneCollection, setPendingSocialPhoneCollection] = useState(false);
 
   const refreshUser = useCallback(async () => {
-    console.log("[AuthProvider] refreshUser: calling GET /users/me");
     const { user: currentUser } = await userService.getCurrentUser();
-    console.log("[AuthProvider] refreshUser: response phone=", currentUser?.phone, "id=", currentUser?.id);
     const normalized = normalizeUser(currentUser);
     setUserState(normalized);
     setAuthView(null);
     setBootstrapError(null);
     setBootstrapWarning(null);
     if (normalized.phone) {
-      console.log("[AuthProvider] refreshUser: clearing pendingSocialPhoneCollection");
       setPendingSocialPhoneCollection(false);
-    } else {
-      console.log("[AuthProvider] refreshUser: NOT clearing — normalized.phone is falsy:", JSON.stringify(normalized.phone));
     }
     return normalized;
   }, []);
@@ -91,6 +99,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (!token) {
           setUserState(null);
+          setPendingSocialPhoneCollection(false);
           setBootstrapError(null);
           setBootstrapWarning(null);
           return;
@@ -109,14 +118,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
         }
 
-        setUserState(normalizeUser(currentUser));
+        const normalized = normalizeUser(currentUser);
+        setUserState(normalized);
         setAuthView(null);
         setBootstrapError(null);
         setBootstrapWarning(null);
+        // Durably re-raise the phone-collection gate for a returning Apple-
+        // signed user who never finished the phone step. Without this a
+        // force-quit right after the initial Apple sign-in would land them
+        // on Dashboard on relaunch because the in-memory flag defaults to
+        // false. Only fires for the exact conditions signInWithApple
+        // originally set it: non-admin, no phone, and Apple provenance.
+        if (shouldGatePhoneForUser(normalized)) {
+          setPendingSocialPhoneCollection(true);
+        }
       } catch (error) {
         if (!isMounted) return;
 
         setUserState(null);
+        setPendingSocialPhoneCollection(false);
         if (error instanceof ApiError) {
           // 401 = token expired/invalid, clear it and continue logged out.
           if (error.status === 401) {
@@ -128,7 +148,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setBootstrapWarning(sessionRestoreWarning);
             setBootstrapError(null);
           } else {
-            console.warn("Session restore failed with API error.", { status: error.status, data: error.data });
+            console.warn("Session restore failed with API error.", { status: error.status });
             setBootstrapWarning(sessionRestoreWarning);
             setBootstrapError(null);
           }
@@ -188,8 +208,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // already have a phone fall through without gating. Once the user adds
     // a phone, AddMobileNumberScreen calls setUser with the updated record;
     // we clear the flag in setUser when user.phone becomes truthy.
-    const isAdmin = normalized.role === "admin" || normalized.role === "super-admin";
-    if (!isAdmin && !normalized.phone) {
+    if (!isAdminRole(normalized.role) && !normalized.phone) {
       setPendingSocialPhoneCollection(true);
     } else {
       setPendingSocialPhoneCollection(false);
@@ -223,7 +242,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const setUser = useCallback((next: AuthUser | null, options?: { requiresVerification?: boolean }) => {
-    console.log("[AuthProvider] setUser called, phone=", next?.phone, "id=", next?.id, "keys=", next ? Object.keys(next) : "null");
     setUserState(next ? normalizeUser(next) : null);
     if (next) {
       setAuthView(null);
@@ -231,11 +249,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setPendingVerificationRedirect(next.activeCompany);
       }
       if (next.phone) {
-        console.log("[AuthProvider] setUser: clearing pendingSocialPhoneCollection");
         setPendingSocialPhoneCollection(false);
-      } else {
-        console.log("[AuthProvider] setUser: NOT clearing — next.phone is falsy:", JSON.stringify(next.phone));
       }
+    } else {
+      // Reset the phone-collection gate when the user becomes null so a
+      // stale-true value can't survive into the NEXT sign-in. Logout
+      // already clears this, but 401 handlers and the bootstrap error
+      // path also null the user without going through logout.
+      setPendingSocialPhoneCollection(false);
     }
   }, []);
 
