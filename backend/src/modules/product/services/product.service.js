@@ -213,6 +213,18 @@ const getProductsByCategory = async (
       andFilters.push({ 'price.amount': priceFilter });
     }
   }
+  // Hide products whose owner (user creator) has been deactivated or
+  // suspended by an admin. Inactive users are typically few, so
+  // distinct('_id') returns a small array and the resulting $nin filter
+  // is cheap. Products created by admins (system inhouse) are unaffected
+  // since their creator wouldn't be in this set.
+  const inactiveOwnerIds = await User.distinct('_id', {
+    status: { $in: ['inactive', 'suspended', 'deleted'] },
+  });
+  if (inactiveOwnerIds.length) {
+    andFilters.push({ createdBy: { $nin: inactiveOwnerIds } });
+  }
+
   if (andFilters.length) {
     query.$and = andFilters;
   }
@@ -312,6 +324,18 @@ const getAllProducts = async (
     const regex = new RegExp(search, 'i');
     andFilters.push({ $or: [{ name: regex }, { description: regex }, { sku: regex }] });
   }
+  // Hide products whose owner (user creator) has been deactivated or
+  // suspended by an admin. Inactive users are typically few, so
+  // distinct('_id') returns a small array and the resulting $nin filter
+  // is cheap. Products created by admins (system inhouse) are unaffected
+  // since their creator wouldn't be in this set.
+  const inactiveOwnerIds = await User.distinct('_id', {
+    status: { $in: ['inactive', 'suspended', 'deleted'] },
+  });
+  if (inactiveOwnerIds.length) {
+    andFilters.push({ createdBy: { $nin: inactiveOwnerIds } });
+  }
+
   if (andFilters.length) {
     query.$and = andFilters;
   }

@@ -7,6 +7,7 @@ const ProductQuote = require('../../../models/productQuote.model');
 const ProductInquiry = require('../../../models/productInquiry.model');
 const ProductOrder = require('../../../models/productOrder.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
+const User = require('../../../models/user.model');
 const { UserPreferenceEvent } = require('../../../models/userPreferenceEvent.model');
 const { uploadAdBanner } = require('../../../services/storage.service');
 const {
@@ -818,6 +819,14 @@ const getFeed = async ({
     return { cards: [], placement: safePlacement };
   }
 
+  // Fetch the set of deactivated/suspended user ids so we can drop any
+  // campaigns whose promoted product is owned by an admin-deactivated
+  // user. Small set, so a distinct($nin) lookup is cheap here.
+  const inactiveOwnerIdSet = new Set(
+    (await User.distinct('_id', { status: { $in: ['inactive', 'suspended', 'deleted'] } }))
+      .map((id) => id.toString())
+  );
+
   const campaigns = activeCampaigns.filter((campaign) => {
     const product = campaign.product;
     if (!product) return false;
@@ -826,6 +835,7 @@ const getFeed = async ({
     if (product.visibility !== 'public') return false;
     const creatorRole = String(product.createdByRole || 'user').toLowerCase();
     if (!['user', 'admin'].includes(creatorRole)) return false;
+    if (product.createdBy && inactiveOwnerIdSet.has(product.createdBy.toString())) return false;
     return true;
   });
 

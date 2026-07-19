@@ -903,7 +903,11 @@ const getAdminNotificationById = async (notificationId, adminId) => {
 };
 
 const cancelAdminNotification = async (notificationId, adminId) => {
-  const notification = await Notification.findOne({ _id: notificationId, createdBy: adminId });
+  // Any admin can cancel any admin-dispatched notification — routes
+  // already restrict this endpoint to authorizeRoles('admin'), so the
+  // per-creator restriction was a false floor that silently 404'd when
+  // one admin tried to cancel another admin's dispatch.
+  const notification = await Notification.findOne({ _id: notificationId });
   if (!notification) return null;
 
   notification.status = NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
@@ -922,7 +926,9 @@ const cancelAdminNotification = async (notificationId, adminId) => {
 };
 
 const resendAdminNotification = async (notificationId, adminId) => {
-  const original = await Notification.findOne({ _id: notificationId, createdBy: adminId }).lean();
+  // Same reason as cancelAdminNotification: any admin should be able to
+  // resend any admin-dispatched notification.
+  const original = await Notification.findOne({ _id: notificationId }).lean();
   if (!original) return null;
 
   const result = await dispatchNotification({

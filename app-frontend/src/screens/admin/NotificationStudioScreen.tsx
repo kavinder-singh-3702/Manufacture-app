@@ -99,6 +99,7 @@ export const NotificationStudioScreen = () => {
     try {
       setUsersLoading(true);
       const response = await adminService.listUsers({
+        status: "active",
         limit: 40,
         offset: 0,
         search: userSearch.trim() || undefined,
@@ -106,6 +107,8 @@ export const NotificationStudioScreen = () => {
       });
       // Exclude admin/super-admin — admins don't need to receive their own
       // broadcasts, and the picker should only surface end users.
+      // status=active on the request also hides users the admin has
+      // deactivated so we don't notify accounts that were switched off.
       const filtered = (response.users || []).filter((u) => !isAdminRole(u.role));
       setUsers(filtered);
     } catch {

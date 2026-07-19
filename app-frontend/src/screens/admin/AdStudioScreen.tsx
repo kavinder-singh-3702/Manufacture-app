@@ -335,6 +335,7 @@ export const AdStudioScreen = () => {
     try {
       setUsersLoading(true);
       const response = await adminService.listUsers({
+        status: "active",
         limit: 40,
         offset: 0,
         search: userSearch.trim() || undefined,
@@ -342,7 +343,8 @@ export const AdStudioScreen = () => {
       });
       // Exclude admin/super-admin accounts from ad targeting and product
       // ownership pickers — ads are meant for end users, and admins don't
-      // own marketplace listings.
+      // own marketplace listings. status=active on the request also drops
+      // any users an admin has deactivated.
       const filtered = (response.users || []).filter((u) => !isAdminRole(u.role));
       setUsers(filtered);
     } catch {

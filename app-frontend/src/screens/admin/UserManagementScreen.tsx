@@ -54,7 +54,10 @@ export const UserManagementScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterStatus>("all");
+  // Default to "active" so admins don't see deactivated accounts mixed
+  // in with the live user list. Filter tabs let them still switch to
+  // "inactive" / "suspended" when they need to reactivate an account.
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
 
