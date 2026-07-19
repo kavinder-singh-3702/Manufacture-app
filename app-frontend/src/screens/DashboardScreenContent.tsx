@@ -1152,7 +1152,13 @@ const UserDashboardContent = () => {
             onCardPress={handleHeroBannerPress}
             onCardVisible={trackAdImpression}
             onSearchPress={() => navigation.navigate("ProductSearch", {})}
-            topInset={insets.top + 60}
+            // The floating HomeToolbar (position:absolute in MainTabs,
+            // zIndex 20) covers the top of this scroll on the user
+            // Dashboard. Reserve enough space that ad content sits
+            // BELOW the toolbar instead of being clipped by it.
+            // Footprint = wrap paddingTop (6) + twoRowMinHeight, which
+            // varies by density (regular 122 / compact 112 / xCompact 102).
+            topInset={insets.top + 6 + (isXCompact ? 102 : isCompact ? 112 : 122)}
           />
         </Animated.View>
 
