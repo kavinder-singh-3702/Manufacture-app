@@ -591,6 +591,18 @@ const setUserStatus = async ({ userId, actorId, status, reason }) => {
     throw createError(400, `Invalid status. Allowed: ${USER_STATUS_TARGETS.join(', ')}`);
   }
 
+  // Belt-and-braces guard: refuse self-deactivation even if the client
+  // sends it. Deactivating your own admin session would flip status +
+  // bump sessionInvalidBefore, locking you out on the next request.
+  if (
+    actorId &&
+    userId &&
+    String(actorId) === String(userId) &&
+    (status === 'inactive' || status === 'suspended')
+  ) {
+    throw createError(400, 'You cannot deactivate or suspend your own admin account.');
+  }
+
   const user = await User.findById(userId);
   if (!user) {
     throw createError(404, 'User not found');

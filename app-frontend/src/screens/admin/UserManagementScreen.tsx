@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
+import { useAuth } from "../../hooks/useAuth";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
 import {
@@ -48,6 +49,7 @@ export const UserManagementScreen = () => {
   const { resolvedMode } = useThemeMode();
   const isDark = resolvedMode === "dark";
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user: currentAdmin } = useAuth();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,7 +231,11 @@ export const UserManagementScreen = () => {
           });
         },
       },
-      ...(selectedUser
+      // Hide the Activate/Deactivate action when the target user is the
+      // current admin themselves. Deactivating your own account would
+      // instantly invalidate the session you're using to make the call
+      // and lock you out.
+      ...(selectedUser && selectedUser.id !== currentAdmin?.id
         ? [
             (() => {
               const isCurrentlyInactive =

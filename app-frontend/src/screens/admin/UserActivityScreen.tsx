@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RouteProp, useFocusEffect, useRoute } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { adminService, AdminAuditEvent } from "../../services/admin.service";
 import { RootStackParamList } from "../../navigation/types";
@@ -28,6 +31,7 @@ const titleCaseAction = (action: string) =>
 export const UserActivityScreen = () => {
   const { colors, spacing } = useTheme();
   const route = useRoute<UserActivityRouteProp>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userId, displayName } = route.params;
 
   const [events, setEvents] = useState<AdminAuditEvent[]>([]);
@@ -123,45 +127,69 @@ export const UserActivityScreen = () => {
 
   const listHeader = useMemo(
     () => (
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
         <AdminHeader
           title="User Activity"
           subtitle={displayName ? `Audit trail for ${displayName}` : "Immutable admin audit activity feed"}
           count={pagination.total}
+          applyTopInset={false}
         />
       </View>
     ),
     [displayName, pagination.total, spacing.lg, spacing.md]
   );
 
+  const topBar = (
+    <View style={[styles.topBar, { paddingHorizontal: spacing.md }]}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        hitSlop={8}
+        style={[
+          styles.backBtn,
+          { borderColor: colors.border, backgroundColor: colors.surface },
+        ]}
+        accessibilityLabel="Back"
+      >
+        <Ionicons name="chevron-back" size={20} color={colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
+
   if (loading && !refreshing) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading activity...</Text>
-      </View>
+      <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: colors.background }]}>
+        {topBar}
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading activity...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error && !events.length && !loading) {
     return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}> 
-        <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            setLoading(true);
-            fetchEvents({ reset: true });
-          }}
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: colors.background }]}>
+        {topBar}
+        <View style={styles.centered}>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              setLoading(true);
+              fetchEvents({ reset: true });
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: colors.background }]}>
+      {topBar}
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
@@ -188,13 +216,27 @@ export const UserActivityScreen = () => {
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   centered: {
     flex: 1,
