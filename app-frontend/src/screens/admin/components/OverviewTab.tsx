@@ -122,9 +122,13 @@ export const OverviewTab = () => {
       {/* Pending Approvals - red badge cards */}
       <PendingApprovalsBar overview={overview} />
 
-      {/* Weekly Volume Chart */}
+      {/* Weekly Volume Chart — real data: daily new signups over last 7 days */}
       <View style={[styles.chartSection, { backgroundColor: neuCardBg(isDark), borderRadius: 16, ...neuRaised(isDark) }]}>
-        <VolumeChart />
+        <VolumeChart
+          data={stats?.weeklyVolume?.data}
+          labels={stats?.weeklyVolume?.labels}
+          title="NEW SIGNUPS · LAST 7 DAYS"
+        />
       </View>
 
       {/* Priority Actions */}

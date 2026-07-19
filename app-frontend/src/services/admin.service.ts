@@ -27,6 +27,11 @@ export type AdminStats = {
     newVerifications: number;
     newUsers: number;
   };
+  weeklyVolume?: {
+    metric: string;
+    data: number[];
+    labels: string[];
+  };
 };
 
 // ============================================================

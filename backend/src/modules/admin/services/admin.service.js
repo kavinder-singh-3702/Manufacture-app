@@ -160,14 +160,43 @@ const getAdminStats = async () => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [verificationsToday, usersToday] = await Promise.all([
+  // Rolling 7-day window ending today (inclusive). weekStart is midnight
+  // 6 days before todayStart, so we get 7 daily buckets.
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 6);
+
+  const [verificationsToday, usersToday, weeklyUserBuckets] = await Promise.all([
     CompanyVerificationRequest.countDocuments({
       createdAt: { $gte: todayStart }
     }),
     User.countDocuments({
       createdAt: { $gte: todayStart }
-    })
+    }),
+    User.aggregate([
+      { $match: { createdAt: { $gte: weekStart } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ])
   ]);
+
+  // Fill in zeros for days with no signups so the chart always shows 7 bars.
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const bucketByDate = new Map(weeklyUserBuckets.map((b) => [b._id, b.count]));
+  const weeklyData = [];
+  const weeklyLabels = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(weekStart);
+    day.setDate(day.getDate() + i);
+    const key = day.toISOString().slice(0, 10); // YYYY-MM-DD
+    weeklyData.push(bucketByDate.get(key) || 0);
+    weeklyLabels.push(DAY_LABELS[day.getDay()]);
+  }
 
   return {
     users: {
@@ -187,6 +216,11 @@ const getAdminStats = async () => {
     today: {
       newVerifications: verificationsToday,
       newUsers: usersToday
+    },
+    weeklyVolume: {
+      metric: 'newUsers',
+      data: weeklyData,
+      labels: weeklyLabels
     }
   };
 };

@@ -8,6 +8,7 @@ import {
   AdminOpsRequest,
   AdminOverview,
   AdminAuditEvent,
+  AdminStats,
 } from "../../../services/admin.service";
 import {
   PendingApprovalsBar,
@@ -22,14 +23,16 @@ export const AdminDashboardExtras = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [priorityRequests, setPriorityRequests] = useState<AdminOpsRequest[]>([]);
   const [totalRequests, setTotalRequests] = useState(0);
   const [recentEvents, setRecentEvents] = useState<AdminAuditEvent[]>([]);
 
   const fetchExtras = useCallback(async () => {
     try {
-      const [overviewData, opsData, auditData] = await Promise.all([
+      const [overviewData, statsData, opsData, auditData] = await Promise.all([
         adminService.getOverview(),
+        adminService.getStats(),
         adminService.listOpsRequests({
           sort: "priority:desc",
           limit: 5,
@@ -38,6 +41,7 @@ export const AdminDashboardExtras = () => {
         adminService.listAuditEvents({ limit: 8 }),
       ]);
       setOverview(overviewData);
+      setStats(statsData);
       setPriorityRequests(opsData.requests);
       setTotalRequests(opsData.pagination.total);
       setRecentEvents(auditData.events);
@@ -64,9 +68,13 @@ export const AdminDashboardExtras = () => {
       {/* Pending Approvals */}
       <PendingApprovalsBar overview={overview} />
 
-      {/* Weekly Volume Chart */}
+      {/* Weekly Volume Chart — real data: daily new signups over last 7 days */}
       <View style={styles.section}>
-        <VolumeChart />
+        <VolumeChart
+          data={stats?.weeklyVolume?.data}
+          labels={stats?.weeklyVolume?.labels}
+          title="NEW SIGNUPS · LAST 7 DAYS"
+        />
       </View>
 
       {/* Priority Actions */}
