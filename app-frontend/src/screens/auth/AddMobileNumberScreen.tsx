@@ -159,7 +159,7 @@ export const AddMobileNumberScreen = () => {
                   setPhone(value);
                   setError(null);
                 }}
-                placeholder="+91 98765 43210"
+                placeholder="+91 98765 XXXXX"
                 placeholderTextColor={colors.textTertiary}
                 keyboardType="phone-pad"
                 autoComplete="tel"

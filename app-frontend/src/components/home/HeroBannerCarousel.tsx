@@ -313,32 +313,38 @@ export const HeroBannerCarousel = ({
           style={{ width, height: bannerHeight }}
         >
           <View style={[StyleSheet.absoluteFill, styles.bannerBackdrop]} />
-          {hasPlayableVideo ? (
-            // Data-saver: only the visible slide loads the video; others show the poster.
-            isActive ? (
-              <BannerVideo uri={videoUrl!} poster={poster} shouldPlay onError={markVideoFailed} />
-            ) : poster ? (
-              <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          {/* Reserve the top notch/status-bar area so the ad's real content
+              (video or image) starts BELOW it — otherwise the top 10-20%
+              of the ad hides under the notch and users can only reveal it
+              by pull-to-refresh bouncing. */}
+          <View style={{ position: "absolute", top: topInset, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
+            {hasPlayableVideo ? (
+              // Data-saver: only the visible slide loads the video; others show the poster.
+              isActive ? (
+                <BannerVideo uri={videoUrl!} poster={poster} shouldPlay onError={markVideoFailed} />
+              ) : poster ? (
+                <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              ) : (
+                <BannerVideo uri={videoUrl!} poster={poster} shouldPlay={false} onError={markVideoFailed} />
+              )
             ) : (
-              <BannerVideo uri={videoUrl!} poster={poster} shouldPlay={false} onError={markVideoFailed} />
-            )
-          ) : (
-            <Image
-              source={{ uri: heroImage! }}
-              style={StyleSheet.absoluteFill}
-              resizeMode="cover"
-              onError={() => {
-                if (hasBanner) {
-                  setFailedBannerUrls((prev) => {
-                    if (prev.has(bannerImage!)) return prev;
-                    const next = new Set(prev);
-                    next.add(bannerImage!);
-                    return next;
-                  });
-                }
-              }}
-            />
-          )}
+              <Image
+                source={{ uri: heroImage! }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+                onError={() => {
+                  if (hasBanner) {
+                    setFailedBannerUrls((prev) => {
+                      if (prev.has(bannerImage!)) return prev;
+                      const next = new Set(prev);
+                      next.add(bannerImage!);
+                      return next;
+                    });
+                  }
+                }}
+              />
+            )}
+          </View>
           {/* Sponsored disclosure — not a CTA */}
           <View style={[styles.adTag, { top: topInset + 12 }]}>
             <Text style={styles.adTagText}>AD</Text>
