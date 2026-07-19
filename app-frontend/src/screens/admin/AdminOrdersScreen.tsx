@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -92,6 +92,7 @@ export const AdminOrdersScreen = () => {
   const isDark = resolvedMode === "dark";
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
+  const activeColumnIndexRef = useRef(0);
 
   const [requests, setRequests] = useState<AdminOpsRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +131,21 @@ export const AdminOrdersScreen = () => {
     requests.filter((r) => col.statuses.includes(r.status));
 
   const columnWidth = Math.max(width * 0.72, 280);
+
+  // Keep the horizontal kanban aligned with the same column after an iPad
+  // rotation. Without this the ScrollView's native contentOffset stays at
+  // the old pixel value while columnWidth changes → the pipeline ends up
+  // showing a half-column and the snap doesn't recover until the user
+  // scrolls again.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        x: activeColumnIndexRef.current * (columnWidth + 12),
+        animated: false,
+      });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [columnWidth]);
 
   const renderOrderCard = (item: AdminOpsRequest, col: PipelineColumn) => {
     const color = colors[col.colorKey];
@@ -247,6 +263,11 @@ export const AdminOrdersScreen = () => {
           contentContainerStyle={styles.kanbanContainer}
           decelerationRate="fast"
           snapToInterval={columnWidth + 12}
+          onScroll={(e) => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / (columnWidth + 12));
+            activeColumnIndexRef.current = Math.max(0, idx);
+          }}
+          scrollEventThrottle={100}
         >
           {PIPELINE_COLUMNS
             .filter((col) => activeColumn === null || activeColumn === col.key)

@@ -240,6 +240,17 @@ export const HeroBannerCarousel = ({
     }
   }, [slides, onCardVisible]);
 
+  // Re-align contentOffset when the viewport width changes (iPad rotation,
+  // split view). Each slide is rendered with `width={width}` so slide
+  // widths reflow, but the ScrollView's native contentOffset stays at the
+  // old pixel value — so activeIndex ends up on a partial slide.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ x: activeIndex * width, animated: false });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [width, activeIndex]);
+
   const handleScrollBeginDrag = () => {
     isUserDragging.current = true;
     if (autoScrollTimer.current) clearInterval(autoScrollTimer.current);

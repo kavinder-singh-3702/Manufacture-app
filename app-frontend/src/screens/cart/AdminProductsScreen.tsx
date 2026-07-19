@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -680,6 +682,10 @@ export const AdminProductsScreen = () => {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFilterModalVisible(false)}>
+          <KeyboardAvoidingView
+            style={{ width: "100%" }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <View style={styles.modalHandle} />
 
@@ -754,6 +760,7 @@ export const AdminProductsScreen = () => {
               </TouchableOpacity>
             </View>
           </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
 

@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -407,6 +409,10 @@ export const CategoryProductsScreen = () => {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFilterModalVisible(false)}>
+          <KeyboardAvoidingView
+            style={{ width: "100%" }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
           <Pressable style={styles.modalCard} onPress={() => {}}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
@@ -416,7 +422,7 @@ export const CategoryProductsScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {/* Sort Section */}
               <Text style={styles.modalSection}>Sort by</Text>
               <View style={styles.sortOptionsContainer}>
@@ -498,6 +504,7 @@ export const CategoryProductsScreen = () => {
               </TouchableOpacity>
             </View>
           </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
     </SafeAreaView>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -85,6 +85,7 @@ export const ProductDetailsScreen = () => {
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const galleryScrollRef = useRef<ScrollView>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quoteSheetOpen, setQuoteSheetOpen] = useState(false);
@@ -342,6 +343,17 @@ export const ProductDetailsScreen = () => {
   const horizontalPadding = isXCompact ? contentPadding : spacing.lg;
   const heroWidth = clamp(width - horizontalPadding * 2 - 2, 250, 520);
   const heroHeight = clamp(isXCompact ? 250 : 320, 240, 360);
+
+  // Re-align the gallery's paginated scroll offset whenever the item width
+  // changes (iPad rotation, split view). Without this the ScrollView keeps
+  // its old contentOffset in pixels, so after rotation the visible page
+  // no longer matches activeImage.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      galleryScrollRef.current?.scrollTo({ x: activeImage * heroWidth, animated: false });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [heroWidth, activeImage]);
   const variantCardWidth = clamp(isXCompact ? width * 0.55 : isCompact ? width * 0.48 : width * 0.42, 138, 220);
 
   return (
@@ -384,14 +396,17 @@ export const ProductDetailsScreen = () => {
             }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.galleryCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface }]}> 
+            <View style={[styles.galleryCard, { borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surface, width: heroWidth, alignSelf: "center", overflow: "hidden" }]}>
               <ScrollView
+                ref={galleryScrollRef}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onScroll={(event) => {
-                  const width = event.nativeEvent.layoutMeasurement.width;
-                  const page = Math.round(event.nativeEvent.contentOffset.x / width);
+                  // Divide by heroWidth (item width) rather than layoutMeasurement.width
+                  // so the dot indicator stays in sync when the gallery card wrapper
+                  // ends up wider than heroWidth on tablets.
+                  const page = Math.round(event.nativeEvent.contentOffset.x / heroWidth);
                   setActiveImage(page);
                 }}
                 scrollEventThrottle={16}

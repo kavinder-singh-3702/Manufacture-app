@@ -15,7 +15,13 @@ module.exports = ({ config }) => {
     name: "ARVANN",
     slug: "arvann",
     version: "1.0.0",
-    orientation: "portrait",
+    // "default" lets iPhone use its natural device orientation (usually
+    // portrait on rotate-locked devices) and lets iPad rotate freely
+    // between portrait and landscape. iPad users expect rotation; locking
+    // it caused a scroll bug where iOS rotated the app anyway (because
+    // supportsTablet + no UIRequiresFullScreen) but our screens still
+    // assumed portrait dimensions.
+    orientation: "default",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     icon: "./assets/brand/arvann-icon-new.png",
