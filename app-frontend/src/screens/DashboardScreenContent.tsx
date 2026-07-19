@@ -1128,6 +1128,30 @@ const UserDashboardContent = () => {
           ]}
         />
       </View>
+      {/* Hero Banner is PINNED above the ScrollView so pull-to-refresh
+          only fires when the user pulls the scrollable content below the
+          ad. Previously the banner was inside the ScrollView, which meant
+          pulling anywhere (including on the ad) triggered the refresh. */}
+      <Animated.View style={revealStyle(0)}>
+        <HeroBannerCarousel
+          cards={[...heroBannerCards, ...adCards]}
+          loading={heroBannerLoading}
+          greeting={getGreeting()}
+          userName={firstName}
+          appName={APP_NAME}
+          onCardPress={handleHeroBannerPress}
+          onCardVisible={trackAdImpression}
+          onSearchPress={() => navigation.navigate("ProductSearch", {})}
+          // The floating HomeToolbar (position:absolute in MainTabs,
+          // zIndex 20) covers the top of this container on the user
+          // Dashboard. Reserve enough space that ad content sits
+          // BELOW the toolbar instead of being clipped by it.
+          // Footprint = wrap paddingTop (6) + twoRowMinHeight, which
+          // varies by density (regular 122 / compact 112 / xCompact 102).
+          topInset={insets.top + 6 + (isXCompact ? 102 : isCompact ? 112 : 122)}
+        />
+      </Animated.View>
+
       <Animated.ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
@@ -1141,27 +1165,6 @@ const UserDashboardContent = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Hero Banner now inside the scroll — whole screen scrolls together */}
-        <Animated.View style={revealStyle(0)}>
-          <HeroBannerCarousel
-            cards={[...heroBannerCards, ...adCards]}
-            loading={heroBannerLoading}
-            greeting={getGreeting()}
-            userName={firstName}
-            appName={APP_NAME}
-            onCardPress={handleHeroBannerPress}
-            onCardVisible={trackAdImpression}
-            onSearchPress={() => navigation.navigate("ProductSearch", {})}
-            // The floating HomeToolbar (position:absolute in MainTabs,
-            // zIndex 20) covers the top of this scroll on the user
-            // Dashboard. Reserve enough space that ad content sits
-            // BELOW the toolbar instead of being clipped by it.
-            // Footprint = wrap paddingTop (6) + twoRowMinHeight, which
-            // varies by density (regular 122 / compact 112 / xCompact 102).
-            topInset={insets.top + 6 + (isXCompact ? 102 : isCompact ? 112 : 122)}
-          />
-        </Animated.View>
-
         {/* Mobile capture soft banner — shown to non-admin users who
             somehow reached Dashboard without a phone on file. The hard
             phone gate only fires once per fresh social sign-in, so any
