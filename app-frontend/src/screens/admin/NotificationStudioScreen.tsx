@@ -21,16 +21,30 @@ import {
   Notification,
   NotificationPriority,
 } from "../../services/notification.service";
+import { adminService, AdminUser } from "../../services/admin.service";
+import { isAdminRole } from "../../constants/roles";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const defaultComposer = {
+type ComposerState = {
+  title: string;
+  body: string;
+  eventKey: string;
+  topic: string;
+  priority: NotificationPriority;
+  userIds: string[];
+  broadcast: boolean;
+  scheduledAt: string;
+};
+
+const defaultComposer: ComposerState = {
   title: "",
   body: "",
   eventKey: "system.admin.broadcast",
   topic: "system",
-  priority: "normal" as NotificationPriority,
-  userIds: "",
+  priority: "normal",
+  userIds: [],
+  broadcast: false,
   scheduledAt: "",
 };
 
@@ -52,11 +66,16 @@ export const NotificationStudioScreen = () => {
   const styles = useMemo(() => createStyles(colors, spacing, radius, isDark), [colors, spacing, radius, isDark]);
   const navigation = useNavigation<Nav>();
 
-  const [composer, setComposer] = useState(defaultComposer);
+  const [composer, setComposer] = useState<ComposerState>(defaultComposer);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Notification[]>([]);
+  // Recipient picker state — replaces the old comma-separated text input
+  // so admins can search and tap real users instead of pasting ObjectIds.
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,19 +95,50 @@ export const NotificationStudioScreen = () => {
     load();
   }, [load]);
 
+  const loadUsers = useCallback(async () => {
+    try {
+      setUsersLoading(true);
+      const response = await adminService.listUsers({
+        limit: 40,
+        offset: 0,
+        search: userSearch.trim() || undefined,
+        sort: "updatedAt:desc",
+      });
+      // Exclude admin/super-admin — admins don't need to receive their own
+      // broadcasts, and the picker should only surface end users.
+      const filtered = (response.users || []).filter((u) => !isAdminRole(u.role));
+      setUsers(filtered);
+    } catch {
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [userSearch]);
+
+  useEffect(() => {
+    if (composer.broadcast) return;
+    const timer = setTimeout(loadUsers, 220);
+    return () => clearTimeout(timer);
+  }, [loadUsers, composer.broadcast]);
+
+  const toggleRecipient = useCallback((userId: string) => {
+    setComposer((prev) => {
+      const exists = prev.userIds.includes(userId);
+      return {
+        ...prev,
+        userIds: exists ? prev.userIds.filter((id) => id !== userId) : [...prev.userIds, userId],
+      };
+    });
+  }, []);
+
   const dispatchNow = useCallback(async () => {
     if (!composer.title.trim() || !composer.body.trim() || !composer.eventKey.trim()) {
       setError("Title, message, and event key are required.");
       return;
     }
 
-    const userIds = composer.userIds
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-
-    if (!userIds.length) {
-      setError("Add at least one target user ID.");
+    if (!composer.broadcast && !composer.userIds.length) {
+      setError("Select at least one recipient, or enable broadcast to send to everyone.");
       return;
     }
 
@@ -96,8 +146,8 @@ export const NotificationStudioScreen = () => {
     setError(null);
     try {
       await notificationService.dispatch({
-        audience: "user",
-        userIds,
+        audience: composer.broadcast ? "broadcast" : "user",
+        userIds: composer.broadcast ? undefined : composer.userIds,
         title: composer.title.trim(),
         body: composer.body.trim(),
         eventKey: composer.eventKey.trim(),
@@ -107,6 +157,7 @@ export const NotificationStudioScreen = () => {
         scheduledAt: composer.scheduledAt.trim() || undefined,
       });
       setComposer(defaultComposer);
+      setUserSearch("");
       await load();
     } catch (err: any) {
       setError(err?.message || "Failed to dispatch notification");
@@ -215,13 +266,119 @@ export const NotificationStudioScreen = () => {
             })}
           </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Target user IDs (comma separated)"
-            placeholderTextColor={colors.textMuted}
-            value={composer.userIds}
-            onChangeText={(value) => setComposer((prev) => ({ ...prev, userIds: value }))}
-          />
+          <View style={styles.recipientBlock}>
+            <View style={styles.recipientHeader}>
+              <Text style={styles.recipientLabel}>Recipients</Text>
+              <TouchableOpacity
+                style={[
+                  styles.broadcastToggle,
+                  {
+                    borderColor: composer.broadcast ? colors.primary : colors.border,
+                    backgroundColor: composer.broadcast ? colors.primary + "1A" : colors.surfaceElevated,
+                  },
+                ]}
+                onPress={() =>
+                  setComposer((prev) => ({
+                    ...prev,
+                    broadcast: !prev.broadcast,
+                    userIds: !prev.broadcast ? [] : prev.userIds,
+                  }))
+                }
+              >
+                <Ionicons
+                  name={composer.broadcast ? "checkbox" : "square-outline"}
+                  size={16}
+                  color={composer.broadcast ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.broadcastToggleText,
+                    { color: composer.broadcast ? colors.primary : colors.textMuted },
+                  ]}
+                >
+                  Send to all users
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {composer.broadcast ? (
+              <Text style={styles.recipientHint}>
+                This notification will be sent to every non-admin user.
+              </Text>
+            ) : (
+              <>
+                {composer.userIds.length ? (
+                  <View style={styles.chipRow}>
+                    {composer.userIds.map((id) => {
+                      const u = users.find((x) => x.id === id);
+                      const label = u ? (u.displayName || u.email || id.slice(-6)) : id.slice(-6);
+                      return (
+                        <TouchableOpacity
+                          key={id}
+                          style={[styles.chip, { borderColor: colors.primary, backgroundColor: colors.primary + "1A" }]}
+                          onPress={() => toggleRecipient(id)}
+                        >
+                          <Text style={[styles.chipText, { color: colors.primary }]} numberOfLines={1}>
+                            {label}
+                          </Text>
+                          <Ionicons name="close" size={12} color={colors.primary} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <Text style={styles.recipientHint}>Search and tap a user to add them.</Text>
+                )}
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search users by name, email, or phone"
+                  placeholderTextColor={colors.textMuted}
+                  value={userSearch}
+                  onChangeText={setUserSearch}
+                />
+
+                {usersLoading ? (
+                  <View style={styles.userListLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                ) : users.length === 0 ? (
+                  <Text style={styles.recipientHint}>No users found.</Text>
+                ) : (
+                  <View style={styles.userList}>
+                    {users.slice(0, 8).map((u) => {
+                      const selected = composer.userIds.includes(u.id);
+                      return (
+                        <TouchableOpacity
+                          key={u.id}
+                          onPress={() => toggleRecipient(u.id)}
+                          style={[
+                            styles.userRow,
+                            {
+                              borderColor: selected ? colors.primary : colors.border,
+                              backgroundColor: selected ? colors.primary + "10" : colors.surfaceElevated,
+                            },
+                          ]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.userRowName, { color: colors.text }]} numberOfLines={1}>
+                              {u.displayName || "Unnamed user"}
+                            </Text>
+                            <Text style={[styles.userRowMeta, { color: colors.textMuted }]} numberOfLines={1}>
+                              {u.email || u.phone || u.id}
+                            </Text>
+                          </View>
+                          {selected ? (
+                            <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
 
           <TextInput
             style={styles.input}
@@ -342,6 +499,45 @@ const createStyles = (
       justifyContent: "center",
     },
     priorityChipText: { fontSize: 12, fontWeight: "700", textTransform: "uppercase" },
+    recipientBlock: { gap: spacing.xs, marginTop: 4 },
+    recipientHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    recipientLabel: { fontSize: 12, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.6 },
+    broadcastToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderRadius: radius.pill,
+    },
+    broadcastToggleText: { fontSize: 12, fontWeight: "700" },
+    recipientHint: { fontSize: 12, color: colors.textMuted, fontStyle: "italic" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      maxWidth: "100%",
+    },
+    chipText: { fontSize: 12, fontWeight: "700", maxWidth: 180 },
+    userList: { gap: 6 },
+    userListLoading: { paddingVertical: spacing.sm, alignItems: "center" },
+    userRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: radius.md,
+      borderWidth: 1,
+    },
+    userRowName: { fontSize: 13, fontWeight: "700" },
+    userRowMeta: { fontSize: 11, fontWeight: "500", marginTop: 2 },
     errorText: { color: colors.error, fontSize: 12, fontWeight: "700" },
     submitBtn: {
       minHeight: 44,
