@@ -308,7 +308,7 @@ describe('Ad platform service', () => {
           status: 'active'
         }
       })
-    ).rejects.toThrow('Promoted product must be an active public user/admin listing');
+    ).rejects.toThrow('Promoted product must be public (found visibility="private"). Set it to public from Inventory first.');
 
     await expect(
       createCampaign({
@@ -319,7 +319,7 @@ describe('Ad platform service', () => {
           status: 'active'
         }
       })
-    ).rejects.toThrow('Promoted product must be an active public user/admin listing');
+    ).rejects.toThrow('Promoted product must be active (found status="inactive"). Publish it from Inventory first.');
   });
 
   test('campaign pricing override must not exceed listed product price', async () => {
