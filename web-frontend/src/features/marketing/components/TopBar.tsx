@@ -28,6 +28,7 @@ const CATEGORIES = [
 
 const navLinks = [
   { href: "/products", label: "Products", hasDropdown: true },
+  { href: "/shop",     label: "Shop",     hasDropdown: false },
   { href: "/about",    label: "About",    hasDropdown: false },
   { href: "/support",  label: "Support",  hasDropdown: false },
   { href: "/contact",  label: "Contact",  hasDropdown: false },

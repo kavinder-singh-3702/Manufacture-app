@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
 import { getBuyerStock, getCategoryMeta } from "@/src/features/product/utils/categories";
+import { InhouseProductsShowcase } from "@/src/features/inhouse";
 
 // ── Categories data ───────────────────────────────────────────────────────────
 
@@ -155,6 +156,9 @@ export const MarketplaceSection = () => {
           ))}
         </div>
       </section>
+
+      {/* ── In-house / ARVANN Select (admin-listed) — premium, above buyer grid ─ */}
+      <InhouseProductsShowcase />
 
       {/* ── Featured products ──────────────────────────────────────────────── */}
       <section>

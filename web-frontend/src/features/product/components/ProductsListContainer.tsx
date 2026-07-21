@@ -10,6 +10,7 @@ import type { CreateProductInput, Product, ProductStats } from "@/src/types/prod
 import { useAuth } from "@/src/hooks/useAuth";
 import { useOptionalDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 import { useToast } from "@/src/components/ui/Toast";
+import { InhouseProductsShowcase } from "@/src/features/inhouse";
 import { ProductsStatsHero } from "./ProductsStatsHero";
 import { ProductFilters, type FiltersState } from "./ProductFilters";
 import { ProductGrid } from "./ProductGrid";
@@ -269,6 +270,9 @@ export const ProductsListContainer = () => {
           ))}
         </motion.div>
       )}
+
+      {/* Premium in-house / ARVANN Select catalog — only in the buyer (marketplace) view */}
+      {filters.scope === "marketplace" && <InhouseProductsShowcase />}
 
       <div className="space-y-5">
         <ProductFilters

@@ -146,6 +146,8 @@ export type ListProductsParams = {
   includeVariantSummary?: boolean;
   /** Filter by owning company ID — used for seller profile pages */
   companyId?: string;
+  /** Restrict to products created by a given role — "admin" powers the in-house catalog */
+  createdByRole?: "admin" | "user";
 };
 
 export type UploadProductImagePayload = {
