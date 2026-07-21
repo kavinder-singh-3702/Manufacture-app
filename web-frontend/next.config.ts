@@ -10,6 +10,14 @@ import type { NextConfig } from "next";
 // issues); in production the browser reaches the API directly via
 // NEXT_PUBLIC_API_URL.
 const nextConfig: NextConfig = {
+  // Pin the workspace root to THIS directory. The repo is a monorepo
+  // (app-frontend / backend / web-frontend) and a stray lockfile in the repo
+  // root made Next/Turbopack infer the repo root as the workspace root. On
+  // Vercel that offsets output file tracing, so the built routes are served
+  // from a path the router doesn't expect and every request returns a
+  // platform-level 404 even though the build "succeeds". Anchoring root here
+  // keeps tracing correct regardless of any parent-directory lockfiles.
+  turbopack: { root: __dirname },
   async rewrites() {
     const target = process.env.NEXT_PUBLIC_DEV_PROXY_TARGET ?? "https://api.arvann.in";
     return [
