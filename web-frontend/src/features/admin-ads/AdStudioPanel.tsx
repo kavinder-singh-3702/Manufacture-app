@@ -45,8 +45,9 @@ const STATUS_CHIPS: { key: AdCampaignStatus | "all"; label: string }[] = [
 ];
 
 const PLACEMENTS: { key: AdPlacement; label: string }[] = [
-  { key: "dashboard_home", label: "Dashboard home" },
-  { key: "hero_banner",    label: "Hero banner" },
+  { key: "dashboard_home",  label: "Dashboard home" },
+  { key: "hero_banner",     label: "Hero banner" },
+  { key: "cart_cross_sell", label: "Cart cross-sell" },
 ];
 
 export const AdStudioPanel = () => {
@@ -431,6 +432,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
   const [placements, setPlacements] = useState<AdPlacement[]>(campaign?.placements ?? ["dashboard_home"]);
   const [priority, setPriority] = useState(campaign?.priority ?? 50);
   const [freqCap, setFreqCap] = useState(String(campaign?.frequencyCapPerDay ?? 3));
+  const [popupCooldown, setPopupCooldown] = useState(String(campaign?.popupCooldownMinutes ?? 60));
   const [startAt, setStartAt] = useState(isoToLocalInput(campaign?.schedule?.startAt));
   const [endAt, setEndAt] = useState(isoToLocalInput(campaign?.schedule?.endAt));
   const [step, setStep] = useState(0);
@@ -604,6 +606,7 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
         targeting,
         priority,
         frequencyCapPerDay: parseInt(freqCap, 10) || 3,
+        popupCooldownMinutes: parseInt(popupCooldown, 10) || 60,
         ...(schedule ? { schedule } : {}),
         creative,
       };
@@ -929,10 +932,18 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
               className="w-full accent-[var(--primary)]" />
             <p className="text-[11px]" style={{ color: "var(--medium-gray)" }}>Higher priority wins when several ads compete for the same slot.</p>
           </div>
-          <Field label="Frequency cap / day">
-            <input type="number" min="1" max="50" value={freqCap} onChange={(e) => setFreqCap(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Frequency cap / day">
+              <input type="number" min="1" max="50" value={freqCap} onChange={(e) => setFreqCap(e.target.value)}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[11px]" style={{ color: "var(--medium-gray)" }}>Max impressions per visitor, per day, across all placements.</p>
+            </Field>
+            <Field label="Popup cadence (min)">
+              <input type="number" min="5" max="1440" value={popupCooldown} onChange={(e) => setPopupCooldown(e.target.value)}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[11px]" style={{ color: "var(--medium-gray)" }}>Minutes between interstitial popup showings.</p>
+            </Field>
+          </div>
           <div className="flex items-center justify-between">
             <Label>Schedule</Label>
             {(startAt || endAt) && (

@@ -3,7 +3,7 @@ import { httpClient, QueryParams } from "../lib/http-client";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type AdCampaignStatus = "draft" | "active" | "paused" | "completed" | "archived";
-export type AdPlacement = "dashboard_home" | "hero_banner";
+export type AdPlacement = "dashboard_home" | "hero_banner" | "cart_cross_sell";
 export type AdMediaType = "image" | "video";
 export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
@@ -28,8 +28,10 @@ export type AdProductSummary = {
   category?: string;
   subCategory?: string;
   price?: AdPrice;
+  availableQuantity?: number;
+  minStockQuantity?: number;
   images?: Array<{ url?: string; fileName?: string }>;
-  company?: { id?: string; displayName?: string } | null;
+  company?: { id?: string; displayName?: string; complianceStatus?: string } | null;
 };
 
 export type AdCreative = {
@@ -57,6 +59,8 @@ export type AdCampaign = {
   targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
   frequencyCapPerDay: number;
+  /** Minimum minutes between interstitial-popup showings, independent of frequencyCapPerDay. */
+  popupCooldownMinutes: number;
   priority: number;
   creative?: AdCreative;
   activatedAt?: string;
@@ -105,6 +109,7 @@ export type UpsertAdCampaignInput = {
   targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
   frequencyCapPerDay?: number;
+  popupCooldownMinutes?: number;
   priority?: number;
   creative?: AdCreative;
 };
@@ -112,6 +117,47 @@ export type UpsertAdCampaignInput = {
 export type CampaignListResponse = {
   campaigns: AdCampaign[];
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
+};
+
+// ── User-facing feed (both logged-in and anonymous visitors) ───────────────────
+
+export type AdFeedCard = {
+  id: string;
+  campaignId: string;
+  sessionId: string;
+  placement: AdPlacement;
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  badge?: string;
+  priority?: number;
+  frequencyCapPerDay?: number;
+  popupCooldownMinutes?: number;
+  priceOverride?: AdPrice;
+  pricing?: { listed?: AdPrice; advertised?: AdPrice; isDiscounted?: boolean };
+  product: AdProductSummary;
+  bannerImageUrl?: string;
+  bannerVideoUrl?: string;
+  bannerPosterUrl?: string;
+  bannerMediaType?: AdMediaType;
+  endsAt?: string;
+};
+
+export type AdFeedParams = {
+  placement?: AdPlacement;
+  limit?: number;
+  // Cross-sell: match the category + sub-category of a cart item.
+  category?: string;
+  subCategory?: string;
+  excludeProductId?: string;
+};
+
+export type AdEventPayload = {
+  campaignId: string;
+  type: AdEventType;
+  placement?: AdPlacement;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -182,6 +228,18 @@ const getInsights = (campaignId: string, range?: { from?: string; to?: string })
     .get<{ insights: AdInsights }>(`${BASE}/${campaignId}/insights`, { params: toQuery(range as Record<string, unknown>) })
     .then((r) => r.insights);
 
+// Public feed + event logging — no auth required. httpClient sends the session
+// cookie automatically when one exists, so a logged-in visitor gets a
+// personalized/targeted feed while an anonymous one gets "Everyone" campaigns.
+const getFeed = (params?: AdFeedParams) =>
+  httpClient.get<{ placement: AdPlacement; cards: AdFeedCard[] }>("/ads/feed", { params: toQuery(params as Record<string, unknown>) });
+
+const logEvent = (payload: AdEventPayload) =>
+  httpClient.post<{ success: boolean; event: { id: string; campaignId: string; type: AdEventType; placement: AdPlacement; createdAt: string } }>(
+    "/ads/events",
+    payload
+  );
+
 export const adService = {
   listCampaigns,
   getCampaign,
@@ -193,4 +251,6 @@ export const adService = {
   pauseCampaign,
   stopCampaign,
   getInsights,
+  getFeed,
+  logEvent,
 };

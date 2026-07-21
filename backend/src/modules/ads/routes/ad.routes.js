@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const createError = require('http-errors');
-const { authenticate, authorizeRoles } = require('../../../middleware/authMiddleware');
+const { authenticate, authenticateOptional, authorizeRoles } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
 const { uploadAdMedia } = require('../../../middleware/upload');
 const {
@@ -49,13 +49,15 @@ const parseAdMultipart = (req, res, next) => {
   return next();
 };
 
-router.use(authenticate);
-
-router.get('/feed', validate(feedValidation), getAdFeedController);
-router.post('/events', validate(recordEventValidation), recordAdEventController);
+// Feed + event logging are public — anonymous web/app visitors see ads too.
+// authenticateOptional attaches req.user when a session/token is present and
+// otherwise just calls next(), so getFeed/recordAdEvent handle both cases.
+router.get('/feed', authenticateOptional, validate(feedValidation), getAdFeedController);
+router.post('/events', authenticateOptional, validate(recordEventValidation), recordAdEventController);
 
 router.get(
   '/admin/campaigns',
+  authenticate,
   authorizeRoles('admin'),
   validate(listCampaignsValidation),
   listAdminCampaignsController
@@ -63,6 +65,7 @@ router.get(
 
 router.post(
   '/admin/campaigns',
+  authenticate,
   authorizeRoles('admin'),
   uploadAdMedia.single('bannerVideo'),
   parseAdMultipart,
@@ -72,6 +75,7 @@ router.post(
 
 router.get(
   '/admin/campaigns/:campaignId',
+  authenticate,
   authorizeRoles('admin'),
   validate(campaignIdParamValidation),
   getCampaignController
@@ -79,6 +83,7 @@ router.get(
 
 router.patch(
   '/admin/campaigns/:campaignId',
+  authenticate,
   authorizeRoles('admin'),
   uploadAdMedia.single('bannerVideo'),
   parseAdMultipart,
@@ -88,6 +93,7 @@ router.patch(
 
 router.post(
   '/admin/campaigns/:campaignId/activate',
+  authenticate,
   authorizeRoles('admin'),
   validate(campaignIdParamValidation),
   activateCampaignController
@@ -95,6 +101,7 @@ router.post(
 
 router.post(
   '/admin/campaigns/:campaignId/pause',
+  authenticate,
   authorizeRoles('admin'),
   validate(campaignIdParamValidation),
   pauseCampaignController
@@ -102,6 +109,7 @@ router.post(
 
 router.get(
   '/admin/campaigns/:campaignId/insights',
+  authenticate,
   authorizeRoles('admin'),
   validate(insightsValidation),
   getCampaignInsightsController
@@ -109,6 +117,7 @@ router.get(
 
 router.post(
   '/admin/campaigns/from-request/:serviceRequestId',
+  authenticate,
   authorizeRoles('admin'),
   validate(fromRequestValidation),
   createCampaignFromRequestController

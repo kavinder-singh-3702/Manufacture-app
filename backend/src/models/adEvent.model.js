@@ -6,7 +6,9 @@ const { Schema } = mongoose;
 const adEventSchema = new Schema(
   {
     campaign: { type: Schema.Types.ObjectId, ref: 'AdCampaign', required: true, index: true },
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    // Optional: anonymous (logged-out) web/app visitors also generate events —
+    // only the campaign + type matter for impression/CTR counts in that case.
+    user: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     advertiserCompany: { type: Schema.Types.ObjectId, ref: 'Company' },
 

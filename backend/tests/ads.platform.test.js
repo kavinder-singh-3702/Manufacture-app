@@ -571,4 +571,62 @@ describe('Ad platform service', () => {
     expect(createdResult.campaign.sourceServiceRequest).toBe(String(request._id));
     expect(createdResult.campaign.creative.priceOverride.amount).toBe(199);
   });
+
+  test('anonymous (logged-out) visitors see untargeted campaigns and can record events', async () => {
+    const admin = await createUser('8601', 'admin');
+    const seller = await createUser('8602', 'user');
+    const sellerCompany = await createCompany(seller, '8601');
+    const category = PRODUCT_CATEGORIES[0].id;
+
+    const everyoneProduct = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8601', category });
+    const targetedProduct = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8602', category });
+
+    // Untargeted ("Everyone") campaign — should be visible to anonymous visitors.
+    const everyoneCampaign = await createCampaign({
+      actorId: admin._id,
+      payload: {
+        name: 'Everyone push',
+        productId: everyoneProduct._id,
+        status: 'active',
+        popupCooldownMinutes: 30,
+        creative: { title: 'Anyone can see this', ctaLabel: 'View Product' }
+      }
+    });
+
+    // Behaviorally-targeted campaign — requires signals an anonymous visitor can't have.
+    await createCampaign({
+      actorId: admin._id,
+      payload: {
+        name: 'Shopper-targeted push',
+        productId: targetedProduct._id,
+        status: 'active',
+        targeting: { mode: 'any', shopperCategories: [category] },
+        creative: { title: 'Only for known shoppers', ctaLabel: 'View Product' }
+      }
+    });
+
+    // No userId — the anonymous path. Must not throw and must not leak the
+    // targeted campaign (which requires behavioral signals we can't have).
+    const anonymousFeed = await getFeed({ userId: undefined, placement: 'dashboard_home', limit: 5 });
+    expect(anonymousFeed.cards.length).toBe(1);
+    expect(anonymousFeed.cards[0].campaignId).toBe(everyoneCampaign.id);
+    expect(anonymousFeed.cards[0].sessionId).toMatch(/^adf_anon_/);
+    expect(anonymousFeed.cards[0].popupCooldownMinutes).toBe(30);
+    expect(anonymousFeed.cards[0].frequencyCapPerDay).toBe(3);
+
+    // Anonymous impression/click events must record without a user id.
+    const impressionEvent = await recordAdEvent({
+      campaignId: everyoneCampaign.id,
+      userId: undefined,
+      type: 'impression',
+      placement: 'dashboard_home',
+      sessionId: anonymousFeed.cards[0].sessionId
+    });
+    expect(impressionEvent.type).toBe('impression');
+
+    // Anonymous visitors are not frequency-capped server-side (no stable
+    // identity) — repeated impressions must not remove the campaign from feed.
+    const stillEligibleFeed = await getFeed({ userId: undefined, placement: 'dashboard_home', limit: 5 });
+    expect(stillEligibleFeed.cards.length).toBe(1);
+  });
 });

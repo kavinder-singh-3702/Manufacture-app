@@ -20,6 +20,7 @@ import { DashboardContext, useDashboardContext } from "./user-dashboard/context"
 import { CompanyCreateDrawer } from "@/src/features/company/components/CompanyCreateDrawer";
 import { PhoneGate } from "@/src/features/auth/components/PhoneGate";
 import { CartProvider } from "@/src/providers/CartProvider";
+import { AdBanner } from "@/src/features/ads/components/AdBanner";
 import {
   buildActivityTags,
   buildAddressPayload,
@@ -256,6 +257,7 @@ export const DashboardOverview = () => {
   return (
     <div className="space-y-6">
       <OverviewSection cards={cards} />
+      <AdBanner placement="dashboard_home" />
       <CompanyVerificationSection hideInline openSignal={verificationModalSignal} onRequestVerification={openVerificationModal} />
     </div>
   );

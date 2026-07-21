@@ -304,6 +304,7 @@ const shapeCampaign = (doc) => {
     },
     schedule: plain.schedule || {},
     frequencyCapPerDay: plain.frequencyCapPerDay,
+    popupCooldownMinutes: plain.popupCooldownMinutes,
     priority: plain.priority,
     creative: plain.creative || {},
     sourceServiceRequest: plain.sourceServiceRequest?.toString?.() || plain.sourceServiceRequest,
@@ -391,6 +392,7 @@ const createCampaign = async ({ payload, actorId }) => {
     targeting,
     schedule,
     frequencyCapPerDay: Math.min(Math.max(parseNumber(payload.frequencyCapPerDay, 3), 1), 50),
+    popupCooldownMinutes: Math.min(Math.max(parseNumber(payload.popupCooldownMinutes, 60), 5), 1440),
     priority: Math.min(Math.max(parseNumber(payload.priority, 50), 1), 100),
     creative: finalCreative,
     sourceServiceRequest: toObjectId(payload.sourceServiceRequest),
@@ -463,6 +465,10 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
 
   if (payload.frequencyCapPerDay !== undefined) {
     campaign.frequencyCapPerDay = Math.min(Math.max(parseNumber(payload.frequencyCapPerDay, 3), 1), 50);
+  }
+
+  if (payload.popupCooldownMinutes !== undefined) {
+    campaign.popupCooldownMinutes = Math.min(Math.max(parseNumber(payload.popupCooldownMinutes, 60), 5), 1440);
   }
 
   if (payload.priority !== undefined) {
@@ -738,6 +744,12 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
     'Recommended for you',
   ctaLabel: campaign.creative?.ctaLabel || 'View Product',
   badge: campaign.creative?.badge || undefined,
+  // Frequency controls: the server enforces frequencyCapPerDay for logged-in
+  // users (via AdEvent counts) but has no identity to key that off of for
+  // anonymous visitors, so both values ride along on the card for the client
+  // to self-enforce (localStorage) — see web's adFrequency module.
+  frequencyCapPerDay: campaign.frequencyCapPerDay || 3,
+  popupCooldownMinutes: campaign.popupCooldownMinutes || 60,
   bannerMediaType: campaign.creative?.bannerMediaType || undefined,
   bannerImageUrl: campaign.creative?.bannerImageUrl || undefined,
   bannerVideoUrl: campaign.creative?.bannerVideoUrl || undefined,
@@ -846,40 +858,58 @@ const getFeed = async ({
   const campaignIds = campaigns.map((item) => item._id);
   const userObjectId = toObjectId(userId);
 
-  const [dismissedCampaigns, todayImpressionCounts, lastImpressions, signals] = await Promise.all([
-    AdEvent.distinct('campaign', {
-      user: userObjectId,
-      type: 'dismiss',
-      campaign: { $in: campaignIds }
-    }),
-    AdEvent.aggregate([
-      {
-        $match: {
-          user: userObjectId,
-          campaign: { $in: campaignIds },
-          type: 'impression',
-          createdAt: {
-            $gte: new Date(new Date().setHours(0, 0, 0, 0))
+  // Anonymous (logged-out) visitor: there's no stable user id to key server-side
+  // dismiss/impression history or behavioral signals off of, so those all resolve
+  // to empty — matchTargeting then only lets through untargeted ("Everyone")
+  // campaigns, and per-day frequency capping falls to the client (localStorage).
+  // NOTE: passing `user: undefined` straight into a Mongo query would be stripped
+  // by the driver and match EVERY user's events, so we must skip these entirely
+  // rather than let them run with an undefined filter.
+  const emptySignals = {
+    shopperCategories: new Set(),
+    shopperSubCategories: new Set(),
+    buyIntentCategories: new Set(),
+    buyIntentSubCategories: new Set(),
+    listedProductCategories: new Set(),
+    listedProductSubCategories: new Set()
+  };
+
+  const [dismissedCampaigns, todayImpressionCounts, lastImpressions, signals] = userObjectId
+    ? await Promise.all([
+      AdEvent.distinct('campaign', {
+        user: userObjectId,
+        type: 'dismiss',
+        campaign: { $in: campaignIds }
+      }),
+      AdEvent.aggregate([
+        {
+          $match: {
+            user: userObjectId,
+            campaign: { $in: campaignIds },
+            type: 'impression',
+            createdAt: {
+              $gte: new Date(new Date().setHours(0, 0, 0, 0))
+            }
           }
-        }
-      },
-      { $group: { _id: '$campaign', count: { $sum: 1 } } }
-    ]),
-    AdEvent.aggregate([
-      {
-        $match: {
-          user: userObjectId,
-          campaign: { $in: campaignIds },
-          type: 'impression'
-        }
-      },
-      { $group: { _id: '$campaign', lastImpressionAt: { $max: '$createdAt' } } }
-    ]),
-    buildSignalSets({
-      userId: userObjectId,
-      lookbackDays: Math.max(...campaigns.map((item) => parseNumber(item.targeting?.lookbackDays, 60)))
-    })
-  ]);
+        },
+        { $group: { _id: '$campaign', count: { $sum: 1 } } }
+      ]),
+      AdEvent.aggregate([
+        {
+          $match: {
+            user: userObjectId,
+            campaign: { $in: campaignIds },
+            type: 'impression'
+          }
+        },
+        { $group: { _id: '$campaign', lastImpressionAt: { $max: '$createdAt' } } }
+      ]),
+      buildSignalSets({
+        userId: userObjectId,
+        lookbackDays: Math.max(...campaigns.map((item) => parseNumber(item.targeting?.lookbackDays, 60)))
+      })
+    ])
+    : [[], [], [], emptySignals];
 
   const dismissedSet = new Set(dismissedCampaigns.map((id) => id.toString()));
   const impressionCountMap = new Map(todayImpressionCounts.map((row) => [row._id.toString(), row.count]));
@@ -928,7 +958,9 @@ const getFeed = async ({
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
 
-  const sessionId = `adf_${userObjectId.toString().slice(-6)}_${Date.now()}`;
+  const sessionId = userObjectId
+    ? `adf_${userObjectId.toString().slice(-6)}_${Date.now()}`
+    : `adf_anon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   return {
     placement: safePlacement,

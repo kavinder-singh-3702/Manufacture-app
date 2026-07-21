@@ -78,6 +78,9 @@ const adCampaignSchema = new Schema(
     schedule: { type: AdScheduleSchema, default: () => ({}) },
 
     frequencyCapPerDay: { type: Number, default: 3, min: 1, max: 50 },
+    // Minimum minutes between interstitial-popup showings for the same user/visitor,
+    // independent of frequencyCapPerDay (which caps impressions across ALL placements).
+    popupCooldownMinutes: { type: Number, default: 60, min: 5, max: 1440 },
     priority: { type: Number, default: 50, min: 1, max: 100 },
 
     creative: { type: AdCreativeSchema, default: () => ({}) },

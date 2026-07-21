@@ -85,6 +85,7 @@ const createCampaignValidation = [
   ...adTargetingValidation,
   ...adScheduleValidation,
   body('frequencyCapPerDay').optional().isInt({ min: 1, max: 50 }),
+  body('popupCooldownMinutes').optional().isInt({ min: 5, max: 1440 }),
   body('priority').optional().isInt({ min: 1, max: 100 }),
   ...adCreativeValidation,
   body('sourceServiceRequest').optional().custom(isObjectId).withMessage('sourceServiceRequest must be valid id'),
@@ -101,6 +102,7 @@ const updateCampaignValidation = [
   ...adTargetingValidation,
   ...adScheduleValidation,
   body('frequencyCapPerDay').optional().isInt({ min: 1, max: 50 }),
+  body('popupCooldownMinutes').optional().isInt({ min: 5, max: 1440 }),
   body('priority').optional().isInt({ min: 1, max: 100 }),
   ...adCreativeValidation,
   body('metadata').optional().isObject()

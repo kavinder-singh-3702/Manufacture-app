@@ -6,6 +6,7 @@ import { useCart } from "@/src/providers/CartProvider";
 import { CartItemRow } from "./CartItemRow";
 import { CartSummary } from "./CartSummary";
 import { useRouter } from "next/navigation";
+import { AdCrossSell } from "@/src/features/ads/components/AdCrossSell";
 
 export const CartPageContent = () => {
   const router = useRouter();
@@ -113,6 +114,8 @@ export const CartPageContent = () => {
                 </AnimatePresence>
               </section>
             )}
+
+            <AdCrossSell />
           </div>
 
           {/* Right: summary */}
