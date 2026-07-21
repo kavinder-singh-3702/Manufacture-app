@@ -95,6 +95,7 @@ export type AdvertisementDetails = {
   ctaLabel?: string;
   badge?: string;
   frequencyCapPerDay?: number;
+  popupCooldownMinutes?: number;
   priority?: number;
 };
 

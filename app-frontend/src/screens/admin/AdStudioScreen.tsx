@@ -69,6 +69,7 @@ type WizardState = {
   startAt: string;
   endAt: string;
   frequencyCapPerDay: string;
+  popupCooldownMinutes: string;
   priority: string;
 
   creativeTitle: string;
@@ -79,7 +80,7 @@ type WizardState = {
   priceOverrideAmount: string;
   priceOverrideCurrency: string;
 
-  selectedPlacement: "dashboard_home" | "hero_banner";
+  selectedPlacement: "dashboard_home" | "hero_banner" | "cart_cross_sell";
   bannerMediaUri: string;
   bannerMediaBase64: string;
   bannerMediaType: "image" | "video" | "";
@@ -176,6 +177,7 @@ const campaignToPrefill = (campaign: AdCampaign): UpsertAdCampaignInput => ({
   targeting: campaign.targeting,
   schedule: campaign.schedule,
   frequencyCapPerDay: campaign.frequencyCapPerDay,
+  popupCooldownMinutes: campaign.popupCooldownMinutes,
   priority: campaign.priority,
   creative: {
     title: campaign.creative?.title,
@@ -245,6 +247,7 @@ export const AdStudioScreen = () => {
       startAt: "",
       endAt: "",
       frequencyCapPerDay: "3",
+      popupCooldownMinutes: "60",
       priority: "50",
 
       creativeTitle: "",
@@ -725,6 +728,7 @@ export const AdStudioScreen = () => {
       startAt: toYmd(prefill.schedule?.startAt),
       endAt: toYmd(prefill.schedule?.endAt),
       frequencyCapPerDay: String(prefill.frequencyCapPerDay || 3),
+      popupCooldownMinutes: String(prefill.popupCooldownMinutes || 60),
       priority: String(prefill.priority || 50),
       creativeTitle: prefill.creative?.title || "",
       creativeSubtitle: prefill.creative?.subtitle || "",
@@ -759,7 +763,12 @@ export const AdStudioScreen = () => {
         setWizard((prev) => ({
           ...prev,
           productSource: "admin_listings",
-          selectedPlacement: campaign.placements?.[0] === "hero_banner" ? "hero_banner" : "dashboard_home",
+          selectedPlacement:
+            campaign.placements?.[0] === "hero_banner"
+              ? "hero_banner"
+              : campaign.placements?.[0] === "cart_cross_sell"
+                ? "cart_cross_sell"
+                : "dashboard_home",
           bannerMediaType: existingType,
           bannerMediaUri:
             existingType === "image"
@@ -965,6 +974,7 @@ export const AdStudioScreen = () => {
         endAt: parseDate(wizard.endAt),
       },
       frequencyCapPerDay: parsePositiveInt(wizard.frequencyCapPerDay, 3, 1, 50),
+      popupCooldownMinutes: parsePositiveInt(wizard.popupCooldownMinutes, 60, 5, 1440),
       priority: parsePositiveInt(wizard.priority, 50, 1, 100),
       creative: {
         priceOverride:
@@ -1601,6 +1611,15 @@ export const AdStudioScreen = () => {
                       setWizard((prev) => ({ ...prev, selectedPlacement: "hero_banner" }))
                     }
                   />
+                  <SelectCard
+                    icon="cart-outline"
+                    title="Cart Cross-sell"
+                    subtitle="'You may also like' in the cart"
+                    active={wizard.selectedPlacement === "cart_cross_sell"}
+                    onPress={() =>
+                      setWizard((prev) => ({ ...prev, selectedPlacement: "cart_cross_sell" }))
+                    }
+                  />
                 </View>
 
                 {(
@@ -1943,6 +1962,12 @@ export const AdStudioScreen = () => {
                   keyboardType="number-pad"
                 />
                 <Field
+                  label="Popup cadence (min)"
+                  value={wizard.popupCooldownMinutes}
+                  onChangeText={(value) => setWizard((prev) => ({ ...prev, popupCooldownMinutes: value.replace(/[^0-9]/g, "") }))}
+                  keyboardType="number-pad"
+                />
+                <Field
                   label="Priority (1-100)"
                   value={wizard.priority}
                   onChangeText={(value) => setWizard((prev) => ({ ...prev, priority: value.replace(/[^0-9]/g, "") }))}
@@ -2264,6 +2289,7 @@ export const AdStudioScreen = () => {
                   <InfoLine label="Priority" value={String(detailModalCampaign.priority)} />
                   <InfoLine label="Targeting" value={detailModalCampaign.targeting?.mode?.toUpperCase() || "ANY"} />
                   <InfoLine label="Freq. cap" value={`${detailModalCampaign.frequencyCapPerDay}/day`} />
+                  <InfoLine label="Popup cadence" value={`${detailModalCampaign.popupCooldownMinutes}m`} />
                 </View>
 
                 {detailModalInsights ? (

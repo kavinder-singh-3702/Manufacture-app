@@ -51,6 +51,8 @@ export type AdCampaign = {
   targeting: AdTargetingRuleSet;
   schedule?: { startAt?: string; endAt?: string };
   frequencyCapPerDay: number;
+  /** Minimum minutes between interstitial-popup showings, independent of frequencyCapPerDay. */
+  popupCooldownMinutes: number;
   priority: number;
   creative?: {
     priceOverride?: AdPrice;
@@ -84,6 +86,9 @@ export type AdFeedCard = {
   ctaLabel?: string;
   badge?: string;
   priority?: number;
+  frequencyCapPerDay?: number;
+  /** Minimum minutes between interstitial-popup showings for this campaign. */
+  popupCooldownMinutes?: number;
   priceOverride?: AdPrice;
   pricing?: {
     listed?: AdPrice;
@@ -124,6 +129,7 @@ export type UpsertAdCampaignInput = {
   targeting?: AdTargetingRuleSet;
   schedule?: { startAt?: string | Date; endAt?: string | Date };
   frequencyCapPerDay?: number;
+  popupCooldownMinutes?: number;
   priority?: number;
   creative?: {
     priceOverride?: AdPrice;

@@ -542,6 +542,7 @@ describe('Ad platform service', () => {
           headline: 'Premium quality',
           ctaLabel: 'View Product',
           frequencyCapPerDay: 4,
+          popupCooldownMinutes: 15,
           priority: 70
         }
       },
@@ -557,6 +558,7 @@ describe('Ad platform service', () => {
     expect(prefillResult.prefill.productId).toBe(String(product._id));
     expect(prefillResult.prefill.targeting.mode).toBe('all');
     expect(prefillResult.prefill.frequencyCapPerDay).toBe(4);
+    expect(prefillResult.prefill.popupCooldownMinutes).toBe(15);
     expect(prefillResult.prefill.creative.priceOverride.amount).toBe(199);
 
     const createdResult = await createCampaignFromServiceRequest({
@@ -570,6 +572,7 @@ describe('Ad platform service', () => {
     expect(createdResult.campaign.status).toBe('active');
     expect(createdResult.campaign.sourceServiceRequest).toBe(String(request._id));
     expect(createdResult.campaign.creative.priceOverride.amount).toBe(199);
+    expect(createdResult.campaign.popupCooldownMinutes).toBe(15);
   });
 
   test('anonymous (logged-out) visitors see untargeted campaigns and can record events', async () => {

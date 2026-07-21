@@ -138,6 +138,7 @@ type FormState = {
   adCtaLabel: string;
   adBadge: string;
   adFrequencyCap: string;
+  adPopupCooldown: string;
   adPriority: string;
 };
 
@@ -241,6 +242,7 @@ const initialForm = (serviceType?: ServiceType): FormState => ({
   adCtaLabel: "",
   adBadge: "",
   adFrequencyCap: "3",
+  adPopupCooldown: "60",
   adPriority: "50",
 });
 
@@ -349,6 +351,7 @@ const serviceRequestToForm = (sr: ServiceRequest): FormState => {
     adCtaLabel: ad?.ctaLabel || "",
     adBadge: ad?.badge || "",
     adFrequencyCap: ad?.frequencyCapPerDay != null ? String(ad.frequencyCapPerDay) : "3",
+    adPopupCooldown: ad?.popupCooldownMinutes != null ? String(ad.popupCooldownMinutes) : "60",
     adPriority: ad?.priority != null ? String(ad.priority) : "50",
   };
 };
@@ -700,6 +703,7 @@ export const ServiceRequestScreen = () => {
         ctaLabel: form.adCtaLabel.trim() || undefined,
         badge: form.adBadge.trim() || undefined,
         frequencyCapPerDay: Math.max(1, Math.min(50, Number(form.adFrequencyCap) || 3)),
+        popupCooldownMinutes: Math.max(5, Math.min(1440, Number(form.adPopupCooldown) || 60)),
         priority: Math.max(1, Math.min(100, Number(form.adPriority) || 50)),
       };
     }
@@ -1232,6 +1236,7 @@ export const ServiceRequestScreen = () => {
                     <NeuField label="CTA label" value={form.adCtaLabel} onChangeText={(value) => setField("adCtaLabel", value)} isDark={isDark} accentColor={accentColor} />
                     <NeuField label="Badge" value={form.adBadge} onChangeText={(value) => setField("adBadge", value)} isDark={isDark} accentColor={accentColor} />
                     <NeuField label="Frequency cap / day" value={form.adFrequencyCap} onChangeText={(value) => setField("adFrequencyCap", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
+                    <NeuField label="Popup cadence (min)" value={form.adPopupCooldown} onChangeText={(value) => setField("adPopupCooldown", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
                     <NeuField label="Priority (1-100)" value={form.adPriority} onChangeText={(value) => setField("adPriority", value.replace(/[^0-9]/g, ""))} keyboardType="number-pad" isDark={isDark} accentColor={accentColor} />
                   </>
                 ) : null}

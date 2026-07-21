@@ -130,6 +130,7 @@ const AdvertisementDetailsSchema = new Schema(
     ctaLabel: { type: String, trim: true, maxlength: 60 },
     badge: { type: String, trim: true, maxlength: 40 },
     frequencyCapPerDay: { type: Number, min: 1, max: 50, default: 3 },
+    popupCooldownMinutes: { type: Number, min: 5, max: 1440, default: 60 },
     priority: { type: Number, min: 1, max: 100, default: 50 }
   },
   { _id: false }

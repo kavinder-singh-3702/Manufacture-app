@@ -1163,6 +1163,7 @@ const createCampaignFromServiceRequest = async ({ serviceRequestId, actorId, act
       badge: details.badge
     },
     frequencyCapPerDay: details.frequencyCapPerDay || 3,
+    popupCooldownMinutes: details.popupCooldownMinutes || 60,
     priority: details.priority || 50,
     sourceServiceRequest: request._id.toString(),
     metadata: {

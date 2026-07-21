@@ -175,6 +175,7 @@ const advertisementValidation = [
   body('advertisementDetails.ctaLabel').optional().isString().isLength({ max: 60 }),
   body('advertisementDetails.badge').optional().isString().isLength({ max: 40 }),
   body('advertisementDetails.frequencyCapPerDay').optional().isInt({ min: 1, max: 50 }),
+  body('advertisementDetails.popupCooldownMinutes').optional().isInt({ min: 5, max: 1440 }),
   body('advertisementDetails.priority').optional().isInt({ min: 1, max: 100 })
 ];
 
