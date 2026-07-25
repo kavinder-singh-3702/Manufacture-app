@@ -27,13 +27,13 @@ const buildStockStatusExpr = (status) => {
 
 const buildAdminCreatorFilter = async (createdByRole) => {
   if (createdByRole !== 'admin') return null;
-  const adminIds = await User.find({ role: 'admin' }).distinct('_id');
-  return {
-    $or: [
-      { createdByRole: 'admin' },
-      { createdBy: { $in: adminIds } }
-    ]
-  };
+  // Strict: only products explicitly tagged as admin-created at
+  // creation time. The old `createdBy $in adminIds` fallback would
+  // sweep in a user's pre-promotion marketplace listings if they
+  // were later promoted to admin — which was leaking user products
+  // into the "in-house" shop. createdByRole is set immutably by the
+  // create paths and is the correct signal.
+  return { $or: [{ createdByRole: 'admin' }] };
 };
 
 const shapeProduct = (product) => {
