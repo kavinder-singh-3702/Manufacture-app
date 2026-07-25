@@ -6,6 +6,7 @@ const { attachUserToSession } = require('./session-auth.service');
 const { buildUserResponse } = require('../utils/response.util');
 const { ACTIVITY_ACTIONS } = require('../../../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../../activity/services/activity.service');
+const { sendPasswordResetEmail } = require('../../../services/email.service');
 
 const PASSWORD_RESET_TOKEN_TTL_MS = config.passwordResetTokenTtlMs || 15 * 60 * 1000;
 
@@ -38,6 +39,25 @@ const requestPasswordReset = async (req, { email, phone }) => {
   if (config.node !== 'production') {
     response.resetToken = plainToken;
     response.expiresAt = user.passwordResetExpires;
+  }
+
+  // Send the reset token by email so the user can actually complete the
+  // flow in production. Skipped for phone-only accounts (we don't have
+  // an SMS transport yet — those users will need to add an email or
+  // reach out to support). Fire-and-forget: a slow/failed SMTP must not
+  // stall the client response; email.service already logs failures.
+  if (user.email) {
+    const displayName = user.displayName || user.firstName || user.email.split('@')[0];
+    setImmediate(() => {
+      sendPasswordResetEmail({
+        to: user.email,
+        fullName: displayName,
+        resetToken: plainToken,
+        expiresInMs: PASSWORD_RESET_TOKEN_TTL_MS,
+      }).catch((err) => {
+        console.error('[PasswordReset] Failed to send reset email:', err?.message || err);
+      });
+    });
   }
 
   await recordActivitySafe({

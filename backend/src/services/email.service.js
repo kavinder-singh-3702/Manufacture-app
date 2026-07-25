@@ -514,6 +514,48 @@ const verifyConnection = async () => {
   }
 };
 
+const sendPasswordResetEmail = async ({ to, fullName, resetToken, expiresInMs }) => {
+  const appName = getAppName();
+  const safeName = toSafeString(fullName) || 'there';
+  const safeToken = toSafeString(resetToken);
+  const expiresInMinutes = Math.max(1, Math.ceil(Number(expiresInMs || 0) / 60000));
+  const subject = `${appName} password reset code`;
+
+  const text = `
+Hi ${safeName},
+
+You (or someone using your email) asked to reset your ${appName} password.
+
+Use this reset code in the app to set a new password:
+
+${safeToken}
+
+This code expires in ${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}.
+
+If you did not request a reset, you can safely ignore this email — your password stays unchanged.
+
+Regards,
+${appName} Team
+  `.trim();
+
+  const html = buildEmailLayout({
+    preheader: 'Your password reset code is ready',
+    title: 'Reset your password',
+    subtitle: `Complete the reset in ${appName} securely`,
+    bodyHtml: `
+      <p style="margin: 0;">Hi <strong>${escapeHtml(safeName)}</strong>,</p>
+      <p style="margin: 14px 0 0;">You (or someone using your email) asked to reset your ${escapeHtml(appName)} password. Paste this code into the app's password-reset screen to set a new password.</p>
+      ${buildOtpCodePanel(safeToken)}
+      <p style="margin: 0;">This code expires in <strong>${expiresInMinutes} minute${expiresInMinutes === 1 ? '' : 's'}</strong>.</p>
+      <p style="margin: 10px 0 0; color: ${EMAIL_STYLES.mutedText};">If you did not request a reset, you can safely ignore this email — your password stays unchanged.</p>
+    `,
+    ctaLabel: `Open ${appName}`,
+    ctaHref: config.appUrl,
+  });
+
+  return sendEmail({ to, subject, text, html });
+};
+
 const sendContactMessageEmail = async ({ name, email, company, topic, message }) => {
   const appName = getAppName();
   const safeName = toSafeString(name) || 'Someone';
@@ -564,6 +606,7 @@ module.exports = {
   sendEmail,
   sendDocumentRequestEmail,
   sendSignupOtpEmail,
+  sendPasswordResetEmail,
   sendBusinessSetupSubmissionEmail,
   sendBusinessSetupStatusEmail,
   sendContactMessageEmail,
