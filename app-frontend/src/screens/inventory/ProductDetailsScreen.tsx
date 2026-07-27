@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   Share,
@@ -282,6 +283,35 @@ export const ProductDetailsScreen = () => {
       prefillObjective: `Promote ${product.name} to relevant buyers`,
     });
   }, [isGuest, navigation, product, requestLogin]);
+
+  const openEditProduct = useCallback(() => {
+    if (!product) return;
+    navigation.navigate("EditProduct", { productId: product._id });
+  }, [navigation, product]);
+
+  const handleDeleteProduct = useCallback(() => {
+    if (!product) return;
+    Alert.alert(
+      "Delete product?",
+      `"${product.name}" will be removed from your listings. This can't be undone from the app.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await productService.delete(product._id);
+              toastSuccess("Product deleted", `${product.name} has been removed.`);
+              navigation.goBack();
+            } catch (err: any) {
+              toastError("Delete failed", err?.message || "Could not delete the product. Try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, [navigation, product, toastError, toastSuccess]);
 
   const submitQuoteRequest = useCallback(
     async (payload: QuoteRequestFormSubmit) => {
@@ -667,6 +697,22 @@ export const ProductDetailsScreen = () => {
                   <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
                   <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Promote Product</Text>
                 </TouchableOpacity>
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    onPress={openEditProduct}
+                    style={[styles.bottomHalfBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="create-outline" size={18} color={colors.text} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.text }]}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleDeleteProduct}
+                    style={[styles.bottomHalfBtn, { borderRadius: radius.md, borderColor: colors.error }]}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Text style={[styles.bottomSecondaryText, { color: colors.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : isAdminProduct ? (
               <View style={styles.bottomColumn}>
@@ -1068,6 +1114,15 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  bottomHalfBtn: {
+    flex: 1,
+    borderWidth: 1,
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
