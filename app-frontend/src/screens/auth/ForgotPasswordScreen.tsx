@@ -192,7 +192,10 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     backgroundColor: colors.background,
   },
   card: {
-    flex: 1,
+    // flexGrow (not flex:1) — see LoginScreen note. Prevents the card
+    // from being compressed to viewport height so the ScrollView can
+    // actually scroll in iPad landscape.
+    flexGrow: 1,
     paddingHorizontal: 28,
     paddingTop: 32,
     paddingBottom: 40,

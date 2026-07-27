@@ -356,7 +356,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   card: {
-    flex: 1,
+    // flexGrow (not flex:1) — lets the card fill viewport height in
+    // portrait but grow beyond it in iPad landscape where the form is
+    // taller than the viewport. flex:1 was compressing the card to
+    // viewport height via flexShrink, preventing the ScrollView from
+    // ever needing to scroll — content was clipped instead.
+    flexGrow: 1,
     width: "100%",
     backgroundColor: "transparent",
     borderRadius: 0,
