@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
+  Alert,
   View,
   Text,
   FlatList,
@@ -8,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -68,6 +70,42 @@ export const TransactionListScreen = () => {
     setRefreshing(true);
     loadVouchers();
   };
+
+  const handleDeleteVoucher = useCallback(
+    (voucher: Voucher) => {
+      // Accounting "delete" is a void under the hood — the void endpoint
+      // reverses inventory + ledger artifacts and marks status='voided'.
+      // We surface it as "Delete" for the user's mental model but keep
+      // the copy honest about what's being reversed.
+      if (voucher.status === 'voided') {
+        Alert.alert('Already voided', 'This voucher is already voided.');
+        return;
+      }
+      const label = voucher.voucherNumber
+        ? `#${voucher.voucherNumber}`
+        : voucher.voucherType.replace('_', ' ');
+      Alert.alert(
+        'Delete voucher?',
+        `${label} will be voided. Any inventory or ledger changes it made will be reversed. This can't be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await tallyService.voidVoucher(voucher._id);
+                loadVouchers();
+              } catch (err: any) {
+                Alert.alert('Delete failed', err?.message || 'Could not delete this voucher.');
+              }
+            },
+          },
+        ]
+      );
+    },
+    [loadVouchers]
+  );
 
   const handleChooseCompany = useCallback(() => {
     navigation.navigate('CompanyContextPicker', {
@@ -193,6 +231,16 @@ export const TransactionListScreen = () => {
                 {item.status.toUpperCase()}
               </Text>
             </View>
+            {item.status !== 'voided' ? (
+              <TouchableOpacity
+                onPress={() => handleDeleteVoucher(item)}
+                hitSlop={8}
+                accessibilityLabel="Delete voucher"
+                style={styles.deleteBtn}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -464,6 +512,10 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  deleteBtn: {
+    marginLeft: 8,
+    padding: 6,
   },
   voucherRow: {
     flexDirection: 'row',
