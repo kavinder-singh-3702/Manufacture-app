@@ -200,7 +200,7 @@ export const MainTabs = () => {
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
 
   const { colors, spacing, nativeGradients } = useTheme();
-  const { user, logout, requestLogin } = useAuth();
+  const { user, logout, requestLogin, requestForgotPassword } = useAuth();
   const { totalUnread } = useUnreadMessages();
   const { unreadCount: notificationUnreadCount } = useNotifications();
   const stackNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -365,6 +365,11 @@ export const MainTabs = () => {
     await logout();
   }, [logout]);
 
+  const handleForgotPassword = useCallback(async () => {
+    setSidebarVisible(false);
+    await requestForgotPassword();
+  }, [requestForgotPassword]);
+
   const handleOpenCompanySwitcher = useCallback(() => {
     if (!isAuthenticated) {
       requestLogin();
@@ -449,10 +454,17 @@ export const MainTabs = () => {
         onPress: handleSendFeedback,
       },
       ...(isAuthenticated
-        ? [{ label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const }]
+        ? [
+            {
+              label: "Forgot password",
+              description: "Sign out and reset your password",
+              onPress: handleForgotPassword,
+            },
+            { label: "Logout", description: "Sign out of the workspace", onPress: handleLogout, tone: "danger" as const },
+          ]
         : []),
     ];
-  }, [handleHelp, handleLogout, handleNotificationStudio, handlePreferences, handleSendFeedback, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
+  }, [handleForgotPassword, handleHelp, handleLogout, handleNotificationStudio, handlePreferences, handleSendFeedback, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
 
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
 

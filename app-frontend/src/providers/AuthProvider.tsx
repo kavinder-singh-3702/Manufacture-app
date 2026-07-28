@@ -42,6 +42,7 @@ type AuthContextValue = {
   bootstrapWarning: string | null;
   requestLogin: () => void;
   requestSignup: () => void;
+  requestForgotPassword: () => Promise<void>;
   refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
@@ -272,6 +273,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setBootstrapWarning(null);
   }, []);
 
+  const requestForgotPassword = useCallback(async () => {
+    // Reuse logout for a clean teardown (revoke server session, clear JWT,
+    // disconnect chat socket), then override the auth view logout picks
+    // so AuthScreen opens directly on the Forgot Password step.
+    try {
+      await authService.logout();
+    } catch {
+      // Best-effort: even if the server call fails, we still tear down local
+      // state below so the user isn't stuck.
+    }
+    await tokenStorage.removeToken();
+    disconnectChatSocket();
+    setUserState(null);
+    setBootstrapError(null);
+    setBootstrapWarning(null);
+    setPendingSocialPhoneCollection(false);
+    setAuthView("forgot");
+  }, []);
+
   const clearAuthView = useCallback(() => {
     setAuthView(null);
   }, []);
@@ -293,6 +313,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       bootstrapWarning,
       requestLogin,
       requestSignup,
+      requestForgotPassword,
       refreshUser,
       authView,
       clearAuthView,
@@ -300,7 +321,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       clearPendingVerificationRedirect,
       pendingSocialPhoneCollection,
     }),
-    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingSocialPhoneCollection, pendingVerificationRedirect, refreshUser, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
+    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingSocialPhoneCollection, pendingVerificationRedirect, refreshUser, requestForgotPassword, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

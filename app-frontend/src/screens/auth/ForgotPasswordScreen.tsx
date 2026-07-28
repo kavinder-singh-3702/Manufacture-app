@@ -34,6 +34,10 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // 'email' | 'phone_unavailable' | null. Drives the callout title so a
+  // phone lookup doesn't say "Check your inbox" (nothing is emailed for
+  // phone-only requests — SMS transport isn't wired yet).
+  const [channel, setChannel] = useState<"email" | "phone_unavailable" | null>(null);
   const [devToken, setDevToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
@@ -50,6 +54,7 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   const handleSubmit = async () => {
     setError(null);
     setMessage(null);
+    setChannel(null);
     setDevToken(null);
     setExpiresAt(null);
     const trimmedIdentifier = identifierValue.trim();
@@ -59,12 +64,20 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
       return;
     }
 
+    // Short-circuit for phone: no SMS transport is wired yet. Save the
+    // network round-trip and steer the user straight to email.
+    if (credentialMode === "phone") {
+      setError("SMS password reset isn't available yet. Please switch to email to receive a reset code.");
+      return;
+    }
+
     try {
       setLoading(true);
       const payload =
         credentialMode === "email" ? { email: trimmedIdentifier } : { phone: trimmedIdentifier };
       const response = await authService.requestPasswordReset(payload);
       setMessage(response.message);
+      setChannel(response.channel ?? "email");
       if (response.resetToken) {
         setDevToken(response.resetToken);
       }
@@ -137,6 +150,10 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
         </View>
 
         <TextInput
+          // Force remount on mode toggle so keyboardType/autoComplete/
+          // textContentType actually swap — iOS caches the keyboard type
+          // per-instance and won't update on a live prop change.
+          key={credentialMode}
           style={styles.input}
           placeholder={identifierPlaceholder}
           placeholderTextColor={colors.textTertiary}
@@ -144,12 +161,17 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
           onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
           keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
           autoCapitalize="none"
+          autoCorrect={false}
+          textContentType={credentialMode === "email" ? "emailAddress" : "telephoneNumber"}
+          autoComplete={credentialMode === "email" ? "email" : "tel"}
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {message ? (
           <View style={styles.callout}>
-            <Text style={styles.calloutTitle}>Check your inbox</Text>
+            <Text style={styles.calloutTitle}>
+              {channel === "phone_unavailable" ? "SMS reset not available" : "Check your inbox"}
+            </Text>
             <Text style={styles.calloutText}>{message}</Text>
             {tokenHint ? (
               <View style={styles.tokenBadge}>
@@ -263,7 +285,10 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     borderRadius: 24,
   },
   toggleButtonActive: {
-    backgroundColor: colors.text,
+    // Use brand primary instead of colors.text: colors.text is dark in
+    // light mode, which read as a harsh black pill covering the label.
+    // Primary gives a legible brand-blue pill in both light and dark.
+    backgroundColor: colors.primary,
   },
   toggleText: {
     fontSize: 14,
@@ -271,7 +296,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     color: colors.textMuted,
   },
   toggleTextActive: {
-    color: colors.textInverse,
+    color: colors.textOnPrimary,
   },
   input: {
     borderRadius: 14,
