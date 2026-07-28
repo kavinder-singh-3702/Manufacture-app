@@ -5,6 +5,15 @@ import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../services/chat
 
 type UnreadMessagesContextType = {
   totalUnread: number;
+  /**
+   * Unread messages ONLY from conversations with an admin/super-admin
+   * participant (the user↔support thread). Separate from totalUnread so
+   * the SupportFab badge doesn't inflate from unrelated seller/buyer
+   * chats — a stale unread in a product inquiry chat would otherwise
+   * pin a number on the Support button that clearing support never
+   * resolves.
+   */
+  supportUnread: number;
   refresh: () => Promise<void>;
 };
 
@@ -14,7 +23,7 @@ export const useUnreadMessages = () => {
   const context = useContext(UnreadMessagesContext);
   if (!context) {
     // Return default values if used outside provider (for non-admin users)
-    return { totalUnread: 0, refresh: async () => {} };
+    return { totalUnread: 0, supportUnread: 0, refresh: async () => {} };
   }
   return context;
 };
@@ -25,17 +34,27 @@ type Props = {
 
 export const UnreadMessagesProvider = ({ children }: Props) => {
   const [totalUnread, setTotalUnread] = useState(0);
+  const [supportUnread, setSupportUnread] = useState(0);
   const { user } = useAuth();
 
   const loadUnreadCount = useCallback(async () => {
     if (!user?.id) {
       setTotalUnread(0);
+      setSupportUnread(0);
       return;
     }
     try {
       const response = await chatService.listConversations();
       const total = response.conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      const support = response.conversations.reduce((sum, conv) => {
+        const role = conv.otherParticipant?.role;
+        if (role === "admin" || role === "super-admin") {
+          return sum + (conv.unreadCount || 0);
+        }
+        return sum;
+      }, 0);
       setTotalUnread(total);
+      setSupportUnread(support);
     } catch (err) {
       console.warn("[UnreadMessagesProvider] Failed to load unread count", err);
     }
@@ -96,7 +115,7 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
   }, [user?.id, loadUnreadCount]);
 
   return (
-    <UnreadMessagesContext.Provider value={{ totalUnread, refresh: loadUnreadCount }}>
+    <UnreadMessagesContext.Provider value={{ totalUnread, supportUnread, refresh: loadUnreadCount }}>
       {children}
     </UnreadMessagesContext.Provider>
   );

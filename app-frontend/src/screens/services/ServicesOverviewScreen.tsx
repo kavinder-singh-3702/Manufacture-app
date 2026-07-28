@@ -70,7 +70,7 @@ export const ServicesOverviewScreen = () => {
   // Sum of unread admin/support messages waiting for the user. Drives the
   // small red badge on the Support FAB so the user knows admin replied
   // without needing to tap into the chat.
-  const { totalUnread } = useUnreadMessages();
+  const { supportUnread } = useUnreadMessages();
   const { error: toastError } = useToast();
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
@@ -492,7 +492,7 @@ export const ServicesOverviewScreen = () => {
 
       <SupportFab
         loading={supportLoading}
-        unreadCount={totalUnread}
+        unreadCount={supportUnread}
         onPress={handleSupport}
         style={{ bottom: insets.bottom + 76 }}
       />
