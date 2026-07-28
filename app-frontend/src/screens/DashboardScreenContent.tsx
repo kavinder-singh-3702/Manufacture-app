@@ -717,6 +717,17 @@ const UserDashboardContent = () => {
   const { isXCompact, isCompact, fs } = useResponsiveLayout();
   const styles = useMemo(() => createStyles(fs), [fs]);
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  // Space reserved for the floating HomeToolbar (position:absolute in MainTabs,
+  // zIndex 20). The user Dashboard uses topBarMode:"compact" (routes.ts:61),
+  // so we match compactMinHeight from navigation.tokens.ts (58/62/64 per
+  // density). Flush against the toolbar — any extra padding here shows as
+  // the ScrollView background peeking through as a visible band.
+  const heroTopInset = insets.top + 6 + (isXCompact ? 58 : isCompact ? 62 : 64);
+  // Matches HeroBannerCarousel's internal bannerHeight when topInset=0
+  // (base + searchAreaHeight). The clip container reserves exactly this
+  // much space so the ad's visible footprint matches the pinned version.
+  const heroBannerHeight = Math.min(Math.round(windowWidth * 0.6), 330) + 56;
   const { user, requestLogin } = useAuth();
   const { error: toastError } = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -1128,33 +1139,9 @@ const UserDashboardContent = () => {
           ]}
         />
       </View>
-      {/* Hero Banner is PINNED above the ScrollView so pull-to-refresh
-          only fires when the user pulls the scrollable content below the
-          ad. Previously the banner was inside the ScrollView, which meant
-          pulling anywhere (including on the ad) triggered the refresh. */}
-      <Animated.View style={revealStyle(0)}>
-        <HeroBannerCarousel
-          cards={[...heroBannerCards, ...adCards]}
-          loading={heroBannerLoading}
-          greeting={getGreeting()}
-          userName={firstName}
-          appName={APP_NAME}
-          onCardPress={handleHeroBannerPress}
-          onCardVisible={trackAdImpression}
-          onSearchPress={() => navigation.navigate("ProductSearch", {})}
-          // The floating HomeToolbar (position:absolute in MainTabs,
-          // zIndex 20) covers the top of this container on the user
-          // Dashboard. Reserve enough space that ad content sits
-          // BELOW the toolbar instead of being clipped by it.
-          // Footprint = wrap paddingTop (6) + twoRowMinHeight, which
-          // varies by density (regular 122 / compact 112 / xCompact 102).
-          topInset={insets.top + 6 + (isXCompact ? 102 : isCompact ? 112 : 122)}
-        />
-      </Animated.View>
-
       <Animated.ScrollView
         style={{ flex: 1, backgroundColor: colors.background }}
-        contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
+        contentContainerStyle={{ paddingTop: heroTopInset + heroBannerHeight, paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: homeScrollY } } }],
@@ -1162,7 +1149,16 @@ const UserDashboardContent = () => {
         )}
         scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            // Android: nudge the spinner below the floating toolbar so it's
+            // actually visible. iOS ignores this — for iOS we render the
+            // custom pill overlay below the banner.
+            progressViewOffset={heroTopInset + heroBannerHeight}
+            colors={[colors.primary]}
+          />
         }
       >
         {/* Mobile capture soft banner — shown to non-admin users who
@@ -1334,6 +1330,105 @@ const UserDashboardContent = () => {
           </Animated.View>
         </View>
       </Animated.ScrollView>
+
+      {/* Refresh loader pill — shown while refreshing. Placed absolutely
+          just below the ad so it's visible on both iOS and Android (native
+          RefreshControl spinner would otherwise sit at Y=0 behind the
+          floating toolbar). zIndex 6 so it sits above the ad's clip
+          container (z:5) but below the toolbar (z:20). */}
+      {refreshing ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: heroTopInset + heroBannerHeight + 8,
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            zIndex: 6,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 999,
+              backgroundColor: colors.surface,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.border,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "600" }}>
+              Refreshing…
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Hero Banner — absolute-positioned in a clip container that starts
+          BELOW the header. The banner translates upward with scrollY, but
+          the container's overflow:hidden crops it at the header line so
+          nothing peeks under the translucent HomeToolbar mid-scroll.
+          Sits above the ScrollView (later sibling = higher z-index) but
+          below the toolbar (which is zIndex:20 elsewhere), so pull-to-
+          refresh from below the ad still reaches the ScrollView — the
+          banner captures touches only within its visible area. */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: heroTopInset,
+          left: 0,
+          right: 0,
+          height: heroBannerHeight,
+          overflow: "hidden",
+          zIndex: 5,
+        }}
+      >
+        <Animated.View
+          style={{
+            opacity: sectionReveal[0],
+            transform: [
+              {
+                translateY: sectionReveal[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [motion.distance.medium, 0],
+                }),
+              },
+              {
+                // Clamp so the banner doesn't drift downward during pull-
+                // to-refresh bounce (scrollY < 0 → translate stays at 0).
+                translateY: homeScrollY.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -1],
+                  extrapolateLeft: "clamp",
+                }),
+              },
+            ],
+          }}
+        >
+          <HeroBannerCarousel
+            cards={[...heroBannerCards, ...adCards]}
+            loading={heroBannerLoading}
+            greeting={getGreeting()}
+            userName={firstName}
+            appName={APP_NAME}
+            onCardPress={handleHeroBannerPress}
+            onCardVisible={trackAdImpression}
+            onSearchPress={() => navigation.navigate("ProductSearch", {})}
+            topInset={0}
+          />
+        </Animated.View>
+      </View>
     </SafeAreaView>
   );
 };
