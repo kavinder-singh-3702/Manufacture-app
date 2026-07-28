@@ -14,18 +14,30 @@ const generateResetToken = () => crypto.randomBytes(32).toString('hex');
 const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const requestPasswordReset = async (req, { email, phone }) => {
-  const identifier = email ? { email } : phone ? { phone } : null;
+  // No SMS transport is wired up yet — a phone request would silently create
+  // an unreachable token, and the client would tell the user "check your
+  // inbox" (which is wrong). Short-circuit here so the client can render an
+  // honest message and steer the user toward email. This also avoids
+  // creating unused reset tokens in the DB for phone lookups.
+  if (!email && phone) {
+    return {
+      channel: 'phone_unavailable',
+      message: "SMS password reset isn't available yet. Please enter your email address to receive a reset code.",
+      expiresInMs: PASSWORD_RESET_TOKEN_TTL_MS
+    };
+  }
 
   const response = {
-    message: 'If an account exists, reset instructions have been sent.',
+    channel: 'email',
+    message: "If an account exists for this email, reset instructions have been sent to your inbox.",
     expiresInMs: PASSWORD_RESET_TOKEN_TTL_MS
   };
 
-  if (!identifier) {
+  if (!email) {
     return response;
   }
 
-  const user = await User.findOne(identifier);
+  const user = await User.findOne({ email });
 
   if (!user) {
     return response;
@@ -42,9 +54,7 @@ const requestPasswordReset = async (req, { email, phone }) => {
   }
 
   // Send the reset token by email so the user can actually complete the
-  // flow in production. Skipped for phone-only accounts (we don't have
-  // an SMS transport yet — those users will need to add an email or
-  // reach out to support). Fire-and-forget: a slow/failed SMTP must not
+  // flow in production. Fire-and-forget: a slow/failed SMTP must not
   // stall the client response; email.service already logs failures.
   if (user.email) {
     const displayName = user.displayName || user.firstName || user.email.split('@')[0];
@@ -64,7 +74,7 @@ const requestPasswordReset = async (req, { email, phone }) => {
     userId: user.id,
     action: ACTIVITY_ACTIONS.AUTH_PASSWORD_RESET_REQUESTED,
     label: 'Requested password reset',
-    meta: { via: email ? 'email' : 'phone' },
+    meta: { via: 'email' },
     context: extractRequestContext(req)
   });
 
