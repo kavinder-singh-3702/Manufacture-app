@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -14,8 +14,6 @@ import { ResponsiveScreen } from "../../components/layout";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
-type CredentialMode = "email" | "phone";
-
 type ForgotPasswordScreenProps = {
   onBack: () => void;
   onReset: (token?: string) => void;
@@ -28,22 +26,21 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   const { isCompact, isXCompact, contentPadding, clamp } = useResponsiveLayout();
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-  const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  // 'email' | 'phone_unavailable' | null. Drives the callout title so a
-  // phone lookup doesn't say "Check your inbox" (nothing is emailed for
-  // phone-only requests — SMS transport isn't wired yet).
-  const [channel, setChannel] = useState<"email" | "phone_unavailable" | null>(null);
   const [devToken, setDevToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-
-  const identifierValue = credentialMode === "email" ? email : phone;
-  const identifierPlaceholder =
-    credentialMode === "email" ? "Enter your account email" : "Enter your mobile number";
+  // Auto-navigate to Reset Password after a successful email request, so
+  // the user doesn't have to hunt for a "Continue" button. Held in a ref
+  // so we can cancel it if the user navigates away or unmounts.
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   const tokenHint = useMemo(() => {
     if (!devToken) return null;
@@ -54,36 +51,30 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   const handleSubmit = async () => {
     setError(null);
     setMessage(null);
-    setChannel(null);
     setDevToken(null);
     setExpiresAt(null);
-    const trimmedIdentifier = identifierValue.trim();
+    const trimmedEmail = email.trim();
 
-    if (!trimmedIdentifier) {
-      setError("Enter your email or phone first.");
-      return;
-    }
-
-    // Short-circuit for phone: no SMS transport is wired yet. Save the
-    // network round-trip and steer the user straight to email.
-    if (credentialMode === "phone") {
-      setError("SMS password reset isn't available yet. Please switch to email to receive a reset code.");
+    if (!trimmedEmail) {
+      setError("Enter your account email first.");
       return;
     }
 
     try {
       setLoading(true);
-      const payload =
-        credentialMode === "email" ? { email: trimmedIdentifier } : { phone: trimmedIdentifier };
-      const response = await authService.requestPasswordReset(payload);
+      const response = await authService.requestPasswordReset({ email: trimmedEmail });
       setMessage(response.message);
-      setChannel(response.channel ?? "email");
-      if (response.resetToken) {
-        setDevToken(response.resetToken);
-      }
-      if (response.expiresAt) {
-        setExpiresAt(response.expiresAt);
-      }
+      const token = response.resetToken ?? null;
+      if (token) setDevToken(token);
+      if (response.expiresAt) setExpiresAt(response.expiresAt);
+      // Auto-hand off to the Reset Password screen after a short delay so
+      // the user sees the "Check your inbox" callout, then lands on the
+      // token entry form without an extra tap. Dev builds pre-fill the
+      // token via onReset(token); prod builds land with an empty field.
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => {
+        onReset(token ?? undefined);
+      }, 2500);
     } catch (requestError) {
       const messageText =
         requestError instanceof ApiError
@@ -127,61 +118,39 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
         <View style={styles.headerBlock}>
           <Text style={[styles.heading, { fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>Forgot Password?</Text>
           <Text style={styles.subheading}>
-            We will send a reset code to your email or phone. In dev builds you will see the code
-            here directly.
+            Enter your account email and we'll send you a reset code. In dev builds you will see
+            the code here directly.
           </Text>
         </View>
 
-        <View style={styles.toggleWrap}>
-          {(["email", "phone"] as CredentialMode[]).map((mode) => {
-            const isActive = credentialMode === mode;
-            return (
-              <TouchableOpacity
-                key={mode}
-                style={[styles.toggleButton, isActive ? styles.toggleButtonActive : null]}
-                onPress={() => setCredentialMode(mode)}
-              >
-                <Text style={[styles.toggleText, isActive ? styles.toggleTextActive : null]}>
-                  {mode === "email" ? "Use email" : "Use mobile"}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         <TextInput
-          // Force remount on mode toggle so keyboardType/autoComplete/
-          // textContentType actually swap — iOS caches the keyboard type
-          // per-instance and won't update on a live prop change.
-          key={credentialMode}
           style={styles.input}
-          placeholder={identifierPlaceholder}
+          placeholder="Enter your account email"
           placeholderTextColor={colors.textTertiary}
-          value={identifierValue}
-          onChangeText={(value) => (credentialMode === "email" ? setEmail(value) : setPhone(value))}
-          keyboardType={credentialMode === "email" ? "email-address" : "phone-pad"}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          textContentType={credentialMode === "email" ? "emailAddress" : "telephoneNumber"}
-          autoComplete={credentialMode === "email" ? "email" : "tel"}
+          textContentType="emailAddress"
+          autoComplete="email"
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {message ? (
           <View style={styles.callout}>
-            <Text style={styles.calloutTitle}>
-              {channel === "phone_unavailable" ? "SMS reset not available" : "Check your inbox"}
-            </Text>
+            <Text style={styles.calloutTitle}>Check your inbox</Text>
             <Text style={styles.calloutText}>{message}</Text>
+            <View style={styles.redirectHint}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.redirectHintText}>Opening the reset screen…</Text>
+            </View>
             {tokenHint ? (
               <View style={styles.tokenBadge}>
                 <Text style={styles.tokenLabel}>Dev reset token</Text>
                 <Text selectable style={styles.tokenValue}>
                   {tokenHint}
                 </Text>
-                <TouchableOpacity style={styles.resetButton} onPress={() => onReset(devToken ?? "")}>
-                  <Text style={styles.resetButtonText}>Use this token to reset</Text>
-                </TouchableOpacity>
               </View>
             ) : null}
           </View>
@@ -271,33 +240,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     marginTop: 6,
     lineHeight: 20,
   },
-  toggleWrap: {
-    flexDirection: "row",
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: 28,
-    padding: 4,
-    marginBottom: 18,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 24,
-  },
-  toggleButtonActive: {
-    // Use brand primary instead of colors.text: colors.text is dark in
-    // light mode, which read as a harsh black pill covering the label.
-    // Primary gives a legible brand-blue pill in both light and dark.
-    backgroundColor: colors.primary,
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textMuted,
-  },
-  toggleTextActive: {
-    color: colors.textOnPrimary,
-  },
   input: {
     borderRadius: 14,
     borderWidth: 1,
@@ -350,6 +292,18 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
   calloutText: {
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+  redirectHint: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  redirectHintText: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
   tokenBadge: {
     marginTop: 10,
