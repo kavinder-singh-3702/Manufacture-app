@@ -727,13 +727,20 @@ const listAdminAuditEvents = async ({ userId, companyId, action, from, to, limit
   const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
   const safeOffset = Math.max(parseNumber(offset, 0), 0);
 
-  const query = {
-    $or: [{ category: 'admin' }, { action: /^admin\./ }]
-  };
+  const query = {};
 
   if (userId) {
+    // Per-user "View activity" flow: show everything this user did (login,
+    // signup, password reset, orders, profile edits, etc). The admin-only
+    // category filter must NOT apply here — regular users never perform
+    // admin actions, so ANDing that filter always returned an empty set.
     query.user = toObjectId(userId);
+  } else {
+    // No user filter → fall back to the immutable admin audit stream
+    // (only admin-category events, or actions namespaced admin.*).
+    query.$or = [{ category: 'admin' }, { action: /^admin\./ }];
   }
+
   if (companyId) {
     query.company = toObjectId(companyId);
   }
