@@ -163,22 +163,34 @@ export const UserPreferenceScreen = () => {
             {summary?.recentEvents?.length ? (
               <View style={{ gap: spacing.sm }}>
                 {summary.recentEvents.map((event) => (
-                  <View key={event.id} style={[styles.row, { justifyContent: "space-between" }]}> 
-                    <View>
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  <View key={event.id} style={[styles.row, { justifyContent: "space-between" }]}>
+                    {/* flex:1 + minWidth:0 lets long search terms / product
+                        names wrap or ellipsize inside the row instead of
+                        pushing the timestamp off the card. */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.rowLabel, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                         {event.type.replace(/_/g, " ")}
                       </Text>
                       {event.searchTerm && (
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>Search: {event.searchTerm}</Text>
+                        <Text style={[styles.meta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                          Search: {event.searchTerm}
+                        </Text>
                       )}
                       {event.product?.name && (
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>Product: {event.product.name}</Text>
+                        <Text style={[styles.meta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                          Product: {event.product.name}
+                        </Text>
                       )}
                       {event.category && !event.product?.name && (
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>Category: {event.category}</Text>
+                        <Text style={[styles.meta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                          Category: {event.category}
+                        </Text>
                       )}
                     </View>
-                    <Text style={[styles.meta, { color: colors.textSecondary, textAlign: "right" }]}> 
+                    <Text
+                      style={[styles.meta, styles.rowTimestamp, { color: colors.textSecondary }]}
+                      numberOfLines={2}
+                    >
                       {formatDate(event.createdAt)}
                     </Text>
                   </View>
@@ -212,9 +224,12 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: "700" },
   cardSubtitle: { fontSize: 12, fontWeight: "600" },
   emptyLabel: { fontSize: 13, fontWeight: "600" },
-  row: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  row: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   rowLabel: { fontSize: 14, fontWeight: "600", flexShrink: 1 },
   rowValue: { fontSize: 14, fontWeight: "700" },
   meta: { fontSize: 11, fontWeight: "600" },
+  // Bounded timestamp column: caps width so a long left value can't push
+  // the date off the card, and gives it a right-aligned tabular feel.
+  rowTimestamp: { maxWidth: 120, textAlign: "right", flexShrink: 0 },
   retryButton: { paddingHorizontal: 16, paddingVertical: 10 },
 });
