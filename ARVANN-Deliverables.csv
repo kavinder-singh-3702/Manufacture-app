@@ -1,0 +1,232 @@
+Module,Feature,Description,Platforms,Audience
+Platform,iOS mobile app,"Native iOS build with iPhone and iPad (tablet) support",Mobile,All
+Platform,Android mobile app,"Native Android build with signed release configuration",Mobile,All
+Platform,Web application,"Next.js 16 web app hosted at arvann.in with SSR and ISR",Web,All
+Platform,Dark mode,"System / Light / Dark theme with persisted preference across sessions",Mobile + Web,All
+Platform,Liquid Glass native module,"Custom native module for iOS 26 glass effects and Android RenderEffect blur",Mobile,All
+Platform,Guest browsing,"Read-only guest role — users can browse before signing up",Mobile + Web,Public
+Platform,Localization,"India-first: INR currency formatting, en-IN locale, GST-ready",Mobile + Web + Backend,All
+Platform,Two build variants,"Separate dev and production bundle IDs and signing profiles",Mobile,Internal
+Platform,PWA support,"Web app installable as PWA via manifest with theme colors",Web,All
+Platform,Health monitoring,"Backend /api/health endpoint and namespaced structured logging",Backend,Internal
+Auth,Email + password signup,"Multi-step signup: start, OTP verify, contact, complete profile",Mobile + Web + Backend,User
+Auth,Email OTP verification,"6-digit OTP delivered by email with resend cooldown and max attempts",Mobile + Web + Backend,User
+Auth,Email + password login,"Credential login with per-account lockout counter after failed attempts",Mobile + Web + Backend,User
+Auth,Apple Sign-In,"Native one-tap sign-in with Apple identity token verification via JWKS",Mobile + Backend,User
+Auth,Forgot password (email),"Token-based reset link with expiry, delivered via email",Mobile + Web + Backend,User
+Auth,Password reset flow,"Enter reset token and set new password with auto-login on success",Mobile + Web + Backend,User
+Auth,Phone number capture gate,"Post-social-signin phone collection to complete user profile",Mobile + Backend,User
+Auth,Phone number update,"Authenticated endpoint for users to update their mobile number",Mobile + Web + Backend,User
+Auth,Session logout,"Server-side session teardown and client-side token removal",Mobile + Web + Backend,All
+Auth,Admin invite bootstrap,"Secure token-based flow to create initial admin/super-admin accounts",Backend,Admin
+Auth,Role-based access control,"User / Admin / Super-admin roles with granular per-endpoint permission map",Backend,All
+Auth,Support-admin routing,"Public resolver returns the current support admin id for chat routing",Backend,User
+Auth,Login promotional popup,"Post-login promotional modal with per-user cooldown storage",Mobile,User
+Profile,View + edit personal profile,"Manage name, avatar, bio, address, social links, and preferences",Mobile + Web + Backend,User
+Profile,Avatar image upload,"Direct upload to S3 with automatic activity log entry",Mobile + Web + Backend,User
+Profile,Notification preferences,"Master toggle plus per-channel (in-app, push, email, SMS) and per-topic overrides",Mobile + Web + Backend,User
+Profile,Quiet hours,"Time-window mute for notifications with timezone awareness",Mobile + Web + Backend,User
+Profile,Appearance settings,"Light / Dark / System toggle with live preview",Mobile + Web,User
+Company,Create business account,"Multi-step wizard to create a company profile linked to the user",Mobile + Web + Backend,User
+Company,Multi-company support,"User can own or belong to multiple companies with an active-company switcher",Mobile + Web + Backend,User
+Company,Company switcher,"Long-press avatar shortcut on mobile plus explicit switcher in web sidebar",Mobile + Web + Backend,User
+Company,Company profile page,"Public profile with hero, compliance section, product catalog, and locations",Mobile + Web + Backend,All
+Company,Edit company profile,"Manage name, categories, contact, HQ, locations, social, docs, and settings",Mobile + Web + Backend,User
+Company,Company file upload,"Attach documents to company (5 MB per file, S3-backed)",Mobile + Web + Backend,User
+Verification,KYC submission,"Upload GST certificate and Aadhaar with multipart form and audit trail",Mobile + Web + Backend,User
+Verification,Verification status view,"Pending / Approved / Rejected badge with rejection reason and timeline",Mobile + Web + Backend,User
+Verification,Admin review queue,"Approve or reject KYC with reason capture and user notification",Mobile + Web + Backend,Admin
+Verification,Document request,"Admin can request additional documents via templated email + notification",Backend,Admin
+Marketplace,Public product listings,"Browse products by category with pagination and filters",Mobile + Web + Backend,Public
+Marketplace,Product detail page,"Images, variants, price, ratings, seller info, share, stock status",Mobile + Web + Backend,All
+Marketplace,Product search,"Full-text search across products with saved history",Mobile + Web + Backend,All
+Marketplace,Category browsing,"Browse 16+ manufacturing categories (Food, Textile, Chemical, Auto, Metal, Pharma, etc.)",Mobile + Web + Backend,All
+Marketplace,Category stats,"Aggregated product counts per category for dashboard and admin insights",Mobile + Web + Backend,All
+Marketplace,In-house ARVANN Select catalog,"Curated ARVANN-owned catalog under a synthetic company entity",Mobile + Web + Backend,All
+Marketplace,SEO-optimised product pages,"Server-rendered detail pages with JSON-LD, Open Graph, Twitter cards",Web,Public
+Marketplace,Seller profile pages,"Public seller pages (SSR) with JSON-LD organization schema",Web,Public
+Marketplace,Category landing pages,"Per-industry SEO landing pages regenerated hourly (ISR)",Web,Public
+Marketplace,Dynamic sitemap,"sitemap.ts covering static + category + product + seller URLs",Web,Public
+Marketplace,Robots + PWA manifest,"robots.ts guards private routes; manifest enables installability",Web,Public
+Marketplace,Favorites / wishlist,"Save and remove favorite products, per-user list",Mobile + Web + Backend,User
+Marketplace,Contact seller via chat,"Start a product-context chat with the listing owner",Mobile + Web + Backend,User
+Marketplace,Contact seller via call,"Direct phone dial from listing (mobile)",Mobile,User
+Marketplace,Product inquiry submission,"Structured buyer message with quantity, location, notes",Mobile + Web + Backend,User
+Marketplace,Product inquiry inbox,"User views their inquiry history with statuses",Mobile + Web + Backend,User
+Marketplace,Admin inquiry moderation,"Admin queue to triage and respond to buyer inquiries",Mobile + Web + Backend,Admin
+Catalog,Add product,"Multi-step form: images, category, variants, stock, description",Mobile + Web + Backend,User
+Catalog,Edit product,"Update all product fields with role checks (owner or admin)",Mobile + Web + Backend,User
+Catalog,Delete product,"Owner delete with company-scoped validation",Mobile + Web + Backend,User
+Catalog,Product image upload,"Multiple images per product uploaded to S3 with company/product prefix",Mobile + Web + Backend,User
+Catalog,Adjust stock quantity,"Change stock level with automatic accounting stock-ledger entry",Mobile + Web + Backend,User
+Catalog,Product variants,"Size / color / spec variants with per-variant price and stock",Mobile + Web + Backend,User
+Catalog,Variant CRUD,"Create / update / delete variants deduped by normalized options signature",Mobile + Web + Backend,User
+Catalog,Variant stock adjust,"Company-scoped variant stock adjustments with immutable change log",Mobile + Web + Backend,User
+Catalog,Variant change history,"Audit log per variant showing every edit and adjustment",Mobile + Web + Backend,User
+Catalog,Targeted user discounts,"Admin-applied per-user product discounts with expiry",Backend,Admin
+Catalog,In-house catalog admin CRUD,"Admins manage ARVANN-owned products with images and variants",Mobile + Web + Backend,Admin
+Cart,Persistent cart,"Per-line variant-aware cart preserved across sessions",Mobile + Web + Backend,User
+Cart,Floating cart bar,"Always-visible mini cart across shop tabs (mobile)",Mobile,User
+Cart,Cross-sell suggestions,"Contextual add-on strip and modal after adding to cart",Mobile + Web,User
+Cart,Cart quantity controls,"Increment / decrement / remove per line item",Mobile + Web + Backend,User
+Checkout,Address + order review,"Editable shipping address and full line review before payment",Mobile + Web,User
+Checkout,Razorpay payment,"Full prepay checkout via Razorpay with server-side signature verification",Mobile + Web + Backend,User
+Checkout,Razorpay webhook ingestion,"Signature-verified webhook endpoint with idempotent event log",Backend,System
+Checkout,Payment attempt tracking,"Records every payment attempt with provider status and payload",Backend,System
+Checkout,Order confirmation screen,"Success screen with receipt and navigation reset to home",Mobile + Web,User
+Orders,Buyer order history,"List and detail of past paid orders with line items",Mobile + Web + Backend,User
+Orders,Admin order queue,"Admin views all orders with fulfilment state transitions",Mobile + Web + Backend,Admin
+Orders,Order status transitions,"Processing / Shipped / Delivered / Cancelled workflow",Backend,Admin
+Quotes,Buyer create RFQ,"Structured RFQ with quantity, target price, deadline, notes",Mobile + Web + Backend,User
+Quotes,Seller respond to quote,"Reply with unit price, MOQ, lead time, and validity window",Mobile + Web + Backend,User
+Quotes,Quote status lifecycle,"Pending / Quoted / Accepted / Rejected / Cancelled / Expired",Mobile + Web + Backend,User
+Quotes,Quote Center tabs,"Buyer and seller views: Asked / Received / Incoming quotes",Mobile + Web + Backend,User
+Quotes,Quote history,"Full negotiation trail with status transitions",Mobile + Web + Backend,User
+Chat,1:1 real-time messaging,"Socket-backed direct messages with typing indicators and read receipts",Mobile + Web + Backend,User
+Chat,Product-context pinning,"Chat opens with a linked product card pinned to the first message",Mobile + Web + Backend,User
+Chat,Image attachments,"Send image messages via camera roll or camera",Mobile + Web + Backend,User
+Chat,Document attachments,"Send documents via native picker",Mobile + Backend,User
+Chat,Unread global badge,"Live unread count across nav bars and tabs",Mobile + Web + Backend,User
+Chat,Support chat isolation,"Support unread counted separately from other conversations",Mobile + Web + Backend,User
+Chat,Support FAB,"Floating support button on Services screen with unread badge",Mobile,User
+Chat,Mark conversation read,"Real-time read receipt fan-out via sockets",Mobile + Web + Backend,User
+Chat,Admin conversation viewer,"Read-only inspection of any user conversation for support debugging",Mobile + Web + Backend,Admin
+Chat,Voice / video call logs,"Record caller, callee, duration, and notes for calls",Mobile + Web + Backend,User
+Chat,Admin call log browser,"Filter and inspect all call records for support and audit",Mobile + Web + Backend,Admin
+Notifications,In-app notification inbox,"Unread / All / Archived tabs with priorities and topic filters",Mobile + Web + Backend,User
+Notifications,Notification actions,"Deep-link, open chat, dial, or open URL directly from notification",Mobile + Web + Backend,User
+Notifications,Mark read + read-all,"Individual and bulk read + acknowledgement lifecycle",Mobile + Web + Backend,User
+Notifications,Register push device,"Expo push token registration on login with platform + app version metadata",Mobile + Backend,User
+Notifications,Multi-channel delivery,"In-app + push + email pipeline with priority-based routing",Backend,System
+Notifications,Delivery policy engine,"Respects user quiet hours and critical-priority overrides",Backend,System
+Notifications,Deduplication + TTL,"Idempotency key prevents duplicates; expiresAt TTL cleans old records",Backend,System
+Notifications,Background dispatcher,"Interval worker with leader election for multi-instance deployments",Backend,System
+Notifications,Retry with backoff,"Exponential backoff on transient delivery failures",Backend,System
+Notifications,Domain event triggers,"quote.*, business_setup.*, feedback.submitted, document.request, etc.",Backend,System
+Notifications,Admin broadcast,"Send to a specific user, all users of a company, or platform-wide",Mobile + Web + Backend,Admin
+Notifications,Admin notification list,"View sent notifications with status filters",Mobile + Web + Backend,Admin
+Notifications,Cancel + resend,"Cancel pending or resend failed notifications",Mobile + Web + Backend,Admin
+Ads,Personalized ad feed,"Targeting by user, shopper intent, buy intent, listed category, and frequency caps",Mobile + Web + Backend,All
+Ads,Hero banner carousel,"Auto-rotating banner on dashboard with impressions and clicks tracked",Mobile + Web + Backend,All
+Ads,Cross-sell ad placements,"Contextual ad units in cart flow and product surfaces",Mobile + Web + Backend,All
+Ads,Sponsored popup,"Global interstitial post-login with dismiss cooldown",Mobile + Web + Backend,All
+Ads,Ad Studio (admin),"Full CRUD for creative, targeting, schedule, placements, priority",Mobile + Web + Backend,Admin
+Ads,Ad banner media upload,"Image and MP4 video ingest (100 MB) to S3 with MIME allowlist",Mobile + Web + Backend,Admin
+Ads,Campaign lifecycle,"Draft / Active / Paused / Completed / Archived states",Mobile + Web + Backend,Admin
+Ads,Campaign insights,"Aggregate performance report with CTR and attribution",Mobile + Web + Backend,Admin
+Ads,Auto-campaign from ad request,"Advertisement service request auto-creates a linked campaign",Backend,Admin
+Ads,Ad event log,"Anonymous + authenticated impression/click/dismiss event stream",Backend,System
+Ads,Expired campaign sweeper,"15-min interval job marks ended campaigns as complete",Backend,System
+Services,Machine repair request,"Capture type, issue, downtime, location, and budget",Mobile + Web + Backend,User
+Services,Expert workforce request,"Capture industry, headcount, duration, and skill needs",Mobile + Web + Backend,User
+Services,Transport + fleet request,"Capture road/rail/air/sea, pickup/drop, and schedule",Mobile + Web + Backend,User
+Services,Advertisement request,"Promote a listing with targeting goals and budget",Mobile + Web + Backend,User
+Services,Services overview screen,"Card grid showing all four service types with entry points",Mobile + Web,User
+Services,Recent requests strip,"Recently submitted requests with current status",Mobile + Web + Backend,User
+Services,Admin service queue,"Global + per-type admin queues with SLA tracking",Mobile + Web + Backend,Admin
+Services,Admin service workflow,"Status transitions, assignment, priority, and internal notes",Mobile + Web + Backend,Admin
+Services,Service request timeline,"Full timeline of status changes and notes per request",Mobile + Web + Backend,Admin
+BusinessSetup,Startup assistance intake,"Guided intake: work model, budget, timeline, support areas",Mobile + Web + Backend,All
+BusinessSetup,My setup requests,"Personal history of setup requests with status",Mobile + Web + Backend,User
+BusinessSetup,Admin startup queue,"Admin workflow with assignment, status, priority, and notes",Mobile + Web + Backend,Admin
+Contact,Public contact form,"Guest / authenticated form with IP + user-agent metadata capture",Web + Backend,Public
+Contact,Admin contact inbox,"Triage New / Replied / Closed with status transitions",Backend,Admin
+Feedback,User feedback submission,"Star rating + subject + text + platform + device metadata",Mobile + Backend,User
+Feedback,Feedback throttle,"15-second cooldown per user prevents spam",Backend,System
+Feedback,Admin feedback inbox,"Triage New / Resolved / All with mark-resolved workflow",Mobile + Web + Backend,Admin
+Feedback,Feedback notifications,"Admins notified on new feedback; users notified on resolution",Backend,All
+Analytics,User preference events,"Log search / view_category / view_product / add_to_cart / checkout_start",Mobile + Web + Backend,User
+Analytics,User preference summary,"Admin behavior digest per user: top categories, searches, products (60d)",Mobile + Web + Backend,Admin
+Audit,User activity timeline,"Auth, profile, company, verification, and admin actions timeline per user",Mobile + Web + Backend,All
+Audit,Admin audit event stream,"Immutable audit of all admin mutations with actor + IP + user agent",Mobile + Web + Backend,Admin
+Accounting,Chart of accounts,"System + user-defined accounts with opening balance",Mobile + Web + Backend,User
+Accounting,Parties (customers + vendors),"Manage with GSTIN, PAN, contact, credit terms, and ledger linkage",Mobile + Web + Backend,User
+Accounting,Units of measure,"Company-specific units for stock and invoicing",Mobile + Web + Backend,User
+Accounting,Sales invoice voucher,"Line items, GST, party, totals; draft / posted / voided states",Mobile + Web + Backend,User
+Accounting,Purchase bill voucher,"Supplier bill entry with full GST breakdown",Mobile + Web + Backend,User
+Accounting,Receipt voucher,"Money-in from party to bank/cash",Mobile + Web + Backend,User
+Accounting,Payment voucher,"Money-out from bank/cash to party",Mobile + Web + Backend,User
+Accounting,Journal / credit / debit note,"Adjustments, credit notes, and debit notes with GST",Mobile + Web + Backend,User
+Accounting,Void voucher (with reversal),"Voids voucher, reverses inventory + ledger, preserves audit trail",Mobile + Web + Backend,User
+Accounting,Voucher change log,"Immutable per-voucher edit history",Mobile + Web + Backend,User
+Accounting,GST computation engine,"Auto CGST/SGST/IGST split based on party state (intra vs interstate)",Backend,System
+Accounting,Double-entry postings,"Every voucher creates balanced ledger postings and stock moves",Backend,System
+Accounting,FIFO bill settlement,"Auto-apply receipts and payments to open bills in date order",Backend,System
+Accounting,Sequenced voucher numbering,"Per-fiscal-year sequences per voucher type",Backend,System
+Accounting,Books auto-bootstrap,"New company gets system accounts, units, and sequences provisioned",Backend,System
+Accounting,Bulk books bootstrap (admin),"Backfill accounting setup for all existing companies",Backend,Admin
+Accounting,Dashboard KPIs,"Sales, purchases, receivables, payables, stock value at a glance",Mobile + Web + Backend,User
+Accounting,Date range picker,"7 presets (Today, Week, Month, Quarter, Year, All) reusable across all reports",Mobile + Web,User
+Accounting,Profit & Loss report,"Income vs expense pie, top accounts, margin analysis",Mobile + Web + Backend,User
+Accounting,GST Summary report,"Input/Output CGST/SGST/IGST with net payable calculation",Mobile + Web + Backend,User
+Accounting,Party outstanding (aging),"Customer/supplier aging buckets (0-30, 31-60, 61-90, 90+ days)",Mobile + Web + Backend,User
+Accounting,Trial balance,"All accounts with debit and credit totals",Mobile + Web + Backend,User
+Accounting,Stock summary + ledger,"Current stock and movement history per item",Mobile + Web + Backend,User
+Accounting,Ledger by account,"Full transaction ledger for any account with running balance",Mobile + Web + Backend,User
+Accounting,Transaction list,"Filterable voucher ledger with date range and type filters",Mobile + Web + Backend,User
+Accounting,Delete voucher (void),"Trash icon on each transaction row with confirmation dialog",Mobile,User
+Inventory,Internal inventory dashboard,"Non-catalog stock overview with in / low / out states",Mobile + Web + Backend,User
+Inventory,Add + edit internal item,"Company-scoped item form for ops-only stock",Mobile + Web + Backend,User
+Inventory,Stock adjust sheet,"Quick in / out / adjust movements with reason",Mobile + Web + Backend,User
+Inventory,Movement history,"Full history of stock movements per item",Mobile + Web + Backend,User
+Admin,Command Center,"Unified dashboard: Overview, Requests, Messages, Trades, Alerts, Logs tabs",Mobile + Web + Backend,Admin
+Admin,Admin dashboard,"KPIs: users, companies, verifications, weekly volume, system health",Mobile + Web + Backend,Admin
+Admin,User management,"Search, filter, view activity state, suspend, promote",Mobile + Web + Backend,Admin
+Admin,User 360 view,"Cross-module user profile: activity, preferences, orders, chats",Mobile + Web + Backend,Admin
+Admin,View user activity,"Full timeline of a user's own actions (login, profile edits, orders, etc)",Mobile + Web + Backend,Admin
+Admin,View user preferences,"Behavior insights: searches, category views, product views (60d)",Mobile + Web + Backend,Admin
+Admin,Suspend / reactivate user,"Set user status with reason and audit trail",Mobile + Web + Backend,Admin
+Admin,Block self-deactivation,"Admins cannot deactivate their own accounts",Backend,Admin
+Admin,Companies management,"All companies with compliance, owner, and status transitions",Mobile + Web + Backend,Admin
+Admin,Company archive,"Soft-archive a company with restoration path",Backend,Admin
+Admin,Company hard-delete (super-admin),"Async cleanup pipeline for permanent deletion",Backend,Super-Admin
+Admin,Product moderation,"Manage catalog visibility, delist, filter by owner",Mobile + Web + Backend,Admin
+Admin,Feedback inbox,"Triage feedback with mark-resolved and notification back to user",Mobile + Web + Backend,Admin
+Admin,Notification Studio,"Compose + dispatch notifications to user / company / broadcast segments",Mobile + Web + Backend,Admin
+Admin,Ad Studio,"Full ad campaign management with insights and CTR analytics",Mobile + Web + Backend,Admin
+Admin,Ops Console,"Cross-cutting operations panel for requests, verifications, orders",Mobile + Web + Backend,Admin
+Admin,Deactivated user isolation,"Deactivated users hidden from marketplace, pickers, seller lookups",Backend,All
+Storage,AWS S3 integration,"Media storage via @aws-sdk/client-s3 with per-domain prefixes",Backend,System
+Storage,Domain-based prefixes,"company-verifications, user-uploads, products, ad-banners",Backend,System
+Storage,MIME type allowlist,"Image/document (5 MB cap) and video (100 MB cap) allowlists",Backend,System
+Storage,Direct client uploads,"Signed direct-to-S3 upload flow (avatars, product images)",Backend,User
+Email,Nodemailer SMTP,"Connection pooling, retries, structured logging",Backend,System
+Email,Signup OTP email,"Branded 6-digit OTP email for signup verification",Backend,User
+Email,Password reset email,"Branded reset token email with expiry callout",Backend,User
+Email,Contact-us echo email,"Auto-reply confirmation to the sender + admin notification",Backend,User
+Email,Document request email,"Admin-triggered template requesting KYC or supplementary docs",Backend,User
+Email,Business setup emails,"Submission + status transition emails for startup assistance",Backend,User
+Email,Reusable email layout,"Consistent header/footer/CTA layout across all emails",Backend,System
+Realtime,Socket.IO server,"JWT-authed sockets with per-user rooms and event fan-out",Backend,User
+Realtime,Redis pub/sub adapter,"Multi-instance-safe socket delivery via Redis adapter",Backend,System
+Realtime,Chat message events,"Live message delivery with typing and read receipts",Backend,User
+Realtime,Notification events,"Live notification push to connected clients",Backend,User
+Realtime,Unread count events,"Live unread count invalidation across tabs",Backend,User
+Security,CORS with credentials,"Configured CORS allowing cookies from allowlisted origins",Backend,System
+Security,Trust proxy,"Configurable trust-proxy for accurate IP behind load balancers",Backend,System
+Security,Rate limiting,"Feedback throttle, OTP resend cooldown, verify attempt cap",Backend,System
+Security,BCrypt password hashing,"Industry-standard password hashing with per-user salts",Backend,System
+Security,Raw-body webhook verify,"Razorpay webhook signature verified against raw request body",Backend,System
+Security,Role-authorization middleware,"Per-endpoint role checks with granular admin permission map",Backend,System
+Security,Input validation,"express-validator schemas on every mutating endpoint",Backend,System
+Security,Account lockout,"Failed-login counter per account with time-based unlock",Backend,System
+WebSecurity,HSTS 2-year,"Enforces HTTPS-only for two years via Strict-Transport-Security header",Web,Public
+WebSecurity,Content-type nosniff,"X-Content-Type-Options prevents MIME sniffing",Web,Public
+WebSecurity,X-Frame-Options,"SAMEORIGIN prevents clickjacking via iframe embedding",Web,Public
+WebSecurity,Referrer-Policy,"strict-origin limits referrer leakage across sites",Web,Public
+WebSecurity,Permissions-Policy,"Camera / mic / geolocation disabled by default",Web,Public
+Jobs,Notification dispatcher,"Interval-based worker with leader election for HA deployments",Backend,System
+Jobs,Ad campaign expiry sweeper,"15-min job marks ended campaigns as complete",Backend,System
+Jobs,Payment webhook processing,"Idempotent Razorpay webhook event processing",Backend,System
+Jobs,Notification TTL cleanup,"MongoDB TTL index auto-removes expired notifications",Backend,System
+Deployment,Backend production deploy,"Node/Express + MongoDB backend deployed to production",Backend,Internal
+Deployment,Web production deploy,"Next.js web app deployed to arvann.in via systemd + nginx (Let's Encrypt TLS)",Web,Internal
+Deployment,Mobile production builds,"iOS + Android release builds ready for App Store / Play Store submission",Mobile,Internal
+Deployment,Environment separation,"Dev / staging / production environment configuration",Backend,Internal
+DevOps,Operational scripts,"Email verify, SMTP smoke test, storage verify, seed catalog, conversation dedup",Backend,Internal
+DevOps,Books bootstrap script,"CLI to backfill accounting books for existing companies",Backend,Internal
+DevOps,Structured logging,"morgan HTTP logs + namespaced app logger",Backend,Internal
+Docs,Privacy Policy page,"Publicly hosted privacy policy (mobile + web + Markdown source)",Mobile + Web,Public
+Docs,Terms & Conditions,"Publicly hosted terms of use",Web,Public
+Docs,Release notes v1.0,"RELEASE-NOTES-v1.0.md documenting the initial production release",Internal,Internal
+Docs,Backend deployment guide,"BACKEND-DEPLOYMENT.md with server setup and operational steps",Internal,Internal
