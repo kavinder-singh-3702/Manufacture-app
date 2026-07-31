@@ -68,7 +68,9 @@ export const NotificationFilters = ({
       className="w-full lg:max-w-xs"
     />
 
-    <div className="flex flex-wrap gap-2 lg:ml-auto">
+    {/* Priority chips — horizontal scroll strip on mobile (mirrors the app's
+        horizontal ScrollView); wraps into a normal inline row at `lg`. */}
+    <div className="flex gap-2 overflow-x-auto pb-1 lg:ml-auto lg:flex-wrap lg:overflow-visible lg:pb-0" style={{ scrollbarWidth: "none" }}>
       {PRIORITY_FILTERS.map(({ key, label }) => {
         const isActive = priorityFilter === key;
         return (
@@ -76,7 +78,7 @@ export const NotificationFilters = ({
             key={key}
             type="button"
             onClick={() => onPriorityChange(key)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               isActive
                 ? "border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]"
                 : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--primary)]"

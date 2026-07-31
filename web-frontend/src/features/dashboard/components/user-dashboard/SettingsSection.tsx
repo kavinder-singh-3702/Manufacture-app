@@ -8,7 +8,7 @@ import { NotificationPreferencesCard } from "./NotificationPreferencesCard";
  * hours), mirroring the app's Appearance + NotificationPreferences screens.
  */
 export const SettingsSection = () => (
-  <div className="space-y-8">
+  <div className="mx-auto w-full max-w-3xl space-y-8">
     <div>
       <PageHeader title="Appearance" />
       <ThemeSwitcher />
