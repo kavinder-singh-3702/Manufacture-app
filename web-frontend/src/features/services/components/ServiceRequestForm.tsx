@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { serviceRequestService } from "@/src/services/serviceRequest";
+import { productService } from "@/src/services/product";
 import { ApiError } from "@/src/lib/api-error";
 import type { CreateServiceRequestInput, ServicePriority, ServiceType } from "@/src/types/service";
 import type { Product } from "@/src/types/product";
