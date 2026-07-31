@@ -87,6 +87,11 @@ export type CreateProductInput = {
   price: { amount: number; currency?: string; unit?: string };
   minStockQuantity?: number;
   availableQuantity?: number;
+  // Optional starting stock. If provided (and >0), the backend records a
+  // stock-in adjustment right after creating the product so it's immediately
+  // sellable via a Sales Invoice — without needing a separate purchase bill
+  // or manual stock-adjust step first.
+  openingStock?: number;
   unit?: string;
   visibility?: "public" | "private";
   status?: "draft" | "active" | "inactive" | "archived";

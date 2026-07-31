@@ -23,6 +23,9 @@ const createProductValidation = [
   body('price.unit').optional().isString(),
   body('minStockQuantity').optional().isInt({ min: 0 }),
   body('availableQuantity').optional().isInt({ min: 0 }),
+  // Optional opening stock — accepted only on create. Backend converts
+  // this into a stock-in adjustment right after the product saves.
+  body('openingStock').optional().isFloat({ min: 0 }),
   body('unit').optional().isString(),
   body('visibility').optional().isIn(PRODUCT_VISIBILITY),
   body('status').optional().isIn(PRODUCT_STATUSES),

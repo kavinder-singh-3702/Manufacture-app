@@ -790,6 +790,33 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
         )}
       </View>
 
+      {/* Opening stock — optional. Only applies when this product has NO
+          variants (variants track their own stock). If provided, the
+          backend converts this into a stock-in adjustment so the product
+          is immediately sellable via a Sales Invoice. */}
+      {variantDrafts.length === 0 ? (
+        <View style={{ marginTop: spacing.md }}>
+          <InputField
+            label="Opening Stock (optional)"
+            placeholder="e.g. 100"
+            value={
+              formData.openingStock === undefined || formData.openingStock === 0
+                ? ""
+                : String(formData.openingStock)
+            }
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[^0-9.]/g, "");
+              updateField("openingStock", cleaned === "" ? undefined : parseFloat(cleaned) || 0);
+            }}
+            keyboardType="decimal-pad"
+          />
+          <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 6, lineHeight: 16 }}>
+            Sets initial stock so this product can be sold immediately (e.g. via a Sales Invoice).
+            Leave blank if you'll stock it later via a Purchase Bill or Adjust Stock.
+          </Text>
+        </View>
+      ) : null}
+
       {mode === "inhouse" ? (
         <View
           style={[

@@ -413,6 +413,10 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
   // Product create/update forms are non-inventory: ignore stock fields if clients still send them.
   delete cleanedPayload.availableQuantity;
   delete cleanedPayload.minStockQuantity;
+  // Extract opening stock BEFORE stripping — it's not a Product field, it
+  // becomes an initial stock-in adjustment after the product saves.
+  const openingStock = Number(cleanedPayload.openingStock || 0);
+  delete cleanedPayload.openingStock;
   cleanedPayload.purchaseOptions = normalizePurchaseOptionsInput(cleanedPayload.purchaseOptions);
 
   const product = new Product({
@@ -424,6 +428,25 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
   });
 
   await product.save();
+
+  // If the form provided an opening stock, record it as a stock-in
+  // adjustment so the product is immediately sellable via a Sales Invoice
+  // — no separate purchase bill or manual stock-adjust step required.
+  // Failures here shouldn't fail the product creation; log and move on.
+  if (openingStock > 0) {
+    try {
+      await createStockAdjustmentForItem({
+        companyId: product.company,
+        userId,
+        productId: product._id,
+        adjustment: openingStock,
+        narration: 'Opening stock on product creation'
+      });
+    } catch (err) {
+      console.warn('[Product] Opening stock adjustment failed:', err?.message || err);
+    }
+  }
+
   return getProductById(product._id, companyId);
 };
 
