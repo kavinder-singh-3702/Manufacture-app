@@ -10,7 +10,9 @@ import { ApiError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product } from "@/src/types/product";
 import { useToast } from "@/src/components/ui/Toast";
 import type { PendingImage } from "./ProductImageUploader";
-import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { ProductGallery, PriceBlock, SpecTable } from "./pdp";
+import type { SpecRow } from "../utils/specs";
 import { ProductFormDrawer } from "./ProductFormDrawer";
 import { ProductVariantsContainer } from "./ProductVariantsContainer";
 import { ProductInquiryDrawer } from "./ProductInquiryDrawer";
@@ -116,7 +118,6 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const [editOpen, setEditOpen] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
-  const [activeImage, setActiveImage] = useState(0);
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
@@ -242,7 +243,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const status = STATUS_COLORS[product.status] ?? STATUS_COLORS.draft;
   const stockStatus = product.stockStatus ? STOCK_STATUS_COLORS[product.stockStatus] : null;
   const images = product.images ?? [];
-  const cover = images[activeImage]?.url ?? images[0]?.url;
+
+  const metaRows: SpecRow[] = [
+    { label: "Visibility", value: product.visibility },
+    { label: "Created", value: new Date(product.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
+    { label: "Last updated", value: new Date(product.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
+    { label: "Currency", value: product.price.currency },
+    { label: "Variants", value: String(product.variantSummary?.totalVariants ?? 0) },
+    ...(product.company?.displayName ? [{ label: "Company", value: product.company.displayName }] : []),
+  ];
 
   const canEdit = Boolean(
     !isGuest &&
@@ -274,28 +283,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
         style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
 
         {/* Image gallery */}
-        <div className="space-y-3">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl"
-            style={{ background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--background)" }}>
-            {cover ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img loading="lazy" decoding="async" src={cover} alt={product.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-7xl">{cat?.icon ?? "📦"}</div>
-            )}
-          </div>
-          {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto">
-              {images.map((img, i) => (
-                <button key={img.url || i} type="button" onClick={() => setActiveImage(i)}
-                  className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg transition-all"
-                  style={{ border: i === activeImage ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                  {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery images={images} productName={product.name} categoryMeta={cat} />
 
         {/* Info */}
         <div className="space-y-5">
@@ -330,18 +318,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
           </div>
 
           {/* Price */}
-          <div className="rounded-2xl p-4"
-            style={{ background: "linear-gradient(135deg, var(--primary-light) 0%, rgba(20,141,178,0.05) 100%)" }}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>Price</p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold" style={{ color: "var(--foreground)" }}>
-                {formatCurrency(product.price.amount, product.price.currency)}
-              </span>
-              {product.price.unit && (
-                <span className="text-sm" style={{ color: "var(--medium-gray)" }}>/ {product.price.unit}</span>
-              )}
-            </div>
-          </div>
+          <PriceBlock amount={product.price.amount} currency={product.price.currency} unit={product.price.unit} />
 
           {/* Stock (shown for owners; hidden from guests to avoid showing internal data) */}
           {canEdit && (
@@ -505,23 +482,12 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
         </motion.div>
       )}
 
-      {/* Meta grid */}
+      {/* Meta */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          { label: "Visibility",    value: product.visibility },
-          { label: "Created",       value: new Date(product.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
-          { label: "Last updated",  value: new Date(product.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
-          { label: "Currency",      value: product.price.currency },
-          { label: "Variants",      value: product.variantSummary?.totalVariants ?? 0 },
-          { label: "Company",       value: product.company?.displayName ?? "—" },
-        ].map((row) => (
-          <div key={row.label} className="rounded-2xl p-4"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--medium-gray)" }}>{row.label}</p>
-            <p className="mt-1.5 text-sm font-semibold capitalize" style={{ color: "var(--foreground)" }}>{String(row.value)}</p>
-          </div>
-        ))}
+        className="rounded-2xl p-6"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--primary)" }}>Product Info</h3>
+        <SpecTable rows={metaRows} />
       </motion.div>
 
       {/* Variants */}

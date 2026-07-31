@@ -151,4 +151,30 @@ describe('email service', () => {
       })
     );
   });
+
+  test('sendPasswordResetEmail renders both the reset code and the reset link', async () => {
+    const { emailService, sendMail } = loadEmailService();
+
+    const result = await emailService.sendPasswordResetEmail({
+      to: 'owner@example.com',
+      fullName: 'Owner Name',
+      resetCode: '482917',
+      resetLink: 'http://localhost:3000/reset-password?token=abc123',
+      expiresInMs: 15 * 60 * 1000
+    });
+
+    expect(result.success).toBe(true);
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    const sentMail = sendMail.mock.calls[0][0];
+    expect(sentMail.to).toBe('owner@example.com');
+    expect(sentMail.subject).toBe('ARVANN password reset code');
+    // The 64-hex token must never be rendered as a "code" — only the
+    // 6-digit code goes in the OTP panel, and the long token only ever
+    // appears inside the link href/plaintext.
+    expect(sentMail.html).toContain('482917');
+    expect(sentMail.html).toContain('Password reset code');
+    expect(sentMail.html).toContain('http://localhost:3000/reset-password?token=abc123');
+    expect(sentMail.text).toContain('482917');
+    expect(sentMail.text).toContain('http://localhost:3000/reset-password?token=abc123');
+  });
 });

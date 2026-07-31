@@ -40,6 +40,14 @@ export const companyMetaDescription = (company: Company): string =>
   clamp(company.description, 160) ??
   `Browse products from ${company.displayName}, a verified manufacturer on the ARVANN marketplace.`;
 
+// Schema.org availability, derived from actual stock — was hard-coded to
+// InStock for every product (including out-of-stock ones), a live rich-result
+// bug. "low_stock" still maps to InStock since it is real, purchasable stock.
+const schemaAvailability = (status: Product["stockStatus"]): string =>
+  status === "out_of_stock"
+    ? "https://schema.org/OutOfStock"
+    : "https://schema.org/InStock";
+
 export const buildProductJsonLd = (product: Product, canonicalUrl: string) => ({
   "@context": "https://schema.org",
   "@type": "Product",
@@ -47,6 +55,7 @@ export const buildProductJsonLd = (product: Product, canonicalUrl: string) => ({
   ...(product.description ? { description: product.description } : {}),
   image: (product.images ?? []).map((img) => img.url).filter(Boolean),
   ...(product.category ? { category: product.category } : {}),
+  ...(product.sku ? { sku: product.sku } : {}),
   ...(product.company?.displayName
     ? { brand: { "@type": "Brand", name: product.company.displayName } }
     : {}),
@@ -54,8 +63,11 @@ export const buildProductJsonLd = (product: Product, canonicalUrl: string) => ({
     "@type": "Offer",
     price: product.price.amount,
     priceCurrency: product.price.currency || "INR",
-    availability: "https://schema.org/InStock",
+    availability: schemaAvailability(product.stockStatus),
     url: canonicalUrl,
+    ...(product.company?.displayName
+      ? { seller: { "@type": "Organization", name: product.company.displayName } }
+      : {}),
   },
 });
 

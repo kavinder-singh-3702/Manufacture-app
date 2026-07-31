@@ -17,6 +17,7 @@ import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
 import type { AuthUser } from "@/src/types/auth";
 import type { SelectedVariant } from "./VariantSelector";
+import { QuantityUnitInput } from "./pdp";
 
 type Props = {
   product: Product;
@@ -53,7 +54,7 @@ const Field = ({ label, required, children }: { label: string; required?: boolea
 
 export const QuoteRequestForm = ({ product, selectedVariant, user, onSuccess, onCancel }: Props) => {
   const [form, setForm] = useState<FormState>(() => ({
-    quantity: "",
+    quantity: "1",
     targetPrice: "",
     requirements: "",
     requiredBy: "",
@@ -175,9 +176,11 @@ export const QuoteRequestForm = ({ product, selectedVariant, user, onSuccess, on
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Quantity" required>
-          <input value={form.quantity} onChange={set("quantity")} inputMode="decimal"
-            placeholder={`e.g. 500 ${product.price.unit ?? "units"}`}
-            className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={baseInput} />
+          <QuantityUnitInput
+            value={Number(form.quantity) || 1}
+            onChange={(n) => setForm((p) => ({ ...p, quantity: String(n) }))}
+            unit={product.price.unit}
+          />
         </Field>
         <Field label="Target price (₹/unit)">
           <input value={form.targetPrice} onChange={set("targetPrice")} inputMode="decimal"

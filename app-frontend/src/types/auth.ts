@@ -81,14 +81,16 @@ export type AppleSignInPayload = {
 };
 
 export type ForgotPasswordPayload = {
-  email?: string;
-  phone?: string;
+  email: string;
 };
 
-export type ResetPasswordPayload = {
-  token: string;
-  password: string;
-};
+// The backend accepts either credential emailed from the same request: the
+// long-lived link token (only reachable today via the dev-shortcut echo, or
+// once universal links are shipped, the emailed button) or the 6-digit code
+// paired with the account email (the primary in-app path).
+export type ResetPasswordPayload =
+  | { token: string; password: string }
+  | { email: string; code: string; password: string };
 
 export type UserAddress = {
   line1?: string;

@@ -35,6 +35,14 @@ jest.mock('../src/services/email.service', () => ({
     error: null,
     mock: false
   })),
+  sendPasswordResetEmail: jest.fn(async () => ({
+    success: true,
+    providerMessageId: 'mock-password-reset',
+    errorCode: null,
+    errorMessage: null,
+    error: null,
+    mock: false
+  })),
   sendBusinessSetupSubmissionEmail: jest.fn(async () => ({
     success: true,
     providerMessageId: 'mock-startup-submit',

@@ -38,14 +38,13 @@ type LoginResponse = {
 };
 
 type ForgotPasswordResponse = {
-  // Delivery channel the server actually attempted. 'email' = OTP emailed;
-  // 'phone_unavailable' = SMS transport not wired; explicit signal so the
-  // client can render an accurate callout instead of a hardcoded
-  // "Check your inbox" for phone requests.
-  channel?: "email" | "phone_unavailable";
+  channel: "email";
   message: string;
-  expiresInMs?: number;
+  expiresInMs: number;
+  resendAvailableInMs: number;
+  // Dev/staging only — the backend strips these fields in production.
   resetToken?: string;
+  resetCode?: string;
   expiresAt?: string;
 };
 

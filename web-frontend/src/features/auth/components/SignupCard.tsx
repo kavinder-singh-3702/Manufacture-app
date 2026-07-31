@@ -7,6 +7,7 @@ import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from
 import { authService } from "../../../services/auth";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
+import { useAuthFlow } from "../flow/useAuthFlow";
 
 const STEPS = ["Profile", "Verify OTP", "Workspace"] as const;
 type SignupStep = (typeof STEPS)[number];
@@ -72,6 +73,7 @@ const inputStyle = (error?: string): React.CSSProperties => ({
 export const SignupCard = () => {
   const router = useRouter();
   const { setUser } = useAuth();
+  const { go } = useAuthFlow();
   const [step, setStep] = useState<SignupStep>("Profile");
   const [profile, setProfile] = useState<ProfileState>({ fullName: "", email: "", phone: "" });
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -93,6 +95,19 @@ export const SignupCard = () => {
     setStep("Profile"); setProfile({ fullName: "", email: "", phone: "" });
     setOtp(Array(OTP_LENGTH).fill("")); setAccount({ password: "", accountType: "normal", companyName: "", categories: [] });
     setProfileErrors({}); setAccountErrors({}); setStatus(null); setError(null); setExpiresInMs(null);
+  };
+
+  // Step 0's back leaves the flow (→ sign-in) after clearing the form, like
+  // SignupScreen's handleBack at stepIndex 0 (app-frontend/src/screens/auth/SignupScreen.tsx#L403-L407).
+  // Any later step just steps back within the wizard.
+  const handleBack = () => {
+    if (stepIndex === 0) {
+      reset();
+      go("login");
+      return;
+    }
+    setStep(STEPS[stepIndex - 1]!);
+    setError(null);
   };
 
   const validateProfile = () => {
@@ -237,10 +252,10 @@ export const SignupCard = () => {
               {step === "Workspace" && "Set your password and business type."}
             </p>
           </div>
-          <button onClick={stepIndex === 0 ? reset : () => { setStep(STEPS[stepIndex - 1]!); setError(null); }}
+          <button onClick={handleBack}
             className="flex-shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
             style={{ border: "1px solid var(--border)", color: "var(--primary)", backgroundColor: "var(--surface)" }}>
-            {stepIndex === 0 ? "Reset" : "← Back"}
+            ← Back
           </button>
         </div>
 

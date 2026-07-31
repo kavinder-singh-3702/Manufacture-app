@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
+import { useAuthFlow } from "../flow/useAuthFlow";
+import { AuthBackButton } from "./AuthBackButton";
 
 type CredentialMode = "email" | "phone";
 
@@ -34,6 +35,7 @@ const EyeIcon = ({ open }: { open: boolean }) =>
 export const LoginCard = () => {
   const router = useRouter();
   const { login } = useAuth();
+  const { go } = useAuthFlow();
   const [credentialMode, setCredentialMode] = useState<CredentialMode>("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -75,6 +77,11 @@ export const LoginCard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Back to the intro screen — mirrors LoginScreen's back arrow (app-frontend/src/screens/auth/LoginScreen.tsx#L195-L209) */}
+      <motion.div {...fadeUp(0.05)}>
+        <AuthBackButton />
+      </motion.div>
+
       {/* Header */}
       <motion.div {...fadeUp(0.15)}>
         <h1 className="text-[28px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
@@ -174,13 +181,14 @@ export const LoginCard = () => {
             <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
               Password
             </label>
-            <Link
-              href="/forgot-password"
+            <button
+              type="button"
+              onClick={() => go("forgot")}
               className="text-xs font-semibold transition-opacity hover:opacity-70"
               style={{ color: "var(--primary)" }}
             >
               Forgot password?
-            </Link>
+            </button>
           </div>
           <div
             className="relative mt-2 flex items-center rounded-xl border transition-colors"

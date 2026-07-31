@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -12,13 +12,26 @@ import { useTheme } from "../../hooks/useTheme";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { ResponsiveScreen } from "../../components/layout";
+import { OtpCodeInput } from "../../components/auth/OtpCodeInput";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
+
+const CODE_LENGTH = 6;
+
+const formatCountdown = (milliseconds: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
 
 type ResetPasswordScreenProps = {
   onBack: () => void;
   onLogin: () => void;
   onSuccess?: () => void;
+  defaultEmail?: string;
+  // Dev/staging only (or, once universal links ship, a real emailed link) —
+  // when present, the screen skips the code UI entirely.
   defaultToken?: string;
 };
 
@@ -26,6 +39,7 @@ export const ResetPasswordScreen = ({
   onBack,
   onLogin,
   onSuccess,
+  defaultEmail,
   defaultToken,
 }: ResetPasswordScreenProps) => {
   const { colors } = useTheme();
@@ -34,21 +48,73 @@ export const ResetPasswordScreen = ({
   const isDark = resolvedMode === "dark";
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { setUser } = useAuth();
+
   const [token, setToken] = useState(defaultToken ?? "");
+  const [email, setEmail] = useState(defaultEmail ?? "");
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [resendCountdownMs, setResendCountdownMs] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+
+  // defaultToken/defaultEmail are read at mount by useState above, but a
+  // deep link arriving while this screen is already mounted (once universal
+  // links are wired up) would otherwise be silently ignored — sync it in.
+  useEffect(() => {
+    if (defaultToken) setToken(defaultToken);
+  }, [defaultToken]);
+  useEffect(() => {
+    if (defaultEmail) setEmail(defaultEmail);
+  }, [defaultEmail]);
+
+  useEffect(() => {
+    if (resendCountdownMs <= 0) return undefined;
+    const timeout = setTimeout(() => setResendCountdownMs((current) => Math.max(0, current - 1000)), 1000);
+    return () => clearTimeout(timeout);
+  }, [resendCountdownMs]);
+
+  const isLinkMode = Boolean(token);
+  const canResend = resendCountdownMs <= 0 && !resendLoading;
+
+  const handleResend = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Enter your account email to resend a code.");
+      return;
+    }
+    try {
+      setResendLoading(true);
+      setError(null);
+      const response = await authService.requestPasswordReset({ email: trimmedEmail });
+      setSuccess("A fresh code is on its way to your inbox.");
+      setResendCountdownMs(response.resendAvailableInMs ?? 0);
+      setCode("");
+      setCodeError(null);
+    } catch (resendError) {
+      const messageText =
+        resendError instanceof ApiError
+          ? resendError.message
+          : resendError instanceof Error
+          ? resendError.message
+          : "Unable to resend the code.";
+      setError(messageText);
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleReset = async () => {
     setError(null);
     setSuccess(null);
-    const trimmedToken = token.trim();
+    setCodeError(null);
     const trimmedPassword = password.trim();
 
-    if (!trimmedToken || !trimmedPassword) {
-      setError("Enter the reset token and a new password.");
+    if (!trimmedPassword) {
+      setError("Enter a new password.");
       return;
     }
 
@@ -62,23 +128,43 @@ export const ResetPasswordScreen = ({
       return;
     }
 
+    if (!isLinkMode) {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        setError("Enter your account email.");
+        return;
+      }
+      if (code.length < CODE_LENGTH) {
+        setError(`Enter the ${CODE_LENGTH}-digit code.`);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
-      const { user } = await authService.resetPassword({
-        token: trimmedToken,
-        password: trimmedPassword,
-      });
+      const { user } = isLinkMode
+        ? await authService.resetPassword({ token: token.trim(), password: trimmedPassword })
+        : await authService.resetPassword({ email: email.trim(), code, password: trimmedPassword });
       setUser(user);
       setSuccess("Password updated. You are now signed in.");
       onSuccess?.();
     } catch (resetError) {
-      const messageText =
-        resetError instanceof ApiError
-          ? resetError.message
-          : resetError instanceof Error
-          ? resetError.message
-          : "Unable to reset password.";
-      setError(messageText);
+      const status = resetError instanceof ApiError ? resetError.status : null;
+      if (status === 410) {
+        setCode("");
+        setCodeError("That code expired. Request a fresh one below.");
+      } else if (status === 429) {
+        setCode("");
+        setCodeError("Too many incorrect attempts. Request a fresh code below.");
+      } else {
+        const messageText =
+          resetError instanceof ApiError
+            ? resetError.message
+            : resetError instanceof Error
+            ? resetError.message
+            : "Unable to reset password.";
+        setError(messageText);
+      }
     } finally {
       setLoading(false);
     }
@@ -114,21 +200,49 @@ export const ResetPasswordScreen = ({
         <View style={styles.headerBlock}>
           <Text style={[styles.heading, { fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>Reset Password</Text>
           <Text style={styles.subheading}>
-            Paste the reset token you received and choose a new password to get back in.
+            {isLinkMode
+              ? "You're resetting via your emailed link — just choose a new password."
+              : "Enter the code we emailed you, then choose a new password."}
           </Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Reset token</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 9fa2...b71"
-            placeholderTextColor={colors.textTertiary}
-            value={token}
-            onChangeText={setToken}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          {!isLinkMode ? (
+            <>
+              <Text style={styles.label}>Account email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@company.com"
+                placeholderTextColor={colors.textTertiary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="emailAddress"
+                autoComplete="email"
+              />
+
+              <View style={styles.codeHeaderRow}>
+                <Text style={styles.label}>Reset code</Text>
+                <TouchableOpacity onPress={handleResend} disabled={!canResend}>
+                  <Text style={[styles.resendText, !canResend ? styles.resendTextDisabled : null]}>
+                    {canResend ? (resendLoading ? "Sending…" : "Resend code") : `Resend in ${formatCountdown(resendCountdownMs)}`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <OtpCodeInput
+                value={code}
+                onChange={(nextValue) => {
+                  setCode(nextValue);
+                  setCodeError(null);
+                }}
+                length={CODE_LENGTH}
+                errorText={codeError || undefined}
+                disabled={loading}
+              />
+            </>
+          ) : null}
 
           <Text style={styles.label}>New password</Text>
           <TextInput
@@ -139,6 +253,7 @@ export const ResetPasswordScreen = ({
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
+            autoComplete="new-password"
           />
 
           <Text style={styles.label}>Confirm password</Text>
@@ -150,6 +265,7 @@ export const ResetPasswordScreen = ({
             onChangeText={setConfirmPassword}
             secureTextEntry
             autoCapitalize="none"
+            autoComplete="new-password"
           />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -246,6 +362,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     color: colors.text,
     marginTop: 10,
     marginBottom: 6,
+  },
+  codeHeaderRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  resendText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  resendTextDisabled: {
+    color: colors.textTertiary,
   },
   input: {
     borderRadius: 14,

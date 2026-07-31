@@ -6,6 +6,26 @@ import type { CreateProductInput, Product, ProductStatus, ProductVisibility } fr
 import { PRODUCT_CATEGORIES } from "../utils/categories";
 import { ProductImageUploader, type PendingImage } from "./ProductImageUploader";
 
+/** One row of the free-form spec editor. `id` is a stable React key only — the actual data is the key/value pair. */
+type AttributeRow = { id: string; key: string; value: string };
+
+// Suggested attribute keys — matches the labels utils/specs.ts knows how to
+// render on the PDP (Additional Information + spec table), so sellers filling
+// these in see them show up correctly on the product page.
+const SPEC_KEY_SUGGESTIONS = ["moq", "itemCode", "productionCapacity", "deliveryTime", "packagingDetails", "material", "color", "brand"];
+
+const attributesToRows = (attributes: Record<string, unknown> | undefined): AttributeRow[] =>
+  Object.entries(attributes ?? {}).map(([key, value], i) => ({ id: `${i}-${key}`, key, value: value == null ? "" : String(value) }));
+
+const rowsToAttributes = (rows: AttributeRow[]): Record<string, string> | undefined => {
+  const attributes = rows.reduce<Record<string, string>>((acc, row) => {
+    const key = row.key.trim();
+    if (key) acc[key] = row.value.trim();
+    return acc;
+  }, {});
+  return Object.keys(attributes).length > 0 ? attributes : undefined;
+};
+
 type FormState = {
   name: string;
   description: string;
@@ -19,6 +39,7 @@ type FormState = {
   minStockQuantity: string;
   visibility: ProductVisibility;
   status: ProductStatus;
+  attributes: AttributeRow[];
 };
 
 const emptyState = (): FormState => ({
@@ -34,6 +55,7 @@ const emptyState = (): FormState => ({
   minStockQuantity: "0",
   visibility: "private",
   status: "draft",
+  attributes: [],
 });
 
 const stateFromProduct = (product: Product): FormState => ({
@@ -49,6 +71,7 @@ const stateFromProduct = (product: Product): FormState => ({
   minStockQuantity: String(product.minStockQuantity),
   visibility: product.visibility,
   status: product.status,
+  attributes: attributesToRows(product.attributes),
 });
 
 const Field = ({
@@ -108,6 +131,15 @@ export const ProductFormDrawer = ({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const addAttributeRow = () =>
+    setForm((prev) => ({ ...prev, attributes: [...prev.attributes, { id: `new-${Date.now()}-${prev.attributes.length}`, key: "", value: "" }] }));
+
+  const updateAttributeRow = (id: string, field: "key" | "value", value: string) =>
+    setForm((prev) => ({ ...prev, attributes: prev.attributes.map((row) => (row.id === id ? { ...row, [field]: value } : row)) }));
+
+  const removeAttributeRow = (id: string) =>
+    setForm((prev) => ({ ...prev, attributes: prev.attributes.filter((row) => row.id !== id) }));
+
   const subCategories =
     PRODUCT_CATEGORIES.find((c) => c.id === form.category)?.id !== form.category
       ? []
@@ -137,6 +169,7 @@ export const ProductFormDrawer = ({
       unit: form.unit.trim() || undefined,
       visibility: form.visibility,
       status: form.status,
+      attributes: rowsToAttributes(form.attributes),
     };
 
     try {
@@ -356,6 +389,52 @@ export const ProductFormDrawer = ({
                         onChange={(e) => update("minStockQuantity", e.target.value)}
                       />
                     </Field>
+                  </div>
+                </section>
+
+                {/* Section: Specifications — free-form attributes shown on the buyer-facing PDP */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--medium-gray)" }}>
+                    Specifications
+                  </p>
+                  <p className="-mt-1 text-[11px]" style={{ color: "var(--medium-gray)" }}>
+                    Trade details buyers look for — MOQ, item code, delivery time, packaging — plus any product specs (material, color, brand…).
+                  </p>
+                  <div className="space-y-2">
+                    {form.attributes.map((row) => (
+                      <div key={row.id} className="flex gap-2">
+                        <input
+                          list="spec-key-suggestions"
+                          placeholder="Spec (e.g. moq)"
+                          className="w-2/5 rounded-xl px-3 py-2 text-xs focus:outline-none"
+                          style={baseInputStyle}
+                          value={row.key}
+                          onChange={(e) => updateAttributeRow(row.id, "key", e.target.value)}
+                        />
+                        <input
+                          placeholder="Value (e.g. 100 pieces)"
+                          className="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
+                          style={baseInputStyle}
+                          value={row.value}
+                          onChange={(e) => updateAttributeRow(row.id, "value", e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAttributeRow(row.id)}
+                          aria-label="Remove specification"
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-opacity hover:opacity-70"
+                          style={{ border: "1px solid var(--border)", color: "var(--accent)" }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <datalist id="spec-key-suggestions">
+                      {SPEC_KEY_SUGGESTIONS.map((key) => <option key={key} value={key} />)}
+                    </datalist>
+                    <button type="button" onClick={addAttributeRow} className="text-xs font-bold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+                      + Add specification
+                    </button>
                   </div>
                 </section>
 

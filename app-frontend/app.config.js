@@ -24,6 +24,11 @@ module.exports = ({ config }) => {
     orientation: "default",
     userInterfaceStyle: "light",
     newArchEnabled: true,
+    // Custom-scheme fallback only (e.g. deep links from other apps/QR codes).
+    // The password-reset email link uses universal/app links below, which
+    // open directly in-app without the scheme-confirmation prompt browsers
+    // show for arvann:// URLs.
+    scheme: "arvann",
     icon: "./assets/brand/arvann-icon-new.png",
     splash: {
       backgroundColor: "#000000",
@@ -35,6 +40,11 @@ module.exports = ({ config }) => {
       buildNumber: "1",
       bundleIdentifier: isProd ? PROD_BUNDLE_IDENTIFIER : DEV_BUNDLE_IDENTIFIER,
       usesAppleSignIn: true,
+      // Requires apple-app-site-association to be served from
+      // https://arvann.in/.well-known/ (web-frontend, not the API host —
+      // see web-frontend/app/.well-known/). Only takes effect after a
+      // native rebuild + TestFlight/store install; does not work in Expo Go.
+      associatedDomains: isProd ? ["applinks:arvann.in"] : [],
       infoPlist: {
         ...(isProd
           ? {}
@@ -67,6 +77,27 @@ module.exports = ({ config }) => {
         "WRITE_EXTERNAL_STORAGE",
         "NOTIFICATIONS",
       ],
+      // Scoped to /reset-password only — an unscoped filter would hijack
+      // every arvann.in link into the app instead of just the reset flow.
+      // autoVerify requires assetlinks.json served from
+      // https://arvann.in/.well-known/ (see web-frontend/app/.well-known/)
+      // and only takes effect after a native rebuild + reinstall.
+      intentFilters: isProd
+        ? [
+            {
+              action: "VIEW",
+              autoVerify: true,
+              data: [
+                {
+                  scheme: "https",
+                  host: "arvann.in",
+                  pathPrefix: "/reset-password",
+                },
+              ],
+              category: ["BROWSABLE", "DEFAULT"],
+            },
+          ]
+        : [],
     },
     web: {
       bundler: "metro",

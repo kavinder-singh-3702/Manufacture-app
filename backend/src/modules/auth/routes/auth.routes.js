@@ -10,6 +10,11 @@ const {
 const validate = require('../../../middleware/validate');
 const { authenticate } = require('../../../middleware/authMiddleware');
 const {
+  passwordResetForgotIpLimiter,
+  passwordResetForgotEmailLimiter,
+  passwordResetVerifyLimiter
+} = require('../../../middleware/rateLimit');
+const {
   signupStartValidation,
   signupVerifyValidation,
   signupContactValidation,
@@ -30,8 +35,19 @@ router.post('/signup/complete', validate(signupCompleteValidation), finalizeSign
 router.post('/login', validate(loginValidation), loginUser);
 router.post('/apple', appleSignInController);
 router.post('/logout', logoutUser);
-router.post('/password/forgot', validate(forgotPasswordValidation), requestPasswordResetController);
-router.post('/password/reset', validate(resetPasswordValidation), resetPasswordController);
+router.post(
+  '/password/forgot',
+  passwordResetForgotIpLimiter,
+  passwordResetForgotEmailLimiter,
+  validate(forgotPasswordValidation),
+  requestPasswordResetController
+);
+router.post(
+  '/password/reset',
+  passwordResetVerifyLimiter,
+  validate(resetPasswordValidation),
+  resetPasswordController
+);
 router.post('/profile/phone', authenticate, updatePhoneController);
 
 // Public — returns the canonical support-admin user id used by the

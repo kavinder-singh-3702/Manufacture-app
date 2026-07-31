@@ -67,6 +67,14 @@ export type Product = {
     displayName?: string;
     complianceStatus?: string;
     contact?: { phone?: string };
+    logoUrl?: string;
+    type?: string;
+    sizeBucket?: string;
+    foundedAt?: string;
+    createdAt?: string;
+    description?: string;
+    headquarters?: { city?: string; state?: string };
+    documents?: { gstNumber?: string };
   };
   contactPreferences?: {
     allowChat?: boolean;

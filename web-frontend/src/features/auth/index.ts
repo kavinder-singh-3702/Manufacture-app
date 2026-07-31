@@ -4,3 +4,8 @@ export { SignupCard } from "./components/SignupCard";
 export { SignupHero } from "./components/SignupHero";
 export { ForgotPasswordCard } from "./components/ForgotPasswordCard";
 export { ResetPasswordCard } from "./components/ResetPasswordCard";
+export { AuthFlowShell } from "./components/AuthFlowShell";
+export { AuthBackButton } from "./components/AuthBackButton";
+export { IntroCard } from "./components/IntroCard";
+export { useAuthFlow } from "./flow/useAuthFlow";
+export * from "./flow/authFlow";

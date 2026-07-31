@@ -64,7 +64,7 @@ export const HeroEntry = () => (
 
           <motion.div {...fade(0.16)} className="flex flex-wrap gap-3">
             <Link
-              href="/signup"
+              href="/welcome"
               className="inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-bold text-white transition-all hover:-translate-y-0.5"
               style={{ backgroundColor: "var(--primary)", boxShadow: "0 10px 30px rgba(20,141,178,0.35)" }}
             >

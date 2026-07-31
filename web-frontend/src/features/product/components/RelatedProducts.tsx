@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
 import { getCategoryMeta } from "../utils/categories";
+import { ProductCarousel } from "./pdp";
 
 // ── Mini card shared between both sections ────────────────────────────────────
 
@@ -100,11 +101,12 @@ const Section = ({
       </div>
 
       {loading ? <RowSkeleton /> : (
-        <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
-          {products.map((p, i) => (
-            <MiniCard key={p._id} product={p} href={getHref(p)} delay={i * 0.04} />
-          ))}
-        </div>
+        <ProductCarousel
+          items={products}
+          itemKey={(p) => p._id}
+          ariaLabel={title}
+          renderItem={(p) => <MiniCard product={p} href={getHref(p)} delay={0} />}
+        />
       )}
     </div>
   );

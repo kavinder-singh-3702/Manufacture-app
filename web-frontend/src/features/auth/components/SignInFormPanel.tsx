@@ -6,15 +6,20 @@ import { BrandWordmark } from "@/src/components/BrandLogo";
 
 export const SignInFormPanel = ({ children }: { children: ReactNode }) => (
   <motion.div
-    className="flex flex-1 flex-col items-center justify-center px-6 py-10 sm:px-12 lg:px-16"
+    // overflow-y-auto (paired with the parent's min-h-screen, not a fixed
+    // h-screen) lets the panel scroll independently when a card is taller
+    // than the viewport — e.g. SignupCard's "Workspace" step. Mirrors the
+    // wrapper the signup page already used successfully before this panel
+    // was shared across every auth step.
+    className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-10 sm:px-12 lg:px-16"
     style={{ backgroundColor: "var(--background)" }}
     initial={{ opacity: 0, x: 20 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
   >
-    {/* Mobile logo */}
+    {/* Mobile logo — hidden on desktop where the hero shows its own */}
     <motion.div
-      className="mb-10 flex items-center lg:hidden"
+      className="mb-10 flex w-full max-w-[420px] items-center lg:hidden"
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
@@ -22,7 +27,7 @@ export const SignInFormPanel = ({ children }: { children: ReactNode }) => (
       <BrandWordmark height={28} priority />
     </motion.div>
 
-    <div className="w-full max-w-[380px]">
+    <div className="w-full max-w-[420px]">
       {children}
     </div>
   </motion.div>

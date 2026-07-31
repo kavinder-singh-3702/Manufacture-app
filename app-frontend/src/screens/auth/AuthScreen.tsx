@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
 import { SignupScreen } from "./SignupScreen";
-import { ForgotPasswordScreen } from "./ForgotPasswordScreen";
+import { ForgotPasswordScreen, ForgotPasswordResetHandoff } from "./ForgotPasswordScreen";
 import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../hooks/useTheme";
@@ -18,20 +18,32 @@ import { APP_NAME, BRAND_IMAGES, GUEST_EMAIL } from "../../constants/brand";
 import { motion } from "../../theme/motion";
 
 export const AuthScreen = () => {
-  const { bootstrapError, bootstrapWarning, setUser, authView, clearAuthView } = useAuth();
+  const {
+    bootstrapError,
+    bootstrapWarning,
+    setUser,
+    authView,
+    clearAuthView,
+    pendingPasswordResetToken,
+    clearPendingPasswordReset,
+  } = useAuth();
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const [view, setView] = useState<AuthView>(authView ?? "intro");
-  const [resetToken, setResetToken] = useState<string | undefined>(undefined);
+  const [resetHandoff, setResetHandoff] = useState<ForgotPasswordResetHandoff | undefined>(undefined);
   const entryOpacity = useRef(new Animated.Value(0)).current;
   const entryTranslate = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
     if (authView) {
       setView(authView);
+      if (authView === "reset" && pendingPasswordResetToken) {
+        setResetHandoff({ email: "", token: pendingPasswordResetToken });
+        clearPendingPasswordReset();
+      }
       clearAuthView();
     }
-  }, [authView, clearAuthView]);
+  }, [authView, clearAuthView, clearPendingPasswordReset, pendingPasswordResetToken]);
 
   useEffect(() => {
     entryOpacity.setValue(0);
@@ -120,10 +132,8 @@ export const AuthScreen = () => {
           {view === "forgot" ? (
             <ForgotPasswordScreen
               onBack={() => setView("login")}
-              onReset={(token) => {
-                if (token) {
-                  setResetToken(token);
-                }
+              onReset={(payload) => {
+                setResetHandoff(payload);
                 setView("reset");
               }}
               onLogin={() => setView("login")}
@@ -133,7 +143,8 @@ export const AuthScreen = () => {
             <ResetPasswordScreen
               onBack={() => setView("forgot")}
               onLogin={() => setView("login")}
-              defaultToken={resetToken}
+              defaultEmail={resetHandoff?.email}
+              defaultToken={resetHandoff?.token}
               onSuccess={() => setView("intro")}
             />
           ) : null}

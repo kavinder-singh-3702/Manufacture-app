@@ -132,27 +132,33 @@ const loginValidation = [
 ];
 
 const forgotPasswordValidation = [
-  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
-  body('phone')
-    .optional()
-    .trim()
-    .isLength({ min: 7 })
-    .withMessage('Phone number must be at least 7 digits')
-    .matches(/^[0-9+]+$/)
-    .withMessage('Phone number can only include digits and + sign'),
-  body().custom((value) => {
-    if (!value.email && !value.phone) {
-      throw new Error('Email or phone is required');
-    }
-    return true;
-  })
+  // Phone-based reset has no SMS transport wired up (see
+  // password-reset.service.js), so this endpoint only accepts email.
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail()
 ];
 
 const resetPasswordValidation = [
-  body('token').trim().notEmpty().withMessage('Reset token is required'),
+  body('token').optional().trim().notEmpty().withMessage('Reset token cannot be blank'),
+  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('code')
+    .optional()
+    .trim()
+    .matches(/^[0-9]{6}$/)
+    .withMessage('Reset code must be a 6-digit numeric code'),
   body('password')
     .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
+    .withMessage('Password must be at least 8 characters long'),
+  // Either the emailed link's token, or the emailed code paired with the
+  // account email — one full credential is required.
+  body().custom((value) => {
+    if (value.token) {
+      return true;
+    }
+    if (value.email && value.code) {
+      return true;
+    }
+    throw new Error('A reset token, or an email and reset code, is required');
+  })
 ];
 
 module.exports = {

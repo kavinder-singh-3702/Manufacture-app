@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
@@ -8,10 +8,16 @@ import { chatService } from "@/src/services/chat";
 import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
+import { buildSpecRows, buildAdditionalInfoRows, buildCompanyRows, getMoq } from "@/src/features/product/utils/specs";
+import { buildTrustBadges } from "@/src/features/product/utils/seller";
 import { VariantSelector, type SelectedVariant } from "@/src/features/product/components/VariantSelector";
 import { ProductInquiryForm } from "@/src/features/product/components/ProductInquiryForm";
 import { QuoteRequestForm } from "@/src/features/product/components/QuoteRequestForm";
 import { RelatedProducts } from "@/src/features/product/components/RelatedProducts";
+import {
+  PdpSection, SpecTable, ProductGallery, PriceBlock, TrustBadgeRow,
+  SellerCard, RevealPhoneButton, SectionNav, InterestBand, ReviewsSection, StickyActionBar,
+} from "@/src/features/product/components/pdp";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/components/ui/Toast";
 import { useRouter } from "next/navigation";
@@ -45,8 +51,6 @@ const AuthToast = ({ action, returnTo, onDismiss }: { action: string; returnTo: 
   );
 };
 
-// InquiryForm extracted to src/features/product/components/ProductInquiryForm.tsx
-
 // ── Main PublicProductDetail ──────────────────────────────────────────────────
 export const PublicProductDetail = ({
   productId,
@@ -65,7 +69,6 @@ export const PublicProductDetail = ({
   const [product, setProduct] = useState<Product | null>(initialProduct ?? null);
   const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState<string | null>(null);
-  const [activeImage, setActiveImage] = useState(0);
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquirySent, setInquirySent] = useState(false);
   const [showQuote, setShowQuote] = useState(false);
@@ -121,13 +124,6 @@ export const PublicProductDetail = ({
     } finally { setChatLoading(false); }
   };
 
-  const handleCall = () => {
-    if (!user) { setAuthToast("call this seller"); return; }
-    const phone = product?.company?.contact?.phone;
-    if (!phone) { toast.error("Call unavailable", "Seller phone number is not available."); return; }
-    window.open(`tel:${phone.replace(/[^\d+]/g, "")}`, "_self");
-  };
-
   const handleShare = async () => {
     const url = window.location.href;
     if (typeof navigator.share === "function") {
@@ -142,14 +138,29 @@ export const PublicProductDetail = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const openInquiry = () => {
+    if (inquirySent) return;
+    setShowQuote(false);
+    setShowInquiry(true);
+    document.getElementById("pdp-buy-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // ── Derived display data (memoized so section components below don't recompute per render) ──
+  const cat = product ? getCategoryMeta(product.category) : undefined;
+  const specRows = useMemo(() => (product ? buildSpecRows(product) : []), [product]);
+  const additionalInfoRows = useMemo(() => (product ? buildAdditionalInfoRows(product) : []), [product]);
+  const companyRows = useMemo(() => buildCompanyRows(product?.company), [product]);
+  const trustBadges = useMemo(() => buildTrustBadges(product?.company), [product]);
+  const moq = product ? getMoq(product) : null;
+
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1200px] space-y-6 px-6 py-10 lg:px-10">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-6 py-10 lg:px-10">
         <div className="h-8 w-64 animate-pulse rounded-xl" style={{ backgroundColor: "var(--light-gray)" }} />
-        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
           <div className="space-y-4">
-            <div className="aspect-[16/9] animate-pulse rounded-3xl" style={{ backgroundColor: "var(--light-gray)" }} />
+            <div className="aspect-[4/3] animate-pulse rounded-3xl" style={{ backgroundColor: "var(--light-gray)" }} />
             <div className="grid gap-3 sm:grid-cols-2">
               {[1,2,3,4].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl" style={{ backgroundColor: "var(--light-gray)" }} />)}
             </div>
@@ -175,10 +186,8 @@ export const PublicProductDetail = ({
     );
   }
 
-  const cat = getCategoryMeta(product.category);
   const stockStatus = product.stockStatus ? STOCK_STATUS_COLORS[product.stockStatus] : null;
   const images = product.images ?? [];
-  const cover = images[activeImage]?.url ?? images[0]?.url;
   const sellerPhone = product.company?.contact?.phone;
   const allowChat = product.contactPreferences?.allowChat !== false && !!product.createdBy;
   const allowCall = product.contactPreferences?.allowCall !== false && !!sellerPhone;
@@ -186,19 +195,23 @@ export const PublicProductDetail = ({
 
   // Active price: variant price if one is selected, else product base price
   const activePrice = selectedVariant?.price ?? product.price;
-  const activeStock = selectedVariant
-    ? selectedVariant.variant.availableQuantity
-    : product.availableQuantity;
+  const activeStock = selectedVariant ? selectedVariant.variant.availableQuantity : product.availableQuantity;
   const activeUnit = activePrice?.unit ?? product.price.unit;
   // Buyer-facing stock: status only (no exact quantity). Buyers contact the
   // seller to ask about quantity & pricing — mirrors the app's public listing.
-  const buyerStock = getBuyerStock(
-    selectedVariant ? undefined : product.stockStatus,
-    activeStock
-  );
+  const buyerStock = getBuyerStock(selectedVariant ? undefined : product.stockStatus, activeStock);
+
+  const companyLocation = [product.company?.headquarters?.city, product.company?.headquarters?.state].filter(Boolean).join(", ");
+
+  // Anchor tabs — only sections that actually have content get a tab.
+  const navItems = [
+    { id: "pdp-details", label: "Product Details" },
+    ...(companyRows.length > 0 || product.company?.description ? [{ id: "pdp-company", label: "Company Details" }] : []),
+    { id: "pdp-reviews", label: "Reviews" }, // placeholder id retained even without data; ReviewsSection itself renders nothing
+  ];
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8 lg:px-10">
+    <div className="mx-auto max-w-[1280px] px-6 py-8 pb-24 lg:px-10 lg:pb-8">
       {/* Breadcrumb + Share */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <nav className="flex items-center gap-2 text-sm flex-wrap">
@@ -217,7 +230,6 @@ export const PublicProductDetail = ({
           <span style={{ color: "var(--medium-gray)" }}>/</span>
           <span className="truncate max-w-[200px]" style={{ color: "var(--foreground)" }}>{product.name}</span>
         </nav>
-        {/* Share button */}
         <motion.button type="button" onClick={handleShare}
           whileTap={{ scale: 0.95 }}
           className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all hover:opacity-80"
@@ -237,282 +249,225 @@ export const PublicProductDetail = ({
         </motion.button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-        {/* ── Left: gallery + details ───────────────────────────────────────── */}
-        <div className="space-y-6">
+      {/* ── Gallery | Buy box | Seller rail ─────────────────────────────────── */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid gap-6 sm:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
           {/* Gallery */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-3xl"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-            <div className="relative overflow-hidden"
-              style={{
-                background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--light-gray)",
-                aspectRatio: images.length > 0 ? "16/9" : "4/3",
-              }}>
-              {cover ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img loading="lazy" decoding="async" src={cover} alt={product.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-8xl min-h-[280px]">
-                  {cat?.icon ?? "📦"}
-                </div>
+          <div>
+            <ProductGallery
+              images={images}
+              productName={product.name}
+              categoryMeta={cat}
+              stockBadge={stockStatus ? { label: stockStatus.label, bg: stockStatus.bg, text: stockStatus.text } : null}
+            />
+          </div>
+
+          {/* Buy box */}
+          <motion.div id="pdp-buy-box" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="space-y-4 rounded-3xl p-5 sm:p-6"
+            style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
+            <div>
+              {cat && (
+                <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide mb-2"
+                  style={{ backgroundColor: cat.bg, color: cat.text }}>
+                  {cat.icon} {cat.title}
+                </span>
               )}
-              {stockStatus && (
-                <div className="absolute bottom-4 right-4">
-                  <span className="rounded-full px-3 py-1 text-xs font-bold backdrop-blur-sm"
-                    style={{ backgroundColor: stockStatus.bg, color: stockStatus.text }}>
-                    {stockStatus.label}
-                  </span>
-                </div>
+              <h1 className="text-xl font-bold leading-snug md:text-[22px]" style={{ color: "var(--foreground)" }}>{product.name}</h1>
+              {product.company?.displayName && (
+                <Link href={`/sellers/${encodeURIComponent(product.company._id)}`}
+                  className="mt-1.5 inline-block text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--medium-gray)" }}>
+                  by {product.company.displayName} →
+                </Link>
               )}
             </div>
-            {images.length > 1 && (
-              <div className="flex gap-2 p-4 overflow-x-auto">
-                {images.map((img, i) => (
-                  <button key={img.url ?? i} type="button" onClick={() => setActiveImage(i)}
-                    className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl transition-all"
-                    style={{ border: i === activeImage ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                    {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
-                  </button>
-                ))}
+
+            <motion.div layout key={selectedVariant?.variant._id ?? "base"}>
+              <PriceBlock
+                amount={activePrice.amount}
+                currency={activePrice.currency}
+                unit={activeUnit}
+                variantLabel={selectedVariant?.variant.name}
+                fromHint={hasVariants && !selectedVariant && product.variantSummary?.minPrice != null
+                  ? `Variants from ${formatCurrency(product.variantSummary.minPrice, product.variantSummary.currency ?? "INR")}`
+                  : undefined}
+                moq={moq}
+              />
+            </motion.div>
+
+            {specRows.length > 0 && <SpecTable rows={specRows} twoColumn={false} collapseAfter={6} />}
+
+            {hasVariants && (
+              <div className="rounded-2xl p-4 space-y-3" style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
+                <VariantSelector productId={product._id} onSelect={setSelectedVariant} />
+              </div>
+            )}
+
+            <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5" style={{ backgroundColor: buyerStock.bg, border: `1px solid ${buyerStock.border}` }}>
+              <span className="leading-none">{buyerStock.icon}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold" style={{ color: buyerStock.fg }}>{buyerStock.label}</p>
+                <p className="text-[11px] leading-snug" style={{ color: "var(--medium-gray)" }}>{buyerStock.hint}</p>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {inquirySent && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="rounded-2xl p-4 text-center"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--success) 13%, transparent)", border: "1px solid color-mix(in srgb, var(--success) 30%, transparent)" }}>
+                  <p className="text-2xl mb-1">✅</p>
+                  <p className="text-sm font-bold" style={{ color: "var(--success)" }}>Inquiry sent!</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--medium-gray)" }}>The seller will contact you soon.</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!inquirySent && (
+              <div className="space-y-3">
+                {showQuote ? (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <QuoteRequestForm product={product} selectedVariant={selectedVariant} user={user} onSuccess={handleQuoteSuccess} onCancel={() => setShowQuote(false)} />
+                  </motion.div>
+                ) : (
+                  <>
+                    {!showInquiry ? (
+                      <button type="button" onClick={openInquiry}
+                        className="flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                        style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>⚡</span>
+                        <div>
+                          <p className="text-sm font-bold text-left">{buyerStock.available ? "Get Best Price" : "Ask about availability"}</p>
+                          <p className="text-xs opacity-75 text-left">
+                            {selectedVariant ? `For: ${selectedVariant.variant.name}` : buyerStock.available ? "Get quantity, pricing & delivery info" : "Request quantity & restocking details"}
+                          </p>
+                        </div>
+                      </button>
+                    ) : (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                        <ProductInquiryForm product={product} selectedVariant={selectedVariant} user={user} onSuccess={handleInquirySuccess} onCancel={() => setShowInquiry(false)} />
+                      </motion.div>
+                    )}
+
+                    {!showInquiry && (
+                      <button type="button" onClick={handleRequestQuote}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition-opacity hover:opacity-80"
+                        style={{ border: "1.5px solid var(--accent)", color: "var(--accent-dark)", backgroundColor: "var(--accent-light)" }}>
+                        📞 Request Callback
+                      </button>
+                    )}
+
+                    {!showInquiry && allowChat && (
+                      <button type="button" onClick={handleChat} disabled={chatLoading}
+                        className="flex w-full items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+                        style={{ backgroundColor: "#16A34A" }}>
+                        {chatLoading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-white" /> : "💬"}
+                        Chat with Supplier
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </motion.div>
-
-          {/* Description */}
-          {product.description && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-              className="rounded-2xl p-6"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] mb-3" style={{ color: "var(--primary)" }}>Description</p>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>
-                {product.description}
-              </p>
-            </motion.div>
-          )}
-
-          {/* Specs */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { label: "Category",    value: cat?.title ?? product.category },
-              { label: "Sub-category", value: product.subCategory ?? "—" },
-              { label: "SKU",          value: product.sku ?? "—" },
-              { label: "Unit",         value: product.unit ?? "—" },
-              { label: "Variants",     value: hasVariants ? `${product.variantSummary!.totalVariants} options` : "Base product" },
-              { label: "Company",      value: product.company?.displayName ?? "—" },
-            ].map((row) => (
-              <div key={row.label} className="rounded-2xl p-4"
-                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: "var(--medium-gray)" }}>{row.label}</p>
-                <p className="mt-1.5 text-sm font-semibold capitalize truncate" style={{ color: "var(--foreground)" }}>{String(row.value)}</p>
-              </div>
-            ))}
-          </motion.div>
         </div>
 
-        {/* ── Right: sticky sidebar ─────────────────────────────────────────── */}
+        {/* ── Seller rail (sticky on lg+, band on mobile) ───────────────────── */}
         <div>
-          <div className="sticky top-20 space-y-4">
-            <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}
-              className="space-y-5 rounded-3xl p-6"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
-
-              {/* Name + seller */}
-              <div>
-                {cat && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide mb-2"
-                    style={{ backgroundColor: cat.bg, color: cat.text }}>
-                    {cat.icon} {cat.title}
-                  </span>
+          <div className="space-y-4 lg:sticky lg:top-20">
+            {product.company?.displayName && (
+              <SellerCard
+                companyId={product.company._id}
+                displayName={product.company.displayName}
+                logoUrl={product.company.logoUrl}
+                location={companyLocation || undefined}
+                variant="rail">
+                <TrustBadgeRow badges={trustBadges} />
+                {allowCall && sellerPhone && (
+                  <RevealPhoneButton phone={sellerPhone} isAuthed={!!user} onRequireAuth={() => setAuthToast("call this seller")} />
                 )}
-                <h1 className="text-xl font-bold leading-snug" style={{ color: "var(--foreground)" }}>{product.name}</h1>
-                {product.company?.displayName && (
-                  <Link href={`/sellers/${encodeURIComponent(product.company._id)}`}
-                    className="mt-2 flex items-center gap-2 transition-opacity hover:opacity-70">
-                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                      style={{ backgroundColor: "var(--primary)" }}>
-                      {product.company.displayName.charAt(0).toUpperCase()}
-                    </div>
-                    <p className="text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>
-                      by {product.company.displayName} →
-                    </p>
-                  </Link>
-                )}
-              </div>
+                <Link href={`/sellers/${encodeURIComponent(product.company._id)}`}
+                  className="block w-full rounded-xl py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-80"
+                  style={{ border: "1px solid var(--primary)", color: "var(--primary)" }}>
+                  View Seller Profile
+                </Link>
+              </SellerCard>
+            )}
 
-              {/* Price — updates when variant is selected */}
-              <motion.div layout key={selectedVariant?.variant._id ?? "base"}
-                className="rounded-2xl p-4"
-                style={{ background: "linear-gradient(135deg, var(--primary-light) 0%, rgba(20,141,178,0.05) 100%)" }}>
-                <p className="text-[10px] font-bold uppercase tracking-[0.25em] mb-1" style={{ color: "var(--primary)" }}>
-                  Price {selectedVariant && <span className="normal-case font-normal">· {selectedVariant.variant.name}</span>}
-                </p>
-                <motion.div layout className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-black" style={{ color: "var(--foreground)" }}>
-                    {formatCurrency(activePrice.amount, activePrice.currency)}
-                  </span>
-                  {activeUnit && (
-                    <span className="text-sm" style={{ color: "var(--medium-gray)" }}>/ {activeUnit}</span>
-                  )}
-                </motion.div>
-                {hasVariants && !selectedVariant && product.variantSummary?.minPrice != null && (
-                  <p className="mt-1 text-xs" style={{ color: "var(--medium-gray)" }}>
-                    Variants from {formatCurrency(product.variantSummary.minPrice, product.variantSummary.currency ?? "INR")}
-                  </p>
-                )}
-              </motion.div>
-
-              {/* Variants selector */}
-              {hasVariants && (
-                <div className="rounded-2xl p-4 space-y-3"
-                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
-                  <VariantSelector
-                    productId={product._id}
-                    onSelect={(sel) => setSelectedVariant(sel)}
-                  />
-                </div>
-              )}
-
-              {/* Availability — status only; buyers contact for exact quantity */}
-              <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
-                style={{ backgroundColor: buyerStock.bg, border: `1px solid ${buyerStock.border}` }}>
-                <span className="leading-none">{buyerStock.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold" style={{ color: buyerStock.fg }}>
-                    {buyerStock.label}
-                  </p>
-                  <p className="text-[11px] leading-snug" style={{ color: "var(--medium-gray)" }}>
-                    {buyerStock.hint}
-                  </p>
-                </div>
-              </div>
-
-              {/* Inquiry sent confirmation */}
-              <AnimatePresence>
-                {inquirySent && (
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    className="rounded-2xl p-4 text-center"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--success) 13%, transparent)",
-                      border: "1px solid color-mix(in srgb, var(--success) 30%, transparent)",
-                    }}>
-                    <p className="text-2xl mb-1">✅</p>
-                    <p className="text-sm font-bold" style={{ color: "var(--success)" }}>Inquiry sent!</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--medium-gray)" }}>
-                      The seller will contact you soon.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Action buttons */}
-              {!inquirySent && (
-                <div className="space-y-3">
-                  {showQuote ? (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                      <QuoteRequestForm
-                        product={product}
-                        selectedVariant={selectedVariant}
-                        user={user}
-                        onSuccess={handleQuoteSuccess}
-                        onCancel={() => setShowQuote(false)}
-                      />
-                    </motion.div>
-                  ) : (
-                    <>
-                      {/* Primary: Inquire */}
-                      {!showInquiry ? (
-                        <button type="button" onClick={() => setShowInquiry(true)}
-                          className="flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
-                          style={{ backgroundColor: "var(--primary)", boxShadow: "0 6px 20px rgba(20,141,178,0.35)" }}>
-                          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg"
-                            style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>💬</span>
-                          <div>
-                            <p className="text-sm font-bold text-left">
-                              {buyerStock.available ? "Inquire to buy" : "Ask about availability"}
-                            </p>
-                            <p className="text-xs opacity-75 text-left">
-                              {selectedVariant
-                                ? `For: ${selectedVariant.variant.name}`
-                                : buyerStock.available
-                                  ? "Get quantity, pricing & delivery info"
-                                  : "Request quantity & restocking details"}
-                            </p>
-                          </div>
-                        </button>
-                      ) : (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <ProductInquiryForm
-                            product={product}
-                            selectedVariant={selectedVariant}
-                            user={user}
-                            onSuccess={handleInquirySuccess}
-                            onCancel={() => setShowInquiry(false)}
-                          />
-                        </motion.div>
-                      )}
-
-                      {/* Request a formal quote (RFQ) */}
-                      {!showInquiry && (
-                        <button type="button" onClick={handleRequestQuote}
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition-opacity hover:opacity-80"
-                          style={{ border: "1.5px solid var(--primary)", color: "var(--primary)", backgroundColor: "var(--primary-light)" }}>
-                          📋 Request a quote (RFQ)
-                        </button>
-                      )}
-
-                      {/* Secondary: Chat + Call */}
-                      {!showInquiry && (
-                        <div className="flex gap-2">
-                          {allowChat && (
-                            <button type="button" onClick={handleChat} disabled={chatLoading}
-                              className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                              style={{ backgroundColor: "#16A34A" }}>
-                              {chatLoading
-                                ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-transparent border-t-white" />
-                                : "💬"
-                              }
-                              Chat
-                            </button>
-                          )}
-                          {allowCall && (
-                            <button type="button" onClick={handleCall}
-                              className="flex flex-1 items-center gap-2 justify-center rounded-2xl py-3 text-sm font-bold text-white transition-opacity hover:opacity-80"
-                              style={{ backgroundColor: "#EA580C" }}>
-                              📞 Call
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </motion.div>
-
-            {/* Sign-in nudge for guests */}
             {!user && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="rounded-2xl p-4 text-center"
-                style={{
-                  border: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)",
-                  background: "linear-gradient(135deg, var(--primary-light) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 100%)",
-                }}>
+                style={{ border: "1px solid color-mix(in srgb, var(--primary) 22%, transparent)", background: "linear-gradient(135deg, var(--primary-light) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 100%)" }}>
                 <p className="text-xs font-semibold" style={{ color: "var(--primary-dark)" }}>
                   Sign in for faster checkout, order tracking & verified seller access
                 </p>
                 <div className="mt-2 flex gap-2 justify-center">
-                  <Link href={`/signin?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-bold text-white"
-                    style={{ backgroundColor: "var(--primary)" }}>Sign in</Link>
-                  <Link href={`/signup?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-semibold"
-                    style={{ border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)", color: "var(--primary-dark)" }}>Register free</Link>
+                  <Link href={`/signin?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>Sign in</Link>
+                  <Link href={`/signup?next=${encodeURIComponent(returnTo)}`} className="rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)", color: "var(--primary-dark)" }}>Register free</Link>
                 </div>
               </motion.div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ── Anchor tabs ──────────────────────────────────────────────────────── */}
+      <div className="mt-8">
+        <SectionNav items={navItems} />
+      </div>
+
+      {/* ── Product Details ─────────────────────────────────────────────────── */}
+      <div className="mt-6 space-y-6">
+        <PdpSection id="pdp-details" icon="📋" title="Product Details">
+          <div className="space-y-5">
+            {product.description && (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>{product.description}</p>
+            )}
+            {additionalInfoRows.length > 0 && (
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>Additional Information</p>
+                <SpecTable rows={additionalInfoRows} />
+              </div>
+            )}
+            {specRows.length > 0 && (
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>Specifications</p>
+                <SpecTable rows={specRows} collapseAfter={8} />
+              </div>
+            )}
+          </div>
+        </PdpSection>
+
+        {/* ── Interest band ────────────────────────────────────────────────── */}
+        {!inquirySent && (
+          <InterestBand
+            title="Interested in this product?"
+            subtitle="Get the best price directly from the seller"
+            primaryLabel="Get Best Price"
+            onPrimary={openInquiry}
+            secondaryLabel="Request Callback"
+            onSecondary={handleRequestQuote}
+          />
+        )}
+
+        {/* ── Company Details ─────────────────────────────────────────────── */}
+        {(companyRows.length > 0 || product.company?.description) && (
+          <PdpSection id="pdp-company" icon="🏭" title="Company Details">
+            <div className="space-y-5">
+              {product.company?.description && (
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>About the Company</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>{product.company.description}</p>
+                </div>
+              )}
+              {companyRows.length > 0 && <SpecTable rows={companyRows} />}
+            </div>
+          </PdpSection>
+        )}
+
+        {/* ── Reviews (renders nothing until a review model exists) ────────── */}
+        <div id="pdp-reviews">
+          <ReviewsSection aggregate={null} />
         </div>
       </div>
 
@@ -526,6 +481,13 @@ export const PublicProductDetail = ({
           routePrefix="/products"
         />
       </div>
+
+      {/* Mobile sticky action bar */}
+      {!inquirySent && (
+        <div className="lg:hidden">
+          <StickyActionBar amount={activePrice.amount} currency={activePrice.currency} unit={activeUnit} primaryLabel="Get Best Price" onPrimary={openInquiry} />
+        </div>
+      )}
 
       {/* Auth gate toast */}
       <AnimatePresence>

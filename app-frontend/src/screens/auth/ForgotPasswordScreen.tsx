@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -14,9 +14,16 @@ import { ResponsiveScreen } from "../../components/layout";
 import { authService } from "../../services/auth.service";
 import { ApiError } from "../../services/http";
 
+export type ForgotPasswordResetHandoff = {
+  email: string;
+  // Dev/staging only — lets the "Already have a link?" shortcut jump
+  // straight into link-mode on the Reset screen without retyping a code.
+  token?: string;
+};
+
 type ForgotPasswordScreenProps = {
   onBack: () => void;
-  onReset: (token?: string) => void;
+  onReset: (payload: ForgotPasswordResetHandoff) => void;
   onLogin: () => void;
 };
 
@@ -30,29 +37,15 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [expiryMinutes, setExpiryMinutes] = useState<number | null>(null);
+  const [devCode, setDevCode] = useState<string | null>(null);
   const [devToken, setDevToken] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  // Auto-navigate to Reset Password after a successful email request, so
-  // the user doesn't have to hunt for a "Continue" button. Held in a ref
-  // so we can cancel it if the user navigates away or unmounts.
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    return () => {
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    };
-  }, []);
-
-  const tokenHint = useMemo(() => {
-    if (!devToken) return null;
-    const expires = expiresAt ? new Date(expiresAt).toLocaleTimeString() : null;
-    return expires ? `${devToken} (expires at ${expires})` : devToken;
-  }, [devToken, expiresAt]);
 
   const handleSubmit = async () => {
     setError(null);
     setMessage(null);
+    setDevCode(null);
     setDevToken(null);
-    setExpiresAt(null);
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
@@ -64,17 +57,9 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
       setLoading(true);
       const response = await authService.requestPasswordReset({ email: trimmedEmail });
       setMessage(response.message);
-      const token = response.resetToken ?? null;
-      if (token) setDevToken(token);
-      if (response.expiresAt) setExpiresAt(response.expiresAt);
-      // Auto-hand off to the Reset Password screen after a short delay so
-      // the user sees the "Check your inbox" callout, then lands on the
-      // token entry form without an extra tap. Dev builds pre-fill the
-      // token via onReset(token); prod builds land with an empty field.
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-      redirectTimerRef.current = setTimeout(() => {
-        onReset(token ?? undefined);
-      }, 2500);
+      setExpiryMinutes(response.expiresInMs ? Math.max(1, Math.round(response.expiresInMs / 60000)) : null);
+      setDevCode(response.resetCode ?? null);
+      setDevToken(response.resetToken ?? null);
     } catch (requestError) {
       const messageText =
         requestError instanceof ApiError
@@ -118,8 +103,8 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
         <View style={styles.headerBlock}>
           <Text style={[styles.heading, { fontSize: clamp(isXCompact ? 24 : 28, 22, 28) }]}>Forgot Password?</Text>
           <Text style={styles.subheading}>
-            Enter your account email and we'll send you a reset code. In dev builds you will see
-            the code here directly.
+            Enter your account email and we'll send a reset code and link. In dev builds you will
+            see the code here directly.
           </Text>
         </View>
 
@@ -141,34 +126,41 @@ export const ForgotPasswordScreen = ({ onBack, onReset, onLogin }: ForgotPasswor
           <View style={styles.callout}>
             <Text style={styles.calloutTitle}>Check your inbox</Text>
             <Text style={styles.calloutText}>{message}</Text>
-            <View style={styles.redirectHint}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.redirectHintText}>Opening the reset screen…</Text>
-            </View>
-            {tokenHint ? (
+            {expiryMinutes ? (
+              <Text style={styles.calloutMeta}>
+                Expires in {expiryMinutes} minute{expiryMinutes > 1 ? "s" : ""}.
+              </Text>
+            ) : null}
+            {devCode ? (
               <View style={styles.tokenBadge}>
-                <Text style={styles.tokenLabel}>Dev reset token</Text>
+                <Text style={styles.tokenLabel}>Dev reset code</Text>
                 <Text selectable style={styles.tokenValue}>
-                  {tokenHint}
+                  {devCode}
                 </Text>
               </View>
             ) : null}
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => onReset({ email: email.trim(), token: devToken ?? undefined })}
+            >
+              <Text style={styles.primaryButtonText}>Enter your code</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
-
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color={colors.textOnPrimary} />
-          ) : (
-            <Text style={styles.primaryButtonText}>Send Reset Link</Text>
-          )}
-        </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color={colors.textOnPrimary} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Send reset instructions</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity onPress={onLogin} style={styles.helperLink}>
           <Text style={styles.helperText}>Remembered it? Back to login</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onReset(devToken ?? undefined)} style={styles.helperLink}>
-          <Text style={styles.helperText}>Already have a token? Reset now</Text>
+        <TouchableOpacity onPress={() => onReset({ email: email.trim() })} style={styles.helperLink}>
+          <Text style={styles.helperText}>Already have a code? Reset now</Text>
         </TouchableOpacity>
         </View>
       </View>
@@ -293,13 +285,8 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  redirectHint: {
-    marginTop: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  redirectHintText: {
+  calloutMeta: {
+    marginTop: 6,
     color: colors.textTertiary,
     fontSize: 12,
     fontWeight: "600",
@@ -318,19 +305,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"], isDark: boo
   },
   tokenValue: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 3,
     marginTop: 4,
-  },
-  resetButton: {
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: colors.accent,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  resetButtonText: {
-    color: colors.textOnAccent,
-    fontWeight: "700",
   },
   });

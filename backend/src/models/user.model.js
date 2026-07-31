@@ -138,8 +138,12 @@ const userSchema = new Schema(
       select: false,
     }, // Bcrypted hash used for credential-based logins.
     passwordChangedAt: Date, // Records when the password was last rotated for auditing.
-    passwordResetToken: { type: String, select: false }, // Token hash for password recovery flow.
-    passwordResetExpires: Date, // Expiry timestamp for the reset token.
+    passwordResetToken: { type: String, select: false }, // Hash of the long-lived reset link token.
+    passwordResetCode: { type: String, select: false }, // Hash of the short 6-digit reset code emailed alongside the link.
+    passwordResetExpires: Date, // Shared expiry timestamp for both the reset token and reset code.
+    passwordResetAttempts: { type: Number, default: 0 }, // Wrong-code counter; the credential is invalidated past the configured max.
+    passwordResetLastSentAt: Date, // Timestamp of the last reset email, used to enforce the resend cooldown.
+    passwordResetResendCount: { type: Number, default: 0 }, // Resends issued for the current reset request, capped to limit email spam.
     appleUserId: {
       type: String,
       unique: true,

@@ -63,6 +63,17 @@ const config = {
   signupOtpMaxResends: Number(process.env.SIGNUP_OTP_MAX_RESENDS || 5),
   adminInviteToken: process.env.ADMIN_INVITE_TOKEN,
   passwordResetTokenTtlMs: Number(process.env.PASSWORD_RESET_TTL_MS || 15 * 60 * 1000),
+  passwordResetMaxAttempts: Number(process.env.PASSWORD_RESET_MAX_ATTEMPTS || 5),
+  passwordResetResendCooldownMs: Number(process.env.PASSWORD_RESET_RESEND_COOLDOWN_MS || 30 * 1000),
+  passwordResetMaxResends: Number(process.env.PASSWORD_RESET_MAX_RESENDS || 5),
+  // Rate limits guard the public, unauthenticated /password/forgot and
+  // /password/reset endpoints — the latter is the brute-force surface for
+  // the 6-digit reset code, which per-user attempt counters alone can't
+  // fully protect against a distributed attacker spraying many accounts.
+  passwordResetForgotRateLimitWindowMs: Number(process.env.PASSWORD_RESET_FORGOT_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  passwordResetForgotRateLimitMax: Number(process.env.PASSWORD_RESET_FORGOT_RATE_LIMIT_MAX || 10),
+  passwordResetVerifyRateLimitWindowMs: Number(process.env.PASSWORD_RESET_VERIFY_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  passwordResetVerifyRateLimitMax: Number(process.env.PASSWORD_RESET_VERIFY_RATE_LIMIT_MAX || 20),
   awsS3Bucket: process.env.AWS_S3_BUCKET,
   awsS3Region: process.env.AWS_S3_REGION,
   awsS3AccessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,

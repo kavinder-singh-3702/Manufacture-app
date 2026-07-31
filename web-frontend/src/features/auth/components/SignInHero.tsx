@@ -3,6 +3,28 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
+import { AuthFooterLink } from "../flow/authFlow";
+
+type SignInHeroProps = {
+  // "\n" marks a line break, mirroring the two-line headline this hero
+  // originally shipped with. Defaults reproduce that original copy so
+  // /signin keeps working unchanged if no props are passed.
+  headline?: string;
+  description?: string;
+  // null hides the bottom CTA entirely (e.g. the intro step, which already
+  // has its own "Sign in" link in IntroCard).
+  footer?: AuthFooterLink | null;
+};
+
+const DEFAULT_HEADLINE = "Your manufacturing\ncommand centre.";
+const DEFAULT_DESCRIPTION =
+  "One secure login to connect with verified suppliers, manage your pipeline, and grow your business.";
+const DEFAULT_FOOTER: AuthFooterLink = {
+  text: "New to ARVANN?",
+  linkLabel: "Create your workspace in 3 minutes",
+  href: "/signup",
+  cta: "Sign up →",
+};
 
 const FEATURES = [
   "Connect with verified manufacturers & traders",
@@ -23,7 +45,11 @@ const slideLeft = (delay = 0) => ({
   transition: { duration: 0.22, delay, ease: [0.22, 1, 0.36, 1] },
 });
 
-export const SignInHero = () => (
+export const SignInHero = ({
+  headline = DEFAULT_HEADLINE,
+  description = DEFAULT_DESCRIPTION,
+  footer = DEFAULT_FOOTER,
+}: SignInHeroProps) => (
   <div
     className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[52%]"
     style={{ background: "linear-gradient(150deg, #148DB2 0%, #0D6A8A 55%, #0B5472 100%)" }}
@@ -79,11 +105,16 @@ export const SignInHero = () => (
         </motion.div>
 
         <motion.h1 {...item(0.3)} className="text-4xl font-bold leading-tight text-white lg:text-5xl">
-          Your manufacturing<br />command centre.
+          {headline.split("\n").map((line, index) => (
+            <span key={line}>
+              {index > 0 ? <br /> : null}
+              {line}
+            </span>
+          ))}
         </motion.h1>
 
         <motion.p {...item(0.4)} className="text-[17px] leading-relaxed text-white/70">
-          One secure login to connect with verified suppliers, manage your pipeline, and grow your business.
+          {description}
         </motion.p>
       </div>
 
@@ -106,25 +137,27 @@ export const SignInHero = () => (
       </ul>
     </div>
 
-    {/* Sign up CTA */}
-    <motion.div
-      {...item(0.9)}
-      className="relative flex items-center justify-between gap-4 rounded-2xl p-4"
-      style={{ backgroundColor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)" }}
-    >
-      <div>
-        <p className="text-sm font-semibold text-white">New to ARVANN?</p>
-        <p className="text-xs text-white/60">Create your workspace in 3 minutes</p>
-      </div>
-      <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-        <Link
-          href="/signup"
-          className="flex-shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ backgroundColor: "#D5616D", boxShadow: "0 4px 14px rgba(213,97,109,0.40)" }}
-        >
-          Sign up →
-        </Link>
+    {/* Step CTA — e.g. "New to ARVANN? Sign up", swaps per auth step */}
+    {footer ? (
+      <motion.div
+        {...item(0.9)}
+        className="relative flex items-center justify-between gap-4 rounded-2xl p-4"
+        style={{ backgroundColor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.18)" }}
+      >
+        <div>
+          <p className="text-sm font-semibold text-white">{footer.text}</p>
+          <p className="text-xs text-white/60">{footer.linkLabel}</p>
+        </div>
+        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+          <Link
+            href={footer.href}
+            className="flex-shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+            style={{ backgroundColor: "#D5616D", boxShadow: "0 4px 14px rgba(213,97,109,0.40)" }}
+          >
+            {footer.cta}
+          </Link>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    ) : null}
   </div>
 );

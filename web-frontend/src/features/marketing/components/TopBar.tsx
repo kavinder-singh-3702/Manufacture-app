@@ -168,7 +168,7 @@ export const TopBar = () => {
                 style={{ color: "var(--foreground)" }}>
                 Sign in
               </Link>
-              <Link href="/signup"
+              <Link href="/welcome"
                 className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg"
                 style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
                 Get started free →
@@ -243,7 +243,7 @@ export const TopBar = () => {
                     style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--background)" }}>
                     Sign in
                   </Link>
-                  <Link href="/signup" onClick={() => setMobileOpen(false)}
+                  <Link href="/welcome" onClick={() => setMobileOpen(false)}
                     className="block rounded-xl py-3 text-center text-sm font-bold text-white"
                     style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
                     Get started free →

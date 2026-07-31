@@ -78,19 +78,24 @@ export type SignupCompletePayload = {
 };
 
 export type ForgotPasswordPayload = {
-  email?: string;
-  phone?: string;
+  email: string;
 };
 
-export type ResetPasswordPayload = {
-  token: string;
-  password: string;
-};
+// The backend accepts either credential emailed from the same request: the
+// long-lived link token (one-click, from ?token= in the reset URL) or the
+// 6-digit code paired with the account email (typed in by hand).
+export type ResetPasswordPayload =
+  | { token: string; password: string }
+  | { email: string; code: string; password: string };
 
 export type ForgotPasswordResponse = {
   message: string;
+  channel: "email";
   expiresInMs: number;
+  resendAvailableInMs: number;
+  // Dev/staging only — the backend strips these in production.
   resetToken?: string;
+  resetCode?: string;
   expiresAt?: string;
 };
 

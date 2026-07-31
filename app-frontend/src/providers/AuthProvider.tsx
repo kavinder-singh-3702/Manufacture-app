@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import * as Linking from "expo-linking";
 import { AppleSignInPayload, AuthUser, AuthView, LoginPayload } from "../types/auth";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
@@ -46,6 +47,11 @@ type AuthContextValue = {
   refreshUser: () => Promise<AuthUser | null>;
   authView: AuthView | null;
   clearAuthView: () => void;
+  // Set when a password-reset universal/custom-scheme link opened the app.
+  // AuthScreen consumes it once (alongside authView === "reset") to
+  // pre-fill ResetPasswordScreen's link mode, then clears it.
+  pendingPasswordResetToken: string | null;
+  clearPendingPasswordReset: () => void;
   pendingVerificationRedirect: string | null;
   clearPendingVerificationRedirect: () => void;
   /**
@@ -71,6 +77,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapWarning, setBootstrapWarning] = useState<string | null>(null);
   const [authView, setAuthView] = useState<AuthView | null>(null);
+  const [pendingPasswordResetToken, setPendingPasswordResetToken] = useState<string | null>(null);
   const [pendingVerificationRedirect, setPendingVerificationRedirect] = useState<string | null>(null);
   const [pendingSocialPhoneCollection, setPendingSocialPhoneCollection] = useState(false);
 
@@ -273,10 +280,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setBootstrapWarning(null);
   }, []);
 
-  const requestForgotPassword = useCallback(async () => {
-    // Reuse logout for a clean teardown (revoke server session, clear JWT,
-    // disconnect chat socket), then override the auth view logout picks
-    // so AuthScreen opens directly on the Forgot Password step.
+  // Shared teardown for any flow that lands the user on the auth stack
+  // regardless of an existing session (manual "forgot password" from the
+  // logged-in drawer, or a password-reset link opening the app while
+  // already signed in as someone else): revoke the server session, clear
+  // the JWT, disconnect the chat socket, then set the auth view.
+  const teardownSessionForAuthView = useCallback(async (view: AuthView) => {
     try {
       await authService.logout();
     } catch {
@@ -289,11 +298,60 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setBootstrapError(null);
     setBootstrapWarning(null);
     setPendingSocialPhoneCollection(false);
-    setAuthView("forgot");
+    setAuthView(view);
   }, []);
+
+  const requestForgotPassword = useCallback(async () => {
+    await teardownSessionForAuthView("forgot");
+  }, [teardownSessionForAuthView]);
+
+  // Handles the password-reset email's link. On mobile this arrives as a
+  // universal link (https://arvann.in/reset-password?token=...) once
+  // app.config.js's associatedDomains/intentFilters are live in a native
+  // build, or as the arvann:// scheme fallback. Cold start is covered by
+  // getInitialURL(); a warm/backgrounded app gets the "url" event instead.
+  useEffect(() => {
+    const extractResetToken = (url: string | null): string | null => {
+      if (!url) return null;
+      try {
+        const { path, queryParams } = Linking.parse(url);
+        const normalizedPath = (path || "").replace(/^\/+/, "");
+        if (normalizedPath !== "reset-password") return null;
+        const token = queryParams?.token;
+        return typeof token === "string" && token.length > 0 ? token : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const handleUrl = async (url: string | null) => {
+      const token = extractResetToken(url);
+      if (!token) return;
+      await teardownSessionForAuthView("reset");
+      setPendingPasswordResetToken(token);
+    };
+
+    let isMounted = true;
+    Linking.getInitialURL()
+      .then((url) => {
+        if (isMounted) handleUrl(url);
+      })
+      .catch(() => {});
+
+    const subscription = Linking.addEventListener("url", (event) => handleUrl(event.url));
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [teardownSessionForAuthView]);
 
   const clearAuthView = useCallback(() => {
     setAuthView(null);
+  }, []);
+
+  const clearPendingPasswordReset = useCallback(() => {
+    setPendingPasswordResetToken(null);
   }, []);
 
   const clearPendingVerificationRedirect = useCallback(() => {
@@ -317,11 +375,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       refreshUser,
       authView,
       clearAuthView,
+      pendingPasswordResetToken,
+      clearPendingPasswordReset,
       pendingVerificationRedirect,
       clearPendingVerificationRedirect,
       pendingSocialPhoneCollection,
     }),
-    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingVerificationRedirect, initializing, login, logout, pendingSocialPhoneCollection, pendingVerificationRedirect, refreshUser, requestForgotPassword, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
+    [authView, bootstrapError, bootstrapWarning, clearAuthView, clearPendingPasswordReset, clearPendingVerificationRedirect, initializing, login, logout, pendingPasswordResetToken, pendingSocialPhoneCollection, pendingVerificationRedirect, refreshUser, requestForgotPassword, requestLogin, requestSignup, setUser, signInWithApple, switchCompany, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

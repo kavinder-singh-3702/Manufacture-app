@@ -15,10 +15,10 @@ export const LegalLinks = ({ compact = false, centered = false, className = "" }
       aria-label="Legal links"
       className={`flex flex-wrap items-center gap-x-4 gap-y-2 font-semibold ${wrapperClassName} ${alignmentClassName} ${className}`.trim()}
     >
-      <Link href="/privacy-policy" className="transition hover:text-[var(--color-plum)]">
+      <Link href="/privacy-policy" className="transition hover:text-[var(--primary)]">
         Privacy Policy
       </Link>
-      <Link href="/terms-and-conditions" className="transition hover:text-[var(--color-plum)]">
+      <Link href="/terms-and-conditions" className="transition hover:text-[var(--primary)]">
         Terms & Conditions
       </Link>
     </nav>

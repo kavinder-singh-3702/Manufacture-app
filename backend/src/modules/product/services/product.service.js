@@ -237,7 +237,11 @@ const getProductsByCategory = async (
 
   const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
+      .populate({
+        path: 'company',
+        select: 'displayName complianceStatus contact.phone owner metadata logoUrl type sizeBucket '
+          + 'foundedAt createdAt description headquarters.city headquarters.state documents.gstNumber'
+      })
       .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
@@ -348,7 +352,11 @@ const getAllProducts = async (
 
   const [fetchedProducts, total] = await Promise.all([
     Product.find(query)
-      .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
+      .populate({
+        path: 'company',
+        select: 'displayName complianceStatus contact.phone owner metadata logoUrl type sizeBucket '
+          + 'foundedAt createdAt description headquarters.city headquarters.state documents.gstNumber'
+      })
       .sort(getSortOptions(sort))
       .skip(offset)
       .limit(limit)
@@ -380,7 +388,11 @@ const getProductById = async (productId, companyId, { includeVariantSummary } = 
     query.company = new mongoose.Types.ObjectId(companyId);
   }
   const product = await Product.findOne(query)
-    .populate({ path: 'company', select: 'displayName complianceStatus contact.phone owner metadata' })
+    .populate({
+      path: 'company',
+      select: 'displayName complianceStatus contact.phone owner metadata logoUrl type sizeBucket '
+        + 'foundedAt createdAt description headquarters.city headquarters.state documents.gstNumber'
+    })
     .lean();
   if (!product) return null;
 
