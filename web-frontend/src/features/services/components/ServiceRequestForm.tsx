@@ -87,6 +87,17 @@ export const ServiceRequestForm = () => {
   const [adShopperCategories, setAdShopperCategories] = useState<string[]>([]);
   const [adBuyIntentCategories, setAdBuyIntentCategories] = useState<string[]>([]);
 
+  // Deep-link from a product's own page ("Promote this product" on
+  // ProductDetailContainer) — prefill the product picker instead of making
+  // the seller search for the product they just came from.
+  useEffect(() => {
+    const productId = params.get("productId");
+    if (!productId || initType !== "advertisement") return;
+    productService.get(productId, { scope: "company" }).then(setAdProduct).catch(() => {});
+    // Only ever run for the initial deep-link — not on every param change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");

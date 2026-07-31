@@ -372,6 +372,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                 </svg>
                 Edit product
               </button>
+              <Link href={`/dashboard/services/request?type=advertisement&productId=${encodeURIComponent(product._id)}`}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+                style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 11v2a2 2 0 0 0 2 2h1l4 4V5L6 9H5a2 2 0 0 0-2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M16 8a4 4 0 0 1 0 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                Promote this product
+              </Link>
               <button type="button" onClick={() => setDeleteState("confirm")}
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
                 style={{ border: "1px solid var(--border)", color: "var(--accent)" }}>

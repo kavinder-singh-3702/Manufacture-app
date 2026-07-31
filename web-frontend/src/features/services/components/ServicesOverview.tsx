@@ -128,7 +128,12 @@ export const ServicesOverview = () => {
             >
               <ServiceTypeCard
                 meta={meta}
-                onStart={() => router.push(`/dashboard/services/request?type=${meta.type}`)}
+                onStart={() => router.push(
+                  // Advertisement has its own status/insights home (Ad Runs) —
+                  // send returning sellers there instead of straight to a blank
+                  // request form every time.
+                  meta.type === "advertisement" ? "/dashboard/ads" : `/dashboard/services/request?type=${meta.type}`
+                )}
               />
             </motion.div>
           ))}

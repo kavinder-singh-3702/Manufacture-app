@@ -34,6 +34,7 @@ const modulesNav: NavItem[] = [
   { id: "inventory",          label: "Inventory",         description: "Stock & warehouses",    href: "/dashboard/inventory" },
   { id: "internal-inventory", label: "Internal Stock",    description: "Internal ops tracking", href: "/dashboard/internal-inventory" },
   { id: "quotes",             label: "Quotes",            description: "RFQs & negotiation",    href: "/dashboard/quotes" },
+  { id: "ads",                label: "Ad Runs",           description: "Promote your products", href: "/dashboard/ads" },
   { id: "chat",               label: "Chat",              description: "Messages & threads",    href: "/dashboard/chat" },
 ];
 
@@ -134,6 +135,13 @@ export const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
           <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           <rect x="9" y="3" width="6" height="4" rx="1" stroke={color} strokeWidth="1.8" />
           <path d="M9 12h6M9 16h4" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    case "ads":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 11v2a2 2 0 0 0 2 2h1l4 4V5L6 9H5a2 2 0 0 0-2 2z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M16 8a4 4 0 0 1 0 8M19 5a8 8 0 0 1 0 14" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       );
     case "profile":
