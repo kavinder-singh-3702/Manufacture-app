@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { serviceRequestService } from "@/src/services/serviceRequest";
 import { ApiError } from "@/src/lib/api-error";
 import type { ServiceRequest } from "@/src/types/service";
-import { ServiceTypeCard, SERVICE_TYPES, getServiceTypeMeta } from "./ServiceTypeCard";
+import { ServiceTypeCard, SERVICE_TYPES, getServiceTypeMeta, tintBg } from "./ServiceTypeCard";
 import { ServiceStatusBadge, ServicePriorityBadge } from "./ServiceStatusBadge";
 
 const fade = (delay = 0) => ({
@@ -37,7 +37,7 @@ const RequestRow = ({ request }: { request: ServiceRequest }) => {
     >
       <span
         className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl"
-        style={{ backgroundColor: meta.accentBg }}
+        style={{ backgroundColor: tintBg(meta.accent) }}
       >{meta.icon}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold" style={{ color: "var(--foreground)" }}>{request.title}</p>

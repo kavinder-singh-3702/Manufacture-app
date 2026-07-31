@@ -58,6 +58,9 @@ export const buildActivityMetaLine = (activity: ActivityEvent) => {
   return parts.join(" • ");
 };
 
+// No social links (website/linkedin/twitter/github) — the app's Profile
+// screen has no such fields, so they were dropped rather than left as
+// dead-weight state nothing renders.
 export const createProfileFormState = (user: AuthUser) => ({
   firstName: (user.firstName as string | undefined) ?? "",
   lastName: (user.lastName as string | undefined) ?? "",
@@ -71,10 +74,6 @@ export const createProfileFormState = (user: AuthUser) => ({
   state: (user.address?.state as string | undefined) ?? "",
   postalCode: (user.address?.postalCode as string | undefined) ?? "",
   country: (user.address?.country as string | undefined) ?? "",
-  website: (user.socialLinks?.website as string | undefined) ?? "",
-  linkedin: (user.socialLinks?.linkedin as string | undefined) ?? "",
-  twitter: (user.socialLinks?.twitter as string | undefined) ?? "",
-  github: (user.socialLinks?.github as string | undefined) ?? "",
   activityTags: Array.isArray(user.activityTags) ? user.activityTags.join(", ") : "",
 });
 
@@ -99,10 +98,6 @@ export const normalizeProfileForm = (form: ProfileFormState): ProfileFormState =
     state: trim(form.state),
     postalCode: trim(form.postalCode),
     country: trim(form.country),
-    website: trim(form.website),
-    linkedin: trim(form.linkedin),
-    twitter: trim(form.twitter),
-    github: trim(form.github),
     activityTags: normalizedTags,
   };
 };
@@ -115,16 +110,6 @@ export const buildAddressPayload = (form: ProfileFormState) => {
     state: form.state || undefined,
     postalCode: form.postalCode || undefined,
     country: form.country || undefined,
-  });
-  return Object.keys(payload).length ? payload : undefined;
-};
-
-export const buildSocialLinksPayload = (form: ProfileFormState) => {
-  const payload = cleanObject({
-    website: form.website || undefined,
-    linkedin: form.linkedin || undefined,
-    twitter: form.twitter || undefined,
-    github: form.github || undefined,
   });
   return Object.keys(payload).length ? payload : undefined;
 };

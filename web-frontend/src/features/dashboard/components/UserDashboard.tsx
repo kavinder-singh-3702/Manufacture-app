@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -15,8 +15,12 @@ import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
 import { Sidebar } from "./user-dashboard/Navigation";
 import { MobileTabRail } from "./user-dashboard/MobileTabRail";
 import { OverviewSection } from "./user-dashboard/OverviewSection";
-import { ProfileSection, ProfileVerificationPrompt } from "./user-dashboard/ProfileSection";
-import { GettingStartedChecklist } from "./user-dashboard/overview/GettingStartedChecklist";
+import { ProfileSummaryCard } from "./user-dashboard/profile/ProfileSummaryCard";
+import { ProfileQuickActionsCard } from "./user-dashboard/profile/ProfileQuickActionsCard";
+import { ProfileAccountCard } from "./user-dashboard/profile/ProfileAccountCard";
+import { ProfileProfessionalCard } from "./user-dashboard/profile/ProfileProfessionalCard";
+import { ProfilePreferencesCard } from "./user-dashboard/profile/ProfilePreferencesCard";
+import { ProfileEditorSheet, type ProfileEditorType } from "./user-dashboard/profile/ProfileEditorSheet";
 import { ActivitySection } from "./user-dashboard/ActivitySection";
 import { SettingsSection } from "./user-dashboard/SettingsSection";
 import { DashboardContext, useDashboardContext } from "./user-dashboard/context";
@@ -26,15 +30,10 @@ import { CartProvider } from "@/src/providers/CartProvider";
 import {
   buildActivityTags,
   buildAddressPayload,
-  buildSocialLinksPayload,
   createProfileFormState,
   normalizeProfileForm,
-  resolveCompanyLabel,
-  formatCategory,
   ProfileFormState,
-  ProfileVerificationState,
 } from "./user-dashboard/helpers";
-import { ProfileInputField } from "./user-dashboard/shared";
 import { countUnread } from "./notifications/data";
 
 export { useDashboardContext } from "./user-dashboard/context";
@@ -235,51 +234,64 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
 export const DashboardOverview = () => <OverviewSection />;
 
 export const DashboardProfile = () => {
-  const { user, refreshUser, openVerificationModal, activeCompany } = useDashboardContext();
+  const { user, refreshUser, activeCompany, reloadCompanies } = useDashboardContext();
   const [editForm, setEditForm] = useState<ProfileFormState>(() => createProfileFormState(user));
+  const [companyDescription, setCompanyDescription] = useState(activeCompany?.description ?? "");
+  const [activeEditor, setActiveEditor] = useState<ProfileEditorType>(null);
   const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "success" | "error"; message?: string }>({
     status: "idle",
   });
-  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user);
-  const normalizedStatus = (activeCompany?.complianceStatus ?? user.status ?? "").toLowerCase();
-  const isWorkspaceVerified = normalizedStatus === "verified" || normalizedStatus === "approved";
-  const verificationVariant: ProfileVerificationState["variant"] =
-    isWorkspaceVerified ? "verified" : normalizedStatus === "pending" ? "pending" : "warning";
-  const verificationState: ProfileVerificationState = {
-    label: isWorkspaceVerified ? "Verified badge active" : "Unverified workspace",
-    variant: verificationVariant,
-  };
 
   useEffect(() => {
     setEditForm(createProfileFormState(user));
   }, [user]);
 
-  const handleSaveProfile = async (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault();
+  useEffect(() => {
+    setCompanyDescription(activeCompany?.description ?? "");
+  }, [activeCompany]);
+
+  const updateField = (key: keyof ProfileFormState, value: string) => {
+    setEditForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveIdentity = async () => {
     const normalizedForm = normalizeProfileForm(editForm);
     if (!normalizedForm.displayName) {
       setSaveState({ status: "error", message: "Display name is required." });
       return;
     }
-    const addressPayload = buildAddressPayload(normalizedForm);
-    const socialLinksPayload = buildSocialLinksPayload(normalizedForm);
-    const tagsPayload = buildActivityTags(normalizedForm.activityTags);
-
     try {
       setSaveState({ status: "saving" });
       await userService.updateCurrentUser({
         firstName: normalizedForm.firstName || undefined,
         lastName: normalizedForm.lastName || undefined,
         displayName: normalizedForm.displayName,
-        phone: normalizedForm.phone || undefined,
-        bio: normalizedForm.bio || undefined,
-        avatarUrl: normalizedForm.avatarUrl || undefined,
-        address: addressPayload,
-        socialLinks: socialLinksPayload,
-        activityTags: tagsPayload,
+        address: buildAddressPayload(normalizedForm),
       });
       await refreshUser();
       setSaveState({ status: "success" });
+      setActiveEditor(null);
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error ? error.message : "Unable to update profile.";
+      setSaveState({ status: "error", message });
+    }
+  };
+
+  const handleSaveProfessional = async () => {
+    const normalizedForm = normalizeProfileForm(editForm);
+    try {
+      setSaveState({ status: "saving" });
+      await userService.updateCurrentUser({
+        bio: normalizedForm.bio || undefined,
+        activityTags: buildActivityTags(normalizedForm.activityTags),
+      });
+      if (activeCompany) {
+        await companyService.update(activeCompany.id, { description: companyDescription.trim() || undefined });
+        await reloadCompanies();
+      }
+      await refreshUser();
+      setSaveState({ status: "success" });
+      setActiveEditor(null);
     } catch (error) {
       const message = error instanceof ApiError || error instanceof Error ? error.message : "Unable to update profile.";
       setSaveState({ status: "error", message });
@@ -309,24 +321,30 @@ export const DashboardProfile = () => {
   };
 
   return (
-    <>
-      <ProfileVerificationPrompt
-        isVerified={isWorkspaceVerified}
-        primaryCompany={primaryCompanyName}
-        accountType={activeCompany?.type ?? user.accountType}
-        onRequestVerification={openVerificationModal}
+    <div className="mx-auto max-w-2xl space-y-4">
+      <ProfileSummaryCard
+        avatarValue={editForm.avatarUrl}
+        onAvatarChange={(src) => updateField("avatarUrl", src)}
+        onAvatarUpload={handleAvatarUpload}
       />
-      <ProfileSection
-        user={user}
-        editForm={editForm}
-        onChange={setEditForm}
-        onSubmit={handleSaveProfile}
-        saveState={saveState}
-        verificationState={verificationState}
-        onUpload={handleAvatarUpload}
+      <ProfileQuickActionsCard onEditIdentity={() => setActiveEditor("identity")} onEditProfessional={() => setActiveEditor("professional")} />
+      <ProfileAccountCard onEdit={() => setActiveEditor("identity")} />
+      <ProfileProfessionalCard onEdit={() => setActiveEditor("professional")} />
+      <ProfilePreferencesCard />
+
+      <ProfileEditorSheet
+        editorType={activeEditor}
+        onClose={() => setActiveEditor(null)}
+        form={editForm}
+        onFieldChange={updateField}
+        companyDescription={companyDescription}
+        onCompanyDescriptionChange={setCompanyDescription}
+        hasActiveCompany={!!activeCompany}
+        onSave={activeEditor === "identity" ? handleSaveIdentity : handleSaveProfessional}
+        saving={saveState.status === "saving"}
+        error={saveState.status === "error" ? saveState.message : undefined}
       />
-      {!activeCompany && <GettingStartedChecklist />}
-    </>
+    </div>
   );
 };
 

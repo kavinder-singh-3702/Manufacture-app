@@ -7,7 +7,6 @@ export type ServiceTypeMeta = {
   subtitle: string;
   hint: string;
   accent: string;
-  accentBg: string;
 };
 
 export const SERVICE_TYPES: ServiceTypeMeta[] = [
@@ -18,7 +17,6 @@ export const SERVICE_TYPES: ServiceTypeMeta[] = [
     subtitle: "On-site & remote maintenance",
     hint: "Book a certified engineer for breakdown, preventive maintenance, or warranty claims.",
     accent: "#1E40AF",
-    accentBg: "#DBEAFE",
   },
   {
     type: "worker",
@@ -27,7 +25,6 @@ export const SERVICE_TYPES: ServiceTypeMeta[] = [
     subtitle: "Skilled & unskilled workforce",
     hint: "Find temporary, contract, or permanent workers with verified certifications.",
     accent: "#15803D",
-    accentBg: "#DCFCE7",
   },
   {
     type: "transport",
@@ -36,7 +33,6 @@ export const SERVICE_TYPES: ServiceTypeMeta[] = [
     subtitle: "Freight & delivery solutions",
     hint: "Arrange trucking, rail, or courier for raw materials and finished goods.",
     accent: "#92400E",
-    accentBg: "#FEF3C7",
   },
   {
     type: "advertisement",
@@ -45,12 +41,20 @@ export const SERVICE_TYPES: ServiceTypeMeta[] = [
     subtitle: "Promote your products & brand",
     hint: "Boost product visibility with targeted ads across the manufacturing marketplace.",
     accent: "#5B21B6",
-    accentBg: "#EDE9FE",
   },
 ];
 
 export const getServiceTypeMeta = (type: string): ServiceTypeMeta =>
   SERVICE_TYPES.find((s) => s.type === type) ?? SERVICE_TYPES[0];
+
+/**
+ * Derives a tinted background from `accent` instead of a second hardcoded
+ * hex per type — the old `accentBg` pastels (e.g. `#DBEAFE`) were light-only
+ * and washed out illegibly on the dark canvas. `color-mix` blends toward
+ * transparent, so it reads correctly over both `var(--surface)` and its dark
+ * counterpart without a separate dark-mode value.
+ */
+export const tintBg = (accent: string) => `color-mix(in srgb, ${accent} 16%, transparent)`;
 
 type ServiceTypeCardProps = {
   meta: ServiceTypeMeta;
@@ -69,7 +73,7 @@ export const ServiceTypeCard = ({ meta, selected, compact, onClick, onStart }: S
         className="flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-all"
         style={{
           border: selected ? `1.5px solid ${meta.accent}` : "1px solid var(--border)",
-          backgroundColor: selected ? meta.accentBg : "var(--surface)",
+          backgroundColor: selected ? tintBg(meta.accent) : "var(--surface)",
         }}
       >
         <span className="text-base">{meta.icon}</span>
@@ -99,7 +103,7 @@ export const ServiceTypeCard = ({ meta, selected, compact, onClick, onStart }: S
         <div className="flex items-start gap-3">
           <span
             className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl text-2xl"
-            style={{ backgroundColor: meta.accentBg }}
+            style={{ backgroundColor: tintBg(meta.accent) }}
           >{meta.icon}</span>
           <div className="min-w-0">
             <p className="text-sm font-bold leading-tight" style={{ color: "var(--foreground)" }}>{meta.label}</p>

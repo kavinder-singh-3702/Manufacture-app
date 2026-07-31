@@ -8,7 +8,7 @@ import { serviceRequestService } from "@/src/services/serviceRequest";
 import { ApiError } from "@/src/lib/api-error";
 import type { ServiceRequest } from "@/src/types/service";
 import { ServiceStatusBadge, ServicePriorityBadge } from "@/src/features/services/components/ServiceStatusBadge";
-import { getServiceTypeMeta } from "@/src/features/services/components/ServiceTypeCard";
+import { getServiceTypeMeta, tintBg } from "@/src/features/services/components/ServiceTypeCard";
 
 const DetailContent = () => {
   const params = useSearchParams();
@@ -90,7 +90,7 @@ const DetailContent = () => {
         <div className="flex flex-wrap items-start justify-between gap-4 p-6">
           <div className="flex items-start gap-4">
             <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-3xl"
-              style={{ backgroundColor: meta.accentBg }}>{meta.icon}</span>
+              style={{ backgroundColor: tintBg(meta.accent) }}>{meta.icon}</span>
             <div className="space-y-1.5">
               <p className="text-xl font-bold" style={{ color: "var(--foreground)" }}>{request.title}</p>
               <p className="text-sm" style={{ color: "var(--medium-gray)" }}>{meta.label}</p>
