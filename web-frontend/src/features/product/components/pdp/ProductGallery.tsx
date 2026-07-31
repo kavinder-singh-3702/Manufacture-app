@@ -99,7 +99,7 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
 
   if (count === 0) {
     return (
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-3xl text-8xl"
+      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-3xl text-8xl lg:aspect-auto lg:h-full"
         style={{ background: fallbackBg, border: "1px solid var(--border)" }}>
         {categoryMeta?.icon ?? "📦"}
       </div>
@@ -107,11 +107,11 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl" style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-      <div className="xl:flex xl:gap-3 xl:p-3">
+    <div className="overflow-hidden rounded-3xl lg:flex lg:h-full lg:flex-col" style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <div className="xl:flex xl:gap-3 xl:p-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col xl:flex-row">
         {/* Vertical thumb rail — xl+ only */}
         {count > 1 && (
-          <div role="tablist" aria-label="Product images" className="order-1 hidden max-h-[440px] flex-col gap-2 overflow-y-auto xl:flex xl:w-20"
+          <div role="tablist" aria-label="Product images" className="order-1 hidden max-h-[440px] flex-col gap-2 overflow-y-auto xl:flex xl:w-20 xl:flex-shrink-0"
             style={{ scrollbarWidth: "thin" }}>
             {images.map((img, i) => (
               <button key={img.url ?? i} type="button" role="tab" aria-selected={i === activeIndex}
@@ -124,14 +124,14 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
           </div>
         )}
 
-        <div className="order-2 min-w-0 flex-1">
+        <div className="order-2 min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col">
           {/* Main viewer — scroll-snap track doubles as mobile swipe + desktop single-frame view */}
           <div ref={trackRef} onScroll={handleTrackScroll} tabIndex={0} onKeyDown={handleKeyDown}
             role="group" aria-label={`${productName} images`}
-            className="relative flex overflow-x-auto outline-none"
+            className="relative flex overflow-x-auto outline-none lg:min-h-0 lg:flex-1"
             style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
             {images.map((img, i) => (
-              <div key={img.url ?? i} className="relative aspect-[4/3] w-full flex-shrink-0"
+              <div key={img.url ?? i} className="relative aspect-[4/3] w-full flex-shrink-0 lg:aspect-auto lg:h-full"
                 style={{ scrollSnapAlign: "start", background: fallbackBg }}
                 onMouseMove={i === activeIndex ? handleZoomMove : undefined}
                 onMouseLeave={() => setZoomPos(null)}>

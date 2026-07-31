@@ -1,4 +1,5 @@
 import type { Product } from "@/src/types/product";
+import type { CompanyLike } from "./seller";
 
 export type SpecRow = { label: string; value: string };
 
@@ -97,7 +98,7 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
 };
 
 /** Company Details table — only fields that actually exist on the Company schema; nothing invented. */
-export const buildCompanyRows = (company: Product["company"] | undefined): SpecRow[] => {
+export const buildCompanyRows = (company: CompanyLike | undefined): SpecRow[] => {
   if (!company) return [];
   const rows: SpecRow[] = [];
   if (company.type) rows.push({ label: "Nature of Business", value: COMPANY_TYPE_LABELS[company.type] ?? humanizeKey(company.type) });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
@@ -84,11 +84,21 @@ const CategoryDropdown = ({ onClose }: { onClose: () => void }) => (
 export const TopBar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const { user, initializing } = useAuth();
   const isAuthed = !initializing && !!user;
   const accountLabel = user?.displayName ?? user?.firstName ?? user?.email ?? "Account";
+
+  // Reachable from every page — IndiaMART's search bar isn't confined to the
+  // marketplace page body. Hands off to /products, which already reads `?q=`.
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -149,6 +159,19 @@ export const TopBar = () => {
             )
           )}
         </nav>
+
+        {/* Global search — reachable from every page, not just the marketplace body */}
+        <form onSubmit={handleSearchSubmit} className="hidden max-w-xs flex-1 lg:block">
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="var(--medium-gray)" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products…" aria-label="Search products"
+              className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none"
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }} />
+          </div>
+        </form>
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-3 lg:flex">

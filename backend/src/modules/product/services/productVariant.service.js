@@ -4,6 +4,7 @@ const Product = require('../../../models/product.model');
 const ProductVariant = require('../../../models/productVariant.model');
 const ProductVariantLog = require('../../../models/productVariantLog.model');
 const { createStockAdjustmentForItem } = require('../../accounting/services/stockAdjustment.service');
+const { computeStockStatus } = require('../utils/stock.util');
 
 const MAX_LIMIT = 100;
 
@@ -28,7 +29,8 @@ const shapeVariant = (doc) => {
     ...rest,
     options: mapToObject(rest.options) || {},
     attributes: mapToObject(rest.attributes) || {},
-    metadata: mapToObject(rest.metadata) || {}
+    metadata: mapToObject(rest.metadata) || {},
+    stockStatus: computeStockStatus(rest)
   };
 };
 

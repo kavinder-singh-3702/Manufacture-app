@@ -11,6 +11,7 @@ const {
   normalizePurchaseOptionsInput,
   computePurchaseOptionsState
 } = require('../utils/purchaseOptions.util');
+const { computeStockStatus } = require('../utils/stock.util');
 
 const buildStockStatusExpr = (status) => {
   if (status === 'out_of_stock') {
@@ -51,6 +52,7 @@ const shapeProduct = (product) => {
     company,
     attributes: mapToObject(product.attributes) || {},
     metadata: mapToObject(product.metadata) || {},
+    stockStatus: computeStockStatus(product),
     purchaseOptions: computePurchaseOptionsState({
       ...product,
       company

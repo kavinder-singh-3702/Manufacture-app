@@ -5,7 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
-import { getBuyerStock, getCategoryMeta } from "@/src/features/product/utils/categories";
+import { ProductCarousel } from "@/src/features/product/components/pdp";
+import { ProductListRow } from "@/src/features/product/components/listing";
 import { InhouseProductsShowcase } from "@/src/features/inhouse";
 
 // ── Categories data ───────────────────────────────────────────────────────────
@@ -25,62 +26,6 @@ const CATEGORIES = [
   { id: "consumer-goods-fmcg",                  title: "Consumer Goods",    icon: "🧼", bg: "#ECFDF5", text: "#065F46" },
 ] as const;
 
-// ── Mini product card (for homepage preview) ──────────────────────────────────
-
-const MiniProductCard = ({ product, index }: { product: Product; index: number }) => {
-  const cat = getCategoryMeta(product.category);
-  const img = product.images?.[0]?.url;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.28, delay: Math.min(index * 0.05, 0.3), ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4 }}
-    >
-      <Link href={`/products/${encodeURIComponent(product._id)}`}
-        className="group flex flex-col overflow-hidden rounded-2xl transition-shadow hover:shadow-xl"
-        style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
-        {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden"
-          style={{ background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--light-gray)" }}>
-          {img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img loading="lazy" decoding="async" src={img} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-4xl">{cat?.icon ?? "📦"}</div>
-          )}
-        </div>
-        {/* Info */}
-        <div className="flex flex-col gap-1.5 p-3">
-          <p className="line-clamp-2 text-sm font-bold leading-snug" style={{ color: "var(--foreground)" }}>{product.name}</p>
-          {product.company?.displayName && (
-            <p className="text-[11px] font-medium truncate" style={{ color: "var(--medium-gray)" }}>
-              {product.company.displayName}
-            </p>
-          )}
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
-              ₹{product.price.amount.toLocaleString("en-IN")}
-              {product.price.unit && <span className="text-xs font-normal" style={{ color: "var(--medium-gray)" }}>/{product.price.unit}</span>}
-            </span>
-            {(() => {
-              const s = getBuyerStock(product.stockStatus, product.availableQuantity);
-              return (
-                <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-                  style={{ backgroundColor: s.bg, color: s.fg }}>
-                  {s.label}
-                </span>
-              );
-            })()}
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  );
-};
-
 const ProductSkeleton = () => (
   <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--border)" }}>
     <div className="aspect-[4/3] animate-pulse" style={{ backgroundColor: "var(--light-gray)" }} />
@@ -96,6 +41,7 @@ const ProductSkeleton = () => (
 export const MarketplaceSection = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subCategoriesByCategory, setSubCategoriesByCategory] = useState<Record<string, string[]>>({});
 
   const loadFeatured = useCallback(async () => {
     try {
@@ -106,6 +52,18 @@ export const MarketplaceSection = () => {
   }, []);
 
   useEffect(() => { loadFeatured(); }, [loadFeatured]);
+
+  // Subcategory previews under each tile — matches IndiaMART's category
+  // module density. Falls back to no preview lines if the request fails.
+  useEffect(() => {
+    productService.getCategoryStats({ scope: "marketplace" })
+      .then((res) => {
+        const map: Record<string, string[]> = {};
+        (res.categories ?? []).forEach((c) => { map[c.id] = c.subCategories ?? []; });
+        setSubCategoriesByCategory(map);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-16">
@@ -132,28 +90,38 @@ export const MarketplaceSection = () => {
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          {CATEGORIES.map((cat, i) => (
-            <motion.div key={cat.id}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.28) }}
-              whileHover={{ y: -4, scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}>
-              <Link href={`/products/category/${cat.id}`}
-                className="flex flex-col items-center gap-2 rounded-2xl p-4 text-center transition-shadow hover:shadow-lg"
-                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
-                  style={{ backgroundColor: cat.bg }}>
-                  {cat.icon}
-                </span>
-                <span className="text-[11px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
-                  {cat.title}
-                </span>
-              </Link>
-            </motion.div>
-          ))}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {CATEGORIES.map((cat, i) => {
+            const subCategories = (subCategoriesByCategory[cat.id] ?? []).slice(0, 3);
+            return (
+              <motion.div key={cat.id}
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.28) }}
+                whileHover={{ y: -3 }}>
+                <Link href={`/products/category/${cat.id}`}
+                  className="flex flex-col gap-2 rounded-2xl p-4 transition-shadow hover:shadow-lg"
+                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl" style={{ backgroundColor: cat.bg }}>
+                      {cat.icon}
+                    </span>
+                    <span className="text-[13px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
+                      {cat.title}
+                    </span>
+                  </div>
+                  {subCategories.length > 0 && (
+                    <ul className="space-y-0.5 pl-0.5">
+                      {subCategories.map((sub) => (
+                        <li key={sub} className="truncate text-[11px]" style={{ color: "var(--medium-gray)" }}>· {sub}</li>
+                      ))}
+                    </ul>
+                  )}
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -202,9 +170,12 @@ export const MarketplaceSection = () => {
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((p, i) => <MiniProductCard key={p._id} product={p} index={i} />)}
-            </div>
+            <ProductCarousel
+              items={products}
+              itemKey={(p) => p._id}
+              ariaLabel="Featured products"
+              renderItem={(p) => <ProductListRow product={p} href={`/products/${encodeURIComponent(p._id)}`} variant="compact" />}
+            />
             <div className="mt-8 flex justify-center">
               <Link href="/products"
                 className="inline-flex items-center gap-2 rounded-2xl px-8 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg"

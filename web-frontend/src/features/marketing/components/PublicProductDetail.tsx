@@ -9,7 +9,7 @@ import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
 import { buildSpecRows, buildAdditionalInfoRows, buildCompanyRows, getMoq } from "@/src/features/product/utils/specs";
-import { buildTrustBadges } from "@/src/features/product/utils/seller";
+import { buildTrustBadges, formatCompanyLocation } from "@/src/features/product/utils/seller";
 import { VariantSelector, type SelectedVariant } from "@/src/features/product/components/VariantSelector";
 import { ProductInquiryForm } from "@/src/features/product/components/ProductInquiryForm";
 import { QuoteRequestForm } from "@/src/features/product/components/QuoteRequestForm";
@@ -201,7 +201,9 @@ export const PublicProductDetail = ({
   // seller to ask about quantity & pricing — mirrors the app's public listing.
   const buyerStock = getBuyerStock(selectedVariant ? undefined : product.stockStatus, activeStock);
 
-  const companyLocation = [product.company?.headquarters?.city, product.company?.headquarters?.state].filter(Boolean).join(", ");
+  const companyLocation = formatCompanyLocation(product.company);
+  // ARVANN's own first-party catalog — a synthetic, hidden company, not a real seller.
+  const isInhouseCatalog = product.createdByRole === "admin";
 
   // Anchor tabs — only sections that actually have content get a tab.
   const navItems = [
@@ -252,8 +254,8 @@ export const PublicProductDetail = ({
       {/* ── Gallery | Buy box | Seller rail ─────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-6 sm:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
-          {/* Gallery */}
-          <div>
+          {/* Gallery — lg:h-full lets it stretch to match the buy box's height (grid row stretch) instead of leaving dead space below a short image frame */}
+          <div className="lg:h-full">
             <ProductGallery
               images={images}
               productName={product.name}
@@ -375,7 +377,14 @@ export const PublicProductDetail = ({
         {/* ── Seller rail (sticky on lg+, band on mobile) ───────────────────── */}
         <div>
           <div className="space-y-4 lg:sticky lg:top-20">
-            {product.company?.displayName && (
+            {isInhouseCatalog ? (
+              // ARVANN's own catalog isn't a third-party seller — no seller
+              // card, phone reveal or profile link for a synthetic company.
+              <div className="rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }}>
+                📦 Sold directly by ARVANN
+              </div>
+            ) : product.company?.displayName && (
               <SellerCard
                 companyId={product.company._id}
                 displayName={product.company.displayName}

@@ -1,6 +1,20 @@
-import type { Product } from "@/src/types/product";
-
 export type TrustBadge = { icon: string; label: string };
+
+/**
+ * Minimal shape these helpers actually read. Both `Product["company"]`
+ * (`_id`) and the full `Company` type (`id`) satisfy this structurally, so
+ * the same badge/location/masking logic serves the PDP seller rail and the
+ * full seller storefront without an adapter.
+ */
+export type CompanyLike = {
+  type?: string;
+  sizeBucket?: string;
+  foundedAt?: string;
+  createdAt?: string;
+  complianceStatus?: string;
+  documents?: { gstNumber?: string };
+  headquarters?: { city?: string; state?: string };
+};
 
 /**
  * Trust pills for the seller rail / company table. Every badge maps to a
@@ -8,7 +22,7 @@ export type TrustBadge = { icon: string; label: string };
  * TrustSEAL / "N years" badge; ours is the honest equivalent from data we
  * actually have (verification status, GST, tenure).
  */
-export const buildTrustBadges = (company: Product["company"] | undefined): TrustBadge[] => {
+export const buildTrustBadges = (company: CompanyLike | undefined): TrustBadge[] => {
   if (!company) return [];
   const badges: TrustBadge[] = [];
   if (company.complianceStatus === "approved") badges.push({ icon: "✅", label: "Verified Seller" });
@@ -18,8 +32,14 @@ export const buildTrustBadges = (company: Product["company"] | undefined): Trust
   return badges;
 };
 
+/** "City, State" from headquarters — null when neither is set (never renders a lone comma). */
+export const formatCompanyLocation = (company: CompanyLike | undefined): string | null => {
+  const parts = [company?.headquarters?.city, company?.headquarters?.state].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
+};
+
 /** Year the company joined, from `createdAt`. Null when unavailable — callers omit the badge, never fabricate a year. */
-export const memberSince = (company: Product["company"] | undefined): string | null => {
+export const memberSince = (company: CompanyLike | undefined): string | null => {
   if (!company?.createdAt) return null;
   const year = new Date(company.createdAt).getFullYear();
   return Number.isNaN(year) ? null : String(year);

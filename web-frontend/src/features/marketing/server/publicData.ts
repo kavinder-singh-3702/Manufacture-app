@@ -15,6 +15,10 @@ export const getPublicProduct = cache(async (id: string): Promise<Product | null
     return await productService.get(id, { scope: "marketplace", includeVariantSummary: true });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
+    // Anything else trips the route's error boundary ("We hit an unexpected
+    // error") — log it so a recurrence has a real stack trace instead of
+    // being an unreproducible mystery.
+    console.error(`[getPublicProduct] failed for product ${id}:`, err);
     throw err;
   }
 });
@@ -25,6 +29,7 @@ export const getPublicCompany = cache(async (id: string): Promise<Company | null
     return company;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
+    console.error(`[getPublicCompany] failed for company ${id}:`, err);
     throw err;
   }
 });
