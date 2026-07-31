@@ -235,11 +235,7 @@ export const ProductsListContainer = () => {
           className="relative overflow-hidden rounded-3xl p-6 md:p-8"
           style={{ background: "var(--gradient-brand-deep)" }}>
           <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full opacity-10" style={{ backgroundColor: "#fff" }} />
-          <p className="relative text-xs font-semibold uppercase tracking-[0.3em] text-white/70">Marketplace</p>
-          <h1 className="relative mt-1 text-2xl font-bold text-white md:text-3xl">Browse Products</h1>
-          <p className="relative mt-1 text-sm text-white/70">
-            Discover products from manufacturers across India.
-          </p>
+          <h1 className="relative text-2xl font-bold text-white md:text-3xl">Browse Products</h1>
           <div className="relative mt-4 flex flex-wrap gap-2">
             <Link href="/signin"
               className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-80"
@@ -255,17 +251,14 @@ export const ProductsListContainer = () => {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="flex flex-wrap gap-2">
           {[
-            { href: "/dashboard/products/search", label: "Search Products", icon: "🔍", desc: "Find by name, SKU, category" },
-            { href: "/dashboard/products/mine", label: "My Catalog", icon: "🏷️", desc: "Manage your listings" },
+            { href: "/dashboard/products/search", label: "Search Products", icon: "🔍" },
+            { href: "/dashboard/products/mine", label: "My Catalog", icon: "🏷️" },
           ].map((item) => (
             <Link key={item.href} href={item.href}
-              className="inline-flex items-center gap-2.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md"
               style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)", boxShadow: "var(--shadow-sm)" }}>
               <span className="text-base">{item.icon}</span>
-              <div>
-                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{item.label}</p>
-                <p className="text-[10px]" style={{ color: "var(--medium-gray)" }}>{item.desc}</p>
-              </div>
+              <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{item.label}</span>
             </Link>
           ))}
         </motion.div>

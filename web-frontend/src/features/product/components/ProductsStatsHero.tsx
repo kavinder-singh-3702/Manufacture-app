@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { ProductStats } from "@/src/types/product";
 import { tintBg } from "@/src/lib/color";
+import { Card } from "@/src/components/ui/Surface";
 import { formatCurrency } from "../utils/categories";
 
 const item = (delay = 0) => ({
@@ -96,11 +97,7 @@ export const ProductsStatsHero = ({
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full opacity-[0.10]" style={{ backgroundColor: "#fff" }} />
         <div className="pointer-events-none absolute -bottom-12 right-32 h-32 w-32 rounded-full opacity-[0.06]" style={{ backgroundColor: "#fff" }} />
 
-        <div className="relative space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/70">Catalog</p>
-          <h1 className="text-2xl font-bold text-white md:text-3xl">Products</h1>
-          <p className="text-sm text-white/70">Manage your full product catalog and stock levels.</p>
-        </div>
+        <h1 className="relative text-2xl font-bold text-white md:text-3xl">Products</h1>
 
         <motion.button
           type="button"
@@ -120,32 +117,28 @@ export const ProductsStatsHero = ({
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card, i) => (
-          <motion.div
-            key={card.key}
-            {...item(0.05 + i * 0.05)}
-            whileHover={{ y: -3 }}
-            className="relative overflow-hidden rounded-2xl p-5"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}
-          >
-            <div
-              className="absolute inset-x-0 top-0 h-1 rounded-t-2xl"
-              style={{ backgroundColor: card.accent }}
-            />
-            <div className="flex items-start justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: card.accent }}>
-                {card.label}
+          <motion.div key={card.key} {...item(0.05 + i * 0.05)} whileHover={{ y: -3 }}>
+            <Card className="relative overflow-hidden">
+              <div
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: card.accent }}
+              />
+              <div className="flex items-start justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: card.accent }}>
+                  {card.label}
+                </p>
+                <span
+                  className="flex h-9 w-9 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: tintBg(card.accent), color: card.accent }}
+                >
+                  {card.icon}
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-bold leading-tight" style={{ color: "var(--foreground)" }}>
+                {loading ? <span className="inline-block h-7 w-20 animate-pulse rounded-md" style={{ backgroundColor: "var(--border)" }} /> : card.value}
               </p>
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ backgroundColor: tintBg(card.accent), color: card.accent }}
-              >
-                {card.icon}
-              </span>
-            </div>
-            <p className="mt-3 text-2xl font-bold leading-tight" style={{ color: "var(--foreground)" }}>
-              {loading ? <span className="inline-block h-7 w-20 animate-pulse rounded-md" style={{ backgroundColor: "var(--border)" }} /> : card.value}
-            </p>
-            <p className="mt-1 text-xs" style={{ color: "var(--medium-gray)" }}>{card.detail}</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--medium-gray)" }}>{card.detail}</p>
+            </Card>
           </motion.div>
         ))}
       </div>
