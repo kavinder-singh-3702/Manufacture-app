@@ -7,6 +7,7 @@ import { ordersService } from "@/src/services/orders";
 import { ApiError } from "@/src/lib/api-error";
 import { formatCurrency } from "@/src/features/product/utils/categories";
 import type { ProductOrder, ProductOrderStatus } from "@/src/types/order";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const STATUS_META: Record<ProductOrderStatus, { label: string; bg: string; text: string; dot: string }> = {
   payment_pending: { label: "Awaiting payment", bg: "#FEF3C7", text: "#92400E", dot: "#F59E0B" },
@@ -122,19 +123,16 @@ export const OrdersList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div {...fade(0)} className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Purchase history
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>My Orders</h1>
-        </div>
-        <Link href="/dashboard/products"
-          className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
-          Shop more →
-        </Link>
-      </motion.div>
+      <PageHeader
+        title="My Orders"
+        actions={
+          <Link href="/dashboard/products"
+            className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
+            Shop more →
+          </Link>
+        }
+      />
 
       {/* Loading */}
       {loading && (

@@ -14,6 +14,7 @@ import { CartSummary } from "@/src/features/cart/components/CartSummary";
 import { CartItemRow } from "@/src/features/cart/components/CartItemRow";
 import type { CheckoutAddressInput } from "@/src/types/cart";
 import type { CheckoutIntentResponse } from "@/src/types/order";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 type CheckoutStep = "address" | "payment" | "processing";
 
@@ -208,14 +209,16 @@ export const CheckoutContainer = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--medium-gray)" }}>
-          <Link href="/dashboard/products" className="transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>Products</Link>
-          <span>/</span>
-          <span style={{ color: "var(--foreground)" }}>Checkout</span>
-        </div>
-        <h1 className="mt-1 text-2xl font-bold" style={{ color: "var(--foreground)" }}>Checkout</h1>
-      </motion.div>
+      <PageHeader
+        title="Checkout"
+        breadcrumb={
+          <>
+            <Link href="/dashboard/products" className="transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>Products</Link>
+            <span>/</span>
+            <span style={{ color: "var(--foreground)" }}>Checkout</span>
+          </>
+        }
+      />
 
       {/* Step indicator */}
       <div className="flex items-center gap-0">

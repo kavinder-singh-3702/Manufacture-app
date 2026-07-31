@@ -7,6 +7,7 @@ import { CartItemRow } from "./CartItemRow";
 import { CartSummary } from "./CartSummary";
 import { useRouter } from "next/navigation";
 import { AdCrossSell } from "@/src/features/ads/components/AdCrossSell";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 export const CartPageContent = () => {
   const router = useRouter();
@@ -22,15 +23,9 @@ export const CartPageContent = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            My cart
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+      <PageHeader
+        title={
+          <>
             Shopping Cart
             {items.length > 0 && (
               <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
@@ -38,16 +33,16 @@ export const CartPageContent = () => {
                 {items.length}
               </span>
             )}
-          </h1>
-        </div>
-        {items.length > 0 && (
+          </>
+        }
+        actions={items.length > 0 && (
           <button type="button" onClick={clearCart}
             className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
             style={{ border: "1px solid var(--border)", color: "var(--medium-gray)" }}>
             Clear cart
           </button>
         )}
-      </motion.div>
+      />
 
       {items.length === 0 ? (
         <motion.div

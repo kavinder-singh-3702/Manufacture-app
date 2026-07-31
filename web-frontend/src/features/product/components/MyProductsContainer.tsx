@@ -7,6 +7,7 @@ import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product, ProductVisibility } from "@/src/types/product";
 import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { ProductGrid } from "./ProductGrid";
 import { ProductFormDrawer } from "./ProductFormDrawer";
 
@@ -96,15 +97,10 @@ export const MyProductsContainer = () => {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            My Catalog
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+      <PageHeader
+        breadcrumb={activeCompany ? <span>{activeCompany.displayName}</span> : <span>Select a company to see your catalog</span>}
+        title={
+          <>
             My Products
             {!loading && total > 0 && (
               <span
@@ -112,34 +108,32 @@ export const MyProductsContainer = () => {
                 style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
               >{total}</span>
             )}
-          </h1>
-          <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-            {activeCompany ? `Products listed under ${activeCompany.displayName}` : "Select a company to see your catalog"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/products"
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}
-          >
-            Browse Marketplace →
-          </Link>
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            disabled={noCompany}
-            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
-            New product
-          </button>
-        </div>
-      </motion.div>
+          </>
+        }
+        actions={
+          <>
+            <Link
+              href="/dashboard/products"
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+              style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}
+            >
+              Browse Marketplace →
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              disabled={noCompany}
+              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+              New product
+            </button>
+          </>
+        }
+      />
 
       {/* No company banner */}
       {noCompany && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { formatCurrency } from "@/src/features/product/utils/categories";
+import { tintBg } from "@/src/lib/color";
 
 export const OrderConfirmation = () => {
   const params = useSearchParams();
@@ -39,8 +40,11 @@ export const OrderConfirmation = () => {
           transition={{ delay: 0.15, type: "spring", stiffness: 280, damping: 20 }}
           className="mx-auto flex h-24 w-24 items-center justify-center rounded-full text-5xl"
           style={{
-            backgroundColor: success ? "#DCFCE7" : "var(--accent-light)",
-            border: `2px solid ${success ? "#bbf7d0" : "var(--accent)"}`,
+            // was a hardcoded light-only #DCFCE7 pastel — illegible on the
+            // dark canvas, unlike the failure branch which already used the
+            // theme-aware --accent-light token.
+            backgroundColor: success ? tintBg("var(--success)") : "var(--accent-light)",
+            border: `2px solid ${success ? "var(--success)" : "var(--accent)"}`,
           }}
         >
           {success ? "✅" : "❌"}
@@ -75,7 +79,7 @@ export const OrderConfirmation = () => {
                   <span className="text-sm" style={{ color: "var(--medium-gray)" }}>Order ID</span>
                   <button type="button" onClick={copyOrderId}
                     className="flex items-center gap-1.5 rounded-lg px-2 py-1 transition-all hover:opacity-70"
-                    style={{ backgroundColor: copied ? "#DCFCE7" : "var(--background)", border: "1px solid var(--border)" }}>
+                    style={{ backgroundColor: copied ? tintBg("var(--success)") : "var(--background)", border: "1px solid var(--border)" }}>
                     <span className="font-mono text-sm font-bold" style={{ color: "var(--foreground)" }}>
                       #{shortOrderId}
                     </span>

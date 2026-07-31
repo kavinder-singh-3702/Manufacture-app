@@ -135,17 +135,17 @@ export const CategoryBrowseContainer = ({ categoryId }: { categoryId: string }) 
             {cat?.icon ?? "📦"}
           </span>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: cat?.text ?? "var(--primary)" }}>
-              Industry category
-            </p>
-            <h1 className="mt-1 text-2xl font-bold md:text-3xl" style={{ color: "var(--foreground)" }}>
+            <h1 className="text-2xl font-bold md:text-3xl" style={{ color: "var(--foreground)" }}>
               {cat?.title ?? categoryId}
+              {!loading && (
+                <span
+                  className="ml-2.5 rounded-full px-2.5 py-0.5 align-middle text-sm font-semibold"
+                  style={{ backgroundColor: "rgba(255,255,255,0.7)", color: cat?.text ?? "var(--primary)" }}
+                >
+                  {total.toLocaleString("en-IN")}
+                </span>
+              )}
             </h1>
-            {!loading && (
-              <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-                {total.toLocaleString("en-IN")} product{total !== 1 ? "s" : ""} listed
-              </p>
-            )}
           </div>
         </div>
       </motion.div>
