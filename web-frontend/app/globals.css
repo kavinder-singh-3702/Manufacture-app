@@ -40,6 +40,21 @@
   --accent: var(--coral);
   --accent-dark: var(--coral-dark);
   --accent-light: var(--coral-light);
+
+  /* Safe-area insets — resolve to a real px value only once the viewport
+     declares viewport-fit=cover (see app/layout.tsx). Falls back to 0px on
+     browsers that don't support env(), so every consumer stays safe to use
+     unconditionally. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Mobile dashboard shell sizing — mirrors the app's compact top bar
+     (navigation.tokens.ts compactMinHeight 58-64) and footer tab rail
+     (tabMinHeight 46-52 + padding), so the web shell matches app density. */
+  --topbar-h: 3.5rem;
+  --tabrail-h: 3.75rem;
 }
 
 [data-theme="dark"] {
@@ -135,9 +150,57 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+}
+
+/* Safe-area padding utilities — use instead of hand-writing env() so every
+   consumer picks up the same fallback behavior. */
+.pt-safe { padding-top: var(--safe-top); }
+.pb-safe { padding-bottom: var(--safe-bottom); }
+.pl-safe { padding-left: var(--safe-left); }
+.pr-safe { padding-right: var(--safe-right); }
+.px-safe { padding-left: var(--safe-left); padding-right: var(--safe-right); }
+
+/* Full-viewport height with a dvh upgrade. 100vh on mobile Safari includes
+   the area behind the collapsible URL bar, so content sized to it gets
+   clipped at the bottom; 100dvh tracks the *visible* viewport. The 100vh
+   line is a no-op fallback for browsers that don't support dvh — CSS just
+   ignores the second declaration when the unit is unsupported, so this is
+   safe to use unconditionally instead of an inline style (which can't
+   redeclare the same property twice). */
+.h-screen-safe { height: 100vh; height: 100dvh; }
+.min-h-screen-safe { min-height: 100vh; min-height: 100dvh; }
+
+/* Dashboard <main> scroll area — reserves room for the fixed mobile tab rail
+   + home-indicator safe area below sm/lg, where the rail replaces the
+   sidebar. Desktop has no rail, so padding drops back to a plain gutter. */
+.dashboard-main {
+  padding: 1rem;
+  padding-bottom: calc(var(--tabrail-h) + var(--safe-bottom) + 1.5rem);
+}
+@media (min-width: 1024px) {
+  .dashboard-main {
+    padding: 1.5rem;
+  }
+}
+
+/* Dashboard topbar — sticky, so it sits directly under the iOS status bar /
+   Dynamic Island. Its height grows by --safe-top so the title row itself
+   clears the notch instead of being painted underneath it (the bug this
+   whole safe-area pass fixes). Desktop has no notch to dodge, so it reverts
+   to a plain fixed height. */
+.dashboard-topbar {
+  height: calc(var(--topbar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+}
+@media (min-width: 1024px) {
+  .dashboard-topbar {
+    height: 4rem;
+    padding-top: 0;
+  }
 }

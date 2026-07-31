@@ -15,7 +15,7 @@ export const StickyActionBar = ({ amount, currency, unit, primaryLabel, onPrimar
       backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
       borderTop: "1px solid var(--border)",
       boxShadow: "0 -4px 20px rgba(0,0,0,0.08)",
-      paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))",
+      paddingBottom: "calc(0.75rem + var(--safe-bottom))",
     }}>
     <div className="min-w-0 flex-1">
       <p className="truncate text-base font-black" style={{ color: "var(--foreground)" }}>

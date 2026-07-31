@@ -5,8 +5,8 @@ import type { Company } from "@/src/types/company";
 export type DashboardContextValue = {
   user: AuthUser;
   refreshUser: () => Promise<void>;
+  /** Navigates to /dashboard/verification — verification lives on its own page, not a modal. */
   openVerificationModal: () => void;
-  verificationModalSignal: number;
   companies: Company[];
   activeCompany: Company | null;
   reloadCompanies: () => Promise<void>;

@@ -11,6 +11,7 @@ import type { Company } from "@/src/types/company";
 import { motion } from "framer-motion";
 import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
 import { Sidebar } from "./user-dashboard/Navigation";
+import { MobileTabRail } from "./user-dashboard/MobileTabRail";
 import { OverviewSection } from "./user-dashboard/OverviewSection";
 import { ProfileSection, ProfileVerificationPrompt } from "./user-dashboard/ProfileSection";
 import { ActivitySection } from "./user-dashboard/ActivitySection";
@@ -111,7 +112,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
 
   if (initializing) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="h-screen-safe flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-t-transparent"
             style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
@@ -142,7 +143,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
 
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="h-screen-safe flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-t-transparent"
             style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
@@ -180,8 +181,8 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
     <DashboardContext.Provider
       value={{ user, refreshUser, openVerificationModal, verificationModalSignal, companies, activeCompany, reloadCompanies }}
     >
-      <div className="flex overflow-hidden" style={{ height: "100vh", backgroundColor: "var(--background)" }}>
-        {/* Sidebar */}
+      <div className="h-screen-safe flex overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+        {/* Sidebar — desktop only; MobileTabRail below replaces it on mobile */}
         <Sidebar
           activePath={pathname}
           isOpen={sidebarOpen}
@@ -201,8 +202,8 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
             onProfile={() => router.push("/dashboard/profile")}
           />
           <motion.main
-            className="flex-1 overflow-y-auto p-6"
-            style={{ backgroundColor: "var(--background)", overscrollBehavior: "none" }}
+            className="dashboard-main flex-1 overflow-y-auto"
+            style={{ backgroundColor: "var(--background)", overscrollBehavior: "contain" }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -210,6 +211,8 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
             {children}
           </motion.main>
         </div>
+
+        <MobileTabRail activePath={pathname} />
       </div>
 
       <CompanyCreateDrawer

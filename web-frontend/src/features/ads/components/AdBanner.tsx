@@ -12,6 +12,12 @@ const AUTO_ROTATE_MS = 4500;
 type AdBannerProps = {
   /** Which surface this banner sits on — drives targeting + which campaigns are eligible. */
   placement: AdPlacement;
+  /**
+   * Additional placements merged into the same carousel, mirroring the app's
+   * Home screen (which shows `hero_banner` and `dashboard_home` cards
+   * together instead of picking just one surface).
+   */
+  extraPlacements?: AdPlacement[];
   limit?: number;
   className?: string;
 };
@@ -22,9 +28,10 @@ type AdBannerProps = {
  * there's no eligible ad, so it never leaves an empty placeholder on the page.
  * Mirrors the app's HeroBannerCarousel (image/video, "AD" tag, dot pagination).
  */
-export const AdBanner = ({ placement, limit = 5, className = "" }: AdBannerProps) => {
+export const AdBanner = ({ placement, extraPlacements, limit = 5, className = "" }: AdBannerProps) => {
   const router = useRouter();
-  const { cards, loading, logEvent } = useAdFeed({ placement, limit });
+  const placements = extraPlacements?.length ? [placement, ...extraPlacements] : undefined;
+  const { cards, loading, logEvent } = useAdFeed({ placement, placements, limit });
   const [index, setIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

@@ -19,8 +19,17 @@ export const metadata: Metadata = {
   description: "Web console for the ARVANN marketplace workspace",
 };
 
-// Colors the mobile browser chrome to match the app's light/dark themes.
+// Colors the mobile browser chrome to match the app's light/dark themes, and
+// declares viewport-fit=cover so iOS Safari lays content under the status
+// bar / Dynamic Island / home indicator instead of clipping it — this is what
+// makes `env(safe-area-inset-*)` resolve to a real value (see globals.css)
+// instead of 0px, which is what caused the top bar to render underneath the
+// status bar on iOS Safari.
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5, // keep pinch-zoom available — never set userScalable: false
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#148DB2" },
     { media: "(prefers-color-scheme: dark)", color: "#0D1B22" },

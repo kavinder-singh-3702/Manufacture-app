@@ -19,6 +19,7 @@ const workspaceNav: NavItem[] = [
   { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
   { id: "products",      label: "Products",      description: "Catalog & stock",     href: "/dashboard/products" },
   { id: "company",       label: "Company",       description: "Profile & details",   href: "/dashboard/company" },
+  { id: "verification",  label: "Verification",  description: "Trust badge & docs",  href: "/dashboard/verification" },
   { id: "profile",       label: "Profile",       description: "Your account",        href: "/dashboard/profile" },
   { id: "activity",      label: "Activity",      description: "Recent timeline",     href: "/dashboard/activity" },
   { id: "notifications", label: "Notifications", description: "Alerts & updates",    href: "/dashboard/notifications" },
@@ -40,7 +41,8 @@ export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav]
 
 type NavId = string;
 
-const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
+/** Exported so MobileTabRail can reuse the exact same glyphs instead of redrawing them. */
+export const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
   const color = active ? "#fff" : "var(--medium-gray)";
   switch (id) {
     case "overview":
@@ -68,6 +70,13 @@ const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M4 12h3l2-6 4 12 2-6h5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "verification":
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3l7 4v5c0 4-3 7.5-7 9-4-1.5-7-5-7-9V7l7-4z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "notifications":
@@ -427,7 +436,7 @@ export const Sidebar = ({ activePath, isOpen, onClose, onOpenCompanyCreate, onSw
             onClick={onClose}
           />
           <motion.aside
-            className="fixed inset-y-0 left-0 z-40 w-64 lg:hidden"
+            className="fixed inset-y-0 left-0 z-40 w-64 pt-safe pb-safe lg:hidden"
             style={{ backgroundColor: "var(--surface)", borderRight: "1px solid var(--border)" }}
             initial={{ x: -260, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -449,11 +458,10 @@ export const Sidebar = ({ activePath, isOpen, onClose, onOpenCompanyCreate, onSw
 
     {/* Desktop sidebar */}
     <aside
-      className="hidden lg:flex lg:flex-col"
+      className="h-screen-safe hidden lg:flex lg:flex-col"
       style={{
         width: 260,
         flexShrink: 0,
-        height: "100vh",
         position: "sticky",
         top: 0,
         borderRight: "1px solid var(--border)",

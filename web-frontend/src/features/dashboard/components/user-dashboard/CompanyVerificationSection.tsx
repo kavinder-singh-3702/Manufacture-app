@@ -29,16 +29,17 @@ type UploadEntry = {
 
 export type CompanyVerificationSectionProps = {
   onCompanyNameResolved?: (name?: string) => void;
-  onRequestVerification?: () => void;
-  openSignal?: number;
-  hideInline?: boolean;
 };
 
+/**
+ * Full verification workspace — status, credibility spotlight, history
+ * timeline, and the document-upload drawer. Lives on its own page
+ * (/dashboard/verification) rather than embedded inline or behind a modal
+ * signal, so this component owns its whole render — no more hideInline /
+ * openSignal indirection.
+ */
 export const CompanyVerificationSection = ({
   onCompanyNameResolved,
-  onRequestVerification,
-  openSignal,
-  hideInline = false,
 }: CompanyVerificationSectionProps) => {
   const { user, activeCompany } = useDashboardContext();
   const activeCompanyId = (activeCompany?.id ?? (user.activeCompany as string | undefined)) as string | undefined;
@@ -47,7 +48,6 @@ export const CompanyVerificationSection = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const lastOpenSignal = useRef<number | undefined>(undefined);
   const companyType = latest?.company?.type as CompanyVerificationAccountType | string | undefined;
   const isCompanyTypeEligible =
     !companyType || COMPANY_VERIFICATION_ACCOUNT_TYPES.includes(companyType as CompanyVerificationAccountType);
@@ -90,22 +90,11 @@ export const CompanyVerificationSection = ({
     }
   }, [request]);
 
-  useEffect(() => {
-    if (!openSignal || openSignal === lastOpenSignal.current) return;
-    lastOpenSignal.current = openSignal;
-    setIsModalOpen(true);
-  }, [openSignal]);
-
-
   const ctaDisabled = !activeCompanyId || loading || !isCompanyTypeEligible || hasPendingRequest;
 
   const handleOpenModal = () => {
     if (ctaDisabled) return;
-    if (onRequestVerification) {
-      onRequestVerification();
-    } else {
-      setIsModalOpen(true);
-    }
+    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -114,134 +103,135 @@ export const CompanyVerificationSection = ({
 
   return (
     <>
-      {!hideInline ? (
-        <section id="company-verification" className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-white to-[#fff8fd] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-                Compliance
-              </p>
-              <h2 className="text-2xl font-semibold text-[var(--foreground)]">Company verification</h2>
-              <p className="text-sm text-[#5f3c4c]">
-                Active company:{" "}
-                <span className="font-semibold text-[var(--foreground)]">{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
-                {latest?.company?.type ?? "Type not set"}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <span
-                className={`inline-flex items-center rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide ${statusMeta.className}`}
-              >
-                {statusMeta.label}
-              </span>
-              <button
-                type="button"
-                onClick={loadLatest}
-                className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-60"
-                disabled={!activeCompanyId || loading}
-              >
-                {loading ? "Refreshing…" : "Refresh"}
-              </button>
-            </div>
+      <section id="company-verification" className="rounded-3xl border p-5" style={{ borderColor: "var(--border)", background: "linear-gradient(135deg, var(--card) 0%, var(--primary-light) 130%)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
+              Compliance
+            </p>
+            <h2 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Company verification</h2>
+            <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
+              Active company:{" "}
+              <span className="font-semibold" style={{ color: "var(--foreground)" }}>{latest?.company?.displayName ?? "Not selected"}</span> ·{" "}
+              {latest?.company?.type ?? "Type not set"}
+            </p>
           </div>
-          {fetchError ? (
-            <div className="mt-4 rounded-2xl border border-[#fecaca] bg-[#fef2f2] p-4 text-sm text-[#7f1d1d]">
-              {fetchError}{" "}
-              <button type="button" onClick={loadLatest} className="font-semibold underline">
-                Try again
-              </button>
-            </div>
-          ) : null}
-          {activeCompanyId ? (
-            <>
-              <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-                <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm shadow-[#e7ddea]">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--foreground)]">Latest status</p>
-                      <p className="text-xs text-[var(--medium-gray)]">
-                        {request
-                          ? `Updated ${formatDateTime(request.updatedAt ?? request.createdAt)}`
-                          : "No verification requests yet"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setHistoryOpen((prev) => !prev)}
-                      disabled={!request}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold text-[var(--primary)] transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {historyOpen ? "Hide history" : "View history"}
-                      <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition ${historyOpen ? "rotate-180" : ""}`}>
-                        <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
+          <div className="flex flex-col items-end gap-2">
+            <span
+              className="inline-flex items-center rounded-full border px-4 py-1 text-xs font-semibold uppercase tracking-wide"
+              style={{ borderColor: statusMeta.border, backgroundColor: statusMeta.bg, color: statusMeta.color }}
+            >
+              {statusMeta.label}
+            </span>
+            <button
+              type="button"
+              onClick={loadLatest}
+              className="rounded-full border px-4 py-2 text-sm font-semibold transition hover:opacity-80 disabled:opacity-60"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--primary-dark)" }}
+              disabled={!activeCompanyId || loading}
+            >
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
+        </div>
+        {fetchError ? (
+          <div className="mt-4 rounded-2xl border p-4 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "var(--danger-bg)", color: "var(--danger-strong)" }}>
+            {fetchError}{" "}
+            <button type="button" onClick={loadLatest} className="font-semibold underline">
+              Try again
+            </button>
+          </div>
+        ) : null}
+        {activeCompanyId ? (
+          <>
+            <div className="mt-5 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
+              <div className="rounded-3xl border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Latest status</p>
+                    <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+                      {request
+                        ? `Updated ${formatDateTime(request.updatedAt ?? request.createdAt)}`
+                        : "No verification requests yet"}
+                    </p>
                   </div>
-                  <p className="mt-4 text-sm text-[var(--foreground)]">{statusMeta.helper}</p>
-                  {request?.rejectionReason ? (
-                    <p className="mt-3 rounded-2xl border border-[#fecaca] bg-[#fff5f5] p-3 text-sm text-[#7f1d1d]">
-                      Rejection reason: <span className="font-semibold">{request.rejectionReason}</span>
-                    </p>
-                  ) : null}
-                  {hasPendingRequest ? (
-                    <p className="mt-3 rounded-2xl bg-[#ecfdf5] p-3 text-sm font-semibold text-[#065f46]">
-                      We&apos;re currently reviewing your documents. You&apos;ll receive an email as soon as we conclude.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="rounded-3xl border border-[#bbf7d0] bg-gradient-to-br from-white via-[#f5fff9] to-[#e7fff1] p-5 shadow-sm shadow-[#ccf2dc]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
-                    Credibility spotlight
-                  </p>
-                  <h3 className="mt-2 text-xl font-semibold text-[#174836]">Turn trust into more deals</h3>
-                  <ul className="mt-3 space-y-2 text-sm text-[#174836]">
-                    {verificationSpotlightBenefits.map((benefit) => (
-                      <li key={benefit} className="flex items-start gap-2">
-                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#0d9f6e]" />
-                        <span>{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
                   <button
                     type="button"
-                    onClick={handleOpenModal}
-                    disabled={ctaDisabled}
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0d9f6e33] transition disabled:opacity-50"
-                    style={{ backgroundColor: "#0d9f6e" }}
+                    onClick={() => setHistoryOpen((prev) => !prev)}
+                    disabled={!request}
+                    className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--primary)" }}
                   >
-                    {hasPendingRequest ? "Request in review" : "Earn the verified badge"}
+                    {historyOpen ? "Hide history" : "View history"}
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className={`transition ${historyOpen ? "rotate-180" : ""}`}>
+                      <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
                   </button>
-                  <p className="mt-2 text-xs text-[#256c51]">
-                    {isCompanyTypeEligible
-                      ? hasPendingRequest
-                        ? "Your submission is being reviewed by ARVANN compliance."
-                        : "Trader & manufacturer accounts can upload GST + Aadhaar to claim the badge."
-                      : "Only trader and manufacturer account types are eligible for verification."}
-                  </p>
                 </div>
-              </div>
-              <AnimatePresence initial={false}>
-                {historyOpen ? (
-                  <motion.div
-                    key="verification-history"
-                    initial={{ opacity: 0, y: -12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-5"
-                  >
-                    <VerificationHistory request={request} />
-                  </motion.div>
+                <p className="mt-4 text-sm" style={{ color: "var(--foreground)" }}>{statusMeta.helper}</p>
+                {request?.rejectionReason ? (
+                  <p className="mt-3 rounded-2xl border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "var(--danger-bg)", color: "var(--danger-strong)" }}>
+                    Rejection reason: <span className="font-semibold">{request.rejectionReason}</span>
+                  </p>
                 ) : null}
-              </AnimatePresence>
-            </>
-          ) : (
-            <p className="mt-6 text-sm text-[var(--foreground)]">
-              Select or create a trader/manufacturer company to unlock verification. Once selected, your badge controls will appear here.
-            </p>
-          )}
-        </section>
-      ) : null}
+                {hasPendingRequest ? (
+                  <p className="mt-3 rounded-2xl p-3 text-sm font-semibold" style={{ backgroundColor: "var(--primary-light)", color: "var(--primary-dark)" }}>
+                    We&apos;re currently reviewing your documents. You&apos;ll receive an email as soon as we conclude.
+                  </p>
+                ) : null}
+              </div>
+              <div className="rounded-3xl border p-5" style={{ borderColor: "var(--border)", background: "linear-gradient(135deg, var(--card) 0%, var(--primary-light) 100%)", boxShadow: "var(--shadow-sm)" }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
+                  Credibility spotlight
+                </p>
+                <h3 className="mt-2 text-xl font-semibold" style={{ color: "var(--foreground)" }}>Turn trust into more deals</h3>
+                <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--foreground)" }}>
+                  {verificationSpotlightBenefits.map((benefit) => (
+                    <li key={benefit} className="flex items-start gap-2">
+                      <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: "var(--success)" }} />
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={handleOpenModal}
+                  disabled={ctaDisabled}
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition disabled:opacity-50"
+                  style={{ backgroundColor: "var(--success)", boxShadow: "0 6px 18px color-mix(in srgb, var(--success) 25%, transparent)" }}
+                >
+                  {hasPendingRequest ? "Request in review" : "Earn the verified badge"}
+                </button>
+                <p className="mt-2 text-xs" style={{ color: "var(--medium-gray)" }}>
+                  {isCompanyTypeEligible
+                    ? hasPendingRequest
+                      ? "Your submission is being reviewed by ARVANN compliance."
+                      : "Trader & manufacturer accounts can upload GST + Aadhaar to claim the badge."
+                    : "Only trader and manufacturer account types are eligible for verification."}
+                </p>
+              </div>
+            </div>
+            <AnimatePresence initial={false}>
+              {historyOpen ? (
+                <motion.div
+                  key="verification-history"
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-5"
+                >
+                  <VerificationHistory request={request} />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </>
+        ) : (
+          <p className="mt-6 text-sm" style={{ color: "var(--foreground)" }}>
+            Select or create a trader/manufacturer company to unlock verification. Once selected, your badge controls will appear here.
+          </p>
+        )}
+      </section>
       {activeCompanyId && (
         <CompanyVerificationDrawer
           open={isModalOpen}
@@ -548,30 +538,40 @@ const formatDateTime = (value?: string) => {
 
 const getVerificationStatusMeta = (status?: CompanyVerificationStatus | string | null) => {
   const normalized = typeof status === "string" ? status.toLowerCase() : "not_submitted";
-  const metaMap: Record<string, { label: string; className: string; helper: string }> = {
+  const metaMap: Record<string, { label: string; bg: string; color: string; border: string; helper: string }> = {
     approved: {
       label: "Verified",
-      className: "border-[#bbf7d0] bg-[#ecfdf5] text-[#065f46]",
+      bg: "color-mix(in srgb, var(--success) 14%, transparent)",
+      color: "var(--success)",
+      border: "color-mix(in srgb, var(--success) 35%, transparent)",
       helper: "Your company is verified. Keep documents updated to maintain the badge.",
     },
     active: {
       label: "Verified",
-      className: "border-[#bbf7d0] bg-[#ecfdf5] text-[#065f46]",
+      bg: "color-mix(in srgb, var(--success) 14%, transparent)",
+      color: "var(--success)",
+      border: "color-mix(in srgb, var(--success) 35%, transparent)",
       helper: "Your company is verified. Keep documents updated to maintain the badge.",
     },
     verified: {
       label: "Verified",
-      className: "border-[#bbf7d0] bg-[#ecfdf5] text-[#065f46]",
+      bg: "color-mix(in srgb, var(--success) 14%, transparent)",
+      color: "var(--success)",
+      border: "color-mix(in srgb, var(--success) 35%, transparent)",
       helper: "Your company is verified. Keep documents updated to maintain the badge.",
     },
     pending: {
       label: "Under review",
-      className: "border-[#fde68a] bg-[#fff7ed] text-[#92400e]",
+      bg: "color-mix(in srgb, var(--warning) 14%, transparent)",
+      color: "var(--warning)",
+      border: "color-mix(in srgb, var(--warning) 35%, transparent)",
       helper: "Our compliance team is reviewing the latest submission. Expect updates soon.",
     },
     rejected: {
       label: "Needs attention",
-      className: "border-[#fecaca] bg-[#fef2f2] text-[#7f1d1d]",
+      bg: "var(--danger-bg)",
+      color: "var(--danger-strong)",
+      border: "color-mix(in srgb, var(--danger) 40%, transparent)",
       helper: "We couldn't approve the last submission. Review the notes and try again.",
     },
   };
@@ -579,7 +579,9 @@ const getVerificationStatusMeta = (status?: CompanyVerificationStatus | string |
   return (
     metaMap[normalized] ?? {
       label: "Not submitted",
-      className: "border-[#f5d6e8] bg-[#fff7fb] text-[var(--primary-dark)]",
+      bg: "var(--primary-light)",
+      color: "var(--primary-dark)",
+      border: "color-mix(in srgb, var(--primary) 30%, transparent)",
       helper: "Earn trust by submitting GST + Aadhaar documents once you're ready.",
     }
   );

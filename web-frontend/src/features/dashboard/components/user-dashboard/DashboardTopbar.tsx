@@ -41,10 +41,12 @@ export const DashboardTopbar = ({
   return (
     <>
     <motion.header
-      className="flex h-16 flex-shrink-0 items-center justify-between px-6"
+      className="dashboard-topbar sticky top-0 z-30 flex flex-shrink-0 items-center justify-between px-4 sm:px-6"
       style={{
         borderBottom: "1px solid var(--border)",
-        backgroundColor: "var(--surface)",
+        backgroundColor: "color-mix(in srgb, var(--surface) 92%, transparent)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         boxShadow: "0 1px 0 var(--border)",
       }}
       initial={{ opacity: 0, y: -8 }}
@@ -56,7 +58,7 @@ export const DashboardTopbar = ({
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="flex h-9 w-9 items-center justify-center rounded-xl lg:hidden"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl lg:hidden"
           style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--background)" }}
           aria-label="Toggle sidebar"
         >
@@ -65,11 +67,11 @@ export const DashboardTopbar = ({
           </svg>
         </button>
 
-        <div>
-          <h1 className="text-[16px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
+        <div className="min-w-0">
+          <h1 className="truncate text-[15px] font-bold leading-tight sm:text-[16px]" style={{ color: "var(--foreground)" }}>
             {label}
           </h1>
-          <p className="text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>
+          <p className="hidden text-[11px] leading-tight sm:block" style={{ color: "var(--medium-gray)" }}>
             {description}
           </p>
         </div>
@@ -99,11 +101,12 @@ export const DashboardTopbar = ({
           </kbd>
         </button>
 
-        {/* Theme toggle */}
+        {/* Theme toggle — reachable from the drawer on mobile, so it's hidden
+            below sm to keep the compact bar from crowding at 390px. */}
         <button
           type="button"
           onClick={() => setMode(resolvedMode === "dark" ? "light" : "dark")}
-          className="flex h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80"
+          className="hidden h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80 sm:flex"
           style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
           aria-label={resolvedMode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
         >
@@ -119,11 +122,12 @@ export const DashboardTopbar = ({
           )}
         </button>
 
-        {/* Cart */}
+        {/* Cart — reachable from the Shop tab on the mobile rail, so it's
+            hidden below sm too. */}
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80"
+          className="relative hidden h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80 sm:flex"
           style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
           aria-label="Shopping cart"
         >

@@ -8,23 +8,7 @@ import type { Product } from "@/src/types/product";
 import { ProductCarousel } from "@/src/features/product/components/pdp";
 import { ProductListRow } from "@/src/features/product/components/listing";
 import { InhouseProductsShowcase } from "@/src/features/inhouse";
-
-// ── Categories data ───────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { id: "food-beverage-manufacturing",          title: "Food & Beverage",   icon: "🍚", bg: "#FEF3C7", text: "#92400E" },
-  { id: "textile-apparel-manufacturing",        title: "Textile & Apparel", icon: "👕", bg: "#F3E8FF", text: "#6D28D9" },
-  { id: "paper-packaging-industry",             title: "Paper & Pack",      icon: "📦", bg: "#E0F2FE", text: "#0369A1" },
-  { id: "chemical-manufacturing",               title: "Chemicals",         icon: "⚗️", bg: "#FFE4E6", text: "#9F1239" },
-  { id: "pharmaceutical-medical",               title: "Pharma",            icon: "💊", bg: "#E0E7FF", text: "#3730A3" },
-  { id: "plastic-polymer-industry",             title: "Plastics",          icon: "🧴", bg: "#DCFCE7", text: "#166534" },
-  { id: "metal-steel-industry",                 title: "Metal & Steel",     icon: "🏗️", bg: "#F1F5F9", text: "#334155" },
-  { id: "automobile-auto-components",           title: "Automobile",        icon: "🚗", bg: "#FEE2E2", text: "#B91C1C" },
-  { id: "electrical-electronics-manufacturing", title: "Electronics",       icon: "🔌", bg: "#DBEAFE", text: "#1D4ED8" },
-  { id: "machinery-heavy-engineering",          title: "Machinery",         icon: "⚙️", bg: "#EDE9FE", text: "#6D28D9" },
-  { id: "construction-material-industry",       title: "Construction",      icon: "🧱", bg: "#FFEDD5", text: "#9A3412" },
-  { id: "consumer-goods-fmcg",                  title: "Consumer Goods",    icon: "🧼", bg: "#ECFDF5", text: "#065F46" },
-] as const;
+import { PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
 
 const ProductSkeleton = () => (
   <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid var(--border)" }}>
@@ -91,7 +75,7 @@ export const MarketplaceSection = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {CATEGORIES.map((cat, i) => {
+          {PRODUCT_CATEGORIES.map((cat, i) => {
             const subCategories = (subCategoriesByCategory[cat.id] ?? []).slice(0, 3);
             return (
               <motion.div key={cat.id}
