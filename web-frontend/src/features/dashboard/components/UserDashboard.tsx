@@ -75,7 +75,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   const { user, initializing, refreshUser, logout, switchCompany } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const motionSafe = useMotionSafe();
   // Verification lives on its own page now (see /dashboard/verification) —
   // this used to open a modal via a signal; navigating is the whole job now.
   const openVerificationModal = useCallback(() => router.push("/dashboard/verification"), [router]);
@@ -187,8 +187,6 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
         {/* Sidebar — desktop only; MobileTabRail below replaces it on mobile */}
         <Sidebar
           activePath={pathname}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
           onOpenCompanyCreate={() => setCompanyModalOpen(true)}
           onSwitchCompany={handleSwitchCompany}
           switchingCompanyId={switchingCompanyId}
@@ -198,20 +196,19 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
         {/* Main column */}
         <div className="flex flex-1 flex-col overflow-hidden">
           <DashboardTopbar
-            onToggleSidebar={() => setSidebarOpen(true)}
             notificationCount={notificationPreviewCount}
             onOpenNotifications={() => router.push("/dashboard/notifications")}
             onProfile={() => router.push("/dashboard/profile")}
           />
-          <motion.main
-            className="dashboard-main flex-1 overflow-y-auto"
-            style={{ backgroundColor: "var(--background)", overscrollBehavior: "contain" }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {children}
-          </motion.main>
+          <main className="dashboard-main flex-1 overflow-y-auto" style={{ backgroundColor: "var(--background)", overscrollBehavior: "contain" }}>
+            {motionSafe ? (
+              <AnimatedPage pageKey={pathname} variant="fade">
+                {children}
+              </AnimatedPage>
+            ) : (
+              children
+            )}
+          </main>
         </div>
 
         <MobileTabRail activePath={pathname} />
