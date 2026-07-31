@@ -65,7 +65,7 @@ export const AdRunsContainer = () => {
       setLoading(true);
       setError(null);
       const res = await serviceRequestService.list({ serviceType: "advertisement", limit: 50, sort: "newest" });
-      const runs = res.requests ?? [];
+      const runs = res.services ?? [];
       setRequests(runs);
 
       // Hydrate the product name/image/price for each run — the request only

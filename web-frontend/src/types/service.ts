@@ -80,7 +80,15 @@ export type CreateServiceRequestInput = {
   notes?: string;
 };
 
+// Field is `services` (not `requests`) to match what GET /services actually
+// returns (backend/src/modules/services/services/serviceRequest.service.js's
+// listServiceRequests → `{ services, pagination }`). The admin-scoped list
+// function returns `{ requests, pagination }` instead — an inconsistency
+// between the two backend functions — which is why this user-facing type
+// must NOT reuse the admin shape. Reading `.requests` off this response was
+// always `undefined`, crashing `ServicesOverview` the moment it tried to
+// `.filter()` it.
 export type ServiceListResponse = {
-  requests: ServiceRequest[];
+  services: ServiceRequest[];
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
 };

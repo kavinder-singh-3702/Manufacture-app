@@ -65,7 +65,7 @@ export const ServicesOverview = () => {
     try {
       setLoading(true); setError(null);
       const res = await serviceRequestService.list({ limit: 30, sort: "newest" });
-      setRequests(res.requests);
+      setRequests(res.services);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load service requests");
     } finally { setLoading(false); }
