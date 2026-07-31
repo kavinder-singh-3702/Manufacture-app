@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -34,7 +34,7 @@ import {
   normalizeProfileForm,
   ProfileFormState,
 } from "./user-dashboard/helpers";
-import { countUnread } from "./notifications/data";
+import { notificationService } from "@/src/services/notification";
 
 export { useDashboardContext } from "./user-dashboard/context";
 
@@ -109,7 +109,25 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
     }
   }, [user, reloadCompanies]);
 
-  const notificationPreviewCount = useMemo(() => countUnread([]), []);
+  // Real unread count for the topbar bell badge — this used to be hardcoded to
+  // 0 via countUnread([]). Refetched on navigation so mark-all-read on the
+  // notifications page is reflected the moment the user leaves that page.
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    notificationService
+      .getUnreadCount()
+      .then((count) => {
+        if (active) setNotificationUnreadCount(count);
+      })
+      .catch(() => {
+        // Non-fatal — the badge just won't update this navigation.
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, pathname]);
 
   if (initializing) {
     return (
@@ -195,7 +213,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
         {/* Main column */}
         <div className="flex flex-1 flex-col overflow-hidden">
           <DashboardTopbar
-            notificationCount={notificationPreviewCount}
+            notificationCount={notificationUnreadCount}
             onOpenNotifications={() => router.push("/dashboard/notifications")}
             onProfile={() => router.push("/dashboard/profile")}
           />

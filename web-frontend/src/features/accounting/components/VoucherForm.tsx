@@ -7,14 +7,16 @@ import { tallyService, VoucherType, VoucherItemLine, Party } from "@/src/service
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
+import { Card, PageHeader } from "@/src/components/ui/Surface";
+import { AccountingGuard } from "./AccountingGuard";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const VOUCHER_CONFIG: Record<string, { type: VoucherType; label: string; icon: string; accent: string; partyType: "customer" | "supplier"; mode: "items" | "amount" }> = {
-  sales:    { type: "sales_invoice",  label: "Sales Invoice",  icon: "🧾", accent: "#16A34A", partyType: "customer", mode: "items"   },
-  purchase: { type: "purchase_bill",  label: "Purchase Bill",  icon: "📋", accent: "#1E40AF", partyType: "supplier", mode: "items"   },
-  receipt:  { type: "receipt",        label: "Receipt",        icon: "💰", accent: "#92400E", partyType: "customer", mode: "amount"  },
-  payment:  { type: "payment",        label: "Payment",        icon: "💸", accent: "#5B21B6", partyType: "supplier", mode: "amount"  },
+  sales:    { type: "sales_invoice",  label: "Sales Invoice",  icon: "🧾", accent: "var(--success)", partyType: "customer", mode: "items"   },
+  purchase: { type: "purchase_bill",  label: "Purchase Bill",  icon: "📋", accent: "var(--primary)", partyType: "supplier", mode: "items"   },
+  receipt:  { type: "receipt",        label: "Receipt",        icon: "💰", accent: "var(--warning)", partyType: "customer", mode: "amount"  },
+  payment:  { type: "payment",        label: "Payment",        icon: "💸", accent: "var(--accent)",  partyType: "supplier", mode: "amount"  },
 };
 
 type LineItem = VoucherItemLine & { productName?: string };
@@ -289,23 +291,18 @@ export const VoucherForm = ({ typeKey }: Props) => {
   }
 
   return (
+    <AccountingGuard>
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-sm transition-opacity hover:opacity-70"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
-          ←
-        </button>
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Accounting
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-            {config.icon} {config.label}
-          </h1>
-        </div>
-      </div>
+      <PageHeader
+        title={`${config.icon} ${config.label}`}
+        breadcrumb={
+          <button onClick={() => router.back()}
+            className="flex items-center gap-1 transition-opacity hover:opacity-70"
+            style={{ color: "var(--primary)" }}>
+            ← Accounting
+          </button>
+        }
+      />
 
       {/* Error */}
       {error && (
@@ -320,8 +317,7 @@ export const VoucherForm = ({ typeKey }: Props) => {
         {/* Left */}
         <div className="space-y-4">
           {/* Party + date */}
-          <div className="rounded-2xl p-5 space-y-4"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+          <Card padding="md" tone="surface" className="space-y-4">
             <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
               {config.partyType === "customer" ? "Customer" : "Supplier"} details
             </p>
@@ -338,12 +334,11 @@ export const VoucherForm = ({ typeKey }: Props) => {
                 className="rounded-xl px-3 py-2.5 text-sm font-medium outline-none"
                 style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
             </div>
-          </div>
+          </Card>
 
           {/* Items or Amount */}
           {config.mode === "items" ? (
-            <div className="rounded-2xl p-5 space-y-3"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+            <Card padding="md" tone="surface" className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Line items</p>
                 <button onClick={addItem}
@@ -414,10 +409,9 @@ export const VoucherForm = ({ typeKey }: Props) => {
                   </div>
                 </div>
               ))}
-            </div>
+            </Card>
           ) : (
-            <div className="rounded-2xl p-5 space-y-4"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+            <Card padding="md" tone="surface" className="space-y-4">
               <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Payment details</p>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>Amount (₹) *</label>
@@ -442,25 +436,23 @@ export const VoucherForm = ({ typeKey }: Props) => {
                   ))}
                 </div>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Narration */}
-          <div className="rounded-2xl p-5"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+          <Card padding="md" tone="surface">
             <label className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>Narration (optional)</label>
             <textarea value={narration} onChange={(e) => setNarration(e.target.value)}
               rows={3} placeholder="Additional notes…"
               className="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none"
               style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          </div>
+          </Card>
         </div>
 
         {/* Right: Summary + Save */}
         <div className="space-y-4">
           <div className="sticky top-6 space-y-4">
-            <div className="rounded-2xl p-5 space-y-3"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+            <Card padding="md" tone="surface" className="space-y-3">
               <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Summary</p>
 
               {config.mode === "items" ? (
@@ -487,7 +479,7 @@ export const VoucherForm = ({ typeKey }: Props) => {
                   </span>
                 </div>
               )}
-            </div>
+            </Card>
 
             <button onClick={handleSave} disabled={saving}
               className="w-full rounded-2xl py-4 text-sm font-bold transition-opacity hover:opacity-80 disabled:opacity-50"
@@ -514,5 +506,6 @@ export const VoucherForm = ({ typeKey }: Props) => {
         )}
       </AnimatePresence>
     </div>
+    </AccountingGuard>
   );
 };

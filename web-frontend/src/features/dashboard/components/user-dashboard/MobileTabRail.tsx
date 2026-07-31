@@ -19,9 +19,14 @@ type TabItem = {
 // so tab glyphs are defined exactly once for both the sidebar and this rail.
 // "Profile" isn't a tab here — the topbar avatar (visible at every breakpoint)
 // already reaches it, so the 5th slot goes to the full nav grid instead.
+//
+// "Shop" goes to the in-house catalog (ARVANN-admin-listed products via
+// createdByRole: "admin", see src/features/inhouse/constants.ts), not the
+// full marketplace — matching the app's Shop tab, which is scoped the same
+// way in AdminProductsScreen.
 const TABS: TabItem[] = [
   { id: "overview",   label: "Home",     href: "/dashboard" },
-  { id: "products",   label: "Shop",     href: "/dashboard/products" },
+  { id: "products",   label: "Shop",     href: "/dashboard/shop" },
   { id: "services",   label: "Services", href: "/dashboard/services" },
   { id: "accounting", label: "Accounts", href: "/dashboard/accounting" },
 ];

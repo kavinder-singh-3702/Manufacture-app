@@ -26,13 +26,6 @@ export const buildInitials = (value?: string) => {
 
 export const formatCategory = (category: string) => category.charAt(0).toUpperCase() + category.slice(1);
 
-export const activityBadgeStyles: Record<string, string> = {
-  auth: "bg-[var(--primary-light)] text-[var(--primary)]",
-  user: "bg-[#eef2ff] text-[#4338ca]",
-  company: "bg-[#ecfdf3] text-[#166534]",
-  verification: "bg-[#fff4e5] text-[#b45309]",
-};
-
 export const formatRelativeTime = (value: string) => {
   const timestamp = new Date(value).getTime();
   if (Number.isNaN(timestamp)) return "";

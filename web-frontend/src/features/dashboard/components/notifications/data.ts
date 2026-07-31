@@ -1,6 +1,4 @@
-import type { Notification, NotificationPriority } from "@/src/services/notification";
-
-export type NotificationSeverity = "info" | "warning" | "critical";
+import type { Notification, NotificationAction, NotificationPriority } from "@/src/services/notification";
 
 export type NotificationItem = {
   id: string;
@@ -9,19 +7,24 @@ export type NotificationItem = {
   timestamp: string;
   topic: string;
   priority: NotificationPriority;
-  severity: NotificationSeverity;
   status: "unread" | "read";
   requiresAck: boolean;
   ackAt: string | null;
+  action?: NotificationAction;
+  data?: Record<string, unknown>;
 };
 
-export const countUnread = (items: NotificationItem[] = []) =>
-  items.filter((item) => item.status === "unread").length;
-
-const severityFromPriority = (priority: NotificationPriority): NotificationSeverity => {
-  if (priority === "critical") return "critical";
-  if (priority === "high") return "warning";
-  return "info";
+/**
+ * 4-way priority palette matching the app's `priorityPalette`
+ * (app-frontend/src/screens/NotificationsScreen.tsx) — low/normal/high/critical
+ * mapped onto the real theme tokens instead of a 3-way info/warning/critical
+ * collapse with hardcoded hexes.
+ */
+export const priorityMeta: Record<NotificationPriority, { label: string; color: string }> = {
+  low: { label: "Low", color: "var(--medium-gray)" },
+  normal: { label: "Normal", color: "var(--primary)" },
+  high: { label: "High", color: "var(--warning)" },
+  critical: { label: "Critical", color: "var(--error)" },
 };
 
 export const toNotificationItem = (n: Notification): NotificationItem => ({
@@ -31,8 +34,9 @@ export const toNotificationItem = (n: Notification): NotificationItem => ({
   timestamp: n.createdAt,
   topic: n.topic || "system",
   priority: n.priority,
-  severity: severityFromPriority(n.priority),
   status: n.status,
   requiresAck: Boolean(n.requiresAck),
   ackAt: n.ackAt ?? null,
+  action: n.action,
+  data: n.data,
 });

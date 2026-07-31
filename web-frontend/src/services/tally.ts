@@ -121,6 +121,9 @@ const createVoucher = (payload: CreateVoucherPayload) =>
 const postVoucher = (voucherId: string) =>
   httpClient.post<{ voucher: Voucher }>(`/accounting/vouchers/${voucherId}/post`).then((r) => r.voucher);
 
+const voidVoucher = (voucherId: string, reason?: string) =>
+  httpClient.post<{ voucher: Voucher }>(`/accounting/vouchers/${voucherId}/void`, { reason }).then((r) => r.voucher);
+
 const listVouchers = (params?: {
   voucherType?: VoucherType;
   status?: VoucherStatus;
@@ -151,4 +154,4 @@ const getStats = async (params?: { from?: string; to?: string }): Promise<TallyS
   };
 };
 
-export const tallyService = { createParty, listParties, createVoucher, postVoucher, listVouchers, getStats };
+export const tallyService = { createParty, listParties, createVoucher, postVoucher, voidVoucher, listVouchers, getStats };

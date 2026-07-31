@@ -108,9 +108,6 @@ export const CompanyVerificationSection = ({
       <section id="company-verification" className="rounded-3xl border p-5" style={{ borderColor: "var(--border)", background: "linear-gradient(135deg, var(--card) 0%, var(--primary-light) 130%)" }}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-              Compliance
-            </p>
             <h2 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Company verification</h2>
             <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
               Active company:{" "}

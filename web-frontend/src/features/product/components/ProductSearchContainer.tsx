@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
@@ -39,8 +39,12 @@ const fade = (delay = 0) => ({
 
 export const ProductSearchContainer = () => {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  // Seeded from ?q= — the topbar search (DashboardTopbar) navigates here with
+  // the typed query, mirroring the app's onSearchPress → ProductSearch{initialQuery}.
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);

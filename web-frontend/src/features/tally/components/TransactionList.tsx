@@ -7,6 +7,8 @@ import { tallyService, Voucher, VoucherType, VoucherStatus } from "@/src/service
 import { ApiError } from "@/src/lib/api-error";
 import { tintBg } from "@/src/lib/color";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { useConfirm } from "@/src/components/ui/ConfirmDialog";
+import { AccountingGuard } from "@/src/features/accounting/components/AccountingGuard";
 
 const fmt = (n: number) =>
   "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -25,19 +27,19 @@ const VOUCHER_LABELS: Record<VoucherType, string> = {
 // pastel per type/status (e.g. `#DCFCE7`), hardcoded light-only and illegible
 // in dark mode.
 const TYPE_ACCENT: Record<VoucherType, { color: string }> = {
-  sales_invoice: { color: "#16A34A" },
-  purchase_bill: { color: "#1E40AF" },
-  receipt:       { color: "#92400E" },
-  payment:       { color: "#5B21B6" },
-  journal:       { color: "#0E7490" },
-  credit_note:   { color: "#DC2626" },
-  debit_note:    { color: "#D97706" },
+  sales_invoice: { color: "var(--success)" },
+  purchase_bill: { color: "var(--primary)" },
+  receipt:       { color: "var(--warning)" },
+  payment:       { color: "var(--accent)" },
+  journal:       { color: "var(--info)" },
+  credit_note:   { color: "var(--error)" },
+  debit_note:    { color: "var(--warning)" },
 };
 
 const STATUS_STYLE: Record<VoucherStatus, { label: string; color: string }> = {
-  posted: { label: "Posted",  color: "#166534" },
-  draft:  { label: "Draft",   color: "#92400E" },
-  voided: { label: "Voided",  color: "#6B7280" },
+  posted: { label: "Posted",  color: "var(--success)" },
+  draft:  { label: "Draft",   color: "var(--warning)" },
+  voided: { label: "Voided",  color: "var(--medium-gray)" },
 };
 
 const TYPE_CHIPS: { key: VoucherType | "all"; label: string }[] = [
@@ -54,6 +56,7 @@ const voucherParty = (v: Voucher) =>
   typeof v.party === "object" && v.party ? v.party.name : null;
 
 export const TransactionList = () => {
+  const confirm = useConfirm();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -61,6 +64,7 @@ export const TransactionList = () => {
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<VoucherType | "all">("all");
+  const [voidingId, setVoidingId] = useState<string | null>(null);
 
   const load = useCallback(async (off = 0, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
@@ -85,7 +89,27 @@ export const TransactionList = () => {
 
   useEffect(() => { load(0, false); }, [load]);
 
+  const handleVoid = async (voucher: Voucher) => {
+    const ok = await confirm({
+      title: "Void this voucher?",
+      message: `${VOUCHER_LABELS[voucher.voucherType]}${voucher.voucherNumber ? ` #${voucher.voucherNumber}` : ""} will be marked voided. This can't be undone.`,
+      confirmLabel: "Void voucher",
+      destructive: true,
+    });
+    if (!ok) return;
+    setVoidingId(voucher._id);
+    try {
+      const updated = await tallyService.voidVoucher(voucher._id);
+      setVouchers((prev) => prev.map((v) => (v._id === updated._id ? updated : v)));
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to void voucher");
+    } finally {
+      setVoidingId(null);
+    }
+  };
+
   return (
+    <AccountingGuard>
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
@@ -100,8 +124,8 @@ export const TransactionList = () => {
           </>
         }
         actions={[
-          { label: "New Invoice",  href: "/dashboard/accounting/tally/new?type=sales" },
-          { label: "New Bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
+          { label: "New Invoice",  href: "/dashboard/accounting/tally/sales" },
+          { label: "New Bill",     href: "/dashboard/accounting/tally/purchase" },
         ].map((a) => (
           <Link key={a.href} href={a.href}
             className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
@@ -195,6 +219,20 @@ export const TransactionList = () => {
                   <p className="flex-shrink-0 text-base font-bold" style={{ color: accent.color }}>
                     {fmt(v.totals.net)}
                   </p>
+                  {v.status !== "voided" && (
+                    <button
+                      type="button"
+                      onClick={() => handleVoid(v)}
+                      disabled={voidingId === v._id}
+                      aria-label="Void voucher"
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
+                      style={{ color: "var(--danger-strong)" }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M4 7h16M9 7V4h6v3m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                 </motion.div>
               );
             })}
@@ -211,5 +249,6 @@ export const TransactionList = () => {
         </>
       )}
     </div>
+    </AccountingGuard>
   );
 };

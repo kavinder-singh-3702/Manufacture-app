@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { navItems } from "./Navigation";
 import { useDashboardContext } from "./context";
@@ -27,6 +27,7 @@ export const DashboardTopbar = ({
   onProfile: () => void;
 }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useDashboardContext();
 
   const label = getPageTitle(pathname ?? "");
@@ -35,6 +36,15 @@ export const DashboardTopbar = ({
   const { totalCount } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const { resolvedMode, setMode } = useThemeMode();
+
+  // Real product search — mirrors the app's HomeToolbar SearchBar
+  // (topBarMode: "two_row"), which submits to ProductSearch{initialQuery}.
+  const [searchQuery, setSearchQuery] = useState("");
+  const submitSearch = () => {
+    const q = searchQuery.trim();
+    router.push(q ? `/dashboard/products/search?q=${encodeURIComponent(q)}` : "/dashboard/products/search");
+    setSearchQuery("");
+  };
 
   return (
     <>
@@ -62,10 +72,10 @@ export const DashboardTopbar = ({
 
       {/* ── Right: search + notifications + avatar ────────────────── */}
       <div className="flex items-center gap-2">
-        {/* Search pill — decorative, full search can be added later */}
-        <button
-          type="button"
-          className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm transition-opacity hover:opacity-80 sm:flex"
+        {/* Search — real product search from sm+; collapses onto a second
+            row below the header on mobile (see the block after the header). */}
+        <div
+          className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm sm:flex"
           style={{
             border: "1px solid var(--border)",
             backgroundColor: "var(--background)",
@@ -75,14 +85,17 @@ export const DashboardTopbar = ({
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          <span className="text-[13px]">Search…</span>
-          <kbd
-            className="ml-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ backgroundColor: "var(--border)", color: "var(--medium-gray)" }}
-          >
-            ⌘K
-          </kbd>
-        </button>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitSearch()}
+            placeholder="Search products or SKUs"
+            aria-label="Search products or SKUs"
+            className="w-36 bg-transparent text-[13px] focus:outline-none lg:w-52"
+            style={{ color: "var(--foreground)" }}
+          />
+        </div>
 
         {/* Theme toggle — reachable from the drawer on mobile, so it's hidden
             below sm to keep the compact bar from crowding at 390px. */}
@@ -177,6 +190,39 @@ export const DashboardTopbar = ({
         </button>
       </div>
     </motion.header>
+
+    {/* Second row on mobile — mirrors the app's topBarMode: "two_row"
+        (HomeToolbar's SearchBar sits under the title row below `sm`; from
+        `sm` the inline pill in the row above takes over instead). */}
+    <div
+      className="sticky z-20 flex items-center gap-2 border-b px-4 py-2 sm:hidden"
+      style={{
+        top: "calc(var(--topbar-h) + var(--safe-top))",
+        borderColor: "var(--border)",
+        backgroundColor: "color-mix(in srgb, var(--surface) 92%, transparent)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
+      <div
+        className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "var(--medium-gray)", flexShrink: 0 }}>
+          <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submitSearch()}
+          placeholder="Search products or SKUs"
+          aria-label="Search products or SKUs"
+          className="w-full bg-transparent text-[13px] focus:outline-none"
+          style={{ color: "var(--foreground)" }}
+        />
+      </div>
+    </div>
 
     <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
   </>

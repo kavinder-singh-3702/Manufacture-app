@@ -7,6 +7,8 @@ import { tallyService, TallyStats, Voucher, VoucherType } from "@/src/services/t
 import { ApiError } from "@/src/lib/api-error";
 import { tintBg } from "@/src/lib/color";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { DonutChart } from "@/src/components/ui/charts";
+import { AccountingGuard } from "@/src/features/accounting/components/AccountingGuard";
 
 const fmt = (n: number) =>
   "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -15,19 +17,19 @@ const fmt = (n: number) =>
 // the label/icon color — previously a hand-picked `accentBg`/`bg` pastel pair
 // per entry (e.g. `#DBEAFE`), hardcoded light-only and illegible in dark mode.
 const QUICK_ACTIONS = [
-  { key: "sales",    label: "Sales Invoice",  icon: "🧾", accent: "#16A34A", desc: "Record a customer sale", href: "/dashboard/accounting/tally/new?type=sales" },
-  { key: "purchase", label: "Purchase Bill",  icon: "📥", accent: "#1E40AF", desc: "Log a supplier bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
-  { key: "receipt",  label: "Receipt",        icon: "💰", accent: "#92400E", desc: "Payment received",        href: "/dashboard/accounting/tally/new?type=receipt" },
-  { key: "payment",  label: "Payment",        icon: "💸", accent: "#5B21B6", desc: "Payment made",           href: "/dashboard/accounting/tally/new?type=payment" },
+  { key: "sales",    label: "Sales Invoice",  icon: "🧾", accent: "var(--success)", desc: "Record a customer sale", href: "/dashboard/accounting/tally/sales" },
+  { key: "purchase", label: "Purchase Bill",  icon: "📥", accent: "var(--primary)", desc: "Log a supplier bill",     href: "/dashboard/accounting/tally/purchase" },
+  { key: "receipt",  label: "Receipt",        icon: "💰", accent: "var(--warning)", desc: "Payment received",        href: "/dashboard/accounting/tally/receipt" },
+  { key: "payment",  label: "Payment",        icon: "💸", accent: "var(--accent)",  desc: "Payment made",            href: "/dashboard/accounting/tally/payment" },
 ] as const;
 
 const STAT_CARDS = (s: TallyStats) => [
-  { label: "Total Sales",     value: fmt(s.totalSales),     hint: "Revenue",      accent: "#16A34A" },
-  { label: "Total Purchases", value: fmt(s.totalPurchases), hint: "Expenses",     accent: "#DC2626" },
-  { label: "Net Profit",      value: fmt(s.netProfit),      hint: "Margin",       accent: "#1E40AF" },
-  { label: "Receivables",     value: fmt(s.receivables),    hint: "To collect",   accent: "#D97706" },
-  { label: "Payables",        value: fmt(s.payables),       hint: "To pay",       accent: "#5B21B6" },
-  { label: "Receipts",        value: fmt(s.totalReceipts),  hint: "Cash in",      accent: "#0E7490" },
+  { label: "Total Sales",     value: fmt(s.totalSales),     hint: "Revenue",      accent: "var(--success)" },
+  { label: "Total Purchases", value: fmt(s.totalPurchases), hint: "Expenses",     accent: "var(--error)" },
+  { label: "Net Profit",      value: fmt(s.netProfit),      hint: "Margin",       accent: "var(--primary)" },
+  { label: "Receivables",     value: fmt(s.receivables),    hint: "To collect",   accent: "var(--warning)" },
+  { label: "Payables",        value: fmt(s.payables),       hint: "To pay",       accent: "var(--accent)" },
+  { label: "Receipts",        value: fmt(s.totalReceipts),  hint: "Cash in",      accent: "var(--info)" },
 ] as const;
 
 const VOUCHER_LABELS: Record<VoucherType, string> = {
@@ -66,6 +68,7 @@ export const TallyDashboard = () => {
   useEffect(() => { load(); }, [load]);
 
   return (
+    <AccountingGuard>
     <div className="space-y-8">
       {/* Header */}
       <PageHeader title="Tally" />
@@ -103,6 +106,32 @@ export const TallyDashboard = () => {
                     <p className="mt-3 text-2xl font-bold" style={{ color: "var(--foreground)" }}>{card.value}</p>
                   </motion.div>
                 ))}
+          </div>
+        </div>
+      )}
+
+      {/* Financial overview donut — Sales vs Purchases, app parity */}
+      {stats && (stats.totalSales > 0 || stats.totalPurchases > 0) && (
+        <div>
+          <SectionLabel>Overview chart</SectionLabel>
+          <div className="flex flex-col items-center gap-6 rounded-2xl p-5 sm:flex-row sm:justify-center"
+            style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+            <DonutChart
+              segments={[
+                { label: "Sales", value: stats.totalSales, color: "var(--success)" },
+                { label: "Purchases", value: stats.totalPurchases, color: "var(--error)" },
+              ]}
+              centerValue={fmt(stats.netProfit)}
+              centerLabel="Profit"
+            />
+            <div className="flex flex-col gap-2 text-sm">
+              <span className="flex items-center gap-2" style={{ color: "var(--medium-gray)" }}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--success)" }} /> Sales — {fmt(stats.totalSales)}
+              </span>
+              <span className="flex items-center gap-2" style={{ color: "var(--medium-gray)" }}>
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--error)" }} /> Purchases — {fmt(stats.totalPurchases)}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -180,6 +209,7 @@ export const TallyDashboard = () => {
         )}
       </div>
     </div>
+    </AccountingGuard>
   );
 };
 

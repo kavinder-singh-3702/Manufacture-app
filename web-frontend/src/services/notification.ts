@@ -4,6 +4,16 @@ import { httpClient, QueryParams } from "../lib/http-client";
 
 export type NotificationPriority = "low" | "normal" | "high" | "critical";
 export type NotificationChannel = "in_app" | "email" | "sms" | "push" | "webhook";
+export type NotificationActionType = "none" | "route" | "url" | "chat" | "call";
+
+export type NotificationAction = {
+  type: NotificationActionType;
+  label?: string;
+  routeName?: string;
+  routeParams?: Record<string, unknown>;
+  url?: string;
+  phone?: string;
+};
 
 export type NotificationDelivery = {
   channel: NotificationChannel;
@@ -38,6 +48,8 @@ export type Notification = AdminNotification & {
   archivedAt?: string | null;
   requiresAck?: boolean;
   ackAt?: string | null;
+  action?: NotificationAction;
+  data?: Record<string, unknown>;
 };
 
 export type NotificationListParams = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader } from "@/src/components/ui/Surface";
+import { Card, PageHeader } from "@/src/components/ui/Surface";
 import {
   notificationService,
   type NotificationPreferences,
@@ -50,10 +50,7 @@ const Row = ({
   disabled?: boolean;
   onChange: () => void;
 }) => (
-  <div
-    className="flex items-center justify-between gap-4 rounded-2xl border px-4 py-3"
-    style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
-  >
+  <div className="flex min-h-11 items-center justify-between gap-4 py-2.5">
     <div className="min-w-0">
       <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{label}</p>
       <p className="text-xs" style={{ color: "var(--medium-gray)" }}>{description}</p>
@@ -62,23 +59,41 @@ const Row = ({
   </div>
 );
 
+/** Titled group of rows — mirrors the app's `SectionCard` in NotificationPreferencesScreen. */
+const PreferenceGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <Card padding="md">
+    <p className="mb-1 text-sm font-bold" style={{ color: "var(--foreground)" }}>{title}</p>
+    <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+      {children}
+    </div>
+  </Card>
+);
+
 /**
  * NotificationPreferencesCard — parity with the app's NotificationPreferences
  * screen. Reads/writes the real `/notifications/preferences` endpoint (master
- * switch, per-channel toggles, quiet hours) with optimistic updates.
+ * switch, per-channel toggles, quiet hours incl. timezone) with optimistic
+ * updates.
  */
 export const NotificationPreferencesCard = () => {
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  // Timezone is free-text, so it gets a local draft committed on blur —
+  // unlike the toggles/time pickers, persisting on every keystroke would
+  // hammer the API mid-type.
+  const [timezoneDraft, setTimezoneDraft] = useState("");
 
   useEffect(() => {
     let active = true;
     notificationService
       .getPreferences()
       .then((data) => {
-        if (active) setPrefs(data);
+        if (active) {
+          setPrefs(data);
+          setTimezoneDraft(data.quietHours.timezone);
+        }
       })
       .catch((err) => {
         if (active) setLoadError(err?.message ?? "Failed to load notification preferences");
@@ -125,6 +140,12 @@ export const NotificationPreferencesCard = () => {
     void persist({ quietHours: next.quietHours }, next);
   };
 
+  const commitTimezone = () => {
+    if (!prefs || timezoneDraft === prefs.quietHours.timezone) return;
+    const next = { ...prefs, quietHours: { ...prefs.quietHours, timezone: timezoneDraft } };
+    void persist({ quietHours: next.quietHours }, next);
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -157,37 +178,30 @@ export const NotificationPreferencesCard = () => {
       )}
 
       {!loading && loadError && (
-        <div
-          className="rounded-2xl border px-4 py-3 text-sm"
-          style={{ borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--medium-gray)" }}
-        >
-          {loadError}
-        </div>
+        <Card padding="md">
+          <p className="text-sm" style={{ color: "var(--medium-gray)" }}>{loadError}</p>
+        </Card>
       )}
 
       {!loading && prefs && (
         <>
-          <Row
-            label="Enable notifications"
-            description="Master switch for all channels."
-            checked={prefs.masterEnabled}
-            onChange={() => toggleField("masterEnabled")}
-          />
+          <PreferenceGroup title="Master">
+            <Row
+              label="Enable notifications"
+              description="Master switch for all channels."
+              checked={prefs.masterEnabled}
+              onChange={() => toggleField("masterEnabled")}
+            />
+          </PreferenceGroup>
 
-          <div className="space-y-2">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--medium-gray)" }}>
-              Channels
-            </p>
+          <PreferenceGroup title="Channels">
             <Row label="In-app" description="Show alerts inside the console." checked={prefs.inAppEnabled} disabled={!prefs.masterEnabled} onChange={() => toggleField("inAppEnabled")} />
             <Row label="Push" description="Browser / device push notifications." checked={prefs.pushEnabled} disabled={!prefs.masterEnabled} onChange={() => toggleField("pushEnabled")} />
             <Row label="Email" description="Updates sent to your inbox." checked={prefs.emailEnabled} disabled={!prefs.masterEnabled} onChange={() => toggleField("emailEnabled")} />
             <Row label="SMS" description="Text messages for key events." checked={prefs.smsEnabled} disabled={!prefs.masterEnabled} onChange={() => toggleField("smsEnabled")} />
-          </div>
+          </PreferenceGroup>
 
-          <div className="space-y-2">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--medium-gray)" }}>
-              Quiet hours
-            </p>
+          <PreferenceGroup title="Quiet hours">
             <Row
               label="Enable quiet hours"
               description="Mute non-critical alerts during a window."
@@ -196,10 +210,7 @@ export const NotificationPreferencesCard = () => {
               onChange={toggleQuietHours}
             />
             {prefs.quietHours.enabled && (
-              <div
-                className="flex flex-wrap items-center gap-4 rounded-2xl border px-4 py-3"
-                style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
-              >
+              <div className="flex flex-wrap items-center gap-4 py-3">
                 <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
                   <span style={{ color: "var(--medium-gray)" }}>From</span>
                   <input
@@ -220,12 +231,21 @@ export const NotificationPreferencesCard = () => {
                     style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }}
                   />
                 </label>
-                <span className="text-xs" style={{ color: "var(--medium-gray)" }}>
-                  {prefs.quietHours.timezone}
-                </span>
+                <label className="flex flex-1 items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
+                  <span style={{ color: "var(--medium-gray)" }}>Timezone</span>
+                  <input
+                    type="text"
+                    value={timezoneDraft}
+                    onChange={(e) => setTimezoneDraft(e.target.value)}
+                    onBlur={commitTimezone}
+                    placeholder="Asia/Kolkata"
+                    className="min-w-0 flex-1 rounded-xl border px-2 py-1 text-sm focus:outline-none"
+                    style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }}
+                  />
+                </label>
               </div>
             )}
-          </div>
+          </PreferenceGroup>
         </>
       )}
     </div>

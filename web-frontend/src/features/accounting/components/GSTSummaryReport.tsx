@@ -7,6 +7,7 @@ import { ApiError } from "@/src/lib/api-error";
 import type { GSTSummaryData } from "@/src/types/accounting";
 import { tintBg } from "@/src/lib/color";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { AccountingGuard } from "./AccountingGuard";
 import { DateRangePicker, defaultDateRange, type DateRange } from "./DateRangePicker";
 import { MetricCard, MetricCardSkeleton, ReportSection, formatIndian } from "./MetricCard";
 
@@ -56,6 +57,7 @@ export const GSTSummaryReport = () => {
   const maxGST = Math.max(inputTotal, outputTotal, 1);
 
   return (
+    <AccountingGuard>
     <div className="space-y-6">
       <PageHeader title="GST Summary" />
 
@@ -98,9 +100,9 @@ export const GSTSummaryReport = () => {
           {/* Summary cards */}
           <div className="grid gap-3 sm:grid-cols-2">
             <MetricCard label="Input GST (Credits)" value={formatIndian(inputTotal)} icon="🔽"
-              accent="#1E40AF" textColor="#1E40AF" subtitle="On your purchases" />
+              accent="var(--primary)" textColor="var(--primary)" subtitle="On your purchases" />
             <MetricCard label="Output GST (Collected)" value={formatIndian(outputTotal)} icon="🔼"
-              accent="#F59E0B" textColor="#92400E" subtitle="On your sales" />
+              accent="var(--warning)" textColor="var(--warning)" subtitle="On your sales" />
           </div>
 
           {/* GST breakdowns */}
@@ -164,5 +166,6 @@ export const GSTSummaryReport = () => {
         </>
       )}
     </div>
+    </AccountingGuard>
   );
 };

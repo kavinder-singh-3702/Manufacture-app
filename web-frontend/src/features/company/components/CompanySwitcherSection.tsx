@@ -253,33 +253,30 @@ export const CompanySwitcherSection = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div
-        {...fade(0)}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Workspaces
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+      <PageHeader
+        title={
+          <>
             Your Companies
-          </h1>
-          <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-            {companies.length} workspace{companies.length !== 1 ? "s" : ""} · {verifiedCount} verified
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-          style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          Add company
-        </button>
-      </motion.div>
+            <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
+              style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+              {companies.length} · {verifiedCount} verified
+            </span>
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+            style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+            Add company
+          </button>
+        }
+      />
 
       {/* Stats strip */}
       {companies.length > 0 && (

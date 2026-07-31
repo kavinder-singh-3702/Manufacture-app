@@ -6,8 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 export type DateRange = { from: string; to: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
-const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 
+const startOfWeek = () => {
+  const d = new Date();
+  const day = d.getDay(); // 0 (Sun) – 6 (Sat)
+  const diff = day === 0 ? 6 : day - 1; // Monday-start week, matching the app
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+};
 const startOfMonth = () => {
   const d = new Date(); d.setDate(1);
   return d.toISOString().slice(0, 10);
@@ -26,14 +32,19 @@ const startOfQuarter = () => {
   return new Date(d.getFullYear(), q * 3, 1).toISOString().slice(0, 10);
 };
 const startOfYear = () => new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+const EPOCH = "2000-01-01";
 
+// Matches the app's DateRangePicker presets (Today / This Week / This Month /
+// Last Month / This Quarter / This Year / All Time). "All Time" uses a fixed
+// epoch rather than an empty range since the report APIs require from/to.
 const PRESETS: Array<{ label: string; from: () => string; to: () => string }> = [
+  { label: "Today", from: today, to: today },
+  { label: "This week", from: startOfWeek, to: today },
   { label: "This month", from: startOfMonth, to: today },
   { label: "Last month", from: startOfLastMonth, to: endOfLastMonth },
   { label: "This quarter", from: startOfQuarter, to: today },
   { label: "This year", from: startOfYear, to: today },
-  { label: "Last 30 days", from: () => daysAgo(30), to: today },
-  { label: "Last 90 days", from: () => daysAgo(90), to: today },
+  { label: "All time", from: () => EPOCH, to: today },
 ];
 
 type Props = {
