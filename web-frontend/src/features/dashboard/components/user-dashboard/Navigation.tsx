@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
 import { buildInitials, resolveCompanyLabel } from "./helpers";
-import { BrandWordmark } from "@/src/components/BrandLogo";
+import { BrandWordmark, BrandLogo } from "@/src/components/BrandLogo";
 
 // No `description` field — every row is icon + label only. Subtext lines
 // under each nav item read as consumer-y rather than professional, and the
@@ -263,6 +263,9 @@ type SidebarContentProps = {
   onSwitchCompany: (id: string) => Promise<void>;
   switchingCompanyId: string | null;
   onLogout: () => void;
+  /** Desktop-only icon-rail mode — no effect inside the mobile overlay. */
+  collapsed?: boolean;
+  onExpand?: () => void;
 };
 
 const SidebarContent = ({
@@ -272,6 +275,8 @@ const SidebarContent = ({
   onSwitchCompany,
   switchingCompanyId,
   onLogout,
+  collapsed = false,
+  onExpand,
 }: SidebarContentProps) => {
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
   const { user, activeCompany, companies } = useDashboardContext();
@@ -285,17 +290,17 @@ const SidebarContent = ({
   return (
     <div className="flex h-full flex-col">
       {/* ── Brand ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-        <BrandWordmark height={26} priority />
-        <span className="text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>Command Center</span>
+      <div className={`flex items-center px-5 py-4 ${collapsed ? "justify-center px-3" : "gap-2.5"}`} style={{ borderBottom: "1px solid var(--border)" }}>
+        {collapsed ? <BrandLogo height={26} priority /> : <BrandWordmark height={26} priority />}
       </div>
 
       {/* ── Company switcher ──────────────────────────────────────── */}
       <div className="p-3" style={{ borderBottom: "1px solid var(--border)" }}>
         <button
           type="button"
-          onClick={() => setCompanySwitcherOpen((p) => !p)}
-          className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-opacity hover:opacity-80"
+          onClick={() => (collapsed ? onExpand?.() : setCompanySwitcherOpen((p) => !p))}
+          title={collapsed ? companyLabel : undefined}
+          className={`flex w-full items-center rounded-xl p-2.5 text-left transition-opacity hover:opacity-80 ${collapsed ? "justify-center" : "gap-3"}`}
           style={{ backgroundColor: "var(--primary-light)", border: "1px solid rgba(20,141,178,0.15)" }}
         >
           <div
@@ -309,23 +314,27 @@ const SidebarContent = ({
               companyInitials
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>{companyLabel}</p>
-            <p className="text-[11px] capitalize" style={{ color: "var(--medium-gray)" }}>
-              {activeCompany?.complianceStatus ?? "pending"}
-            </p>
-          </div>
-          <svg
-            width="14" height="14" viewBox="0 0 24 24" fill="none"
-            className="flex-shrink-0 transition-transform"
-            style={{ color: "var(--medium-gray)", transform: companySwitcherOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {!collapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>{companyLabel}</p>
+                <p className="text-[11px] capitalize" style={{ color: "var(--medium-gray)" }}>
+                  {activeCompany?.complianceStatus ?? "pending"}
+                </p>
+              </div>
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                className="flex-shrink-0 transition-transform"
+                style={{ color: "var(--medium-gray)", transform: companySwitcherOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
+                <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
         </button>
 
         <AnimatePresence>
-          {companySwitcherOpen && (
+          {!collapsed && companySwitcherOpen && (
             <motion.div
               initial={{ opacity: 0, y: -6, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
@@ -393,19 +402,20 @@ const SidebarContent = ({
 
       {/* ── Nav items ─────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto p-3">
-        <NavGroup label="Workspace" items={workspaceNav} activePath={activePath} onNavigate={onNavigate} />
-        <NavGroup label="Modules" items={modulesNav} activePath={activePath} onNavigate={onNavigate} className="mt-5" />
+        <NavGroup label="Workspace" items={workspaceNav} activePath={activePath} onNavigate={onNavigate} collapsed={collapsed} pillId="sidebar-active-pill" />
+        <NavGroup label="Modules" items={modulesNav} activePath={activePath} onNavigate={onNavigate} className="mt-5" collapsed={collapsed} pillId="sidebar-active-pill" />
       </nav>
 
       {/* ── User section ─────────────────────────────────────────── */}
       <div className="p-3" style={{ borderTop: "1px solid var(--border)" }}>
         <div
-          className="flex items-center gap-2.5 rounded-xl p-2.5"
+          className={`flex items-center rounded-xl p-2.5 ${collapsed ? "flex-col gap-2" : "gap-2.5"}`}
           style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}
         >
           <div
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg"
             style={{ backgroundColor: "var(--primary-light)" }}
+            title={collapsed ? (user.displayName ?? user.email) : undefined}
           >
             {userAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -414,18 +424,21 @@ const SidebarContent = ({
               <span className="text-[13px] font-bold" style={{ color: "var(--primary)" }}>{userInitials}</span>
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
-              {user.displayName ?? user.email}
-            </p>
-            <p className="truncate text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>{user.email}</p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
+                {user.displayName ?? user.email}
+              </p>
+              <p className="truncate text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>{user.email}</p>
+            </div>
+          )}
           <button
             type="button"
             onClick={onLogout}
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-70"
             style={{ color: "var(--medium-gray)" }}
             aria-label="Logout"
+            title={collapsed ? "Logout" : undefined}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -437,47 +450,36 @@ const SidebarContent = ({
   );
 };
 
-export type SidebarProps = Omit<SidebarContentProps, "onNavigate"> & { isOpen: boolean; onClose: () => void };
+const SIDEBAR_COLLAPSE_KEY = "arvann-sidebar-collapsed";
 
-export const Sidebar = ({ activePath, isOpen, onClose, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout }: SidebarProps) => (
-  <>
-    {/* Mobile overlay */}
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.aside
-            className="fixed inset-y-0 left-0 z-40 w-64 pt-safe pb-safe lg:hidden"
-            style={{ backgroundColor: "var(--surface)", borderRight: "1px solid var(--border)" }}
-            initial={{ x: -260, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -260, opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 280 }}
-          >
-            <SidebarContent
-              activePath={activePath}
-              onNavigate={onClose}
-              onOpenCompanyCreate={onOpenCompanyCreate}
-              onSwitchCompany={onSwitchCompany}
-              switchingCompanyId={switchingCompanyId}
-              onLogout={onLogout}
-            />
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+// Desktop-only icon rail — the mobile equivalent is MobileTabRail's bottom
+// rail plus its "More" sheet (full nav grid), which replaced the hamburger
+// overlay this component used to render on small screens. Full nav content
+// on mobile now has exactly one home instead of two (rail vs. drawer)
+// drifting out of sync.
+export type SidebarProps = Omit<SidebarContentProps, "onNavigate" | "collapsed" | "onExpand">;
 
-    {/* Desktop sidebar */}
+export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout }: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1");
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
+  return (
     <aside
-      className="h-screen-safe hidden lg:flex lg:flex-col"
+      className="h-screen-safe relative hidden lg:flex lg:flex-col"
       style={{
-        width: 260,
+        width: collapsed ? 76 : 260,
+        transition: "width 0.2s ease",
         flexShrink: 0,
         position: "sticky",
         top: 0,
@@ -493,7 +495,22 @@ export const Sidebar = ({ activePath, isOpen, onClose, onOpenCompanyCreate, onSw
         onSwitchCompany={onSwitchCompany}
         switchingCompanyId={switchingCompanyId}
         onLogout={onLogout}
+        collapsed={collapsed}
+        onExpand={() => { setCollapsed(false); window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, "0"); }}
       />
+
+      {/* Collapse toggle — floats on the border edge, matching common admin-shell patterns */}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className="absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full transition-transform hover:scale-110"
+        style={{ right: -12, border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--medium-gray)", boxShadow: "var(--shadow-sm)" }}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ transform: collapsed ? "rotate(180deg)" : "none" }}>
+          <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </aside>
-  </>
-);
+  );
+};

@@ -7,6 +7,7 @@ import {
   ResetPasswordResponse,
   ResetPasswordPayload,
   SignupCompletePayload,
+  SignupContactPayload,
   SignupStartPayload,
   SignupVerifyPayload,
 } from "../types/auth";
@@ -14,6 +15,7 @@ import {
 export type LoginResponse = { user: AuthUser };
 export type SignupStartResponse = { message: string; expiresInMs: number };
 export type SignupVerifyResponse = { message: string };
+export type SignupContactResponse = { message: string; phone: string };
 export type SignupCompleteResponse = { user: AuthUser };
 
 const signupBase = "/auth/signup";
@@ -23,6 +25,8 @@ const signup = {
     httpClient.post<SignupStartResponse>(`${signupBase}/start`, payload),
   verify: (payload: SignupVerifyPayload) =>
     httpClient.post<SignupVerifyResponse>(`${signupBase}/verify`, payload),
+  contact: (payload: SignupContactPayload) =>
+    httpClient.post<SignupContactResponse>(`${signupBase}/contact`, payload),
   complete: (payload: SignupCompletePayload) =>
     httpClient.post<SignupCompleteResponse>(`${signupBase}/complete`, payload),
 };

@@ -14,7 +14,7 @@ const getPageTitle = (pathname: string) => {
   const item = navItems.find(
     (n) => n.href === pathname || (n.href !== "/dashboard" && pathname.startsWith(n.href))
   );
-  return { label: item?.label ?? "Dashboard", description: item?.description ?? "Workspace" };
+  return item?.label ?? "Dashboard";
 };
 
 export const DashboardTopbar = ({
@@ -31,7 +31,7 @@ export const DashboardTopbar = ({
   const pathname = usePathname();
   const { user } = useDashboardContext();
 
-  const { label, description } = getPageTitle(pathname ?? "");
+  const label = getPageTitle(pathname ?? "");
   const userInitials = buildInitials(user.displayName ?? user.email ?? "U");
   const userAvatar = typeof user.avatarUrl === "string" ? user.avatarUrl : undefined;
   const { totalCount } = useCart();

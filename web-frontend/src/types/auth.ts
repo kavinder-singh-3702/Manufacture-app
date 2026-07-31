@@ -56,14 +56,21 @@ export type LoginPayload = {
   remember?: boolean;
 };
 
+// Step 1 (identity) — mirrors the app's SignupScreen, which never collects
+// phone here; phone is its own step (SignupContactPayload below).
 export type SignupStartPayload = {
   fullName: string;
   email: string;
-  phone: string;
 };
 
 export type SignupVerifyPayload = {
   otp: string;
+};
+
+// Step 3 (contact) — POST /auth/signup/contact, matching the app's
+// dedicated endpoint (app-frontend/src/services/auth.service.ts#L62-63).
+export type SignupContactPayload = {
+  phone: string;
 };
 
 export type SignupCompletePayload = {
@@ -75,6 +82,7 @@ export type SignupCompletePayload = {
   fullName?: string;
   email?: string;
   phone?: string;
+  dateOfBirth?: string;
 };
 
 export type ForgotPasswordPayload = {
