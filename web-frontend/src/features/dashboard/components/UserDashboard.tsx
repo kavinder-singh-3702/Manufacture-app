@@ -14,14 +14,13 @@ import { Sidebar } from "./user-dashboard/Navigation";
 import { MobileTabRail } from "./user-dashboard/MobileTabRail";
 import { OverviewSection } from "./user-dashboard/OverviewSection";
 import { ProfileSection, ProfileVerificationPrompt } from "./user-dashboard/ProfileSection";
+import { GettingStartedChecklist } from "./user-dashboard/overview/GettingStartedChecklist";
 import { ActivitySection } from "./user-dashboard/ActivitySection";
 import { SettingsSection } from "./user-dashboard/SettingsSection";
-import { CompanyVerificationSection } from "./user-dashboard/CompanyVerificationSection";
 import { DashboardContext, useDashboardContext } from "./user-dashboard/context";
 import { CompanyCreateDrawer } from "@/src/features/company/components/CompanyCreateDrawer";
 import { PhoneGate } from "@/src/features/auth/components/PhoneGate";
 import { CartProvider } from "@/src/providers/CartProvider";
-import { AdBanner } from "@/src/features/ads/components/AdBanner";
 import {
   buildActivityTags,
   buildAddressPayload,
@@ -75,8 +74,9 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [verificationModalSignal, setVerificationModalSignal] = useState(0);
-  const openVerificationModal = useCallback(() => setVerificationModalSignal(Date.now()), []);
+  // Verification lives on its own page now (see /dashboard/verification) —
+  // this used to open a modal via a signal; navigating is the whole job now.
+  const openVerificationModal = useCallback(() => router.push("/dashboard/verification"), [router]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
   const [switchingCompanyId, setSwitchingCompanyId] = useState<string | null>(null);
@@ -179,7 +179,7 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   return (
     <CartProvider>
     <DashboardContext.Provider
-      value={{ user, refreshUser, openVerificationModal, verificationModalSignal, companies, activeCompany, reloadCompanies }}
+      value={{ user, refreshUser, openVerificationModal, companies, activeCompany, reloadCompanies }}
     >
       <div className="h-screen-safe flex overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
         {/* Sidebar — desktop only; MobileTabRail below replaces it on mobile */}
@@ -230,50 +230,18 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const DashboardOverview = () => {
-  const { user, openVerificationModal, verificationModalSignal, activeCompany, companies } = useDashboardContext();
-  const cards = useMemo(
-    () => [
-      {
-        label: "Active company",
-        value: activeCompany?.displayName ?? "Select a company",
-        detail: `Type: ${activeCompany?.type ?? user.accountType ?? "normal"}`,
-      },
-      {
-        label: "Linked companies",
-        value: companies.length ? `${companies.length}` : "0",
-        detail: "Switch between workspaces",
-      },
-      {
-        label: "Compliance",
-        value: activeCompany?.complianceStatus ?? "pending",
-        detail: activeCompany ? "Verification state" : "Awaiting submission",
-      },
-    ],
-    [activeCompany, companies, user.accountType]
-  );
-
-  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user);
-  const normalizedStatus = (activeCompany?.complianceStatus ?? user.status ?? "").toLowerCase();
-  const isWorkspaceVerified = normalizedStatus === "verified" || normalizedStatus === "approved";
-
-  return (
-    <div className="space-y-6">
-      <OverviewSection cards={cards} />
-      <AdBanner placement="dashboard_home" />
-      <CompanyVerificationSection hideInline openSignal={verificationModalSignal} onRequestVerification={openVerificationModal} />
-    </div>
-  );
-};
+// Kept as a named wrapper (rather than inlining OverviewSection directly in
+// app/dashboard/page.tsx) so the route file stays a plain metadata + render
+// shell, matching every other dashboard route.
+export const DashboardOverview = () => <OverviewSection />;
 
 export const DashboardProfile = () => {
-  const { user, refreshUser, openVerificationModal, verificationModalSignal, activeCompany } = useDashboardContext();
+  const { user, refreshUser, openVerificationModal, activeCompany } = useDashboardContext();
   const [editForm, setEditForm] = useState<ProfileFormState>(() => createProfileFormState(user));
   const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "success" | "error"; message?: string }>({
     status: "idle",
   });
-  const [activeCompanyName, setActiveCompanyName] = useState<string | undefined>(activeCompany?.displayName);
-  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user, activeCompanyName);
+  const primaryCompanyName = activeCompany?.displayName ?? resolveCompanyLabel(user);
   const normalizedStatus = (activeCompany?.complianceStatus ?? user.status ?? "").toLowerCase();
   const isWorkspaceVerified = normalizedStatus === "verified" || normalizedStatus === "approved";
   const verificationVariant: ProfileVerificationState["variant"] =
@@ -282,10 +250,6 @@ export const DashboardProfile = () => {
     label: isWorkspaceVerified ? "Verified badge active" : "Unverified workspace",
     variant: verificationVariant,
   };
-
-  useEffect(() => {
-    setActiveCompanyName(activeCompany?.displayName);
-  }, [user.activeCompany, activeCompany]);
 
   useEffect(() => {
     setEditForm(createProfileFormState(user));
@@ -362,12 +326,7 @@ export const DashboardProfile = () => {
         verificationState={verificationState}
         onUpload={handleAvatarUpload}
       />
-      <CompanyVerificationSection
-        hideInline
-        onCompanyNameResolved={setActiveCompanyName}
-        openSignal={verificationModalSignal}
-        onRequestVerification={openVerificationModal}
-      />
+      {!activeCompany && <GettingStartedChecklist />}
     </>
   );
 };

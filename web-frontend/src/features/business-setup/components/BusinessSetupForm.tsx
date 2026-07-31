@@ -369,10 +369,12 @@ export const BusinessSetupForm = () => {
           <span style={{ color: "var(--foreground)" }}>Business setup</span>
         </div>
 
-        {/* Hero banner */}
+        {/* Hero banner — indigo gradient matches the app's BUSINESS_ACCENT
+            palette used on the Home screen's "Start your own business" card,
+            so the CTA and this landing page read as the same feature. */}
         <div
           className="mt-4 overflow-hidden rounded-3xl p-6 md:p-8"
-          style={{ background: "var(--gradient-brand-deep)", color: "#fff" }}
+          style={{ background: "linear-gradient(135deg, #312E81 0%, #0F0C45 100%)", color: "#fff" }}
         >
           <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Decorative circles */}

@@ -112,6 +112,12 @@ export const VERIFICATION_TONE_VERIFIED: ActionBannerTone = {
   accent: "#6EE7B7",
 };
 
+export const VERIFICATION_TONE_REJECTED: ActionBannerTone = {
+  gradient: ["#991B1B", "#7F1D1D"],
+  glow: "rgba(252, 165, 165, 0.30)",
+  accent: "#FCA5A5",
+};
+
 export const PHONE_CAPTURE_TONE: ActionBannerTone = {
   gradient: ["#B45309", "#92400E"],
   glow: "rgba(252, 211, 77, 0.28)",
