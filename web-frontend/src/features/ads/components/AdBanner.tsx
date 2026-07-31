@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { AdPlacement } from "@/src/services/ad";
+import { useMotionSafe } from "@/src/components/ui/motion";
 import { useAdFeed } from "../useAdFeed";
 import { buildAdView } from "../adView";
 
@@ -30,6 +31,7 @@ type AdBannerProps = {
  */
 export const AdBanner = ({ placement, extraPlacements, limit = 5, className = "" }: AdBannerProps) => {
   const router = useRouter();
+  const motionSafe = useMotionSafe();
   const placements = extraPlacements?.length ? [placement, ...extraPlacements] : undefined;
   const { cards, loading, logEvent } = useAdFeed({ placement, placements, limit });
   const [index, setIndex] = useState(0);
@@ -48,13 +50,18 @@ export const AdBanner = ({ placement, extraPlacements, limit = 5, className = ""
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (cards.length <= 1) return;
+    // Auto-rotation is itself motion — respect prefers-reduced-motion.
+    if (!motionSafe || cards.length <= 1) return;
     timerRef.current = setInterval(() => setIndex((i) => (i + 1) % cards.length), AUTO_ROTATE_MS);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [cards.length]);
+  }, [cards.length, motionSafe]);
 
+  // While loading, reserve space only long enough to avoid a pop-in flash —
+  // once the fetch resolves with zero cards, collapse to nothing instead of
+  // holding a full 21:9 skeleton that never becomes a real ad (was a
+  // permanent layout element on every home load, ad or not).
   if (loading) {
     return (
       <div
@@ -75,7 +82,7 @@ export const AdBanner = ({ placement, extraPlacements, limit = 5, className = ""
   };
 
   return (
-    <div className={`relative w-full overflow-hidden rounded-3xl ${className}`} style={{ backgroundColor: "#0E1230" }}>
+    <div className={`relative w-full overflow-hidden rounded-3xl ${className}`} style={{ background: "var(--gradient-brand-deep)" }}>
       <div className="relative aspect-[16/9] w-full sm:aspect-[21/9]">
         <AnimatePresence mode="wait">
           <motion.button
@@ -85,27 +92,34 @@ export const AdBanner = ({ placement, extraPlacements, limit = 5, className = ""
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: motionSafe ? 0.35 : 0 }}
             className="absolute inset-0 h-full w-full cursor-pointer text-left"
             aria-label={`Sponsored: ${view.productName}`}
           >
             {isVideo ? (
-              <video
-                src={card.bannerVideoUrl}
-                poster={card.bannerPosterUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="h-full w-full object-cover"
-              />
+              motionSafe ? (
+                <video
+                  src={card.bannerVideoUrl}
+                  poster={card.bannerPosterUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+              ) : card.bannerPosterUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={card.bannerPosterUrl} alt={view.productName} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full" style={{ background: "var(--gradient-brand-deep)" }} />
+              )
             ) : view.heroImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={view.heroImage} alt={view.productName} loading="lazy" decoding="async" className="h-full w-full object-cover" />
             ) : (
               <div
                 className="flex h-full w-full flex-col justify-end p-6"
-                style={{ background: "linear-gradient(135deg, #1B1464 0%, #2E3192 50%, #0071BC 100%)" }}
+                style={{ background: "var(--gradient-brand-deep)" }}
               >
                 <p className="text-xl font-bold text-white sm:text-2xl">{view.productName}</p>
                 {view.companyName && <p className="mt-1 text-sm text-white/70">{view.companyName}</p>}
@@ -118,7 +132,7 @@ export const AdBanner = ({ placement, extraPlacements, limit = 5, className = ""
               AD
             </span>
             {view.discountBadge && (
-              <span className="absolute right-4 top-4 rounded-md px-2.5 py-1 text-[11px] font-bold text-white" style={{ backgroundColor: "#16A34A" }}>
+              <span className="absolute right-4 top-4 rounded-md px-2.5 py-1 text-[11px] font-bold text-white" style={{ backgroundColor: "var(--success)" }}>
                 {view.discountBadge}
               </span>
             )}

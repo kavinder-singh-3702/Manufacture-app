@@ -1,110 +1,26 @@
-const features = [
-  {
-    title: "Pipeline snapshots",
-    description: "Consolidate RFQs, samples, and approvals with clear owners and timelines.",
-    tone: "#2563eb",
-  },
-  {
-    title: "Compliance guardrails",
-    description: "Keep documents, verifications, and audit events in one secure vault.",
-    tone: "#16a34a",
-  },
-  {
-    title: "Supplier intelligence",
-    description: "Score partners on responsiveness, quality, and sustainability signals.",
-    tone: "#f97316",
-  },
-  {
-    title: "Shared rituals",
-    description: "Weekly huddles, sourcing standups, and escalation paths built-in.",
-    tone: "#9333ea",
-  },
+import { Section, Card } from "@/src/components/ui/Surface";
+
+// Real platform capabilities — each maps to a shipped feature (see the
+// dashboard route table), replacing a prior version that illustrated fake
+// milestones ("Day 1 / Day 4 / Day 9 / Day 14") and invented adoption
+// metrics with no backing data.
+const capabilities = [
+  { icon: "📋", title: "RFQs & quotes", detail: "Route requests to verified suppliers and negotiate in one thread." },
+  { icon: "🛡️", title: "Compliance verification", detail: "Upload documents once; the trust badge follows every listing." },
+  { icon: "📊", title: "Accounting & GST", detail: "P&L, GST summaries, and party ledgers generated from your orders." },
+  { icon: "💬", title: "Supplier chat", detail: "Message sellers directly from a product page — no email back-and-forth." },
 ] as const;
 
-const milestones = [
-  { title: "Kickoff", detail: "Scope RFQs, agree on SLAs", meta: "Day 1" },
-  { title: "Verification", detail: "Docs + site checks complete", meta: "Day 4" },
-  { title: "Samples", detail: "QC checklist logged", meta: "Day 9" },
-  { title: "Go live", detail: "Supplier in preferred lane", meta: "Day 14" },
-] as const;
-
-export const DescriptionSection = () => {
-  return (
-    <section
-      id="overview"
-      className="rounded-3xl border p-6 shadow-lg shadow-[rgba(20,141,178,0.15)]/20 md:p-8"
-      style={{
-        borderColor: "var(--border)",
-        backgroundColor: "var(--surface)",
-      }}
-    >
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-2xl space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.6em]" style={{ color: "var(--primary)" }}>
-            Why teams switch
-          </p>
-          <h2 className="text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
-            A web console tailored for manufacturing leaders
-          </h2>
-          <p className="text-base text-[var(--foreground)]">
-            Build predictable export programs with a single pane of glass. We keep your RFQs, verification steps, and
-            supplier health in sync with your mobile workflow so nothing slips.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {["ISO-ready logs", "Role-aware sharing", "Cross-team dashboards"].map((item) => (
-              <span
-                key={item}
-                className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--primary-dark)]"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="grid w-full max-w-xl gap-3 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
-            Onboarding lane
-          </p>
-          <div className="space-y-3">
-            {milestones.map((milestone, index) => (
-              <div
-                key={milestone.title}
-                className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3"
-              >
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-2xl text-sm font-semibold text-white"
-                  style={{ backgroundColor: ["#0ea5e9", "#16a34a", "#f59e0b", "#5b21b6"][index] }}
-                >
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{milestone.title}</p>
-                  <p className="text-xs text-[var(--medium-gray)]">{milestone.detail}</p>
-                </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--medium-gray)]">{milestone.meta}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {features.map((feature) => (
-          <article
-            key={feature.title}
-            className="rounded-2xl border p-4 shadow-sm shadow-[rgba(20,141,178,0.08)]"
-            style={{
-              borderColor: "var(--border)",
-              backgroundColor: "var(--background)",
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: feature.tone }} />
-              <h3 className="text-base font-semibold text-[var(--foreground)]">{feature.title}</h3>
-            </div>
-            <p className="mt-2 text-sm text-[var(--foreground)]">{feature.description}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-};
+export const DescriptionSection = () => (
+  <Section title="Built for manufacturing teams">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {capabilities.map((item) => (
+        <Card key={item.title}>
+          <span className="text-2xl">{item.icon}</span>
+          <h3 className="mt-3 text-base font-bold" style={{ color: "var(--foreground)" }}>{item.title}</h3>
+          <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--medium-gray)" }}>{item.detail}</p>
+        </Card>
+      ))}
+    </div>
+  </Section>
+);

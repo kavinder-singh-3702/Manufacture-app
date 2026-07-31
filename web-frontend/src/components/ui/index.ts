@@ -1,5 +1,6 @@
 // Animation utilities
 export * from "./animations";
+export * from "./motion";
 
 // UI Components
 export * from "./Button";
@@ -11,6 +12,8 @@ export * from "./PageTransition";
 export * from "./EmptyState";
 export * from "./Input";
 export * from "./Sidebar";
+export * from "./Sheet";
+export * from "./Surface";
 export * from "./Confetti";
 export * from "./Loader";
 export * from "./List";

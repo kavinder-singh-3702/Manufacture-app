@@ -5,6 +5,45 @@ import { companyService } from "@/src/services/company";
 import type { Product } from "@/src/types/product";
 import type { Company } from "@/src/types/company";
 
+export type MarketplaceSnapshot = {
+  liveListings: number | null;
+  industries: number | null;
+  specializations: number | null;
+  categoryNames: string[];
+};
+
+/**
+ * Real, public numbers for the landing hero — replaces the hardcoded
+ * "6,200+ verified suppliers" / "94% on-time delivery" copy, which was
+ * fabricated and never backed by data. Every field degrades to `null`
+ * independently (never throws) so a slow/failed fetch just drops that one
+ * stat tile instead of taking the whole hero down.
+ *
+ * No public "verified companies" count endpoint exists (the /api/companies
+ * router is auth-only), so this deliberately only surfaces numbers we can
+ * actually source from the public /products + /products/categories
+ * endpoints: total live listings, industries (category) coverage, and
+ * distinct sub-category specializations.
+ */
+export const getMarketplaceSnapshot = cache(async (): Promise<MarketplaceSnapshot> => {
+  const [listings, categories] = await Promise.all([
+    productService.list({ scope: "marketplace", limit: 1 }).catch(() => null),
+    productService.getCategoryStats({ scope: "marketplace" }).catch(() => null),
+  ]);
+
+  const categoryList = categories?.categories ?? [];
+  const specializations = categoryList.length
+    ? new Set(categoryList.flatMap((c) => c.subCategories ?? [])).size
+    : null;
+
+  return {
+    liveListings: listings?.pagination.total ?? null,
+    industries: categoryList.length || null,
+    specializations,
+    categoryNames: categoryList.slice(0, 6).map((c) => c.title),
+  };
+});
+
 // Server-side loaders for public detail pages. Wrapped in React `cache` so the
 // metadata pass and the render pass within a single request share one fetch.
 // A genuine 404 resolves to null (→ notFound()); transient/other errors are
