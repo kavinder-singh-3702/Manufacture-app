@@ -11,12 +11,13 @@ import {
   AdPlacement,
   UpsertAdCampaignInput,
 } from "@/src/services/ad";
-import { productService } from "@/src/services/product";
 import { adminService, type AdminUser } from "@/src/services/admin";
 import type { Product } from "@/src/types/product";
-import { PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
-import { ApiError, isAbortError } from "@/src/lib/api-error";
+import { ApiError } from "@/src/lib/api-error";
 import { DonutChart, DonutLegend, GroupedBars, FunnelBar, AnimatedNumber, type DonutSegment, type BarGroup } from "@/src/components/ui/charts";
+import { ProductPicker } from "@/src/features/ads/components/ProductPicker";
+import { CreativePreview } from "@/src/features/ads/components/CreativePreview";
+import { CategoryMultiSelect } from "@/src/features/ads/components/CategoryMultiSelect";
 
 const PAGE_SIZE = 24;
 
@@ -735,7 +736,8 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
           {/* Banner media — a full-bleed image or video shown as-is in the home banner.
               Leave empty to auto-build a card from the product. */}
           <div className="space-y-3 rounded-xl p-3" style={{ border: "1px dashed var(--border)", backgroundColor: "var(--surface)" }}>
-            <HeroPreview
+            <Label>Live preview</Label>
+            <CreativePreview
               bannerImage={mediaType === "image" ? bannerPreview : null}
               videoUrl={mediaType === "video" ? (bannerVideoFilePreview ?? (bannerVideoUrl.trim() || undefined)) : undefined}
               poster={posterPreview}
@@ -1010,52 +1012,6 @@ const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCampaign 
   );
 };
 
-// ── Hero banner live preview (mirrors the app HeroBannerCarousel) ───────────────
-
-const HeroPreview = ({ bannerImage, videoUrl, poster, productImage, title, subtitle, ctaLabel, badge, price, discount, currency }: {
-  bannerImage?: string | null; videoUrl?: string; poster?: string | null; productImage?: string;
-  title: string; subtitle?: string; ctaLabel: string; badge?: string; price?: number; discount?: number; currency: string;
-}) => {
-  const fullBleed = bannerImage || poster || (videoUrl ? poster : null);
-  const sym = currency === "INR" || !currency ? "₹" : `${currency} `;
-  const showPrice = price != null;
-  const advertised = discount && discount > 0 ? discount : price;
-  return (
-    <div>
-      <Label>Live preview</Label>
-      <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9", border: "1px solid var(--border)", background: "linear-gradient(135deg,#1B1464,#2E3192,#0071BC)" }}>
-        {fullBleed ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img loading="lazy" decoding="async" src={fullBleed} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        ) : videoUrl ? (
-          <video src={videoUrl} muted className="absolute inset-0 h-full w-full object-cover" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-between gap-3 p-4">
-            <div className="min-w-0 flex-1">
-              <span className="inline-block rounded bg-white/15 px-1.5 py-0.5 text-[8px] font-extrabold tracking-widest text-white/80">AD</span>
-              {badge && <span className="ml-1 inline-block rounded bg-white/20 px-1.5 py-0.5 text-[8px] font-bold text-white">{badge}</span>}
-              <p className="mt-1 truncate text-base font-extrabold text-white">{title}</p>
-              {subtitle && <p className="truncate text-[11px] font-semibold text-white/70">{subtitle}</p>}
-              {showPrice && (
-                <p className="mt-1 text-sm font-extrabold" style={{ color: "#4ADE80" }}>
-                  {discount && price && discount < price && <span className="mr-1.5 text-[11px] font-bold text-white/50 line-through">{sym}{price.toLocaleString("en-IN")}</span>}
-                  {sym}{Number(advertised).toLocaleString("en-IN")}
-                </p>
-              )}
-              <span className="mt-1.5 inline-block rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold" style={{ color: "#1B1464" }}>{ctaLabel}</span>
-            </div>
-            {productImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img loading="lazy" decoding="async" src={productImage} alt="" className="h-16 w-16 flex-shrink-0 rounded-xl border-2 border-white/15 object-cover" />
-            ) : (
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border-2 border-white/15 bg-white/10 text-2xl">📦</div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // ── User picker (specific-user targeting) ───────────────────────────────────────
 
@@ -1155,98 +1111,6 @@ const ToggleRow = ({ label, hint, on, onToggle }: { label: string; hint?: string
   </button>
 );
 
-const CategoryMultiSelect = ({ label, selected, onToggle }: { label: string; selected: string[]; onToggle: (id: string) => void }) => (
-  <div>
-    <Label>{label}</Label>
-    <div className="flex flex-wrap gap-1.5">
-      {PRODUCT_CATEGORIES.map((c) => {
-        const active = selected.includes(c.id);
-        return (
-          <button key={c.id} type="button" onClick={() => onToggle(c.id)}
-            className="rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all"
-            style={{
-              backgroundColor: active ? "var(--primary)" : "var(--surface)",
-              color: active ? "#fff" : "var(--foreground)",
-              border: "1px solid var(--border)",
-            }}>
-            {c.icon} {c.title}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-);
-
-// ── Product Picker (marketplace scope) ─────────────────────────────────────────
-
-const ProductPicker = ({ onSelect, onClose }: { onSelect: (p: Product) => void; onClose: () => void }) => {
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const loadAbortRef = useRef<AbortController | null>(null);
-
-  const load = useCallback(async (q: string) => {
-    loadAbortRef.current?.abort();
-    const controller = new AbortController();
-    loadAbortRef.current = controller;
-    setLoading(true);
-    try {
-      const res = await productService.list({ scope: "marketplace", search: q || undefined, limit: 40 }, controller.signal);
-      setResults(res.products ?? []);
-    } catch (err) {
-      if (isAbortError(err)) return; // superseded/unmounted — ignore
-      setResults([]);
-    } finally {
-      if (loadAbortRef.current === controller) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(""); }, [load]);
-  useEffect(() => { const t = setTimeout(() => load(search), 250); return () => clearTimeout(t); }, [load, search]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: "1px solid var(--border)" }}>
-          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Select product</p>
-          <button onClick={onClose} className="text-lg font-bold leading-none hover:opacity-60" style={{ color: "var(--medium-gray)" }}>✕</button>
-        </div>
-        <div className="p-3" style={{ borderBottom: "1px solid var(--border)" }}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus placeholder="Search marketplace products…"
-            className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-        </div>
-        <div className="max-h-72 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-transparent" style={{ borderTopColor: "var(--primary)" }} />
-            </div>
-          ) : !results.length ? (
-            <p className="py-8 text-center text-sm" style={{ color: "var(--medium-gray)" }}>No products found.</p>
-          ) : results.map((p) => (
-            <button key={p._id} onClick={() => onSelect(p)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--background)]"
-              style={{ borderBottom: "1px solid var(--border)" }}>
-              {p.images?.[0]?.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img loading="lazy" decoding="async" src={p.images[0].url} alt="" className="h-9 w-9 flex-shrink-0 rounded-lg object-cover" />
-              ) : (
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--background)" }}>📦</div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{p.name}</p>
-                <p className="text-xs" style={{ color: "var(--medium-gray)" }}>₹{p.price.amount.toLocaleString("en-IN")} · {p.category}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  );
-};
 
 // ── Insights Drawer ────────────────────────────────────────────────────────────
 

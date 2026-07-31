@@ -7,8 +7,21 @@ import { AnimatePresence, motion } from "framer-motion";
 import { serviceRequestService } from "@/src/services/serviceRequest";
 import { ApiError } from "@/src/lib/api-error";
 import type { CreateServiceRequestInput, ServicePriority, ServiceType } from "@/src/types/service";
+import type { Product } from "@/src/types/product";
+import type { AdTargetingMode } from "@/src/services/ad";
 import { ServiceTypeCard, SERVICE_TYPES, getServiceTypeMeta } from "./ServiceTypeCard";
 import { ServiceStatusBadge, ServicePriorityBadge } from "./ServiceStatusBadge";
+import { ProductPicker } from "@/src/features/ads/components/ProductPicker";
+import { CategoryMultiSelect } from "@/src/features/ads/components/CategoryMultiSelect";
+
+type AdAudiencePreset = "everyone" | "shopper_category" | "buy_intent" | "same_category_listers";
+
+const AD_AUDIENCE_PRESETS: { key: AdAudiencePreset; label: string; hint: string; icon: string }[] = [
+  { key: "everyone",              label: "Everyone",              hint: "Show to all eligible shoppers",               icon: "🌐" },
+  { key: "shopper_category",      label: "Browsed a category",    hint: "Users recently viewing chosen categories",    icon: "👀" },
+  { key: "buy_intent",            label: "Buying signal",         hint: "Added-to-cart / accepted quotes in category", icon: "🛒" },
+  { key: "same_category_listers", label: "Same-category sellers", hint: "Users who list in this product's category",  icon: "🏭" },
+];
 
 const PRIORITIES: { value: ServicePriority; label: string; color: string; bg: string }[] = [
   { value: "normal", label: "Normal", color: "#5B21B6", bg: "#EDE9FE" },
@@ -38,7 +51,6 @@ type ServiceSpecificForm = {
   machineType: string; machineName: string; issueSummary: string; severity: string;
   workerIndustry: string; headcount: string; workerRoles: string; contractType: string;
   pickupCity: string; dropCity: string; pickupState: string; dropState: string; loadType: string; vehicleType: string;
-  adObjective: string; adHeadline: string; adBudget: string;
 };
 
 export const ServiceRequestForm = () => {
@@ -54,8 +66,27 @@ export const ServiceRequestForm = () => {
     machineType: "", machineName: "", issueSummary: "", severity: "medium",
     workerIndustry: "", headcount: "1", workerRoles: "", contractType: "temporary",
     pickupCity: "", dropCity: "", pickupState: "", dropState: "", loadType: "general", vehicleType: "truck",
-    adObjective: "", adHeadline: "", adBudget: "",
   });
+
+  // Advertisement request — kept in dedicated state rather than crammed into
+  // ServiceSpecificForm's flat-string shape, since it needs a full Product
+  // object and category arrays. Mirrors the fields the admin Ad Studio wizard
+  // (AdStudioPanel) already collects, so a request converted via
+  // POST /api/ads/admin/campaigns/from-request/:id prefills cleanly.
+  const [adProduct, setAdProduct] = useState<Product | null>(null);
+  const [adPickerOpen, setAdPickerOpen] = useState(false);
+  const [adObjective, setAdObjective] = useState("");
+  const [adHeadline, setAdHeadline] = useState("");
+  const [adSubtitle, setAdSubtitle] = useState("");
+  const [adCtaLabel, setAdCtaLabel] = useState("");
+  const [adBadge, setAdBadge] = useState("");
+  const [adPriceOverride, setAdPriceOverride] = useState("");
+  const [adStartAt, setAdStartAt] = useState("");
+  const [adEndAt, setAdEndAt] = useState("");
+  const [adAudience, setAdAudience] = useState<AdAudiencePreset>("everyone");
+  const [adShopperCategories, setAdShopperCategories] = useState<string[]>([]);
+  const [adBuyIntentCategories, setAdBuyIntentCategories] = useState<string[]>([]);
+
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -85,6 +116,13 @@ export const ServiceRequestForm = () => {
     if (serviceType === "transport") {
       if (!specific.pickupCity.trim()) errs.pickupCity = "Required";
       if (!specific.dropCity.trim()) errs.dropCity = "Required";
+    }
+    if (serviceType === "advertisement") {
+      // The backend requires advertisementDetails.product — submitting without
+      // one always 400'd silently before this check existed.
+      if (!adProduct) errs.adProduct = "Select the product to promote";
+      if (adAudience === "shopper_category" && !adShopperCategories.length) errs.adAudience = "Choose at least one shopper category";
+      if (adAudience === "buy_intent" && !adBuyIntentCategories.length) errs.adAudience = "Choose at least one buying-signal category";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -132,11 +170,22 @@ export const ServiceRequestForm = () => {
           vehicleType: specific.vehicleType || undefined,
         };
       }
-      if (serviceType === "advertisement") {
+      if (serviceType === "advertisement" && adProduct) {
+        const targetingMode: AdTargetingMode = "any";
         payload.advertisementDetails = {
-          objective: specific.adObjective.trim() || undefined,
-          headline: specific.adHeadline.trim() || undefined,
-          budget: specific.adBudget ? parseFloat(specific.adBudget) : undefined,
+          product: adProduct._id,
+          priceOverride: adPriceOverride ? { amount: parseFloat(adPriceOverride), currency: "INR" } : undefined,
+          objective: adObjective.trim() || undefined,
+          targetingMode,
+          shopperCategories: adAudience === "shopper_category" ? adShopperCategories : undefined,
+          buyIntentCategories: adAudience === "buy_intent" ? adBuyIntentCategories : undefined,
+          requireListedProductInSameCategory: adAudience === "same_category_listers" || undefined,
+          startAt: adStartAt || undefined,
+          endAt: adEndAt || undefined,
+          headline: adHeadline.trim() || undefined,
+          subtitle: adSubtitle.trim() || undefined,
+          ctaLabel: adCtaLabel.trim() || undefined,
+          badge: adBadge.trim() || undefined,
         };
       }
 
@@ -352,18 +401,111 @@ export const ServiceRequestForm = () => {
                       <p className="text-[10px] font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--medium-gray)" }}>
                         Campaign details
                       </p>
+
+                      <Field label="Product to promote" required error={errors.adProduct}>
+                        {adProduct ? (
+                          <button type="button" onClick={() => setAdPickerOpen(true)}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+                            style={baseInput}>
+                            {adProduct.images?.[0]?.url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img loading="lazy" decoding="async" src={adProduct.images[0].url} alt="" className="h-9 w-9 flex-shrink-0 rounded-lg object-cover" />
+                            ) : (
+                              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "var(--background)" }}>📦</div>
+                            )}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold" style={{ color: "var(--foreground)" }}>{adProduct.name}</span>
+                              <span className="block text-xs" style={{ color: "var(--medium-gray)" }}>₹{adProduct.price.amount.toLocaleString("en-IN")}</span>
+                            </span>
+                            <span className="flex-shrink-0 text-xs font-bold" style={{ color: "var(--primary)" }}>Change</span>
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => setAdPickerOpen(true)} className={cls} style={baseInput}>
+                            Select a product to promote…
+                          </button>
+                        )}
+                      </Field>
+
                       <Field label="Campaign objective" hint="What do you want to achieve?">
                         <input className={cls} style={baseInput} placeholder="e.g. Increase product inquiries"
-                          value={specific.adObjective} onChange={(e) => setS("adObjective", e.target.value)} />
+                          value={adObjective} onChange={(e) => setAdObjective(e.target.value)} />
                       </Field>
-                      <Field label="Ad headline">
-                        <input className={cls} style={baseInput} placeholder="e.g. Premium Cotton Yarn — Direct from Mill"
-                          value={specific.adHeadline} onChange={(e) => setS("adHeadline", e.target.value)} />
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="Ad headline">
+                          <input className={cls} style={baseInput} placeholder="e.g. Premium Cotton Yarn — Direct from Mill"
+                            value={adHeadline} onChange={(e) => setAdHeadline(e.target.value)} />
+                        </Field>
+                        <Field label="Subtitle">
+                          <input className={cls} style={baseInput} placeholder="e.g. Direct from mill · Bulk pricing"
+                            value={adSubtitle} onChange={(e) => setAdSubtitle(e.target.value)} />
+                        </Field>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="CTA label" hint="Defaults to “View product”">
+                          <input className={cls} style={baseInput} placeholder="View product"
+                            value={adCtaLabel} onChange={(e) => setAdCtaLabel(e.target.value)} />
+                        </Field>
+                        <Field label="Badge">
+                          <input className={cls} style={baseInput} placeholder="e.g. Bestseller"
+                            value={adBadge} onChange={(e) => setAdBadge(e.target.value)} />
+                        </Field>
+                      </div>
+
+                      <Field label="Discounted ad price (₹)" hint="Shown as a strike-through deal against the listed price">
+                        <input type="number" min="0" className={cls} style={baseInput} placeholder="Leave blank to advertise at the listed price"
+                          value={adPriceOverride} onChange={(e) => setAdPriceOverride(e.target.value)} />
                       </Field>
-                      <Field label="Budget (₹)" hint="Estimated spend in INR">
-                        <input type="number" min="0" className={cls} style={baseInput} placeholder="5000"
-                          value={specific.adBudget} onChange={(e) => setS("adBudget", e.target.value)} />
-                      </Field>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="Start date">
+                          <input type="date" className={cls} style={baseInput}
+                            value={adStartAt} onChange={(e) => setAdStartAt(e.target.value)} />
+                        </Field>
+                        <Field label="End date">
+                          <input type="date" className={cls} style={baseInput}
+                            value={adEndAt} onChange={(e) => setAdEndAt(e.target.value)} />
+                        </Field>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>Audience</p>
+                        {errors.adAudience && <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{errors.adAudience}</p>}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {AD_AUDIENCE_PRESETS.map((preset) => (
+                            <button key={preset.key} type="button" onClick={() => setAdAudience(preset.key)}
+                              className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-left transition-all"
+                              style={{
+                                backgroundColor: adAudience === preset.key ? "var(--primary-light)" : "var(--surface)",
+                                border: adAudience === preset.key ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+                              }}>
+                              <span className="text-base leading-none">{preset.icon}</span>
+                              <span className="min-w-0">
+                                <span className="block text-xs font-bold" style={{ color: "var(--foreground)" }}>{preset.label}</span>
+                                <span className="block text-[11px]" style={{ color: "var(--medium-gray)" }}>{preset.hint}</span>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {adAudience === "shopper_category" && (
+                        <CategoryMultiSelect label="Shopper categories" selected={adShopperCategories}
+                          onToggle={(id) => setAdShopperCategories((prev) => prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id])} />
+                      )}
+                      {adAudience === "buy_intent" && (
+                        <CategoryMultiSelect label="Buying-signal categories" selected={adBuyIntentCategories}
+                          onToggle={(id) => setAdBuyIntentCategories((prev) => prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id])} />
+                      )}
+
+                      <AnimatePresence>
+                        {adPickerOpen && (
+                          // "company" scope — a seller can only promote products
+                          // their own company has listed, not the full marketplace.
+                          <ProductPicker scope="company" onSelect={(p) => { setAdProduct(p); setAdPickerOpen(false); }} onClose={() => setAdPickerOpen(false)} />
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
                 </div>

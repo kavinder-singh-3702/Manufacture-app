@@ -1,3 +1,5 @@
+import type { AdPrice, AdTargetingMode } from "../services/ad";
+
 export type ServiceType = "machine_repair" | "worker" | "transport" | "advertisement";
 export type ServiceStatus = "pending" | "in_review" | "scheduled" | "in_progress" | "completed" | "cancelled";
 export type ServicePriority = "low" | "normal" | "high" | "urgent";
@@ -24,8 +26,38 @@ export type ServiceRequest = {
   transportDetails?: {
     pickupCity?: string; dropCity?: string; loadType?: string; vehicleType?: string;
   };
+  /**
+   * Mirrors the backend's AdvertisementDetailsSchema
+   * (backend/src/models/serviceRequest.model.js) field-for-field — this had
+   * drifted to a 4-field shape (productId/objective/headline/budget) that
+   * didn't match the ~20-field backend schema at all: the required `product`
+   * field was missing entirely (under the wrong name, `productId`) and
+   * `budget` isn't a backend field, which is why submitting this service
+   * request always 400'd.
+   */
   advertisementDetails?: {
-    productId?: string; objective?: string; headline?: string; budget?: number;
+    product?: string;
+    priceOverride?: AdPrice;
+    objective?: string;
+    targetingMode?: AdTargetingMode;
+    targetUserIds?: string[];
+    shopperCategories?: string[];
+    shopperSubCategories?: string[];
+    buyIntentCategories?: string[];
+    buyIntentSubCategories?: string[];
+    listedProductCategories?: string[];
+    listedProductSubCategories?: string[];
+    requireListedProductInSameCategory?: boolean;
+    lookbackDays?: number;
+    startAt?: string;
+    endAt?: string;
+    headline?: string;
+    subtitle?: string;
+    ctaLabel?: string;
+    badge?: string;
+    frequencyCapPerDay?: number;
+    popupCooldownMinutes?: number;
+    priority?: number;
   };
   notes?: string;
   createdAt: string;
