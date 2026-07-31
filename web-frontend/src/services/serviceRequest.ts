@@ -17,7 +17,11 @@ const create = async (payload: CreateServiceRequestInput) => {
   return res.request;
 };
 
-const list = (params?: { type?: ServiceType; status?: ServiceStatus; limit?: number; offset?: number; sort?: string }) =>
+// Param is named `serviceType` (not `type`) to match what the backend's
+// listServiceRequests actually reads off req.query (filters.serviceType) —
+// the old `type` name silently no-op'd every server-side type filter since
+// nothing on the backend ever looked at a `type` query param.
+const list = (params?: { serviceType?: ServiceType; status?: ServiceStatus; limit?: number; offset?: number; sort?: string }) =>
   httpClient.get<ServiceListResponse>("/services", { params: toQuery(params) });
 
 const getById = async (serviceId: string) => {
