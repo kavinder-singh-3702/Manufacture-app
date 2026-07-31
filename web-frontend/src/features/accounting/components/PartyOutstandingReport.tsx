@@ -5,13 +5,18 @@ import { motion } from "framer-motion";
 import { accountingService } from "@/src/services/accounting";
 import { ApiError } from "@/src/lib/api-error";
 import type { PartyOutstandingData } from "@/src/types/accounting";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { MetricCardSkeleton, ReportSection, formatIndian } from "./MetricCard";
 
+// `bg` is derived from `color` via `tintBg` at render time instead of a
+// separate hand-picked pastel per bucket (was hardcoded light-only, e.g.
+// `#DCFCE7`, and illegible on the dark canvas).
 const AGING_BUCKETS = [
-  { key: "bucket_0_30",   label: "0–30 days",  color: "#16A34A", bg: "#DCFCE7",  dot: "#22C55E",  hint: "Good standing" },
-  { key: "bucket_31_60",  label: "31–60 days", color: "#CA8A04", bg: "#FEF9C3",  dot: "#EAB308",  hint: "Watch closely" },
-  { key: "bucket_61_90",  label: "61–90 days", color: "#EA580C", bg: "#FFEDD5",  dot: "#F97316",  hint: "Concerning" },
-  { key: "bucket_90_plus",label: "90+ days",   color: "#DC2626", bg: "#FEE2E2",  dot: "#EF4444",  hint: "Overdue" },
+  { key: "bucket_0_30",   label: "0–30 days",  color: "#16A34A", dot: "#22C55E",  hint: "Good standing" },
+  { key: "bucket_31_60",  label: "31–60 days", color: "#CA8A04", dot: "#EAB308",  hint: "Watch closely" },
+  { key: "bucket_61_90",  label: "61–90 days", color: "#EA580C", dot: "#F97316",  hint: "Concerning" },
+  { key: "bucket_90_plus",label: "90+ days",   color: "#DC2626", dot: "#EF4444",  hint: "Overdue" },
 ] as const;
 
 export const PartyOutstandingReport = () => {

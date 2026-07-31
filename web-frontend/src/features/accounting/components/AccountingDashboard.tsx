@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { accountingService } from "@/src/services/accounting";
 import { ApiError } from "@/src/lib/api-error";
 import type { DashboardData, RecentVoucher } from "@/src/types/accounting";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { DateRangePicker, defaultDateRange, type DateRange } from "./DateRangePicker";
 import { MetricCard, MetricCardSkeleton, ReportSection, formatIndian } from "./MetricCard";
 
@@ -13,17 +15,20 @@ const VOUCHER_TYPE_LABELS: Record<string, string> = {
   sales_invoice: "Sales Invoice", purchase_bill: "Purchase Bill",
   receipt: "Receipt", payment: "Payment", journal: "Journal",
 };
-const VOUCHER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  draft:  { bg: "#F3F4F6", text: "#4B5563" },
-  posted: { bg: "#DCFCE7", text: "#15803D" },
-  void:   { bg: "#FEE2E2", text: "#991B1B" },
+// A single accent per status drives both the tinted badge (via `tintBg`) and
+// the text color — was a hand-picked bg/text pastel pair per status,
+// hardcoded light-only and illegible in dark mode.
+const VOUCHER_STATUS_ACCENT: Record<string, string> = {
+  draft:  "var(--medium-gray)",
+  posted: "var(--success)",
+  void:   "var(--error)",
 };
 
 const QUICK_ENTRIES = [
-  { label: "Sales Invoice", icon: "🧾", href: "/dashboard/accounting/tally?type=sales", color: "#16A34A", bg: "#DCFCE7" },
-  { label: "Purchase Bill", icon: "📋", href: "/dashboard/accounting/tally?type=purchase", color: "#1E40AF", bg: "#DBEAFE" },
-  { label: "Receipt",       icon: "💰", href: "/dashboard/accounting/tally?type=receipt", color: "#92400E", bg: "#FEF3C7" },
-  { label: "Payment",       icon: "💸", href: "/dashboard/accounting/tally?type=payment", color: "#5B21B6", bg: "#EDE9FE" },
+  { label: "Sales Invoice", icon: "🧾", href: "/dashboard/accounting/tally?type=sales", accent: "#16A34A" },
+  { label: "Purchase Bill", icon: "📋", href: "/dashboard/accounting/tally?type=purchase", accent: "#1E40AF" },
+  { label: "Receipt",       icon: "💰", href: "/dashboard/accounting/tally?type=receipt", accent: "#92400E" },
+  { label: "Payment",       icon: "💸", href: "/dashboard/accounting/tally?type=payment", accent: "#5B21B6" },
 ];
 
 export const AccountingDashboard = () => {
@@ -63,23 +68,16 @@ export const AccountingDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Accounting
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Financial Overview</h1>
-          <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-            GST-ready books for Indian manufacturers
-          </p>
-        </div>
-        <button type="button" onClick={load}
-          className="self-start rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
-          ↻ Refresh
-        </button>
-      </motion.div>
+      <PageHeader
+        title="Financial Overview"
+        actions={
+          <button type="button" onClick={load}
+            className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
+            ↻ Refresh
+          </button>
+        }
+      />
 
       {/* Date range */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
@@ -115,7 +113,7 @@ export const AccountingDashboard = () => {
                   className="flex flex-col items-center gap-2 rounded-2xl p-4 text-center transition-all hover:-translate-y-1 hover:shadow-md"
                   style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl text-xl"
-                    style={{ backgroundColor: q.bg, color: q.color }}>{q.icon}</span>
+                    style={{ backgroundColor: tintBg(q.accent), color: q.accent }}>{q.icon}</span>
                   <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>{q.label}</span>
                 </Link>
               ))}
@@ -127,8 +125,8 @@ export const AccountingDashboard = () => {
             <ReportSection title="Working capital" subtitle="Receivables vs payables">
               <div className="space-y-4">
                 {[
-                  { label: "Receivables", value: data.receivables, color: "#1E40AF", bg: "#DBEAFE" },
-                  { label: "Payables", value: data.payables, color: "#DC2626", bg: "#FEE2E2" },
+                  { label: "Receivables", value: data.receivables, color: "#1E40AF" },
+                  { label: "Payables", value: data.payables, color: "#DC2626" },
                 ].map((item) => {
                   const max = Math.max(data.receivables, data.payables, 1);
                   const pct = (item.value / max) * 100;
@@ -150,9 +148,9 @@ export const AccountingDashboard = () => {
                   );
                 })}
                 <div className="flex items-center justify-between rounded-xl p-3"
-                  style={{ backgroundColor: data.receivables >= data.payables ? "#DCFCE7" : "#FEE2E2" }}>
+                  style={{ backgroundColor: tintBg(data.receivables >= data.payables ? "var(--success)" : "var(--error)") }}>
                   <span className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Net position</span>
-                  <span className="text-lg font-bold" style={{ color: data.receivables >= data.payables ? "#15803D" : "#DC2626" }}>
+                  <span className="text-lg font-bold" style={{ color: data.receivables >= data.payables ? "var(--success)" : "var(--error)" }}>
                     {formatIndian(Math.abs(data.receivables - data.payables))}
                     <span className="ml-1 text-xs font-normal">{data.receivables >= data.payables ? "net receivable" : "net payable"}</span>
                   </span>
@@ -168,7 +166,7 @@ export const AccountingDashboard = () => {
             ) : (
               <div className="space-y-2">
                 {vouchers.map((v) => {
-                  const sc = VOUCHER_STATUS_COLORS[v.status] ?? VOUCHER_STATUS_COLORS.draft;
+                  const statusAccent = VOUCHER_STATUS_ACCENT[v.status] ?? VOUCHER_STATUS_ACCENT.draft;
                   return (
                     <div key={v._id} className="flex items-center justify-between gap-3 rounded-xl p-3"
                       style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
@@ -186,7 +184,7 @@ export const AccountingDashboard = () => {
                           {formatIndian(v.totals?.total ?? 0)}
                         </span>
                         <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                          style={{ backgroundColor: sc.bg, color: sc.text }}>{v.status}</span>
+                          style={{ backgroundColor: tintBg(statusAccent), color: statusAccent }}>{v.status}</span>
                       </div>
                     </div>
                   );
@@ -201,15 +199,15 @@ export const AccountingDashboard = () => {
           <ReportSection title="Reports" subtitle="Deep analysis">
             <div className="space-y-2.5">
               {[
-                { href: "/dashboard/accounting/pnl", icon: "📊", label: "Profit & Loss", desc: "Income vs expenses", accent: "#16A34A", bg: "#DCFCE7" },
-                { href: "/dashboard/accounting/gst", icon: "🧮", label: "GST Summary", desc: "Input & output tax", accent: "#1E40AF", bg: "#DBEAFE" },
-                { href: "/dashboard/accounting/outstanding", icon: "⏳", label: "Party Outstanding", desc: "Receivables & payables aging", accent: "#92400E", bg: "#FEF3C7" },
+                { href: "/dashboard/accounting/pnl", icon: "📊", label: "Profit & Loss", desc: "Income vs expenses", accent: "#16A34A" },
+                { href: "/dashboard/accounting/gst", icon: "🧮", label: "GST Summary", desc: "Input & output tax", accent: "#1E40AF" },
+                { href: "/dashboard/accounting/outstanding", icon: "⏳", label: "Party Outstanding", desc: "Receivables & payables aging", accent: "#92400E" },
               ].map((r) => (
                 <Link key={r.href} href={r.href}
                   className="flex items-center gap-3 rounded-2xl p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-md"
                   style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}>
                   <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl"
-                    style={{ backgroundColor: r.bg }}>{r.icon}</span>
+                    style={{ backgroundColor: tintBg(r.accent) }}>{r.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{r.label}</p>
                     <p className="text-xs" style={{ color: "var(--medium-gray)" }}>{r.desc}</p>
@@ -228,9 +226,9 @@ export const AccountingDashboard = () => {
               <div className="space-y-2">
                 {data.lowStockProducts.slice(0, 5).map((p) => (
                   <div key={p.productId} className="flex items-center justify-between rounded-xl px-3 py-2"
-                    style={{ backgroundColor: "#FEF3C7", border: "1px solid #FDE68A" }}>
-                    <p className="truncate text-xs font-semibold" style={{ color: "#92400E" }}>{p.productName}</p>
-                    <p className="ml-2 flex-shrink-0 text-xs" style={{ color: "#92400E" }}>
+                    style={{ backgroundColor: tintBg("var(--warning)"), border: "1px solid var(--warning)" }}>
+                    <p className="truncate text-xs font-semibold" style={{ color: "var(--warning)" }}>{p.productName}</p>
+                    <p className="ml-2 flex-shrink-0 text-xs" style={{ color: "var(--warning)" }}>
                       {p.onHandQty} {p.unit ?? "units"}
                     </p>
                   </div>

@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { accountingService } from "@/src/services/accounting";
 import { ApiError } from "@/src/lib/api-error";
 import type { GSTSummaryData } from "@/src/types/accounting";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { DateRangePicker, defaultDateRange, type DateRange } from "./DateRangePicker";
 import { MetricCard, MetricCardSkeleton, ReportSection, formatIndian } from "./MetricCard";
 
@@ -55,13 +57,7 @@ export const GSTSummaryReport = () => {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-          Accounting
-        </p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>GST Summary</h1>
-        <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>Input vs output tax analysis</p>
-      </motion.div>
+      <PageHeader title="GST Summary" />
 
       <DateRangePicker value={range} onChange={setRange} />
 
@@ -80,21 +76,19 @@ export const GSTSummaryReport = () => {
             initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
             className="overflow-hidden rounded-3xl p-6 text-center"
             style={{
-              background: isPayable
-                ? "linear-gradient(135deg, #FEE2E2, #FEF2F2)"
-                : "linear-gradient(135deg, #DCFCE7, #F0FDF4)",
-              border: `1px solid ${isPayable ? "#FECACA" : "#BBF7D0"}`,
+              backgroundColor: tintBg(isPayable ? "var(--error)" : "var(--success)", 10),
+              border: `1px solid ${isPayable ? "var(--error)" : "var(--success)"}`,
               boxShadow: "var(--shadow-sm)",
             }}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.3em]"
-              style={{ color: isPayable ? "#991B1B" : "#15803D" }}>
+              style={{ color: isPayable ? "var(--error)" : "var(--success)" }}>
               {isPayable ? "GST Payable to Government" : "GST Receivable / Credit"}
             </p>
-            <p className="mt-3 text-5xl font-bold" style={{ color: isPayable ? "#DC2626" : "#16A34A" }}>
+            <p className="mt-3 text-5xl font-bold" style={{ color: isPayable ? "var(--error)" : "var(--success)" }}>
               {formatIndian(Math.abs(netPayable))}
             </p>
-            <p className="mt-2 text-sm" style={{ color: isPayable ? "#991B1B" : "#15803D" }}>
+            <p className="mt-2 text-sm" style={{ color: isPayable ? "var(--error)" : "var(--success)" }}>
               {isPayable
                 ? "Amount you owe to the government this period"
                 : "Excess credit — will be adjusted against future liability"}
@@ -120,7 +114,7 @@ export const GSTSummaryReport = () => {
                 <GSTRow label="IGST" value={data.input.igst} max={inputTotal || 1}
                   color="#0369A1" dot="#0EA5E9" delay={0.2} />
                 <div className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold"
-                  style={{ backgroundColor: "#DBEAFE" }}>
+                  style={{ backgroundColor: tintBg("#1E40AF") }}>
                   <span style={{ color: "#1E40AF" }}>Total Input GST</span>
                   <span style={{ color: "#1E40AF" }}>{formatIndian(inputTotal)}</span>
                 </div>
@@ -136,7 +130,7 @@ export const GSTSummaryReport = () => {
                 <GSTRow label="IGST" value={data.output.igst} max={outputTotal || 1}
                   color="#9A3412" dot="#F97316" delay={0.2} />
                 <div className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold"
-                  style={{ backgroundColor: "#FEF3C7" }}>
+                  style={{ backgroundColor: tintBg("#92400E") }}>
                   <span style={{ color: "#92400E" }}>Total Output GST</span>
                   <span style={{ color: "#92400E" }}>{formatIndian(outputTotal)}</span>
                 </div>
@@ -161,7 +155,7 @@ export const GSTSummaryReport = () => {
                 <span style={{ color: "var(--foreground)" }}>
                   {isPayable ? "Net GST Payable" : "Net GST Receivable"}
                 </span>
-                <span style={{ color: isPayable ? "#DC2626" : "#16A34A" }}>
+                <span style={{ color: isPayable ? "var(--error)" : "var(--success)" }}>
                   {formatIndian(Math.abs(netPayable))}
                 </span>
               </div>

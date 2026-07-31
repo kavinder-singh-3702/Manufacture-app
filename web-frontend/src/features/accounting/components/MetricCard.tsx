@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { tintBg } from "@/src/lib/color";
 
 export type MetricCardProps = {
   label: string;
@@ -57,7 +58,7 @@ export const MetricCard = ({
       {icon && (
         <span
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg"
-          style={{ backgroundColor: accent ? `${accent}22` : "var(--primary-light)", color: textColor ?? "var(--primary)" }}
+          style={{ backgroundColor: accent ? tintBg(accent) : "var(--primary-light)", color: textColor ?? "var(--primary)" }}
         >
           {icon}
         </span>

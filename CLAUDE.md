@@ -1,3 +1,9 @@
 # Working conventions
 
 - **Build once, at the end.** When making a series of related changes (e.g. a multi-phase feature), don't run `npm run build` after every file or every phase — run `npx tsc --noEmit` for quick type feedback while iterating, and save the full `npm run build` (and any test suites) for a single pass after all the changes are in, right before wrapping up. This saves time and tokens compared to rebuilding repeatedly.
+
+# Deployment topology
+
+- **Backend** (`backend/`) runs on EC2 (`13.206.204.61`) behind Nginx at `api.arvann.in`, deployed via `rsync` + systemd (`manufacture-backend`, PM2 cluster). Full runbook: `BACKEND-DEPLOYMENT.md`.
+- **Web frontend** (`web-frontend/`) is hosted on **Vercel**, not on the EC2 host — migrated off EC2 on 2026-07-31. `arvann.in`/`www.arvann.in` DNS points to Vercel; `api.arvann.in` still points to EC2 and is unaffected. Don't assume the old EC2/Nginx/`manufacture-web` setup still exists — it was deliberately decommissioned (service, Nginx site, and `/srv/manufacture/web-frontend` all removed). See "Frontend Hosting (Vercel)" in `BACKEND-DEPLOYMENT.md` before attempting to "deploy the frontend" via SSH.
+- **Mobile app** (`app-frontend/`) ships via Expo/EAS build + app store submission — there is no server to "deploy" to; code changes only take effect for real devices after a new native build.

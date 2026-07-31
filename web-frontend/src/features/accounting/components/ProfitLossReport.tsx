@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { accountingService } from "@/src/services/accounting";
 import { ApiError } from "@/src/lib/api-error";
 import type { ProfitAndLossData } from "@/src/types/accounting";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { DateRangePicker, defaultDateRange, type DateRange } from "./DateRangePicker";
 import { MetricCard, MetricCardSkeleton, ProgressBar, ReportSection, formatIndian } from "./MetricCard";
 
@@ -40,13 +42,7 @@ export const ProfitLossReport = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-          Accounting
-        </p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Profit & Loss</h1>
-        <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>Income vs expense analysis</p>
-      </motion.div>
+      <PageHeader title="Profit & Loss" />
 
       <DateRangePicker value={range} onChange={setRange} />
 
@@ -98,12 +94,12 @@ export const ProfitLossReport = () => {
               ))}
               <div
                 className="mt-2 flex items-center justify-between rounded-2xl px-4 py-3"
-                style={{ backgroundColor: isProfit ? "#DCFCE7" : "#FEE2E2" }}
+                style={{ backgroundColor: tintBg(isProfit ? "var(--success)" : "var(--error)") }}
               >
-                <span className="text-sm font-bold" style={{ color: isProfit ? "#15803D" : "#DC2626" }}>
+                <span className="text-sm font-bold" style={{ color: isProfit ? "var(--success)" : "var(--error)" }}>
                   {isProfit ? "Net Profit" : "Net Loss"}
                 </span>
-                <span className="text-xl font-bold" style={{ color: isProfit ? "#15803D" : "#DC2626" }}>
+                <span className="text-xl font-bold" style={{ color: isProfit ? "var(--success)" : "var(--error)" }}>
                   {formatIndian(Math.abs(data.netProfit))}
                 </span>
               </div>

@@ -13,7 +13,7 @@ this host; that setup was deliberately decommissioned, not lost.
 
 ```text
 Public API:        https://api.arvann.in/api
-Frontend:           https://arvann.in (Vercel — not on this EC2 host)
+Frontend:          https://arvann.in (Vercel — not on this EC2 host)
 EC2 public IP:     13.206.204.61
 EC2 SSH user:      ubuntu
 SSH key path:      /Users/kavin/Documents/ssl keys/Arvann.pem
@@ -306,10 +306,10 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
     --exclude=/srv/manufacture/backend/.env \
     -czf /srv/manufacture/backups/backend.bak.$ts.tar.gz \
     -C /srv/manufacture backend
-  # Frontend rollback aids: current static-release pointer (legacy) and the
-  # live Nginx config (so the SSR proxy switch can be reverted).
-  readlink -f /var/www/arvann/current > /srv/manufacture/backups/frontend-current.$ts.txt 2>/dev/null || true
-  sudo cp /etc/nginx/sites-enabled/arvann.in /srv/manufacture/backups/nginx-arvann.in.$ts.conf
+  # Only api.arvann.in is enabled on this host now (frontend is on Vercel,
+  # see "Frontend Hosting (Vercel)" above) — back that config up, not a
+  # frontend site that no longer exists here.
+  sudo cp /etc/nginx/sites-enabled/api.arvann.in /srv/manufacture/backups/nginx-api.arvann.in.$ts.conf
   printf "backup_ts=%s\n" "$ts"
   curl -fsS https://api.arvann.in/api/health
 '
@@ -482,19 +482,17 @@ Expected:
 {"ok":true,"message":"Thanks for reaching out — we'll get back to you shortly.","contactMessageId":"<id>"}
 ```
 
-### Frontend
+### Frontend (Vercel — nothing to check on the EC2 host)
+
+The frontend is hosted on Vercel, so there is no local/SSH check on this host
+for it anymore (no `manufacture-web` service, no `127.0.0.1:3000`). These
+checks just hit the public `arvann.in` domain, which resolves to Vercel.
 
 The Next server defaults to `trailingSlash: false`, so trailing-slash URLs
 (`/about/`) 308-redirect to the no-slash form (`/about`). Use no-slash URLs to
 get a direct 200:
 
 ```bash
-# Next server is up locally on the host
-ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  sudo systemctl is-active manufacture-web
-  curl -fsS -o /dev/null -w "next_local %{http_code}\n" http://127.0.0.1:3000/
-'
-
 # Public pages (expect 200)
 for url in \
   "https://arvann.in/" \
@@ -573,37 +571,12 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-### Frontend Rollback
+### Frontend Rollback (Vercel)
 
-The frontend is now a server, so rollback is restoring the previous code/build
-and restarting the Next server. Re-sync the previous working tree (or restore
-from a backup tar), then:
-
-```bash
-ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  set -euo pipefail
-  cd /srv/manufacture/web-frontend
-  npm ci
-  NEXT_PUBLIC_API_URL=https://api.arvann.in/api APP_VARIANT=production npm run build
-  sudo systemctl restart manufacture-web
-  sleep 6
-  sudo systemctl is-active manufacture-web
-  curl -fsS -o /dev/null -w "next_local %{http_code}\n" http://127.0.0.1:3000/
-'
-```
-
-If the Nginx proxy change itself needs reverting (e.g. to fall back to the old
-static export), restore the saved Nginx config and reload:
-
-```bash
-ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  set -euo pipefail
-  ts=<backup_ts>
-  sudo cp /srv/manufacture/backups/nginx-arvann.in.$ts.conf /etc/nginx/sites-enabled/arvann.in
-  sudo nginx -t && sudo systemctl reload nginx
-  curl -fsSI https://arvann.in/
-'
-```
+Rollback for the frontend is now a Vercel operation, not an EC2 one: use the
+Vercel dashboard's Deployments list (or `vercel rollback` via the CLI) to
+promote a previous deployment back to production. There is nothing to
+restore on this EC2 host for the frontend.
 
 ## Operational Commands
 
@@ -623,17 +596,7 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-Frontend (Next server) status, restart, and logs:
-
-```bash
-ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  sudo systemctl status manufacture-web --no-pager
-  sudo systemctl restart manufacture-web
-  sudo journalctl -u manufacture-web --since "30 minutes ago" --no-pager
-'
-```
-
-Nginx status:
+Nginx status (only `api.arvann.in` is enabled — no frontend site on this host):
 
 ```bash
 ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
@@ -642,14 +605,9 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-Current frontend build:
-
-```bash
-ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
-  cat /srv/manufacture/web-frontend/.next/BUILD_ID
-  sudo ss -ltnp | grep ":3000"
-'
-```
+Frontend status/build/logs are a Vercel dashboard concern now — there is no
+`manufacture-web` service, port 3000, or `web-frontend/` directory left on
+this host.
 
 Disk usage:
 
@@ -753,15 +711,18 @@ sudo systemctl restart manufacture-backend
 - Never replace production `.env` wholesale during rsync.
 - Always run local tests and a production smoke pass.
 - Always create backups before restart.
-- Frontend is a Next.js server (`manufacture-web` systemd unit, port 3000),
-  NOT a static export. `npm run build` does not produce `out/`. Nginx must
-  proxy `arvann.in` to `127.0.0.1:3000`.
-- `NEXT_PUBLIC_*` is inlined at build time, so always pass
-  `NEXT_PUBLIC_API_URL` / `APP_VARIANT` to the build, then restart
-  `manufacture-web`.
-- Redirects, rewrites and security headers live in `next.config.ts`; do not
-  duplicate them in Nginx, and never add a `/sellers/<id>` or `/products/<id>`
-  redirect in Nginx (would loop with the next.config canonicalization).
+- **This EC2 host is backend-only as of 2026-07-31.** The frontend
+  (`manufacture-web` systemd service, the `arvann.in` Nginx site, and
+  `/srv/manufacture/web-frontend`) was deliberately removed when the frontend
+  moved to Vercel — see "Frontend Hosting (Vercel)" near the top of this file.
+  Don't re-add any of that to this host without a deliberate decision to
+  migrate the frontend back off Vercel.
+- `NEXT_PUBLIC_*` is inlined at build time; on Vercel that means setting
+  `NEXT_PUBLIC_API_URL` / `APP_VARIANT` as Vercel project environment
+  variables, not passing them on a command line.
+- Redirects, rewrites and security headers live in `next.config.ts` — that's
+  unchanged by the Vercel move, still owned by the Next app itself, not by any
+  proxy in front of it.
 - Backend is PM2 cluster mode and depends on Redis (native `redis-server`, not
   Docker) for sessions and Socket.IO cross-worker behavior.
 - If a secret leaks into git, rotate it immediately.
