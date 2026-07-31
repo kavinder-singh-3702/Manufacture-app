@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { quoteService, Quote, QuoteMode, QuoteStatus, RespondQuotePayload } from "@/src/services/quotes";
 import { ApiError } from "@/src/lib/api-error";
 import { QuoteCard } from "./QuoteCard";
 import { QuoteRespondModal } from "./QuoteRespondModal";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const PAGE_SIZE = 12;
 
@@ -115,13 +115,17 @@ export const QuotesContainer = () => {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Quotes & RFQ</p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Quote Center</h1>
-        <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>
-          {total} quote{total !== 1 ? "s" : ""} in {tab}
-        </p>
-      </motion.div>
+      <PageHeader
+        title={
+          <>
+            Quote Center
+            <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
+              style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+              {total} in {tab}
+            </span>
+          </>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>

@@ -6,19 +6,21 @@ Important: do not commit raw production secrets, private keys, passwords, tokens
 
 ## Current Production Topology
 
+**This EC2 host runs the backend API only.** The web frontend was migrated
+off this host to Vercel on 2026-07-31 — see "Frontend Hosting (Vercel)"
+below. Do not re-provision `manufacture-web` or an `arvann.in` Nginx site on
+this host; that setup was deliberately decommissioned, not lost.
+
 ```text
 Public API:        https://api.arvann.in/api
-Frontend:          https://arvann.in
+Frontend:           https://arvann.in (Vercel — not on this EC2 host)
 EC2 public IP:     13.206.204.61
 EC2 SSH user:      ubuntu
 SSH key path:      /Users/kavin/Documents/ssl keys/Arvann.pem
 Backend path:      /srv/manufacture/backend
-Frontend path:     /srv/manufacture/web-frontend
 Backend service:   manufacture-backend (systemd, pm2-runtime cluster, 2 workers)
-Frontend service:  manufacture-web (systemd, Next.js server)
 Backend port:      4000 (proxied by Nginx for api.arvann.in)
-Frontend port:     3000 (proxied by Nginx for arvann.in)
-Reverse proxy:     Nginx
+Reverse proxy:     Nginx (api.arvann.in only — no other site is enabled)
 Database:          MongoDB Atlas, database `manufacture`
 Redis:             Native redis-server (systemd) on 127.0.0.1:6379 (NOT Docker)
 S3 bucket:         arvann-prod-uploads
@@ -26,12 +28,6 @@ S3 region:         ap-south-1
 Uploads prefix:    uploads
 Support email:     arvann100@gmail.com
 ```
-
-The frontend is a Next.js server (SSR + ISR), not a static export. Public
-product/seller detail pages are server-rendered for per-item metadata, Open
-Graph tags and JSON-LD, and `next.config.ts` owns redirects, rewrites and
-security headers — so Nginx must proxy to the running Next server, not serve
-static files.
 
 Request flow:
 
@@ -43,8 +39,32 @@ Client -> api.arvann.in HTTPS -> Nginx -> 127.0.0.1:4000 -> PM2 cluster workers 
                                               +-> AWS S3 via EC2 IAM role
                                               +-> SMTP
 
-Client -> arvann.in HTTPS     -> Nginx -> 127.0.0.1:3000 -> Next.js server (web-frontend)
+Client -> arvann.in HTTPS -> Vercel (Next.js SSR/ISR, web-frontend) -> calls api.arvann.in for data
 ```
+
+## Frontend Hosting (Vercel)
+
+The web frontend (`web-frontend/`) is a Next.js app deployed and hosted on
+**Vercel**, not on this EC2 host. Vercel owns the build, the SSR/ISR runtime,
+TLS for `arvann.in`/`www.arvann.in`, and its own deploy history/rollback —
+none of that is this repo's or this host's responsibility anymore.
+
+```text
+DNS:   arvann.in / www.arvann.in -> Vercel (verify with `dig +short arvann.in`)
+       api.arvann.in remains pointed at the EC2 IP above — unaffected by this.
+Env:   NEXT_PUBLIC_API_URL / APP_VARIANT are configured as Vercel project
+       environment variables (Project Settings -> Environment Variables),
+       not passed on the command line the way the old EC2 build did.
+Deploy: via Vercel's dashboard or CLI (`vercel --prod`), or git-integrated
+       auto-deploy if the project is connected to this repo — check the
+       Vercel project dashboard for which applies.
+```
+
+`web-frontend/deploy/manufacture-web.service` and
+`web-frontend/deploy/nginx-arvann.in.conf` are kept in the repo only as a
+historical record of the old EC2 hosting method (see "Frontend Deployment
+(historical, decommissioned)" below) — they are not used by Vercel and
+should not be installed anywhere.
 
 ## Credential Policy
 
@@ -328,21 +348,24 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-## Frontend Deployment
+## Frontend Deployment (historical, decommissioned)
 
-Frontend is a **Next.js server (SSR + ISR)**, not a static export. It runs under
-the `manufacture-web` systemd service (`next start` on port 3000) and Nginx
-proxies `arvann.in` to `127.0.0.1:3000`.
+**This section no longer applies.** It's kept for context on how the
+frontend used to run on this EC2 host, in case that history matters for a
+future migration. As of 2026-07-31, the `manufacture-web` systemd service,
+its unit file, the `arvann.in` Nginx site, and `/srv/manufacture/web-frontend`
+have all been removed from this host — the frontend is Vercel-hosted, see
+"Frontend Hosting (Vercel)" above. Do not follow the steps below to try to
+restore an EC2-hosted frontend without deliberately deciding to migrate back.
 
-`NEXT_PUBLIC_*` values are inlined at build time, so the production API URL and
-app variant must be passed to the build, not just the runtime.
-
-> Historical note: the frontend used to be a static export served from
-> `/var/www/arvann/current`. Commit `53cbd54` migrated public product/seller
-> detail pages to SSR/ISR, and later commits moved redirects + security headers
-> into `next.config.ts`. Static export (`out/`) is no longer produced. The
-> deploy artifacts for the server runtime live in `web-frontend/deploy/`
-> (`manufacture-web.service`, `nginx-arvann.in.conf`).
+> Historical note: before the EC2 systemd/Nginx setup described below, the
+> frontend was an even older static export served from `/var/www/arvann/current`.
+> Commit `53cbd54` migrated public product/seller detail pages to SSR/ISR, and
+> later commits moved redirects + security headers into `next.config.ts`. That
+> static export was retired in favor of the `manufacture-web` Next.js server,
+> which was itself retired in favor of Vercel. The deploy artifacts for the
+> EC2 server runtime remain in `web-frontend/deploy/` (`manufacture-web.service`,
+> `nginx-arvann.in.conf`) purely as a historical record.
 
 ### 1. Build Locally First (validation)
 
@@ -379,9 +402,11 @@ ssh -i "/Users/kavin/Documents/ssl keys/Arvann.pem" ubuntu@13.206.204.61 '
 '
 ```
 
-### 4. First-Time Setup Only (already done in production)
+### 4. First-Time Setup (no longer applies — decommissioned 2026-07-31)
 
-Only needed when provisioning a fresh host or re-migrating from static export.
+This was the one-time setup step back when the frontend ran on this EC2 host.
+It does **not** describe current production — see the decommission note at
+the top of this section.
 
 Install the systemd unit and Nginx config (both tracked in
 `web-frontend/deploy/`):

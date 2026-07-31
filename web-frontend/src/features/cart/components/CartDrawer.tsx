@@ -74,14 +74,9 @@ export const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
                 >
                   🛒
                 </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--primary)" }}>
-                    Cart
-                  </p>
-                  <h2 className="text-base font-bold" style={{ color: "var(--foreground)" }}>
-                    {totalCount > 0 ? `${totalCount} item${totalCount !== 1 ? "s" : ""}` : "Shopping cart"}
-                  </h2>
-                </div>
+                <h2 className="text-base font-bold" style={{ color: "var(--foreground)" }}>
+                  {totalCount > 0 ? `${totalCount} item${totalCount !== 1 ? "s" : ""}` : "Shopping cart"}
+                </h2>
               </div>
               <div className="flex items-center gap-2">
                 {items.length > 0 && (

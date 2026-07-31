@@ -6,6 +6,7 @@ import Link from "next/link";
 import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductStockStatus } from "@/src/types/product";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 type StatusFilter = "all" | ProductStockStatus;
 
@@ -150,26 +151,23 @@ export const InventoryContainer = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Inventory</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Stock Overview</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>Monitor stock levels across your product catalogue</p>
-        </div>
-        <div className="flex gap-2 self-start">
-          <button onClick={() => load()}
-            className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
-            ↻ Refresh
-          </button>
-          <Link href="/dashboard/products/mine"
-            className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ backgroundColor: "var(--primary)", color: "#fff" }}>
-            + Add product
-          </Link>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Stock Overview"
+        actions={
+          <>
+            <button onClick={() => load()}
+              className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
+              style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
+              ↻ Refresh
+            </button>
+            <Link href="/dashboard/products/mine"
+              className="rounded-xl px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
+              style={{ backgroundColor: "var(--primary)", color: "#fff" }}>
+              + Add product
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats cards */}
       {stats && (

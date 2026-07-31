@@ -13,6 +13,7 @@ import {
 } from "@/src/services/internalInventory";
 import { ApiError } from "@/src/lib/api-error";
 import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 // ── Constants & helpers ───────────────────────────────────────────────────────
 
@@ -111,30 +112,23 @@ export const InternalInventoryContainer = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Internal Stock
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Internal Inventory</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>
-            Track stock for analytics and operations — independent from marketplace listings.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={refresh} disabled={refreshing}
-            className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
-            style={{ border: "1px solid var(--border)", color: "var(--medium-gray)", backgroundColor: "var(--surface)" }}>
-            {refreshing ? "Refreshing…" : "↻ Refresh"}
-          </button>
-          <button onClick={() => setFormItem("new")}
-            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-            style={{ backgroundColor: "var(--primary)" }}>
-            + Add item
-          </button>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Internal Inventory"
+        actions={
+          <>
+            <button onClick={refresh} disabled={refreshing}
+              className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+              style={{ border: "1px solid var(--border)", color: "var(--medium-gray)", backgroundColor: "var(--surface)" }}>
+              {refreshing ? "Refreshing…" : "↻ Refresh"}
+            </button>
+            <button onClick={() => setFormItem("new")}
+              className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+              style={{ backgroundColor: "var(--primary)" }}>
+              + Add item
+            </button>
+          </>
+        }
+      />
 
       {/* Dashboard metrics */}
       {dashboard && (

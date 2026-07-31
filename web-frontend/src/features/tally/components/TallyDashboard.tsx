@@ -5,24 +5,29 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { tallyService, TallyStats, Voucher, VoucherType } from "@/src/services/tally";
 import { ApiError } from "@/src/lib/api-error";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const fmt = (n: number) =>
   "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
+// A single `accent` per entry drives both the tinted badge (via `tintBg`) and
+// the label/icon color — previously a hand-picked `accentBg`/`bg` pastel pair
+// per entry (e.g. `#DBEAFE`), hardcoded light-only and illegible in dark mode.
 const QUICK_ACTIONS = [
-  { key: "sales",    label: "Sales Invoice",  icon: "🧾", accent: "#16A34A", accentBg: "#DCFCE7", desc: "Record a customer sale", href: "/dashboard/accounting/tally/new?type=sales" },
-  { key: "purchase", label: "Purchase Bill",  icon: "📥", accent: "#1E40AF", accentBg: "#DBEAFE", desc: "Log a supplier bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
-  { key: "receipt",  label: "Receipt",        icon: "💰", accent: "#92400E", accentBg: "#FEF3C7", desc: "Payment received",        href: "/dashboard/accounting/tally/new?type=receipt" },
-  { key: "payment",  label: "Payment",        icon: "💸", accent: "#5B21B6", accentBg: "#EDE9FE", desc: "Payment made",           href: "/dashboard/accounting/tally/new?type=payment" },
+  { key: "sales",    label: "Sales Invoice",  icon: "🧾", accent: "#16A34A", desc: "Record a customer sale", href: "/dashboard/accounting/tally/new?type=sales" },
+  { key: "purchase", label: "Purchase Bill",  icon: "📥", accent: "#1E40AF", desc: "Log a supplier bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
+  { key: "receipt",  label: "Receipt",        icon: "💰", accent: "#92400E", desc: "Payment received",        href: "/dashboard/accounting/tally/new?type=receipt" },
+  { key: "payment",  label: "Payment",        icon: "💸", accent: "#5B21B6", desc: "Payment made",           href: "/dashboard/accounting/tally/new?type=payment" },
 ] as const;
 
 const STAT_CARDS = (s: TallyStats) => [
-  { label: "Total Sales",     value: fmt(s.totalSales),     hint: "Revenue",      color: "#16A34A", bg: "#DCFCE7" },
-  { label: "Total Purchases", value: fmt(s.totalPurchases), hint: "Expenses",     color: "#DC2626", bg: "#FEE2E2" },
-  { label: "Net Profit",      value: fmt(s.netProfit),      hint: "Margin",       color: "#1E40AF", bg: "#DBEAFE" },
-  { label: "Receivables",     value: fmt(s.receivables),    hint: "To collect",   color: "#D97706", bg: "#FEF3C7" },
-  { label: "Payables",        value: fmt(s.payables),       hint: "To pay",       color: "#5B21B6", bg: "#EDE9FE" },
-  { label: "Receipts",        value: fmt(s.totalReceipts),  hint: "Cash in",      color: "#0E7490", bg: "#E0F2FE" },
+  { label: "Total Sales",     value: fmt(s.totalSales),     hint: "Revenue",      accent: "#16A34A" },
+  { label: "Total Purchases", value: fmt(s.totalPurchases), hint: "Expenses",     accent: "#DC2626" },
+  { label: "Net Profit",      value: fmt(s.netProfit),      hint: "Margin",       accent: "#1E40AF" },
+  { label: "Receivables",     value: fmt(s.receivables),    hint: "To collect",   accent: "#D97706" },
+  { label: "Payables",        value: fmt(s.payables),       hint: "To pay",       accent: "#5B21B6" },
+  { label: "Receipts",        value: fmt(s.totalReceipts),  hint: "Cash in",      accent: "#0E7490" },
 ] as const;
 
 const VOUCHER_LABELS: Record<VoucherType, string> = {
@@ -63,20 +68,12 @@ export const TallyDashboard = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-          Accounting
-        </p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Tally</h1>
-        <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>
-          Financial overview and quick entry
-        </p>
-      </motion.div>
+      <PageHeader title="Tally" />
 
       {/* Error banner */}
       {error && (
         <div className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm"
-          style={{ backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", color: "#991B1B" }}>
+          style={{ backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger)", color: "var(--danger-strong)" }}>
           <span>⚠️ Stats unavailable — {error}. You can still create entries below.</span>
           <button onClick={load} className="text-xs font-bold underline ml-4">Retry</button>
         </div>
@@ -96,10 +93,10 @@ export const TallyDashboard = () => {
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                     className="relative overflow-hidden rounded-2xl p-5"
                     style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                    <div className="absolute inset-x-0 top-0 h-0.5 rounded-t-2xl" style={{ backgroundColor: card.color }} />
+                    <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: card.accent }} />
                     <div className="flex items-start justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: card.color }}>{card.label}</p>
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: card.bg, color: card.color }}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: card.accent }}>{card.label}</p>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: tintBg(card.accent), color: card.accent }}>
                         {card.hint}
                       </span>
                     </div>
@@ -122,7 +119,7 @@ export const TallyDashboard = () => {
                 className="flex flex-col items-center gap-3 rounded-2xl p-5 text-center transition-shadow hover:shadow-lg"
                 style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
-                  style={{ backgroundColor: action.accentBg }}>
+                  style={{ backgroundColor: tintBg(action.accent) }}>
                   {action.icon}
                 </span>
                 <div>

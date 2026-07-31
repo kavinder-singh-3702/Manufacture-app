@@ -60,7 +60,6 @@ type ConvListProps = {
 const ConversationList = ({ conversations, activeId, onSelect, loading, currentUserId: _uid }: ConvListProps) => (
   <div className="flex flex-col h-full">
     <div className="p-4" style={{ borderBottom: "1px solid var(--border)" }}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Messages</p>
       <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Chat</h2>
     </div>
 
