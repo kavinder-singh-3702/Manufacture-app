@@ -2,22 +2,27 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { RootStackParamList } from "../../navigation/types";
 import { InputField } from "../../components/common/InputField";
 import { Button } from "../../components/common/Button";
 import { internalInventoryService } from "../../services/internalInventory.service";
+import { productService, type Product } from "../../services/product.service";
 import { useToast } from "../../components/ui/Toast";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -60,6 +65,61 @@ export const InternalInventoryItemFormScreen = () => {
   const [fetching, setFetching] = useState(isEdit);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Catalog product picker — lets the user pre-fill the internal item
+  // form from an existing marketplace product instead of retyping name,
+  // sku, category, unit. Purely a QoL shortcut; no linkage is stored.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerProducts, setPickerProducts] = useState<Product[]>([]);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+
+  const loadPickerProducts = useCallback(async () => {
+    setPickerLoading(true);
+    setPickerError(null);
+    try {
+      const response = await productService.getAll({
+        scope: "company",
+        limit: 100,
+        offset: 0,
+      });
+      setPickerProducts(response.products || []);
+    } catch (err: any) {
+      setPickerError(err?.message || "Failed to load products");
+      setPickerProducts([]);
+    } finally {
+      setPickerLoading(false);
+    }
+  }, []);
+
+  const openPicker = useCallback(() => {
+    setPickerOpen(true);
+    loadPickerProducts();
+  }, [loadPickerProducts]);
+
+  const selectPickerProduct = useCallback((product: Product) => {
+    setForm((prev) => ({
+      ...prev,
+      name: product.name || prev.name,
+      sku: (product.sku || prev.sku || "").toUpperCase(),
+      category: product.category || prev.category,
+      unit: product.price?.unit || product.unit || prev.unit || "units",
+    }));
+    setErrors({});
+    setPickerOpen(false);
+  }, []);
+
+  const filteredPickerProducts = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    if (!q) return pickerProducts;
+    return pickerProducts.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const sku = (p.sku || "").toLowerCase();
+      const cat = (p.category || "").toLowerCase();
+      return name.includes(q) || sku.includes(q) || cat.includes(q);
+    });
+  }, [pickerProducts, pickerSearch]);
 
   const updateField = (key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -235,6 +295,29 @@ export const InternalInventoryItemFormScreen = () => {
             <Text style={[styles.infoText, { color: colors.textMuted }]}>This stock is for internal analytics and does not list publicly in marketplace.</Text>
           </View>
 
+          {!isEdit ? (
+            <TouchableOpacity
+              onPress={openPicker}
+              activeOpacity={0.85}
+              style={[
+                styles.pickerButton,
+                {
+                  borderColor: colors.primary,
+                  backgroundColor: colors.primary + "10",
+                  borderRadius: radius.md,
+                  marginBottom: spacing.md,
+                },
+              ]}
+            >
+              <Ionicons name="cube-outline" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.pickerButtonTitle, { color: colors.primary }]}>Pick from catalog products</Text>
+                <Text style={[styles.pickerButtonSubtitle, { color: colors.textMuted }]}>Auto-fill name, SKU, category, unit</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+            </TouchableOpacity>
+          ) : null}
+
           <InputField
             label="Item Name"
             required
@@ -312,6 +395,86 @@ export const InternalInventoryItemFormScreen = () => {
           <Button label={isEdit ? "Save changes" : "Create internal item"} onPress={handleSave} loading={loading} />
         </View>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={pickerOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <View style={[styles.pickerBackdrop]}>
+          <View style={[styles.pickerSheet, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.pickerTitle, { color: colors.text }]}>Pick a catalog product</Text>
+              <TouchableOpacity onPress={() => setPickerOpen(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.pickerSearchWrap, { borderColor: colors.border, backgroundColor: colors.background, borderRadius: radius.md }]}>
+              <Ionicons name="search" size={16} color={colors.textMuted} />
+              <TextInput
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder="Search products by name, SKU, category"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.pickerSearchInput, { color: colors.text }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {pickerSearch ? (
+                <TouchableOpacity onPress={() => setPickerSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {pickerLoading ? (
+              <View style={styles.pickerCentered}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={{ color: colors.textMuted, marginTop: 8, fontWeight: "600" }}>Loading products…</Text>
+              </View>
+            ) : pickerError ? (
+              <View style={styles.pickerCentered}>
+                <Text style={{ color: colors.error, fontWeight: "700", marginBottom: 8 }}>{pickerError}</Text>
+                <TouchableOpacity onPress={loadPickerProducts}>
+                  <Text style={{ color: colors.primary, fontWeight: "700" }}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : filteredPickerProducts.length === 0 ? (
+              <View style={styles.pickerCentered}>
+                <Text style={{ color: colors.textMuted, fontWeight: "600" }}>
+                  {pickerSearch ? "No products match your search." : "No catalog products found. Add one first."}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredPickerProducts}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => selectPickerProduct(item)}
+                    activeOpacity={0.85}
+                    style={[styles.pickerRow, { borderBottomColor: colors.border }]}
+                  >
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.pickerRowTitle, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.pickerRowMeta, { color: colors.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
+                        {[item.sku, item.category].filter(Boolean).join(" · ") || "No SKU"}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -326,6 +489,86 @@ const styles = StyleSheet.create({
   loaderText: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  pickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pickerButtonTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  pickerButtonSubtitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  pickerSheet: {
+    maxHeight: "80%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    paddingBottom: 12,
+    marginBottom: 12,
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  pickerSearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  pickerSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    padding: 0,
+  },
+  pickerCentered: {
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerRowTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  pickerRowMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
   },
   header: {
     flexDirection: "row",
