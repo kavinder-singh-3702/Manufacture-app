@@ -105,12 +105,13 @@ export const DashboardTopbar = ({
           )}
         </button>
 
-        {/* Cart — reachable from the Shop tab on the mobile rail, so it's
-            hidden below sm too. */}
+        {/* Cart — the mobile "Shop" tab now goes to the product catalog, not
+            the cart (see MobileTabRail), so this needs to stay visible at
+            every breakpoint instead of hiding below sm. */}
         <button
           type="button"
           onClick={() => setCartOpen(true)}
-          className="relative hidden h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80 sm:flex"
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-opacity hover:opacity-80"
           style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
           aria-label="Shopping cart"
         >

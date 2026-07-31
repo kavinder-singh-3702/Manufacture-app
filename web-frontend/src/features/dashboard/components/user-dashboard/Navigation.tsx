@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
@@ -44,9 +44,15 @@ export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav]
 
 type NavId = string;
 
-/** Exported so MobileTabRail can reuse the exact same glyphs instead of redrawing them. */
-export const NavIcon = ({ id, active }: { id: NavId; active: boolean }) => {
-  const color = active ? "#fff" : "var(--medium-gray)";
+/**
+ * Exported so MobileTabRail can reuse the exact same glyphs instead of
+ * redrawing them. `active` defaults to white — correct when the icon sits on
+ * a solid colored pill (Sidebar's active row, the "More" sheet grid) — but
+ * MobileTabRail's bare tab row has no colored backing, so it passes
+ * `color="var(--primary)"` explicitly there instead of relying on the default.
+ */
+export const NavIcon = ({ id, active, color: colorOverride }: { id: NavId; active: boolean; color?: string }) => {
+  const color = colorOverride ?? (active ? "#fff" : "var(--medium-gray)");
   switch (id) {
     case "overview":
       return (
@@ -459,12 +465,15 @@ const SIDEBAR_COLLAPSE_KEY = "arvann-sidebar-collapsed";
 // drifting out of sync.
 export type SidebarProps = Omit<SidebarContentProps, "onNavigate" | "collapsed" | "onExpand">;
 
-export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout }: SidebarProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+// Lazy initializer (read on the client's first render), matching the
+// established pattern in ThemeProvider's readStoredMode — avoids the
+// setState-in-effect lint error and an extra render pass for something that
+// never needs to match server-rendered markup exactly.
+const readCollapsedState = (): boolean =>
+  typeof window !== "undefined" && window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
 
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1");
-  }, []);
+export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout }: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(readCollapsedState);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {

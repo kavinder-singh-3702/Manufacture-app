@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import type { AuthUser } from "@/src/types/auth";
+import { ProfileIcon } from "./user-dashboard/profile/ProfileIcons";
 
 type ProfilePhotoUploaderProps = {
   user: AuthUser;
@@ -12,6 +13,13 @@ type ProfilePhotoUploaderProps = {
   onUpload?: (file: File, base64: string) => Promise<void>;
 };
 
+/**
+ * Circular tap-to-upload avatar with a small camera badge overlay — mirrors
+ * the app's avatar interaction exactly: whole avatar is the tap target, the
+ * badge swaps to a spinner while uploading (boolean only, no progress %),
+ * base64 upload via FileReader, no crop step (app-frontend/src/screens/
+ * profile/ProfileScreen.tsx#L124-168 uses the OS's own file picker too).
+ */
 export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: ProfilePhotoUploaderProps) => {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -53,32 +61,39 @@ export const ProfilePhotoUploader = ({ user, value, onChange, onUpload }: Profil
   const initials = (user.displayName ?? user.email ?? "NA").slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3">
-      <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--card)] text-sm font-semibold text-[var(--primary)]">
-          {preview ? <img loading="lazy" decoding="async" src={preview} alt="Avatar preview" className="h-full w-full object-cover" /> : initials}
-        </div>
-        <div className="flex flex-1 flex-col gap-2 text-sm text-[var(--foreground)]">
-          <label
-            aria-disabled={uploading}
-            className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 font-semibold text-[var(--primary)] shadow-sm hover:border-[var(--primary)] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-          >
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={uploading}
-              onChange={(event) => {
-                handleFileChange(event.target.files);
-                event.currentTarget.value = "";
-              }}
-            />
-            {uploading ? "Uploading…" : "Upload photo"}
-          </label>
-          <p className="text-xs text-[var(--medium-gray)]">Upload a JPG/PNG. We will show a preview instantly.</p>
-          {error ? <p className="text-xs font-semibold text-[color:var(--error)]">{error}</p> : null}
-        </div>
-      </div>
+    <div className="flex flex-col items-center gap-2">
+      <label
+        aria-disabled={uploading}
+        className="group relative flex h-24 w-24 cursor-pointer items-center justify-center rounded-full text-xl font-bold aria-disabled:cursor-not-allowed"
+        style={{ border: "1px solid var(--border)", backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
+      >
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={uploading}
+          onChange={(event) => {
+            handleFileChange(event.target.files);
+            event.currentTarget.value = "";
+          }}
+        />
+        {preview ? (
+          <img loading="lazy" decoding="async" src={preview} alt="Avatar preview" className="h-full w-full rounded-full object-cover" />
+        ) : (
+          initials
+        )}
+        <span
+          className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2"
+          style={{ backgroundColor: "var(--primary)", borderColor: "var(--surface)", color: "#fff" }}
+        >
+          {uploading ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <ProfileIcon name="camera" size={14} color="#fff" />
+          )}
+        </span>
+      </label>
+      {error ? <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{error}</p> : null}
     </div>
   );
 };
