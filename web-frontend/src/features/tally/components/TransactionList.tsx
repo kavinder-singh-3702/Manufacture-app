@@ -5,6 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { tallyService, Voucher, VoucherType, VoucherStatus } from "@/src/services/tally";
 import { ApiError } from "@/src/lib/api-error";
+import { tintBg } from "@/src/lib/color";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const fmt = (n: number) =>
   "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -19,20 +21,23 @@ const VOUCHER_LABELS: Record<VoucherType, string> = {
   debit_note:    "Debit Note",
 };
 
-const TYPE_ACCENT: Record<VoucherType, { color: string; bg: string }> = {
-  sales_invoice: { color: "#16A34A", bg: "#DCFCE7" },
-  purchase_bill: { color: "#1E40AF", bg: "#DBEAFE" },
-  receipt:       { color: "#92400E", bg: "#FEF3C7" },
-  payment:       { color: "#5B21B6", bg: "#EDE9FE" },
-  journal:       { color: "#0E7490", bg: "#E0F2FE" },
-  credit_note:   { color: "#DC2626", bg: "#FEE2E2" },
-  debit_note:    { color: "#D97706", bg: "#FEF3C7" },
+// `bg` is derived from `color` via `tintBg` at render time — was a hand-picked
+// pastel per type/status (e.g. `#DCFCE7`), hardcoded light-only and illegible
+// in dark mode.
+const TYPE_ACCENT: Record<VoucherType, { color: string }> = {
+  sales_invoice: { color: "#16A34A" },
+  purchase_bill: { color: "#1E40AF" },
+  receipt:       { color: "#92400E" },
+  payment:       { color: "#5B21B6" },
+  journal:       { color: "#0E7490" },
+  credit_note:   { color: "#DC2626" },
+  debit_note:    { color: "#D97706" },
 };
 
-const STATUS_STYLE: Record<VoucherStatus, { label: string; color: string; bg: string }> = {
-  posted: { label: "Posted",  color: "#166534", bg: "#DCFCE7" },
-  draft:  { label: "Draft",   color: "#92400E", bg: "#FEF3C7" },
-  voided: { label: "Voided",  color: "#6B7280", bg: "#F3F4F6" },
+const STATUS_STYLE: Record<VoucherStatus, { label: string; color: string }> = {
+  posted: { label: "Posted",  color: "#166534" },
+  draft:  { label: "Draft",   color: "#92400E" },
+  voided: { label: "Voided",  color: "#6B7280" },
 };
 
 const TYPE_CHIPS: { key: VoucherType | "all"; label: string }[] = [
@@ -83,31 +88,28 @@ export const TransactionList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm mb-1" style={{ color: "var(--medium-gray)" }}>
+      <PageHeader
+        title="All Transactions"
+        breadcrumb={
+          <>
             <Link href="/dashboard/accounting/tally" className="hover:opacity-70 transition-opacity" style={{ color: "var(--primary)" }}>
               Tally
             </Link>
             <span>/</span>
             <span style={{ color: "var(--foreground)" }}>Transactions</span>
-          </div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>All Transactions</h1>
-        </div>
-        <div className="flex gap-2">
-          {[
-            { label: "New Invoice",  href: "/dashboard/accounting/tally/new?type=sales" },
-            { label: "New Bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
-          ].map((a) => (
-            <Link key={a.href} href={a.href}
-              className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: "var(--primary)" }}>
-              {a.label}
-            </Link>
-          ))}
-        </div>
-      </motion.div>
+          </>
+        }
+        actions={[
+          { label: "New Invoice",  href: "/dashboard/accounting/tally/new?type=sales" },
+          { label: "New Bill",     href: "/dashboard/accounting/tally/new?type=purchase" },
+        ].map((a) => (
+          <Link key={a.href} href={a.href}
+            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+            style={{ backgroundColor: "var(--primary)" }}>
+            {a.label}
+          </Link>
+        ))}
+      />
 
       {/* Type filter chips */}
       <div className="flex flex-wrap gap-2">
@@ -127,7 +129,7 @@ export const TransactionList = () => {
       {/* Error */}
       {error && (
         <div className="flex items-center justify-between rounded-xl px-4 py-3 text-sm"
-          style={{ backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", color: "#991B1B" }}>
+          style={{ backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger)", color: "var(--danger-strong)" }}>
           <span>{error}</span>
           <button onClick={() => load(0)} className="text-xs font-bold underline ml-4">Retry</button>
         </div>
@@ -158,7 +160,7 @@ export const TransactionList = () => {
         <>
           <div className="space-y-2">
             {vouchers.map((v, i) => {
-              const accent = TYPE_ACCENT[v.voucherType] ?? { color: "var(--primary)", bg: "var(--primary-light)" };
+              const accent = TYPE_ACCENT[v.voucherType] ?? { color: "var(--primary)" };
               const statusStyle = STATUS_STYLE[v.status] ?? STATUS_STYLE.draft;
               return (
                 <motion.div key={v._id}
@@ -166,7 +168,7 @@ export const TransactionList = () => {
                   className="flex items-center gap-4 rounded-xl px-4 py-3.5"
                   style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
                   <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-lg"
-                    style={{ backgroundColor: accent.bg }}>
+                    style={{ backgroundColor: tintBg(accent.color) }}>
                     {v.voucherType === "sales_invoice" ? "🧾"
                       : v.voucherType === "purchase_bill" ? "📥"
                       : v.voucherType === "receipt" ? "💰"
@@ -182,7 +184,7 @@ export const TransactionList = () => {
                         <span className="text-xs" style={{ color: "var(--medium-gray)" }}>#{v.voucherNumber}</span>
                       )}
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                        style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}>
+                        style={{ backgroundColor: tintBg(statusStyle.color), color: statusStyle.color }}>
                         {statusStyle.label}
                       </span>
                     </div>

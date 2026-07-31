@@ -4,7 +4,7 @@ import { activityService } from "@/src/services/activity";
 import { ApiError } from "@/src/lib/api-error";
 import { useDashboardContext } from "./context";
 import { activityBadgeStyles, buildActivityMetaLine, formatCategory } from "./helpers";
-import { SectionHeader } from "./shared";
+import { PageHeader } from "@/src/components/ui/Surface";
 import type { ActivityEvent } from "@/src/types/activity";
 
 export const ActivitySection = () => {
@@ -47,10 +47,9 @@ export const ActivitySection = () => {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
+      <PageHeader
         title="Recent activity"
-        subtitle="Timeline"
-        action={
+        actions={
           <button
             type="button"
             onClick={() => fetchActivities(true)}

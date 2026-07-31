@@ -1,4 +1,4 @@
-import { SectionHeader } from "./shared";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { ThemeSwitcher } from "@/src/components/ui/ThemeSwitcher";
 import { NotificationPreferencesCard } from "./NotificationPreferencesCard";
 
@@ -10,10 +10,7 @@ import { NotificationPreferencesCard } from "./NotificationPreferencesCard";
 export const SettingsSection = () => (
   <div className="space-y-8">
     <div>
-      <SectionHeader title="Appearance" subtitle="Theme" />
-      <p className="mb-3 mt-1 text-xs" style={{ color: "var(--medium-gray)" }}>
-        Theme mode for the whole console.
-      </p>
+      <PageHeader title="Appearance" />
       <ThemeSwitcher />
     </div>
 

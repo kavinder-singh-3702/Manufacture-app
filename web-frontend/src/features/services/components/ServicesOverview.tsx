@@ -9,6 +9,7 @@ import { ApiError } from "@/src/lib/api-error";
 import type { ServiceRequest } from "@/src/types/service";
 import { ServiceTypeCard, SERVICE_TYPES, getServiceTypeMeta, tintBg } from "./ServiceTypeCard";
 import { ServiceStatusBadge, ServicePriorityBadge } from "./ServiceStatusBadge";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const fade = (delay = 0) => ({
   initial: { opacity: 0, y: 12 },
@@ -84,25 +85,19 @@ export const ServicesOverview = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <motion.div {...fade(0)} className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-            Marketplace
-          </p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Services</h1>
-          <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-            Operations command for support, workforce, and logistics
-          </p>
-        </div>
-        <Link href="/dashboard/services/request"
-          className="self-start inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-          style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-          New request
-        </Link>
-      </motion.div>
+      <PageHeader
+        title="Services"
+        actions={
+          <Link href="/dashboard/services/request"
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+            style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+            New request
+          </Link>
+        }
+      />
 
       {/* KPI strip */}
       <motion.div {...fade(0.05)} className="flex gap-3">

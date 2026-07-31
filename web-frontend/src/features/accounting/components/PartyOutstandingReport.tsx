@@ -49,15 +49,7 @@ export const PartyOutstandingReport = () => {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>
-          Accounting
-        </p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Party Outstanding</h1>
-        <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-          Aged receivables & payables as of today
-        </p>
-      </motion.div>
+      <PageHeader title="Party Outstanding" />
 
       {/* Type toggle */}
       <div className="flex items-center gap-2">
@@ -94,21 +86,19 @@ export const PartyOutstandingReport = () => {
             initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
             className="rounded-3xl p-6 text-center"
             style={{
-              background: partyType === "customer"
-                ? "linear-gradient(135deg, #DBEAFE, #EFF6FF)"
-                : "linear-gradient(135deg, #FEE2E2, #FEF2F2)",
-              border: `1px solid ${partyType === "customer" ? "#BFDBFE" : "#FECACA"}`,
+              backgroundColor: tintBg(partyType === "customer" ? "var(--primary)" : "var(--error)", 10),
+              border: `1px solid ${partyType === "customer" ? "var(--primary)" : "var(--error)"}`,
             }}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.3em]"
-              style={{ color: partyType === "customer" ? "#1E40AF" : "#991B1B" }}>
+              style={{ color: partyType === "customer" ? "var(--primary)" : "var(--error)" }}>
               Total {partyType === "customer" ? "Receivables" : "Payables"}
             </p>
             <p className="mt-3 text-5xl font-bold"
-              style={{ color: partyType === "customer" ? "#1E40AF" : "#DC2626" }}>
+              style={{ color: partyType === "customer" ? "var(--primary)" : "var(--error)" }}>
               {formatIndian(total)}
             </p>
-            <p className="mt-2 text-sm" style={{ color: partyType === "customer" ? "#1D4ED8" : "#B91C1C" }}>
+            <p className="mt-2 text-sm" style={{ color: partyType === "customer" ? "var(--primary)" : "var(--error)" }}>
               From {rows.length} {partyType === "customer" ? "customer" : "supplier"}{rows.length !== 1 ? "s" : ""}
             </p>
           </motion.div>
@@ -123,7 +113,7 @@ export const PartyOutstandingReport = () => {
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.07 }}
                     className="space-y-2 rounded-2xl p-4"
-                    style={{ backgroundColor: b.bg, border: `1px solid ${b.dot}33` }}>
+                    style={{ backgroundColor: tintBg(b.color), border: `1px solid ${b.dot}33` }}>
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: b.dot }} />
                       <p className="text-xs font-semibold" style={{ color: b.color }}>{b.label}</p>
@@ -172,7 +162,7 @@ export const PartyOutstandingReport = () => {
                         return (
                           <span key={b.key}
                             className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
-                            style={{ backgroundColor: b.bg, color: b.color }}>
+                            style={{ backgroundColor: tintBg(b.color), color: b.color }}>
                             {b.label}: {formatIndian(val)}
                           </span>
                         );

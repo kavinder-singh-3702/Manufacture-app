@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SectionHeader } from "./shared";
+import { PageHeader } from "@/src/components/ui/Surface";
 import {
   notificationService,
   type NotificationPreferences,
@@ -127,18 +127,22 @@ export const NotificationPreferencesCard = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <SectionHeader title="Notifications" subtitle="Channels & quiet hours" />
-        {saveStatus === "saving" && (
-          <span className="text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>Saving…</span>
-        )}
-        {saveStatus === "saved" && (
-          <span className="text-xs font-semibold" style={{ color: "var(--success)" }}>✓ Saved</span>
-        )}
-        {saveStatus === "error" && (
-          <span className="text-xs font-semibold" style={{ color: "var(--error)" }}>Failed to save</span>
-        )}
-      </div>
+      <PageHeader
+        title="Notifications"
+        actions={
+          <>
+            {saveStatus === "saving" && (
+              <span className="text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>Saving…</span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-xs font-semibold" style={{ color: "var(--success)" }}>✓ Saved</span>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-xs font-semibold" style={{ color: "var(--error)" }}>Failed to save</span>
+            )}
+          </>
+        }
+      />
 
       {loading && (
         <div className="space-y-3">

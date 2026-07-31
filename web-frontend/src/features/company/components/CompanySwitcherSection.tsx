@@ -8,6 +8,7 @@ import { useDashboardContext } from "@/src/features/dashboard/components/user-da
 import { CompanyCreateDrawer } from "./CompanyCreateDrawer";
 import { CompanyVerificationDrawer } from "./CompanyVerificationDrawer";
 import type { Company } from "@/src/types/company";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const COMPLIANCE_META: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   verified: { label: "Verified", bg: "#DCFCE7", text: "#15803D", dot: "#22C55E" },
