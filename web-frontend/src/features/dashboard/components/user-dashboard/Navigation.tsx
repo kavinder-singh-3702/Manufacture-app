@@ -1,41 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
 import { buildInitials, resolveCompanyLabel } from "./helpers";
 import { BrandWordmark } from "@/src/components/BrandLogo";
 
+// No `description` field — every row is icon + label only. Subtext lines
+// under each nav item read as consumer-y rather than professional, and the
+// label alone is enough once the icon set is distinct.
 type NavItem = {
   id: string;
   label: string;
-  description: string;
   href: string;
   soon?: boolean;
 };
 
 const workspaceNav: NavItem[] = [
-  { id: "overview",      label: "Overview",      description: "Workspace snapshot",  href: "/dashboard" },
-  { id: "products",      label: "Products",      description: "Catalog & stock",     href: "/dashboard/products" },
-  { id: "company",       label: "Company",       description: "Profile & details",   href: "/dashboard/company" },
-  { id: "verification",  label: "Verification",  description: "Trust badge & docs",  href: "/dashboard/verification" },
-  { id: "profile",       label: "Profile",       description: "Your account",        href: "/dashboard/profile" },
-  { id: "activity",      label: "Activity",      description: "Recent timeline",     href: "/dashboard/activity" },
-  { id: "notifications", label: "Notifications", description: "Alerts & updates",    href: "/dashboard/notifications" },
-  { id: "settings",      label: "Settings",      description: "Account settings",    href: "/dashboard/settings" },
+  { id: "overview",      label: "Overview",      href: "/dashboard" },
+  { id: "products",      label: "Products",      href: "/dashboard/products" },
+  { id: "company",       label: "Company",       href: "/dashboard/company" },
+  { id: "verification",  label: "Verification",  href: "/dashboard/verification" },
+  { id: "profile",       label: "Profile",       href: "/dashboard/profile" },
+  { id: "activity",      label: "Activity",      href: "/dashboard/activity" },
+  { id: "notifications", label: "Notifications", href: "/dashboard/notifications" },
+  { id: "settings",      label: "Settings",      href: "/dashboard/settings" },
 ];
 
 const modulesNav: NavItem[] = [
-  { id: "orders",             label: "My Orders",         description: "Order history",         href: "/dashboard/orders" },
-  { id: "cart",               label: "Cart",              description: "Items & checkout",       href: "/dashboard/cart" },
-  { id: "accounting",         label: "Accounting",        description: "P&L, GST & reports",    href: "/dashboard/accounting" },
-  { id: "services",           label: "Services",          description: "Job-work marketplace",  href: "/dashboard/services" },
-  { id: "inventory",          label: "Inventory",         description: "Stock & warehouses",    href: "/dashboard/inventory" },
-  { id: "internal-inventory", label: "Internal Stock",    description: "Internal ops tracking", href: "/dashboard/internal-inventory" },
-  { id: "quotes",             label: "Quotes",            description: "RFQs & negotiation",    href: "/dashboard/quotes" },
-  { id: "ads",                label: "Ad Runs",           description: "Promote your products", href: "/dashboard/ads" },
-  { id: "chat",               label: "Chat",              description: "Messages & threads",    href: "/dashboard/chat" },
+  { id: "orders",             label: "My Orders",      href: "/dashboard/orders" },
+  { id: "cart",               label: "Cart",           href: "/dashboard/cart" },
+  { id: "accounting",         label: "Accounting",     href: "/dashboard/accounting" },
+  { id: "services",           label: "Services",       href: "/dashboard/services" },
+  { id: "inventory",          label: "Inventory",      href: "/dashboard/inventory" },
+  { id: "internal-inventory", label: "Internal Stock", href: "/dashboard/internal-inventory" },
+  { id: "quotes",             label: "Quotes",         href: "/dashboard/quotes" },
+  { id: "ads",                label: "Ad Runs",        href: "/dashboard/ads" },
+  { id: "chat",               label: "Chat",           href: "/dashboard/chat" },
 ];
 
 export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav];
@@ -174,20 +176,27 @@ const NavGroup = ({
   activePath,
   onNavigate,
   className = "",
+  collapsed = false,
+  pillId,
 }: {
   label: string;
   items: NavItem[];
   activePath: string;
   onNavigate: () => void;
   className?: string;
+  collapsed?: boolean;
+  /** Shared framer-motion layoutId so the active pill glides between items on navigation instead of hard-cutting. */
+  pillId: string;
 }) => (
   <div className={className}>
-    <p
-      className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
-      style={{ color: "var(--medium-gray)" }}
-    >
-      {label}
-    </p>
+    {!collapsed && (
+      <p
+        className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
+        style={{ color: "var(--medium-gray)" }}
+      >
+        {label}
+      </p>
+    )}
     <div className="space-y-0.5">
       {items.map((item) => {
         const isActive =
@@ -199,14 +208,20 @@ const NavGroup = ({
             href={item.href}
             onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
-            className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors"
-            style={{
-              backgroundColor: isActive ? "var(--primary)" : "transparent",
-              textDecoration: "none",
-            }}
+            title={collapsed ? item.label : undefined}
+            className={`relative flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors ${collapsed ? "justify-center" : ""}`}
+            style={{ textDecoration: "none" }}
           >
+            {isActive && (
+              <motion.span
+                layoutId={pillId}
+                className="absolute inset-0 rounded-xl"
+                style={{ backgroundColor: "var(--primary)" }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              />
+            )}
             <span
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-all"
+              className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-all"
               style={{
                 backgroundColor: isActive ? "rgba(255,255,255,0.18)" : "var(--background)",
                 border: isActive ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
@@ -214,23 +229,17 @@ const NavGroup = ({
             >
               <NavIcon id={item.id} active={isActive} />
             </span>
-            <div className="min-w-0 flex-1">
-              <p
-                className="text-[13px] font-semibold leading-tight"
+            {!collapsed && (
+              <span
+                className="relative min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight"
                 style={{ color: isActive ? "#fff" : "var(--foreground)" }}
               >
                 {item.label}
-              </p>
-              <p
-                className="text-[11px] leading-tight"
-                style={{ color: isActive ? "rgba(255,255,255,0.65)" : "var(--medium-gray)" }}
-              >
-                {item.description}
-              </p>
-            </div>
-            {item.soon ? (
+              </span>
+            )}
+            {!collapsed && item.soon ? (
               <span
-                className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                className="relative flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
                 style={{
                   backgroundColor: isActive ? "rgba(255,255,255,0.22)" : "var(--primary-light)",
                   color: isActive ? "#fff" : "var(--primary)",
