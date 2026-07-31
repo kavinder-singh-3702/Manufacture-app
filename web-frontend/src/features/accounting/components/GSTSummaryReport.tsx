@@ -54,7 +54,6 @@ export const GSTSummaryReport = () => {
   const outputTotal = data ? data.output.cgst + data.output.sgst + data.output.igst : 0;
   const netPayable = data?.netPayable ?? 0;
   const isPayable = netPayable >= 0;
-  const maxGST = Math.max(inputTotal, outputTotal, 1);
 
   return (
     <AccountingGuard>
