@@ -9,6 +9,8 @@ import { companyService } from "@/src/services/company";
 import { ApiError } from "@/src/lib/api-error";
 import type { Company } from "@/src/types/company";
 import { motion } from "framer-motion";
+import { AnimatedPage } from "@/src/components/ui/PageTransition";
+import { useMotionSafe } from "@/src/components/ui/motion";
 import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
 import { Sidebar } from "./user-dashboard/Navigation";
 import { MobileTabRail } from "./user-dashboard/MobileTabRail";

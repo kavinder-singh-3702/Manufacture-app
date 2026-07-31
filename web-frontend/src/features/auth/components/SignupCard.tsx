@@ -1,21 +1,29 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { BUSINESS_ACCOUNT_TYPES, BUSINESS_CATEGORIES, BusinessAccountType } from "../../../constants/business";
+import { BUSINESS_ACCOUNT_TYPES, BusinessAccountType } from "../../../constants/business";
+import { PRODUCT_CATEGORIES } from "../../product/utils/categories";
 import { authService } from "../../../services/auth";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
 import { useAuthFlow } from "../flow/useAuthFlow";
+import { Field, fieldInputClass, fieldInputStyle } from "@/src/components/ui/FormField";
 
-const STEPS = ["Profile", "Verify OTP", "Workspace"] as const;
+// 5-step wizard mirroring the app's SignupScreen exactly: identity (first +
+// last name + email) -> otp -> contact (phone, its own step) -> password ->
+// business (DOB, account type, company + categories). See
+// app-frontend/src/screens/auth/SignupScreen.tsx#L38 for the source shape.
+const STEPS = ["Identity", "Verify", "Contact", "Password", "Business"] as const;
 type SignupStep = (typeof STEPS)[number];
 
 const OTP_LENGTH = 6;
 
-type ProfileState = { fullName: string; email: string; phone: string };
-type AccountState = { password: string; accountType: BusinessAccountType; companyName: string; categories: string[] };
+type IdentityState = { firstName: string; lastName: string; email: string };
+type ContactState = { phone: string };
+type PasswordState = { password: string };
+type BusinessState = { dateOfBirth: string; accountType: BusinessAccountType; companyName: string; categories: string[] };
 type FieldErrors<T> = Partial<Record<keyof T, string>>;
 
 const ACCOUNT_TYPE_META = {
@@ -24,22 +32,18 @@ const ACCOUNT_TYPE_META = {
   manufacturer: { icon: "🏭", label: "Manufacturer", desc: "List your production capacity" },
 } as const;
 
-const CAT_ICONS: Record<string, string> = {
-  printing: "🖨️", manufacturing: "⚙️", packaging: "📦",
-  logistics: "🚚", textiles: "🧵", machinery: "🔩", other: "💼",
+// Matches the app's composeFullName (SignupScreen.tsx#L150-151) — the
+// backend's signup endpoints only ever accept one combined `fullName`, so
+// the first/last split stays purely a UI convenience.
+const composeFullName = (firstName: string, lastName: string) => [firstName, lastName].filter(Boolean).join(" ").trim();
+
+const maskEmail = (email: string) => {
+  const [name, domain] = email.split("@");
+  if (!name || !domain) return email;
+  return `${name.slice(0, 1)}${"*".repeat(Math.max(name.length - 1, 3))}@${domain}`;
 };
 
-const getPasswordStrength = (pw: string): { score: number; label: string; color: string } => {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { score, label: "Weak", color: "var(--accent)" };
-  if (score <= 3) return { score, label: "Fair", color: "#F59E0B" };
-  return { score, label: "Strong", color: "var(--color-success)" };
-};
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const fadeSlide = {
   initial: { opacity: 0, x: 20 },
@@ -48,39 +52,22 @@ const fadeSlide = {
   transition: { duration: 0.22 },
 };
 
-const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
-  <div className="space-y-1.5">
-    <label className="block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-      {label}
-    </label>
-    {children}
-    {error && (
-      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-        className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
-        {error}
-      </motion.p>
-    )}
-  </div>
-);
-
-const inputClass = "w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-shadow focus:shadow-[0_0_0_2px_rgba(20,141,178,0.25)]";
-const inputStyle = (error?: string): React.CSSProperties => ({
-  border: `1px solid ${error ? "var(--accent)" : "var(--border)"}`,
-  backgroundColor: "var(--surface)",
-  color: "var(--foreground)",
-});
-
 export const SignupCard = () => {
   const router = useRouter();
   const { setUser } = useAuth();
   const { go } = useAuthFlow();
-  const [step, setStep] = useState<SignupStep>("Profile");
-  const [profile, setProfile] = useState<ProfileState>({ fullName: "", email: "", phone: "" });
+  const [step, setStep] = useState<SignupStep>("Identity");
+  const [identity, setIdentity] = useState<IdentityState>({ firstName: "", lastName: "", email: "" });
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [account, setAccount] = useState<AccountState>({ password: "", accountType: "normal", companyName: "", categories: [] });
+  const [contact, setContact] = useState<ContactState>({ phone: "" });
+  const [passwordState, setPasswordState] = useState<PasswordState>({ password: "" });
+  const [business, setBusiness] = useState<BusinessState>({ dateOfBirth: "", accountType: "normal", companyName: "", categories: [] });
+  const [categoryQuery, setCategoryQuery] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [profileErrors, setProfileErrors] = useState<FieldErrors<ProfileState>>({});
-  const [accountErrors, setAccountErrors] = useState<FieldErrors<AccountState>>({});
+  const [identityErrors, setIdentityErrors] = useState<FieldErrors<IdentityState>>({});
+  const [contactErrors, setContactErrors] = useState<FieldErrors<ContactState>>({});
+  const [passwordErrors, setPasswordErrors] = useState<FieldErrors<PasswordState>>({});
+  const [businessErrors, setBusinessErrors] = useState<FieldErrors<BusinessState>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,18 +75,27 @@ export const SignupCard = () => {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const stepIndex = STEPS.indexOf(step);
-  const requiresCompany = account.accountType !== "normal";
-  const passwordStrength = getPasswordStrength(account.password);
+  const requiresCompany = business.accountType !== "normal";
 
   const reset = () => {
-    setStep("Profile"); setProfile({ fullName: "", email: "", phone: "" });
-    setOtp(Array(OTP_LENGTH).fill("")); setAccount({ password: "", accountType: "normal", companyName: "", categories: [] });
-    setProfileErrors({}); setAccountErrors({}); setStatus(null); setError(null); setExpiresInMs(null);
+    setStep("Identity");
+    setIdentity({ firstName: "", lastName: "", email: "" });
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setContact({ phone: "" });
+    setPasswordState({ password: "" });
+    setBusiness({ dateOfBirth: "", accountType: "normal", companyName: "", categories: [] });
+    setCategoryQuery("");
+    setIdentityErrors({});
+    setContactErrors({});
+    setPasswordErrors({});
+    setBusinessErrors({});
+    setStatus(null);
+    setError(null);
+    setExpiresInMs(null);
   };
 
-  // Step 0's back leaves the flow (→ sign-in) after clearing the form, like
-  // SignupScreen's handleBack at stepIndex 0 (app-frontend/src/screens/auth/SignupScreen.tsx#L403-L407).
-  // Any later step just steps back within the wizard.
+  // Step 0's back leaves the flow (-> sign-in) after clearing the form, like
+  // SignupScreen's handleBack at stepIndex 0. Any later step just steps back.
   const handleBack = () => {
     if (stepIndex === 0) {
       reset();
@@ -110,78 +106,133 @@ export const SignupCard = () => {
     setError(null);
   };
 
-  const validateProfile = () => {
-    const errs: FieldErrors<ProfileState> = {};
-    if (!profile.fullName.trim() || profile.fullName.trim().split(" ").length < 2) errs.fullName = "Enter first and last name";
-    if (!profile.email.trim() || !/^\S+@\S+\.\S+$/.test(profile.email)) errs.email = "Enter a valid email";
-    if (!profile.phone.trim() || !/^[0-9+]{7,15}$/.test(profile.phone.trim())) errs.phone = "Use 7–15 digits";
-    setProfileErrors(errs);
+  const validateIdentity = () => {
+    const errs: FieldErrors<IdentityState> = {};
+    if (!identity.firstName.trim() || identity.firstName.trim().length < 2) errs.firstName = "Use at least 2 characters";
+    if (!identity.email.trim() || !/^\S+@\S+\.\S+$/.test(identity.email)) errs.email = "Enter a valid email";
+    setIdentityErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const validateAccount = () => {
-    const errs: FieldErrors<AccountState> = {};
-    if (account.password.length < 8) errs.password = "At least 8 characters required";
+  const validateContact = () => {
+    const errs: FieldErrors<ContactState> = {};
+    if (!contact.phone.trim() || !/^[0-9+]{7,15}$/.test(contact.phone.trim())) errs.phone = "Use 7–15 digits";
+    setContactErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const validatePassword = () => {
+    const errs: FieldErrors<PasswordState> = {};
+    if (passwordState.password.length < 8) errs.password = "At least 8 characters required";
+    setPasswordErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const validateBusiness = () => {
+    const errs: FieldErrors<BusinessState> = {};
     if (requiresCompany) {
-      if (!account.companyName.trim()) errs.companyName = "Company name is required";
-      if (!account.categories.length) errs.categories = "Pick at least one category";
+      if (!business.companyName.trim()) errs.companyName = "Company name is required";
+      if (!business.categories.length) errs.categories = "Pick at least one category";
     }
-    setAccountErrors(errs);
+    setBusinessErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleProfileSubmit = async () => {
-    if (!validateProfile()) return;
+  const handleIdentitySubmit = async () => {
+    if (!validateIdentity()) return;
     try {
-      setLoading(true); setError(null);
-      const res = await authService.signup.start({ fullName: profile.fullName.trim(), email: profile.email.trim().toLowerCase(), phone: profile.phone.trim() });
+      setLoading(true);
+      setError(null);
+      const fullName = composeFullName(identity.firstName.trim(), identity.lastName.trim());
+      const email = identity.email.trim().toLowerCase();
+      const res = await authService.signup.start({ fullName, email });
       setExpiresInMs(res.expiresInMs);
-      setStatus(`OTP sent to ${profile.email}. Expires in ${Math.ceil(res.expiresInMs / 60000)} min.`);
-      setStep("Verify OTP");
+      setStatus(`OTP sent to ${maskEmail(email)}. Expires in ${Math.ceil(res.expiresInMs / 60000)} min.`);
+      setStep("Verify");
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Could not start signup");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpSubmit = async () => {
     const code = otp.join("");
-    if (code.length < OTP_LENGTH) { setError(`Enter the ${OTP_LENGTH}-digit OTP`); return; }
+    if (code.length < OTP_LENGTH) {
+      setError(`Enter the ${OTP_LENGTH}-digit OTP`);
+      return;
+    }
     try {
-      setLoading(true); setError(null);
+      setLoading(true);
+      setError(null);
       await authService.signup.verify({ otp: code });
-      setStatus("OTP verified. Finish your setup.");
-      setStep("Workspace");
+      setStatus("OTP verified. Add your mobile number.");
+      setStep("Contact");
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Invalid OTP");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAccountSubmit = async () => {
-    if (!validateAccount()) return;
+  const handleContactSubmit = async () => {
+    if (!validateContact()) return;
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true); setError(null);
+      // Best-effort like the app (SignupScreen.tsx#L608-616): a failed save
+      // here doesn't block progress — phone still rides along in /complete.
+      await authService.signup.contact({ phone: contact.phone.trim() });
+    } catch {
+      // ignored — carried forward regardless
+    }
+    setStatus(null);
+    setStep("Password");
+    setLoading(false);
+  };
+
+  const handlePasswordSubmit = () => {
+    if (!validatePassword()) return;
+    setError(null);
+    setStep("Business");
+  };
+
+  const handleBusinessSubmit = async () => {
+    if (!validateBusiness()) return;
+    try {
+      setLoading(true);
+      setError(null);
       const res = await authService.signup.complete({
-        password: account.password, accountType: account.accountType,
-        companyName: requiresCompany ? account.companyName.trim() : undefined,
-        categories: requiresCompany ? account.categories : undefined,
+        password: passwordState.password,
+        accountType: business.accountType,
+        companyName: requiresCompany ? business.companyName.trim() : undefined,
+        categories: requiresCompany ? business.categories : undefined,
         otp: otp.join("") || undefined,
-        fullName: profile.fullName.trim(), email: profile.email.trim().toLowerCase(), phone: profile.phone.trim(),
+        fullName: composeFullName(identity.firstName.trim(), identity.lastName.trim()),
+        email: identity.email.trim().toLowerCase(),
+        phone: contact.phone.trim(),
+        dateOfBirth: business.dateOfBirth || undefined,
       });
       setUser(res.user);
       // Return to a gated origin if one was supplied (internal paths only).
-      const rawNext = typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("next")
-        : null;
+      const rawNext = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
       const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
-      router.push(next ?? (res.user.role === "admin" ? "/admin" : "/dashboard"));
+      // Trader/manufacturer accounts land on verification next, matching the
+      // app's ~100ms auto-redirect to CompanyVerification after signup.
+      const destination = res.user.role === "admin" ? "/admin" : requiresCompany ? "/dashboard/verification" : "/dashboard";
+      router.push(next ?? destination);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Could not complete signup");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpInput = (i: number, val: string) => {
     const digit = val.replace(/\D/g, "").slice(-1);
-    const next = [...otp]; next[i] = digit; setOtp(next);
+    const next = [...otp];
+    next[i] = digit;
+    setOtp(next);
     if (digit && i < OTP_LENGTH - 1) otpRefs.current[i + 1]?.focus();
   };
 
@@ -189,20 +240,33 @@ export const SignupCard = () => {
     if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
   };
 
-  const toggleCategory = (cat: string) =>
-    setAccount((p) => ({ ...p, categories: p.categories.includes(cat) ? p.categories.filter((c) => c !== cat) : [...p.categories, cat] }));
+  const toggleCategory = (id: string) =>
+    setBusiness((p) => ({ ...p, categories: p.categories.includes(id) ? p.categories.filter((c) => c !== id) : [...p.categories, id] }));
+
+  const filteredCategories = useMemo(() => {
+    const q = categoryQuery.trim().toLowerCase();
+    if (!q) return PRODUCT_CATEGORIES;
+    return PRODUCT_CATEGORIES.filter((c) => c.title.toLowerCase().includes(q));
+  }, [categoryQuery]);
 
   const handleContinue = () => {
-    if (step === "Profile") return handleProfileSubmit();
-    if (step === "Verify OTP") return handleOtpSubmit();
-    return handleAccountSubmit();
+    if (step === "Identity") return handleIdentitySubmit();
+    if (step === "Verify") return handleOtpSubmit();
+    if (step === "Contact") return handleContactSubmit();
+    if (step === "Password") return handlePasswordSubmit();
+    return handleBusinessSubmit();
+  };
+
+  const stepMeta: Record<SignupStep, { heading: string; hint: string; cta: string }> = {
+    Identity: { heading: "Create account", hint: "Enter your details to personalize your workspace.", cta: "Continue →" },
+    Verify: { heading: "Verify your email", hint: `We sent a code to ${identity.email ? maskEmail(identity.email.trim()) : "your email"}.`, cta: "Verify email →" },
+    Contact: { heading: "Add mobile number", hint: "This helps with order coordination and business support.", cta: "Save mobile →" },
+    Password: { heading: "Set your password", hint: "Use at least 8 characters.", cta: "Continue →" },
+    Business: { heading: "Business details", hint: "Set your account type and business information.", cta: "Create Account" },
   };
 
   return (
-    <div
-      className="w-full rounded-3xl shadow-xl"
-      style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", boxShadow: "var(--shadow-lg)" }}
-    >
+    <div className="w-full rounded-3xl shadow-xl" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", boxShadow: "var(--shadow-lg)" }}>
       {/* Header */}
       <div className="px-7 pb-5 pt-7">
         {/* Step progress */}
@@ -212,27 +276,21 @@ export const SignupCard = () => {
             const active = s === step;
             return (
               <div key={s} className="flex flex-1 items-center">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <motion.div
-                    animate={{
-                      backgroundColor: done || active ? "var(--primary)" : "var(--border)",
-                      scale: active ? 1.15 : 1,
-                    }}
-                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                    animate={{ backgroundColor: done || active ? "var(--primary)" : "var(--border)", scale: active ? 1.15 : 1 }}
+                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
                   >
                     {done ? "✓" : i + 1}
                   </motion.div>
-                  <span className="hidden text-[11px] font-semibold sm:block"
-                    style={{ color: active ? "var(--primary)" : done ? "var(--foreground)" : "var(--medium-gray)" }}>
+                  <span
+                    className="hidden text-[10px] font-semibold sm:block"
+                    style={{ color: active ? "var(--primary)" : done ? "var(--foreground)" : "var(--medium-gray)" }}
+                  >
                     {s}
                   </span>
                 </div>
-                {i < STEPS.length - 1 && (
-                  <motion.div
-                    animate={{ backgroundColor: done ? "var(--primary)" : "var(--border)" }}
-                    className="mx-2 flex-1 h-px"
-                  />
-                )}
+                {i < STEPS.length - 1 && <motion.div animate={{ backgroundColor: done ? "var(--primary)" : "var(--border)" }} className="mx-1.5 h-px flex-1" />}
               </div>
             );
           })}
@@ -244,32 +302,38 @@ export const SignupCard = () => {
               Step {stepIndex + 1} of {STEPS.length}
             </p>
             <h2 className="mt-0.5 text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-              {step === "Profile" ? "Create account" : step === "Verify OTP" ? "Verify your email" : "Set up workspace"}
+              {stepMeta[step].heading}
             </h2>
             <p className="mt-0.5 text-sm" style={{ color: "var(--medium-gray)" }}>
-              {step === "Profile" && "Enter your details to personalize your workspace."}
-              {step === "Verify OTP" && `We sent a code to ${profile.email || "your email"}.`}
-              {step === "Workspace" && "Set your password and business type."}
+              {stepMeta[step].hint}
             </p>
           </div>
-          <button onClick={handleBack}
+          <button
+            onClick={handleBack}
             className="flex-shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
-            style={{ border: "1px solid var(--border)", color: "var(--primary)", backgroundColor: "var(--surface)" }}>
+            style={{ border: "1px solid var(--border)", color: "var(--primary)", backgroundColor: "var(--surface)" }}
+          >
             ← Back
           </button>
         </div>
 
         {status && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
             className="mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
-            style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+            style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
+          >
             {status}
           </motion.div>
         )}
         {error && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
             className="mt-3 rounded-xl px-4 py-3 text-sm font-semibold"
-            style={{ backgroundColor: "var(--accent-light)", color: "var(--accent)" }}>
+            style={{ backgroundColor: "var(--accent-light)", color: "var(--accent)" }}
+          >
             {error}
           </motion.div>
         )}
@@ -278,27 +342,43 @@ export const SignupCard = () => {
       {/* Step content */}
       <div className="overflow-hidden px-7 pb-7">
         <AnimatePresence mode="wait">
-          {step === "Profile" && (
-            <motion.div key="profile" {...fadeSlide} className="space-y-4">
-              <Field label="Full name" error={profileErrors.fullName}>
-                <input autoFocus className={inputClass} style={inputStyle(profileErrors.fullName)}
-                  placeholder="First Last" value={profile.fullName}
-                  onChange={(e) => setProfile((p) => ({ ...p, fullName: e.target.value }))} />
-              </Field>
-              <Field label="Email" error={profileErrors.email}>
-                <input type="email" className={inputClass} style={inputStyle(profileErrors.email)}
-                  placeholder="you@company.com" value={profile.email}
-                  onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
-              </Field>
-              <Field label="Phone" error={profileErrors.phone}>
-                <input type="tel" className={inputClass} style={inputStyle(profileErrors.phone)}
-                  placeholder="+91 98765 43210" value={profile.phone}
-                  onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} />
+          {step === "Identity" && (
+            <motion.div key="identity" {...fadeSlide} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="First name" error={identityErrors.firstName}>
+                  <input
+                    autoFocus
+                    className={fieldInputClass}
+                    style={fieldInputStyle(identityErrors.firstName)}
+                    placeholder="First name"
+                    value={identity.firstName}
+                    onChange={(e) => setIdentity((p) => ({ ...p, firstName: e.target.value }))}
+                  />
+                </Field>
+                <Field label="Last name">
+                  <input
+                    className={fieldInputClass}
+                    style={fieldInputStyle()}
+                    placeholder="Last name"
+                    value={identity.lastName}
+                    onChange={(e) => setIdentity((p) => ({ ...p, lastName: e.target.value }))}
+                  />
+                </Field>
+              </div>
+              <Field label="Email" error={identityErrors.email}>
+                <input
+                  type="email"
+                  className={fieldInputClass}
+                  style={fieldInputStyle(identityErrors.email)}
+                  placeholder="you@company.com"
+                  value={identity.email}
+                  onChange={(e) => setIdentity((p) => ({ ...p, email: e.target.value }))}
+                />
               </Field>
             </motion.div>
           )}
 
-          {step === "Verify OTP" && (
+          {step === "Verify" && (
             <motion.div key="otp" {...fadeSlide} className="space-y-5">
               <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
                 Expires in {expiresInMs ? Math.ceil(expiresInMs / 60000) : "a few"} minutes.
@@ -307,13 +387,16 @@ export const SignupCard = () => {
                 {otp.map((digit, i) => (
                   <input
                     key={i}
-                    ref={(el) => { otpRefs.current[i] = el; }}
+                    ref={(el) => {
+                      otpRefs.current[i] = el;
+                    }}
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpInput(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKey(i, e)}
-                    className="h-14 w-11 rounded-2xl text-center text-xl font-bold focus:outline-none transition-all"
+                    className="h-14 w-11 rounded-2xl text-center text-xl font-bold transition-all focus:outline-none"
                     style={{
                       border: `2px solid ${digit ? "var(--primary)" : "var(--border)"}`,
                       backgroundColor: digit ? "var(--primary-light)" : "var(--surface)",
@@ -323,45 +406,67 @@ export const SignupCard = () => {
                   />
                 ))}
               </div>
-              <button type="button" onClick={reset}
-                className="text-xs font-semibold transition-opacity hover:opacity-70"
-                style={{ color: "var(--primary)" }}>
+              <button type="button" onClick={reset} className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
                 Didn&apos;t receive it? Start over
               </button>
             </motion.div>
           )}
 
-          {step === "Workspace" && (
-            <motion.div key="workspace" {...fadeSlide} className="space-y-5">
-              {/* Password */}
-              <Field label="Password" error={accountErrors.password}>
+          {step === "Contact" && (
+            <motion.div key="contact" {...fadeSlide} className="space-y-4">
+              <Field label="Mobile number" error={contactErrors.phone}>
+                <input
+                  autoFocus
+                  type="tel"
+                  className={fieldInputClass}
+                  style={fieldInputStyle(contactErrors.phone)}
+                  placeholder="+91 98765 43210"
+                  value={contact.phone}
+                  onChange={(e) => setContact({ phone: e.target.value })}
+                />
+              </Field>
+            </motion.div>
+          )}
+
+          {step === "Password" && (
+            <motion.div key="password" {...fadeSlide} className="space-y-4">
+              <Field label="Password" error={passwordErrors.password}>
                 <div className="relative">
                   <input
+                    autoFocus
                     type={showPassword ? "text" : "password"}
-                    className={inputClass} style={{ ...inputStyle(accountErrors.password), paddingRight: "4rem" }}
+                    className={fieldInputClass}
+                    style={{ ...fieldInputStyle(passwordErrors.password), paddingRight: "4rem" }}
                     placeholder="Create a password"
-                    value={account.password}
-                    onChange={(e) => setAccount((p) => ({ ...p, password: e.target.value }))}
+                    value={passwordState.password}
+                    onChange={(e) => setPasswordState({ password: e.target.value })}
                   />
-                  <button type="button" onClick={() => setShowPassword((v) => !v)}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: "var(--primary)" }}>
+                    style={{ color: "var(--primary)" }}
+                  >
                     {showPassword ? "Hide" : "Show"}
                   </button>
                 </div>
-                {account.password && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="h-1 flex-1 rounded-full transition-all"
-                          style={{ backgroundColor: i < passwordStrength.score ? passwordStrength.color : "var(--border)" }} />
-                      ))}
-                    </div>
-                    <p className="text-[11px] font-semibold" style={{ color: passwordStrength.color }}>
-                      {passwordStrength.label}
-                    </p>
-                  </div>
-                )}
+              </Field>
+            </motion.div>
+          )}
+
+          {step === "Business" && (
+            <motion.div key="business" {...fadeSlide} className="space-y-5">
+              {/* Date of birth (optional) */}
+              <Field label="Date of birth (optional)">
+                <input
+                  type="date"
+                  className={fieldInputClass}
+                  style={fieldInputStyle()}
+                  min="1900-01-01"
+                  max={todayIso()}
+                  value={business.dateOfBirth}
+                  onChange={(e) => setBusiness((p) => ({ ...p, dateOfBirth: e.target.value }))}
+                />
               </Field>
 
               {/* Account type */}
@@ -372,23 +477,31 @@ export const SignupCard = () => {
                 <div className="grid gap-2">
                   {BUSINESS_ACCOUNT_TYPES.map((t) => {
                     const meta = ACCOUNT_TYPE_META[t];
-                    const active = account.accountType === t;
+                    const active = business.accountType === t;
                     return (
-                      <motion.button key={t} type="button"
-                        whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                        onClick={() => setAccount((p) => ({ ...p, accountType: t }))}
+                      <motion.button
+                        key={t}
+                        type="button"
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => setBusiness((p) => ({ ...p, accountType: t }))}
                         className="flex items-center gap-3 rounded-xl p-3 text-left transition-all"
-                        style={{
-                          border: active ? "1.5px solid var(--primary)" : "1px solid var(--border)",
-                          backgroundColor: active ? "var(--primary-light)" : "var(--surface)",
-                        }}>
-                        <span className="text-xl flex-shrink-0">{meta.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold" style={{ color: active ? "var(--primary)" : "var(--foreground)" }}>{meta.label}</p>
-                          <p className="text-xs" style={{ color: "var(--medium-gray)" }}>{meta.desc}</p>
+                        style={{ border: active ? "1.5px solid var(--primary)" : "1px solid var(--border)", backgroundColor: active ? "var(--primary-light)" : "var(--surface)" }}
+                      >
+                        <span className="flex-shrink-0 text-xl">{meta.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold" style={{ color: active ? "var(--primary)" : "var(--foreground)" }}>
+                            {meta.label}
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+                            {meta.desc}
+                          </p>
                         </div>
-                        {active && <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-white text-[10px] font-bold"
-                          style={{ backgroundColor: "var(--primary)" }}>✓</div>}
+                        {active && (
+                          <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>
+                            ✓
+                          </div>
+                        )}
                       </motion.button>
                     );
                   })}
@@ -398,38 +511,69 @@ export const SignupCard = () => {
               {/* Business fields */}
               {requiresCompany && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                  <Field label="Company name" error={accountErrors.companyName}>
-                    <input className={inputClass} style={inputStyle(accountErrors.companyName)}
+                  <Field label="Company name" error={businessErrors.companyName}>
+                    <input
+                      className={fieldInputClass}
+                      style={fieldInputStyle(businessErrors.companyName)}
                       placeholder="Acme Textiles Pvt. Ltd."
-                      value={account.companyName}
-                      onChange={(e) => setAccount((p) => ({ ...p, companyName: e.target.value }))} />
+                      value={business.companyName}
+                      onChange={(e) => setBusiness((p) => ({ ...p, companyName: e.target.value }))}
+                    />
                   </Field>
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-                      Business categories
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
+                      Business categories {business.categories.length > 0 && `· ${business.categories.length} selected`}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {BUSINESS_CATEGORIES.map((cat) => {
-                        const active = account.categories.includes(cat);
+                    <input
+                      type="text"
+                      placeholder="Search categories…"
+                      value={categoryQuery}
+                      onChange={(e) => setCategoryQuery(e.target.value)}
+                      className={fieldInputClass}
+                      style={fieldInputStyle()}
+                    />
+                    <div className="max-h-56 space-y-0.5 overflow-y-auto rounded-xl border p-1.5" style={{ borderColor: "var(--border)" }}>
+                      {filteredCategories.map((cat) => {
+                        const active = business.categories.includes(cat.id);
                         return (
-                          <button key={cat} type="button" onClick={() => toggleCategory(cat)}
-                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold capitalize transition-all"
-                            style={{
-                              border: active ? "none" : "1px solid var(--border)",
-                              backgroundColor: active ? "var(--primary)" : "var(--surface)",
-                              color: active ? "#fff" : "var(--foreground)",
-                            }}>
-                            <span>{CAT_ICONS[cat] ?? "🏭"}</span>
-                            {cat}
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => toggleCategory(cat.id)}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors"
+                            style={{ backgroundColor: active ? "var(--primary-light)" : "transparent" }}
+                          >
+                            <span
+                              className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border-2"
+                              style={{ borderColor: active ? "var(--primary)" : "var(--border)", backgroundColor: active ? "var(--primary)" : "transparent" }}
+                            >
+                              {active && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                            </span>
+                            <span className="text-base">{cat.icon}</span>
+                            <span className="font-medium" style={{ color: "var(--foreground)" }}>
+                              {cat.title}
+                            </span>
                           </button>
                         );
                       })}
+                      {filteredCategories.length === 0 && (
+                        <p className="p-3 text-center text-xs" style={{ color: "var(--medium-gray)" }}>
+                          No categories match &quot;{categoryQuery}&quot;
+                        </p>
+                      )}
                     </div>
-                    {accountErrors.categories && (
-                      <p className="mt-1.5 text-xs font-semibold" style={{ color: "var(--accent)" }}>{accountErrors.categories}</p>
+                    {businessErrors.categories && (
+                      <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                        {businessErrors.categories}
+                      </p>
                     )}
                   </div>
                 </motion.div>
+              )}
+              {!requiresCompany && (
+                <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+                  Normal accounts can start right away. You can add business information later from your workspace.
+                </p>
               )}
             </motion.div>
           )}
@@ -437,13 +581,14 @@ export const SignupCard = () => {
 
         {/* CTA */}
         <motion.button
-          whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleContinue}
           disabled={loading}
           className="mt-7 w-full rounded-xl py-3.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
-          style={{ backgroundColor: step === "Workspace" ? "var(--accent)" : "var(--primary)", boxShadow: step === "Workspace" ? "var(--shadow-accent)" : "var(--shadow-primary)" }}
+          style={{ backgroundColor: step === "Business" ? "var(--accent)" : "var(--primary)", boxShadow: step === "Business" ? "var(--shadow-accent)" : "var(--shadow-primary)" }}
         >
-          {loading ? "Working…" : step === "Workspace" ? "Create my workspace" : step === "Verify OTP" ? "Verify & continue" : "Continue →"}
+          {loading ? "Working…" : stepMeta[step].cta}
         </motion.button>
       </div>
     </div>

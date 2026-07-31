@@ -18,12 +18,10 @@ const getPageTitle = (pathname: string) => {
 };
 
 export const DashboardTopbar = ({
-  onToggleSidebar,
   notificationCount = 0,
   onOpenNotifications,
   onProfile,
 }: {
-  onToggleSidebar: () => void;
   notificationCount?: number;
   onOpenNotifications: () => void;
   onProfile: () => void;
@@ -53,28 +51,13 @@ export const DashboardTopbar = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {/* ── Left: mobile toggle + page title ─────────────────────── */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl lg:hidden"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--background)" }}
-          aria-label="Toggle sidebar"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <div className="min-w-0">
-          <h1 className="truncate text-[15px] font-bold leading-tight sm:text-[16px]" style={{ color: "var(--foreground)" }}>
-            {label}
-          </h1>
-          <p className="hidden text-[11px] leading-tight sm:block" style={{ color: "var(--medium-gray)" }}>
-            {description}
-          </p>
-        </div>
+      {/* ── Left: page title ──────────────────────────────────────── */}
+      {/* No hamburger here anymore — mobile reaches the full nav via
+          MobileTabRail's "More" tab, so the drawer this used to open is gone. */}
+      <div className="min-w-0">
+        <h1 className="truncate text-[15px] font-bold leading-tight sm:text-[16px]" style={{ color: "var(--foreground)" }}>
+          {label}
+        </h1>
       </div>
 
       {/* ── Right: search + notifications + avatar ────────────────── */}
