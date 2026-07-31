@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
+"use client";
+
+import { useCallback, useEffect, useState, FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { companyVerificationService } from "@/src/services/companyVerification";
 import { ApiError } from "@/src/lib/api-error";
