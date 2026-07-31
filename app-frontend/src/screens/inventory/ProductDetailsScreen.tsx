@@ -29,6 +29,7 @@ import { ProductInquirySheet, InquiryFormSubmit } from "../product/components/Pr
 import { productInquiryService } from "../../services/productInquiry.service";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { isPublicListingProduct } from "./utils/publicListing";
+import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
 
@@ -93,6 +94,7 @@ export const ProductDetailsScreen = () => {
   const [quoteSubmitting, setQuoteSubmitting] = useState(false);
   const [inquirySheetOpen, setInquirySheetOpen] = useState(false);
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
+  const [adjustStockOpen, setAdjustStockOpen] = useState(false);
 
   const isGuest = user?.role === "guest";
 
@@ -697,6 +699,13 @@ export const ProductDetailsScreen = () => {
                   <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
                   <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Promote Product</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAdjustStockOpen(true)}
+                  style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
+                >
+                  <Ionicons name="cube-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Adjust Stock</Text>
+                </TouchableOpacity>
                 <View style={styles.bottomRow}>
                   <TouchableOpacity
                     onPress={openEditProduct}
@@ -866,6 +875,17 @@ export const ProductDetailsScreen = () => {
             }}
             onClose={() => setInquirySheetOpen(false)}
             onSubmit={submitInquiry}
+          />
+
+          <QuickAdjustStockSheet
+            visible={adjustStockOpen}
+            product={product}
+            variant={selectedVariant ?? null}
+            onClose={() => setAdjustStockOpen(false)}
+            onSaved={() => {
+              setAdjustStockOpen(false);
+              loadData();
+            }}
           />
         </>
       ) : null}
