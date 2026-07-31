@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { tintBg } from "@/src/lib/color";
 
 export type ServiceTypeMeta = {
   type: "machine_repair" | "worker" | "transport" | "advertisement";
@@ -47,14 +48,9 @@ export const SERVICE_TYPES: ServiceTypeMeta[] = [
 export const getServiceTypeMeta = (type: string): ServiceTypeMeta =>
   SERVICE_TYPES.find((s) => s.type === type) ?? SERVICE_TYPES[0];
 
-/**
- * Derives a tinted background from `accent` instead of a second hardcoded
- * hex per type — the old `accentBg` pastels (e.g. `#DBEAFE`) were light-only
- * and washed out illegibly on the dark canvas. `color-mix` blends toward
- * transparent, so it reads correctly over both `var(--surface)` and its dark
- * counterpart without a separate dark-mode value.
- */
-export const tintBg = (accent: string) => `color-mix(in srgb, ${accent} 16%, transparent)`;
+// Re-exported so existing importers (ServicesOverview, services/detail page)
+// don't need to change their import path now that this lives centrally.
+export { tintBg } from "@/src/lib/color";
 
 type ServiceTypeCardProps = {
   meta: ServiceTypeMeta;

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { ProductStats } from "@/src/types/product";
+import { tintBg } from "@/src/lib/color";
 import { formatCurrency } from "../utils/categories";
 
 const item = (delay = 0) => ({
@@ -45,6 +46,9 @@ export const ProductsStatsHero = ({
   loading: boolean;
   onCreate: () => void;
 }) => {
+  // A single accent per card drives both the icon-badge tint (via `tintBg`)
+  // and the label/icon color — previously a hand-picked `bg`/`text` pastel
+  // pair per card, hardcoded light-only and illegible on the dark canvas.
   const cards = [
     {
       key: "items",
@@ -52,7 +56,7 @@ export const ProductsStatsHero = ({
       value: stats?.totalItems ?? 0,
       detail: `${stats?.totalQuantity ?? 0} units across catalog`,
       icon: STAT_ICON.inventory,
-      colors: { bg: "#E8F6FB", text: "#0F6E8C", accent: "#148DB2" },
+      accent: "#148DB2",
     },
     {
       key: "low",
@@ -60,7 +64,7 @@ export const ProductsStatsHero = ({
       value: stats?.lowStockCount ?? 0,
       detail: "Items needing replenishment",
       icon: STAT_ICON.warning,
-      colors: { bg: "#FEF3C7", text: "#92400E", accent: "#F59E0B" },
+      accent: "#F59E0B",
     },
     {
       key: "out",
@@ -68,7 +72,7 @@ export const ProductsStatsHero = ({
       value: stats?.outOfStockCount ?? 0,
       detail: "Hidden from buyers",
       icon: STAT_ICON.empty,
-      colors: { bg: "#FEE2E2", text: "#991B1B", accent: "#EF4444" },
+      accent: "#EF4444",
     },
     {
       key: "value",
@@ -76,7 +80,7 @@ export const ProductsStatsHero = ({
       value: formatCurrency(stats?.totalSellingValue ?? 0),
       detail: `Cost: ${formatCurrency(stats?.totalCostValue ?? 0)}`,
       icon: STAT_ICON.cash,
-      colors: { bg: "#EDE9FE", text: "#5B21B6", accent: "#7C3AED" },
+      accent: "#7C3AED",
     },
   ];
 
@@ -125,15 +129,15 @@ export const ProductsStatsHero = ({
           >
             <div
               className="absolute inset-x-0 top-0 h-1 rounded-t-2xl"
-              style={{ backgroundColor: card.colors.accent }}
+              style={{ backgroundColor: card.accent }}
             />
             <div className="flex items-start justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: card.colors.text }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: card.accent }}>
                 {card.label}
               </p>
               <span
                 className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ backgroundColor: card.colors.bg, color: card.colors.text }}
+                style={{ backgroundColor: tintBg(card.accent), color: card.accent }}
               >
                 {card.icon}
               </span>
