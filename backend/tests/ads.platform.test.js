@@ -173,6 +173,44 @@ describe('Ad platform service', () => {
     expect(cappedFeed.cards.length).toBe(0);
   });
 
+  test('a draft campaign (the create default) is never served, even when everything else matches', async () => {
+    // Regression for a real incident: the admin UI's "launch immediately"
+    // toggle defaulted off, so campaigns saved as `status: 'draft'` (the
+    // service default when `status` is omitted — see createCampaign) and
+    // nothing auto-promotes a draft to active. Every other serving test in
+    // this file passes `status: 'active'` explicitly, so this path was never
+    // exercised against the feed.
+    const admin = await createUser('8121', 'admin');
+    const seller = await createUser('8122', 'user');
+    const buyer = await createUser('8123', 'user');
+    const sellerCompany = await createCompany(seller, '8121');
+    const category = PRODUCT_CATEGORIES[0].id;
+    const product = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8121', category });
+
+    const draftCampaign = await createCampaign({
+      actorId: admin._id,
+      payload: {
+        name: 'Untouched draft',
+        productId: product._id,
+        // status intentionally omitted — this is what the create form sends
+        // when "publish now" is left unchecked.
+        targeting: { mode: 'any', shopperCategories: [category] }
+      }
+    });
+    expect(draftCampaign.status).toBe('draft');
+
+    await recordPreferenceEvent({ userId: buyer._id, type: 'view_category', category });
+
+    const feedWhileDraft = await getFeed({ userId: buyer._id, placement: 'dashboard_home', limit: 5 });
+    expect(feedWhileDraft.cards.length).toBe(0);
+
+    await activateCampaign({ campaignId: draftCampaign.id, actorId: admin._id });
+
+    const feedAfterActivate = await getFeed({ userId: buyer._id, placement: 'dashboard_home', limit: 5 });
+    expect(feedAfterActivate.cards.length).toBe(1);
+    expect(feedAfterActivate.cards[0].campaignId).toBe(draftCampaign.id);
+  });
+
   test('admin-listed public products are eligible for campaigns and feed delivery', async () => {
     const admin = await createUser('8151', 'admin');
     const buyer = await createUser('8152', 'user');

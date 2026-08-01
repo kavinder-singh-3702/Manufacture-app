@@ -51,6 +51,34 @@ export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav]
  * "Products" and "My Products", and highlighting both would render two active
  * pills sharing one framer-motion layoutId.
  */
+type MatchableNavItem = { id: string; href: string };
+
+/**
+ * Longest-prefix match, generalized to take an arbitrary item list + root
+ * href instead of closing over this file's own `navItems`/"/dashboard" —
+ * so MobileNavRail (shared/MobileNavRail.tsx) can resolve the active
+ * destination for the admin nav set too, not just the user dashboard's.
+ * `rootHref` (e.g. "/dashboard", "/admin") must match exactly rather than as
+ * a prefix, since every other item's href is nested under it — without the
+ * exception it would prefix-match (and fight over the active pill with)
+ * every nested route.
+ */
+export const resolveActiveId = (
+  activePath: string,
+  items: ReadonlyArray<MatchableNavItem>,
+  rootHref?: string
+): string | null => {
+  let best: MatchableNavItem | null = null;
+  for (const item of items) {
+    const matches =
+      item.href === rootHref
+        ? activePath === item.href
+        : activePath === item.href || activePath.startsWith(`${item.href}/`);
+    if (matches && (!best || item.href.length > best.href.length)) best = item;
+  }
+  return best?.id ?? null;
+};
+
 /**
  * Longest-prefix match. A plain `startsWith` lights up both "Products"
  * (/dashboard/products) and "My Products" (/dashboard/products/mine) on the
@@ -58,14 +86,8 @@ export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav]
  * framer-motion layoutId. Exported so MobileTabRail's "More" sheet resolves
  * the active tile identically instead of re-deriving it.
  */
-export const resolveActiveNavId = (activePath: string): string | null => {
-  let best: NavItem | null = null;
-  for (const item of navItems) {
-    const matches = item.href === "/dashboard" ? activePath === item.href : activePath === item.href || activePath.startsWith(`${item.href}/`);
-    if (matches && (!best || item.href.length > best.href.length)) best = item;
-  }
-  return best?.id ?? null;
-};
+export const resolveActiveNavId = (activePath: string): string | null =>
+  resolveActiveId(activePath, navItems, "/dashboard");
 
 type NavId = string;
 

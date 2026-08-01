@@ -79,6 +79,8 @@ export type AdCampaign = {
   popupCooldownMinutes: number;
   priority: number;
   creative?: AdCreative;
+  /** Set when this campaign was created (or prefilled) from an approved "advertisement" service request. */
+  sourceServiceRequest?: string;
   activatedAt?: string;
   pausedAt?: string;
   archivedAt?: string;
@@ -130,11 +132,20 @@ export type UpsertAdCampaignInput = {
   popupCooldownMinutes?: number;
   priority?: number;
   creative?: AdCreative;
+  /** Links this campaign to the approved "advertisement" service request it was created/prefilled from. */
+  sourceServiceRequest?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type CampaignListResponse = {
   campaigns: AdCampaign[];
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
+};
+
+export type CampaignFromRequestResponse = {
+  prefill: UpsertAdCampaignInput;
+  campaign?: AdCampaign;
+  message?: string;
 };
 
 // ── User-facing feed (both logged-in and anonymous visitors) ───────────────────
@@ -243,6 +254,12 @@ const pauseCampaign = (campaignId: string) =>
 const stopCampaign = (campaignId: string) =>
   httpClient.patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, { status: "archived" }).then((r) => r.campaign);
 
+// Prefills (or, with prefillOnly:false, directly creates) a campaign from an
+// approved "advertisement" service request — mirrors the app's Ad Studio
+// "Import from approved request" flow (AdStudioScreen.tsx applyRequestPrefill).
+const createFromRequest = (serviceRequestId: string, payload?: { activate?: boolean; prefillOnly?: boolean }) =>
+  httpClient.post<CampaignFromRequestResponse>(`${BASE}/from-request/${serviceRequestId}`, payload ?? {});
+
 const getInsights = (campaignId: string, range?: { from?: string; to?: string }) =>
   httpClient
     .get<{ insights: AdInsights }>(`${BASE}/${campaignId}/insights`, { params: toQuery(range as Record<string, unknown>) })
@@ -270,6 +287,7 @@ export const adService = {
   activateCampaign,
   pauseCampaign,
   stopCampaign,
+  createFromRequest,
   getInsights,
   getFeed,
   logEvent,

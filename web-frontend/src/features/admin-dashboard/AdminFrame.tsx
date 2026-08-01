@@ -12,19 +12,8 @@ import { adminService, AdminOverview as AdminOverviewData, AdminAuditEvent } fro
 import { ApiError } from "@/src/lib/api-error";
 import { PhoneGate } from "@/src/features/auth/components/PhoneGate";
 import { AnimatedNumber, DonutChart, DonutLegend, FunnelBar, type DonutSegment } from "@/src/components/ui/charts";
-
-const adminNavItems = [
-  { id: "overview",           label: "Overview",             href: "/admin" },
-  { id: "verification",       label: "Verification queue",   href: "/admin/verification-requests" },
-  { id: "users",              label: "Users",                href: "/admin/users" },
-  { id: "companies",          label: "Companies",            href: "/admin/companies" },
-  { id: "orders",             label: "Orders pipeline",      href: "/admin/orders" },
-  { id: "products",           label: "In-house products",    href: "/admin/products" },
-  { id: "ops",                label: "Ops console",          href: "/admin/ops" },
-  { id: "product-inquiries",  label: "Product inquiries",    href: "/admin/product-inquiries" },
-  { id: "notifications",      label: "Notification studio",  href: "/admin/notifications" },
-  { id: "ad-studio",          label: "Ad studio",            href: "/admin/ad-studio" },
-] as const;
+import { AdminMobileRail } from "./AdminMobileRail";
+import { adminNavItems } from "./adminNavItems";
 
 const statusColors = {
   pending: { background: "rgba(250, 204, 21, 0.18)", color: "#854d0e" },
@@ -45,7 +34,6 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
   const { user, initializing } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isAdmin = user?.role === "admin" || user?.role === "super-admin";
 
@@ -87,18 +75,22 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="space-y-6">
-      <AdminTopbar userEmail={user.email} onToggleSidebar={() => setSidebarOpen(true)} />
+      <AdminTopbar userEmail={user.email} />
       <div className="flex flex-col gap-6 lg:flex-row">
-        <AdminSidebar activePath={pathname} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg shadow-[rgba(20,141,178,0.08)]">
+        <AdminSidebar activePath={pathname} />
+        {/* pb reserves room for AdminMobileRail's fixed bottom bar below lg,
+            mirroring the user shell's `.dashboard-main` padding (see
+            app/globals.css) so the rail never overlaps page content. */}
+        <div className="flex-1 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 pb-[calc(var(--tabrail-h)+var(--safe-bottom)+1.5rem)] shadow-lg shadow-[rgba(20,141,178,0.08)] lg:pb-5">
           {children}
         </div>
       </div>
+      <AdminMobileRail activePath={pathname} />
     </div>
   );
 };
 
-const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onToggleSidebar: () => void }) => {
+const AdminTopbar = ({ userEmail }: { userEmail?: string }) => {
   const router = useRouter();
   const { signOut, loggingOut } = useLogout();
   const [query, setQuery] = useState("");
@@ -121,13 +113,9 @@ const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onTog
       initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
     >
       <div className="flex items-center gap-3">
-        <button onClick={onToggleSidebar}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] text-[var(--primary-dark)] lg:hidden"
-          aria-label="Toggle navigation">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+        {/* Mobile nav lives entirely in AdminMobileRail's fixed bottom bar +
+            "More" sheet now — no hamburger trigger here, so mobile has
+            exactly one nav surface instead of two. */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>Admin console</p>
           <p className="text-lg font-semibold text-[var(--foreground)]">Compliance & moderation</p>
@@ -211,41 +199,15 @@ const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onTog
   );
 };
 
-const AdminSidebar = ({
-  activePath,
-  isOpen,
-  onClose,
-}: {
-  activePath: string;
-  isOpen: boolean;
-  onClose: () => void;
-}) => (
-  <>
-    <AnimatePresence>
-      {isOpen ? (
-        <>
-          <motion.div
-            className="fixed inset-0 z-30 bg-black/35 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.aside
-            className="fixed inset-y-6 left-4 z-40 w-72 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl lg:hidden"
-            initial={{ x: -320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -320, opacity: 0 }}
-          >
-            <AdminSidebarContent activePath={activePath} onNavigate={onClose} />
-          </motion.aside>
-        </>
-      ) : null}
-    </AnimatePresence>
-    <div className="hidden w-full max-w-xs flex-shrink-0 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.08)] lg:block">
-      <AdminSidebarContent activePath={activePath} onNavigate={onClose} />
-    </div>
-  </>
+// Desktop-only static box now — the `lg:hidden` hamburger drawer this used
+// to render below `lg` was replaced by AdminMobileRail's fixed bottom bar +
+// "More" sheet, mirroring how the user shell's real Sidebar is `hidden
+// lg:flex` and MobileTabRail owns mobile nav entirely. Mobile has exactly
+// one nav surface instead of two drifting out of sync.
+const AdminSidebar = ({ activePath }: { activePath: string }) => (
+  <div className="hidden w-full max-w-xs flex-shrink-0 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.08)] lg:block">
+    <AdminSidebarContent activePath={activePath} onNavigate={() => {}} />
+  </div>
 );
 
 const AdminSidebarContent = ({ activePath, onNavigate }: { activePath: string; onNavigate: () => void }) => (
