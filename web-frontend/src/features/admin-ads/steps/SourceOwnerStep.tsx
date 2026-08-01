@@ -25,16 +25,18 @@ export const SourceOwnerStep = ({ wizard, motionSafe }: { wizard: CampaignWizard
     }
     let active = true;
     setRequestsLoading(true);
-    // `createdBy` is admin-only on the backend (service.controller.js), which
-    // is exactly what this admin-only wizard is — see the codebase-wide grep
-    // done while building this: only admins may filter /services by createdBy.
+    // `createdBy` is a valid backend filter for GET /services (admin-only —
+    // serviceRequest.service.js only honors it `if (filters.createdBy &&
+    // isAdmin(user))`), but it isn't in serviceRequestService.list's shared
+    // param type since only this admin-only screen needs it.
     serviceRequestService.list({
       serviceType: "advertisement",
       createdBy: wizard.ownerUserId,
       limit: 20,
       offset: 0,
       sort: "newest",
-    } as Parameters<typeof serviceRequestService.list>[0])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
       .then((res) => {
         if (!active) return;
         const approved = (res.services ?? []).filter((r) =>
