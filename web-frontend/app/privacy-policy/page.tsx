@@ -4,6 +4,7 @@ import { LegalDocumentPage, privacyPolicyContent } from "@/src/features/legal";
 export const metadata: Metadata = {
   title: "ARVANN Privacy Policy",
   description: "Public privacy policy for ARVANN.",
+  alternates: { canonical: "/privacy-policy" },
   robots: {
     index: true,
     follow: true,

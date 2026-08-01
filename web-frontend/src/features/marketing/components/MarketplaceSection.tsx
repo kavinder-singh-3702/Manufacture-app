@@ -8,7 +8,7 @@ import type { Product } from "@/src/types/product";
 import { ProductCarousel } from "@/src/features/product/components/pdp";
 import { ProductListRow } from "@/src/features/product/components/listing";
 import { InhouseProductsShowcase } from "@/src/features/inhouse";
-import { PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
+import { PRODUCT_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
 import { Section } from "@/src/components/ui/Surface";
 import { fadeUp } from "@/src/components/ui/motion";
 
@@ -65,7 +65,7 @@ export const MarketplaceSection = () => {
                 viewport={{ once: true, margin: "-30px" }}
                 transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.28) }}
                 whileHover={{ y: -3 }}>
-                <Link href={`/products/category/${cat.id}`}
+                <Link href={getCategoryHref(cat.id)}
                   className="flex flex-col gap-2 rounded-2xl p-4 transition-shadow hover:shadow-lg"
                   style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
                   <div className="flex items-center gap-2.5">

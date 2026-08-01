@@ -7,25 +7,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
 import { useAuth } from "@/src/hooks/useAuth";
 import { SearchBar, buildSearchHref, PRODUCT_SEARCH_ROUTES } from "@/src/features/search";
+import { INDUSTRY_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
 
-const CATEGORIES = [
-  { id: "food-beverage-manufacturing",          title: "Food & Beverage",   icon: "🍚" },
-  { id: "textile-apparel-manufacturing",        title: "Textile & Apparel", icon: "👕" },
-  { id: "paper-packaging-industry",             title: "Paper & Pack",      icon: "📦" },
-  { id: "chemical-manufacturing",               title: "Chemicals",         icon: "⚗️" },
-  { id: "pharmaceutical-medical",               title: "Pharma",            icon: "💊" },
-  { id: "plastic-polymer-industry",             title: "Plastics",          icon: "🧴" },
-  { id: "rubber-industry",                      title: "Rubber",            icon: "🛞" },
-  { id: "metal-steel-industry",                 title: "Metal & Steel",     icon: "🏗️" },
-  { id: "automobile-auto-components",           title: "Automobile",        icon: "🚗" },
-  { id: "electrical-electronics-manufacturing", title: "Electronics",       icon: "🔌" },
-  { id: "machinery-heavy-engineering",          title: "Machinery",         icon: "⚙️" },
-  { id: "wood-furniture-industry",              title: "Wood & Furniture",  icon: "🪑" },
-  { id: "construction-material-industry",       title: "Construction",      icon: "🧱" },
-  { id: "consumer-goods-fmcg",                  title: "Consumer Goods",    icon: "🧼" },
-  { id: "defence-aerospace-manufacturing",      title: "Aerospace",         icon: "✈️" },
-  { id: "handicrafts-cottage-industries",       title: "Handicrafts",       icon: "🧶" },
-] as const;
+// Used to be a hand-maintained 16-entry duplicate of the categories list
+// (independently drifted from src/features/product/utils/categories.ts, the
+// same drift bug that list had) — now the single canonical source, so this
+// mega-menu can never again silently omit an industry that exists everywhere
+// else in the app.
+const CATEGORIES = INDUSTRY_CATEGORIES;
 
 const navLinks = [
   { href: "/products", label: "Products", hasDropdown: true },
@@ -59,7 +48,7 @@ const CategoryDropdown = ({ onClose }: { onClose: () => void }) => (
     </div>
     <div className="grid grid-cols-4 gap-1 p-3">
       {CATEGORIES.map((cat) => (
-        <Link key={cat.id} href={`/products/category/${cat.id}`} onClick={onClose}
+        <Link key={cat.id} href={getCategoryHref(cat.id)} onClick={onClose}
           className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all hover:bg-[var(--primary-light)]">
           <span className="text-lg flex-shrink-0">{cat.icon}</span>
           <span className="text-xs font-semibold leading-tight" style={{ color: "var(--foreground)" }}>{cat.title}</span>
@@ -242,7 +231,7 @@ export const TopBar = () => {
               {/* Category list on mobile */}
               <div className="grid grid-cols-2 gap-1 px-1 py-2">
                 {CATEGORIES.slice(0, 8).map((cat) => (
-                  <Link key={cat.id} href={`/products/category/${cat.id}`} onClick={() => setMobileOpen(false)}
+                  <Link key={cat.id} href={getCategoryHref(cat.id)} onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:bg-[var(--primary-light)]"
                     style={{ color: "var(--foreground)" }}>
                     <span>{cat.icon}</span>{cat.title}

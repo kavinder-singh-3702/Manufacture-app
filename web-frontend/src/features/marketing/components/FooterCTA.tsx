@@ -34,8 +34,8 @@ export const FooterCTA = () => (
       </div>
       <p className="mt-6 text-sm text-white/70">
         Need a hand? Email{" "}
-        <a href="mailto:support@manufacture.run" className="font-semibold text-white transition-opacity hover:opacity-80">
-          support@manufacture.run
+        <a href="mailto:arvann100@gmail.com" className="font-semibold text-white transition-opacity hover:opacity-80">
+          arvann100@gmail.com
         </a>
       </p>
     </div>

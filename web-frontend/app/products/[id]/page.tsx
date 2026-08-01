@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicProductDetail } from "@/src/features/marketing/components/PublicProductDetail";
 import {
-  buildProductJsonLd,
   getPublicProduct,
   productMetaDescription,
 } from "@/src/features/marketing/server/publicData";
+import { buildProductJsonLd, buildBreadcrumbJsonLd } from "@/src/features/marketing/server/schema";
+import { getCategoryMeta, getCategoryHref } from "@/src/features/product/utils/categories";
+import { SITE_URL } from "@/src/lib/site";
 
 // Server-rendered with incremental regeneration: a newly published product gets
 // a crawlable page on first request, then is cached and refreshed hourly.
 export const revalidate = 3600;
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://arvann.in").replace(/\/+$/, "");
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -50,12 +50,23 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product) notFound();
 
   const jsonLd = buildProductJsonLd(product, `${SITE_URL}/products/${id}`);
+  const category = getCategoryMeta(product.category);
+  const breadcrumbLd = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Products", path: "/products" },
+    ...(category ? [{ name: category.title, path: getCategoryHref(category.id) }] : []),
+    { name: product.name, path: `/products/${id}` },
+  ]);
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <PublicProductDetail productId={id} initialProduct={product} />
     </>

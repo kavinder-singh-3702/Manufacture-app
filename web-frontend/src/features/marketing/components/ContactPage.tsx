@@ -6,7 +6,10 @@ import { useToast } from "@/src/components/ui/Toast";
 import { contactService } from "@/src/services/contact";
 import { ApiError } from "@/src/lib/api-error";
 
-const SUPPORT_EMAIL = "support@manufacture.run";
+// Documented support address (BACKEND-DEPLOYMENT.md) — was
+// "support@manufacture.run", a leftover from the repo's internal codename,
+// not a mailbox ARVANN owns.
+const SUPPORT_EMAIL = "arvann100@gmail.com";
 
 const DETAILS: { icon: string; label: string; value: string; href?: string }[] = [
   { icon: "✉️", label: "Email", value: SUPPORT_EMAIL, href: `mailto:${SUPPORT_EMAIL}` },

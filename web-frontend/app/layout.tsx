@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/src/features/marketing/server/schema";
+import { SITE_URL } from "@/src/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,10 +15,40 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Site-wide defaults. `title.template` means every page's own `metadata.title`
+// (e.g. "About ARVANN — India's manufacturing marketplace") renders as-is —
+// pages already bake "ARVANN" into their titles — while any page that DOESN'T
+// set a title (there shouldn't be any public one left, but this is the safety
+// net) falls back to `default` instead of the old bare "ARVANN" placeholder
+// that was previously the *only* title the whole site had.
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://arvann.in"),
-  title: "ARVANN",
-  description: "Web console for the ARVANN marketplace workspace",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    template: "%s",
+    default: "ARVANN — B2B Marketplace for Indian Manufacturers & Suppliers",
+  },
+  description:
+    "Source products from verified Indian manufacturers, suppliers, traders, and exporters across 20+ industries on ARVANN — India's B2B marketplace and sourcing workspace.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    siteName: "ARVANN",
+    type: "website",
+    locale: "en_IN",
+    url: "/",
+    title: "ARVANN — B2B Marketplace for Indian Manufacturers & Suppliers",
+    description:
+      "Source products from verified Indian manufacturers, suppliers, traders, and exporters across 20+ industries.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ARVANN — B2B Marketplace for Indian Manufacturers & Suppliers",
+    description:
+      "Source products from verified Indian manufacturers, suppliers, traders, and exporters across 20+ industries.",
+  },
+  robots: { index: true, follow: true },
+  // Populate once a Google Search Console verification code exists — see
+  // Phase 4 "Measurement" in the SEO plan. Left absent (not an empty string)
+  // so Next omits the meta tag entirely rather than emitting a blank one.
 };
 
 // Colors the mobile browser chrome to match the app's light/dark themes, and
@@ -49,6 +81,18 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=localStorage.getItem('arvann-theme')||'light';var d=m==='dark'||(m==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.setAttribute('data-theme','dark');r.style.colorScheme='dark';}else{r.style.colorScheme='light';}}catch(e){}})();`,
           }}
+        />
+        {/* Site-level schema, emitted once — Organization identity + the
+            WebSite/SearchAction that makes ARVANN eligible for a sitelinks
+            search box. Per-page schema (Product/Organization/Breadcrumb/FAQ)
+            lives on the individual routes. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildOrganizationJsonLd()) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildWebSiteJsonLd()) }}
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

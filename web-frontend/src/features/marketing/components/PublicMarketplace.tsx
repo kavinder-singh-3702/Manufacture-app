@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductSort } from "@/src/types/product";
+import type { Product, ProductSort } from "@/src/types/product";
 import { getCategoryMeta } from "@/src/features/product/utils/categories";
 import { SearchBar, useUrlSearchQuery } from "@/src/features/search";
 import {
@@ -9,9 +9,14 @@ import {
   SortSelect, ListingResults, type ListingFilterState,
 } from "@/src/features/product/components/listing";
 
-type Props = { initialCategory?: string; companyId?: string };
+type Props = {
+  initialCategory?: string;
+  companyId?: string;
+  /** Server-fetched first page for this exact category/search — see ListingResults' `initial` prop. */
+  initialListing?: { products: Product[]; total: number; hasMore: boolean };
+};
 
-export const PublicMarketplace = ({ initialCategory = "", companyId }: Props) => {
+export const PublicMarketplace = ({ initialCategory = "", companyId, initialListing }: Props) => {
   // The URL is the source of truth for the query, so a search submitted from
   // the global topbar while already on this page, a shared link, and browser
   // back/forward all drive the results. This used to be
@@ -23,7 +28,7 @@ export const PublicMarketplace = ({ initialCategory = "", companyId }: Props) =>
 
   const [filters, setFilters] = useState<ListingFilterState>({ ...EMPTY_LISTING_FILTERS, category: initialCategory });
   const [sort, setSort] = useState<ProductSort | "">("");
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(initialListing?.total ?? 0);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -109,6 +114,7 @@ export const PublicMarketplace = ({ initialCategory = "", companyId }: Props) =>
               location={filters.location}
               verifiedOnly={filters.verifiedOnly}
               emptySubtitle={search ? `No results for "${search}"` : hasActiveFilters(filters) ? "Try adjusting your filters." : "No products in this category yet."}
+              initial={initialListing}
               onLocationsChange={setAvailableLocations}
               onTotalChange={setTotal}
             />

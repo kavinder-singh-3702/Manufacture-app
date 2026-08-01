@@ -4,18 +4,20 @@ import { BrandWordmark } from "@/src/components/BrandLogo";
 const FOOTER_LINKS = {
   Marketplace: [
     { href: "/products", label: "Browse Products" },
-    { href: "/dashboard/products/search", label: "Search Catalog" },
+    { href: "/industries", label: "Industries" },
+    { href: "/shop", label: "In-house Catalog" },
+  ],
+  "For Businesses": [
     { href: "/signup", label: "Sell on ARVANN" },
+    { href: "/manufacturers", label: "Manufacturers" },
+    { href: "/suppliers", label: "Suppliers" },
+    { href: "/buyers", label: "Buyers" },
+    { href: "/services", label: "Business Services" },
   ],
   Company: [
     { href: "/about", label: "About" },
     { href: "/support", label: "Support" },
     { href: "/contact", label: "Contact Us" },
-  ],
-  Workspace: [
-    { href: "/dashboard", label: "Command Center" },
-    { href: "/dashboard/products", label: "Products Catalog" },
-    { href: "/signup", label: "Create Workspace" },
   ],
   Legal: [
     { href: "/privacy-policy", label: "Privacy Policy" },
@@ -23,32 +25,21 @@ const FOOTER_LINKS = {
   ],
 } as const;
 
+// Support email is the one documented in BACKEND-DEPLOYMENT.md — this used to
+// read "support@manufacture.run", a leftover from the repo's internal name,
+// not a real ARVANN address. LinkedIn/X icons that used to link to
+// linkedin.com/x.com's generic homepages (not an ARVANN profile) were removed
+// rather than left as dead-end links — add them back once real handles exist.
+const SUPPORT_EMAIL = "arvann100@gmail.com";
+
 const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
   {
     label: "Email",
-    href: "mailto:support@manufacture.run",
+    href: `mailto:${SUPPORT_EMAIL}`,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
         <path d="m4 7 8 6 8-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "LinkedIn",
-    href: "https://www.linkedin.com",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.5c0-1.3-.02-3-1.83-3-1.83 0-2.12 1.43-2.12 2.9V21H9z" />
-      </svg>
-    ),
-  },
-  {
-    label: "X",
-    href: "https://x.com",
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M18.9 2H22l-7.5 8.6L23 22h-6.8l-5.3-7-6.1 7H1.7l8-9.2L1 2h7l4.8 6.4L18.9 2zm-2.4 18h1.9L7.6 4H5.6l10.9 16z" />
       </svg>
     ),
   },
@@ -130,8 +121,8 @@ export const SiteFooter = ({ className = "" }: { className?: string }) => (
           <Link href="/terms-and-conditions" className="text-xs transition-opacity hover:opacity-70" style={{ color: "var(--medium-gray)" }}>
             Terms
           </Link>
-          <a href="mailto:support@manufacture.run" className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
-            support@manufacture.run
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+            {SUPPORT_EMAIL}
           </a>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getBuyerStock, getCategoryMeta } from "../../utils/categories";
@@ -33,8 +34,13 @@ export const ProductListRow = ({ product, href, variant = "row" }: Props) => {
       : "relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl"}
       style={{ background: cat ? `linear-gradient(135deg, ${cat.bg} 0%, ${cat.bg}cc 100%)` : "var(--light-gray)" }}>
       {img ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img loading="lazy" decoding="async" src={img} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        <Image
+          src={img}
+          alt={product.name}
+          fill
+          sizes={variant === "row" ? "128px" : "208px"}
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
       ) : (
         <div className={`flex h-full w-full items-center justify-center ${variant === "row" ? "text-3xl" : "text-4xl"}`}>{cat?.icon ?? "📦"}</div>
       )}

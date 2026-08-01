@@ -36,6 +36,16 @@ type Props = {
   emptyIcon?: string;
   emptyTitle?: string;
   emptySubtitle?: string;
+  /**
+   * Server-fetched first page (offset 0) for the exact same
+   * category/search/sort/etc params this instance mounts with — passed down
+   * from an async server component (e.g. the category route) so a crawler's
+   * very first HTML response already contains real product rows and links
+   * instead of the loading skeleton. The client mount effect skips its
+   * otherwise-redundant first fetch and reuses this instead; any later
+   * filter/search change fetches normally.
+   */
+  initial?: { products: Product[]; total: number; hasMore: boolean };
   /** Reports distinct locations from the currently-loaded page, for FilterSidebar's location facet. */
   onLocationsChange?: (locations: string[]) => void;
   onTotalChange?: (total: number) => void;
@@ -52,16 +62,19 @@ export const ListingResults = ({
   location, verifiedOnly,
   routePrefix = "/products",
   emptyIcon = "🔍", emptyTitle = "No products found", emptySubtitle,
+  initial,
   onLocationsChange, onTotalChange,
 }: Props) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  const [products, setProducts] = useState<Product[]>(initial?.products ?? []);
+  const [total, setTotal] = useState(initial?.total ?? 0);
+  const [hasMore, setHasMore] = useState(initial?.hasMore ?? false);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
+  // Consumed on the very first mount effect run only — see `initial` doc above.
+  const initialConsumedRef = useRef(false);
 
   const load = useCallback(async (off: number, append: boolean) => {
     loadAbortRef.current?.abort();
@@ -99,8 +112,13 @@ export const ListingResults = ({
   }, [search, category, sort, stockFilter, priceMin, priceMax, companyId]);
 
   useEffect(() => {
+    if (initial && !initialConsumedRef.current) {
+      initialConsumedRef.current = true;
+      return; // server already fetched this exact first page — don't re-fetch it
+    }
     load(0, false);
     return () => loadAbortRef.current?.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `initial` is intentionally consumed once via the ref, not tracked as a dep
   }, [load]);
 
   // Report the loaded page's distinct locations up to the parent so

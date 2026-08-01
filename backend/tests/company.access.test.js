@@ -98,7 +98,7 @@ describe('Public company profile (unauthenticated /sellers page)', () => {
       owner: owner._id,
       createdBy: owner._id,
       status: 'active',
-      contact: { email: 'private@example.com', phone: '+919990001111' },
+      contact: { email: 'sales@publicco.example', phone: '+919990001111' },
       documents: { gstNumber: '27ABCDE1234F1Z5', panNumber: 'ABCDE1234F' },
       headquarters: { line1: '123 Secret St', city: 'Pune', state: 'MH', country: 'India' },
       metadata: { internal: 'do-not-leak' }
@@ -108,11 +108,14 @@ describe('Public company profile (unauthenticated /sellers page)', () => {
 
     expect(result.displayName).toBe('Public Co');
     expect(result.headquarters).toEqual({ city: 'Pune', state: 'MH', country: 'India' });
-    expect(result).not.toHaveProperty('contact');
+    // Business contact (phone/email/website) is intentionally public — see
+    // the doc comment on buildPublicCompanyResponse. Everything else that
+    // could leak PII or compliance documents must not be present.
+    expect(result.contact).toEqual({ email: 'sales@publicco.example', phone: '+919990001111' });
     expect(result).not.toHaveProperty('documents');
     expect(result).not.toHaveProperty('owner');
     expect(result).not.toHaveProperty('metadata');
-    expect(JSON.stringify(result)).not.toMatch(/ABCDE1234F|private@example\.com|Secret St/);
+    expect(JSON.stringify(result)).not.toMatch(/ABCDE1234F|Secret St/);
   });
 
   test('allows the default pending-verification status through', async () => {

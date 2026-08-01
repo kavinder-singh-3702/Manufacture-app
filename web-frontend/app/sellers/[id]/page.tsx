@@ -2,16 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SellerProfile } from "@/src/features/marketing/components/SellerProfile";
 import {
-  buildCompanyJsonLd,
   companyMetaDescription,
   getPublicCompany,
 } from "@/src/features/marketing/server/publicData";
+import { buildCompanyJsonLd, buildBreadcrumbJsonLd } from "@/src/features/marketing/server/schema";
+import { SITE_URL } from "@/src/lib/site";
 
 // Server-rendered with incremental regeneration so seller pages are crawlable
 // and refresh hourly without a full rebuild.
 export const revalidate = 3600;
-
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://arvann.in").replace(/\/+$/, "");
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -49,12 +48,21 @@ export default async function SellerDetailPage({ params }: Props) {
   if (!company) notFound();
 
   const jsonLd = buildCompanyJsonLd(company, `${SITE_URL}/sellers/${id}`);
+  const breadcrumbLd = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Sellers", path: "/products" },
+    { name: company.displayName, path: `/sellers/${id}` },
+  ]);
 
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
       <SellerProfile companyId={id} initialCompany={company} />
     </>

@@ -57,8 +57,8 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
               className="text-4xl font-bold leading-[1.12] tracking-tight md:text-5xl lg:text-6xl"
               style={{ color: "var(--foreground)" }}
             >
-              Your manufacturing command centre{" "}
-              <span style={{ color: "var(--primary)" }}>on the web.</span>
+              India&apos;s B2B marketplace{" "}
+              <span style={{ color: "var(--primary)" }}>for manufacturers &amp; suppliers.</span>
             </motion.h1>
 
             <motion.p
@@ -66,8 +66,9 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
               className="max-w-xl text-lg leading-relaxed md:text-xl"
               style={{ color: "var(--medium-gray)" }}
             >
-              ARVANN gives India&apos;s factories a single workspace for sourcing, compliance,
-              inventory, and supplier communication.
+              ARVANN connects buyers with verified Indian manufacturers, suppliers, traders and
+              exporters — plus a single command centre for sourcing, compliance, inventory, and
+              supplier communication.
             </motion.p>
 
             <motion.div {...fadeUp(0.16)} className="flex flex-wrap gap-3">

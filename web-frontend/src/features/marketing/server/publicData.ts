@@ -2,7 +2,7 @@ import { cache } from "react";
 import { ApiError } from "@/src/lib/api-error";
 import { productService } from "@/src/services/product";
 import { companyService } from "@/src/services/company";
-import type { Product } from "@/src/types/product";
+import type { ListProductsParams, Product } from "@/src/types/product";
 import type { Company } from "@/src/types/company";
 
 export type MarketplaceSnapshot = {
@@ -44,6 +44,30 @@ export const getMarketplaceSnapshot = cache(async (): Promise<MarketplaceSnapsho
   };
 });
 
+export type InitialListing = { products: Product[]; total: number; hasMore: boolean };
+
+/**
+ * Server-fetched first page (offset 0) of a product listing, for the
+ * `/products` and `/products/category/[categoryId]` routes. Crawlers get a
+ * populated `<ul>` of real product links in the very first HTML response
+ * instead of the client "Loading…" skeleton (ListingResults otherwise only
+ * fetches from a `useEffect`, which SSR never waits on). Params passed here
+ * MUST mirror ListingResults' own default-mount fetch exactly (same
+ * category/search, no sort, no price/stock filters) — see the `initial` prop
+ * doc on ListingResults for why a mismatch would show stale data for one
+ * paint. Never throws: an unreachable catalogue at request time should still
+ * render the page shell (client-side fetch retries), not crash the route.
+ */
+export const getInitialListing = cache(async (params: ListProductsParams): Promise<InitialListing | undefined> => {
+  try {
+    const res = await productService.list({ scope: "marketplace", limit: 20, offset: 0, includeVariantSummary: false, ...params });
+    return { products: res.products ?? [], total: res.pagination?.total ?? 0, hasMore: res.pagination?.hasMore ?? false };
+  } catch (err) {
+    console.error("[getInitialListing] failed:", err);
+    return undefined;
+  }
+});
+
 // Server-side loaders for public detail pages. Wrapped in React `cache` so the
 // metadata pass and the render pass within a single request share one fetch.
 // A genuine 404 resolves to null (→ notFound()); transient/other errors are
@@ -64,7 +88,11 @@ export const getPublicProduct = cache(async (id: string): Promise<Product | null
 
 export const getPublicCompany = cache(async (id: string): Promise<Company | null> => {
   try {
-    const { company } = await companyService.get(id);
+    // companyService.get() hits the authenticated /companies/:id and 401s on
+    // every unauthenticated server render — that was the live bug behind
+    // every /sellers/[id] page rendering with no title, no content, and no
+    // JSON-LD. getPublic() hits the field-whitelisted public endpoint instead.
+    const { company } = await companyService.getPublic(id);
     return company;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
@@ -84,43 +112,8 @@ export const companyMetaDescription = (company: Company): string =>
   clamp(company.description, 160) ??
   `Browse products from ${company.displayName}, a verified manufacturer on the ARVANN marketplace.`;
 
-// Schema.org availability, derived from actual stock — was hard-coded to
-// InStock for every product (including out-of-stock ones), a live rich-result
-// bug. "low_stock" still maps to InStock since it is real, purchasable stock.
-const schemaAvailability = (status: Product["stockStatus"]): string =>
-  status === "out_of_stock"
-    ? "https://schema.org/OutOfStock"
-    : "https://schema.org/InStock";
-
-export const buildProductJsonLd = (product: Product, canonicalUrl: string) => ({
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: product.name,
-  ...(product.description ? { description: product.description } : {}),
-  image: (product.images ?? []).map((img) => img.url).filter(Boolean),
-  ...(product.category ? { category: product.category } : {}),
-  ...(product.sku ? { sku: product.sku } : {}),
-  ...(product.company?.displayName
-    ? { brand: { "@type": "Brand", name: product.company.displayName } }
-    : {}),
-  offers: {
-    "@type": "Offer",
-    price: product.price.amount,
-    priceCurrency: product.price.currency || "INR",
-    availability: schemaAvailability(product.stockStatus),
-    url: canonicalUrl,
-    ...(product.company?.displayName
-      ? { seller: { "@type": "Organization", name: product.company.displayName } }
-      : {}),
-  },
-});
-
-export const buildCompanyJsonLd = (company: Company, canonicalUrl: string) => ({
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: company.displayName,
-  ...(company.legalName ? { legalName: company.legalName } : {}),
-  ...(company.description ? { description: company.description } : {}),
-  ...(company.logoUrl ? { logo: company.logoUrl } : {}),
-  url: canonicalUrl,
-});
+// JSON-LD builders moved to ./schema.ts (which also holds the site-level
+// Organization/WebSite schema and the shared Breadcrumb/FAQ/ItemList
+// builders) — re-exported here so existing imports (product/[id]/page.tsx,
+// sellers/[id]/page.tsx) don't need to change.
+export { buildProductJsonLd, buildCompanyJsonLd } from "./schema";

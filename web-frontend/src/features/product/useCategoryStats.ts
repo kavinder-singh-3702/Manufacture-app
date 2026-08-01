@@ -5,10 +5,12 @@ import { productService } from "@/src/services/product";
 import type { ProductListScope } from "@/src/types/product";
 import { PRODUCT_CATEGORIES, type CategoryMeta } from "./utils/categories";
 
-export type CategoryWithStats = CategoryMeta & {
+export type CategoryWithStats = Omit<CategoryMeta, "subCategories"> & {
   count: number;
   totalQuantity?: number;
-  subCategories?: string[];
+  // Overrides CategoryMeta's static, readonly list with the live one reported
+  // by the backend (falls back to it below when the live one is missing).
+  subCategories?: readonly string[];
 };
 
 /**

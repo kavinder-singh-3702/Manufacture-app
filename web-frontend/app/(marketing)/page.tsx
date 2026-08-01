@@ -1,7 +1,20 @@
+import type { Metadata } from "next";
 import { HeroEntry, DescriptionSection, SnapshotShowcase, TopBar, FooterCTA, MarketplaceSection } from "@/src/features/marketing";
 import { SiteFooter } from "@/src/features/marketing/components/SiteFooter";
 import { getMarketplaceSnapshot } from "@/src/features/marketing/server/publicData";
 import { SponsoredRail } from "@/src/features/ads/components/SponsoredRail";
+
+// The homepage previously inherited the root layout's generic
+// "Web console for the ARVANN marketplace workspace" title/description
+// (itself just a placeholder) — the single most-linked, most-crawled page on
+// the site had no metadata of its own targeting the marketplace's actual
+// primary search intent.
+export const metadata: Metadata = {
+  title: "ARVANN — B2B Marketplace for Indian Manufacturers & Suppliers",
+  description:
+    "Source products from verified Indian manufacturers, suppliers, traders, wholesalers, importers and exporters across 20+ industries. Post RFQs, compare quotes, and buy direct on ARVANN.",
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   const snapshot = await getMarketplaceSnapshot();

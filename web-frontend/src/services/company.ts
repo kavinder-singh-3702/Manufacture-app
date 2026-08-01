@@ -41,6 +41,20 @@ const get = async (companyId: string) => {
   return { company: mapCompany(response.company) };
 };
 
+/**
+ * Unauthenticated lookup for the public seller profile page
+ * (arvann.in/sellers/:id). Backed by GET /companies/:id/public, which is
+ * registered ahead of the company router's `authenticate` middleware and
+ * returns a field-whitelisted response (no contact info, documents, or
+ * owner) — see backend company.service.js `getPublicCompany`. Do not swap
+ * this back to the plain `get()` above: that endpoint is auth-only and a
+ * server-rendered request to it 401s, which is exactly the bug this fixes.
+ */
+const getPublic = async (companyId: string) => {
+  const response = await httpClient.get<{ company: RawCompany }>(`/companies/${companyId}/public`);
+  return { company: mapCompany(response.company) };
+};
+
 const update = async (companyId: string, payload: UpdateCompanyPayload) => {
   const response = await httpClient.patch<{ company: RawCompany }>(`/companies/${companyId}`, payload);
   return { company: mapCompany(response.company) };
@@ -60,6 +74,7 @@ export const companyService = {
   list,
   create,
   get,
+  getPublic,
   update,
   switchActive,
 };

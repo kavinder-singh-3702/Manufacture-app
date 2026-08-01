@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -10,6 +11,7 @@ import type { Company } from "@/src/types/company";
 import { useAuth } from "@/src/hooks/useAuth";
 import { buildCompanyRows } from "@/src/features/product/utils/specs";
 import { buildTrustBadges, formatCompanyLocation } from "@/src/features/product/utils/seller";
+import { getCategoryMeta, getCategoryHref } from "@/src/features/product/utils/categories";
 import {
   PdpSection, SpecTable, TrustBadgeRow, RevealPhoneButton, SectionNav,
 } from "@/src/features/product/components/pdp";
@@ -35,10 +37,10 @@ const CompanyHeader = ({ company, isAuthed, onRequireAuth }: { company: Company;
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-6">
           <div className="-mt-10 flex-shrink-0 sm:-mt-12">
             {company.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img loading="lazy" decoding="async" src={company.logoUrl} alt={company.displayName}
-                className="h-20 w-20 rounded-2xl object-cover sm:h-24 sm:w-24"
-                style={{ border: "3px solid var(--surface)", boxShadow: "var(--shadow-md)" }} />
+              <div className="relative h-20 w-20 overflow-hidden rounded-2xl sm:h-24 sm:w-24"
+                style={{ border: "3px solid var(--surface)", boxShadow: "var(--shadow-md)" }}>
+                <Image src={company.logoUrl} alt={company.displayName} fill sizes="96px" className="object-cover" />
+              </div>
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-black text-white sm:h-24 sm:w-24"
                 style={{ background: "var(--gradient-brand-deep)", border: "3px solid var(--surface)", boxShadow: "var(--shadow-md)" }}>
@@ -68,13 +70,29 @@ const CompanyHeader = ({ company, isAuthed, onRequireAuth }: { company: Company;
 
             {(company.categories ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {(company.categories ?? []).map((cat) => (
-                  <Link key={cat} href={`/products/category/${cat}`}
-                    className="rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition-opacity hover:opacity-70"
-                    style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
-                    {cat.replace(/-/g, " ")}
-                  </Link>
-                ))}
+                {(company.categories ?? []).map((cat) => {
+                  // company.categories is a broader "business category" tag
+                  // set (backend BUSINESS_CATEGORIES), not guaranteed to be a
+                  // real product-category id — e.g. legacy values like
+                  // "manufacturing"/"logistics" have no /industries page.
+                  // Only render as a link when it resolves to a real one
+                  // (getCategoryMeta), otherwise show a plain, non-clickable
+                  // chip instead of risking a link into a 404.
+                  const meta = getCategoryMeta(cat);
+                  const label = cat.replace(/-/g, " ");
+                  const chipStyle = { backgroundColor: "var(--primary-light)", color: "var(--primary)" };
+                  return meta ? (
+                    <Link key={cat} href={getCategoryHref(cat)}
+                      className="rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition-opacity hover:opacity-70"
+                      style={chipStyle}>
+                      {label}
+                    </Link>
+                  ) : (
+                    <span key={cat} className="rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize" style={chipStyle}>
+                      {label}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -125,7 +143,12 @@ export const SellerProfile = ({
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const { company: c } = await companyService.get(companyId);
+      // Public profile page — must use the unauthenticated public endpoint,
+      // not the owner/admin-only companyService.get(). The latter 401s for
+      // every other visitor (which is exactly why this page previously never
+      // loaded for a real buyer, only for the company's own owner or an
+      // admin — see publicData.ts getPublicCompany).
+      const { company: c } = await companyService.getPublic(companyId);
       setCompany(c);
       setError(null);
     } catch (err) {

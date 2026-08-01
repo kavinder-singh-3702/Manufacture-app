@@ -103,11 +103,11 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
                 Contact
               </p>
               <a
-                href="mailto:support@manufacture.run"
+                href="mailto:arvann100@gmail.com"
                 className="mt-3 inline-block text-base font-bold underline underline-offset-4 transition-opacity hover:opacity-70"
                 style={{ color: "var(--primary)" }}
               >
-                support@manufacture.run
+                arvann100@gmail.com
               </a>
               <p className="mt-2 text-sm leading-6" style={{ color: "var(--medium-gray)" }}>
                 For privacy requests, legal questions, verification support, or account-closure assistance.
@@ -186,8 +186,8 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
               </p>
               <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
                 Contact ARVANN at{" "}
-                <a href="mailto:support@manufacture.run" className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
-                  support@manufacture.run
+                <a href="mailto:arvann100@gmail.com" className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+                  arvann100@gmail.com
                 </a>
               </p>
             </div>

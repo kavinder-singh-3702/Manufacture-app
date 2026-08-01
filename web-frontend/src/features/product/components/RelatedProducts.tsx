@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
@@ -29,9 +30,8 @@ const MiniCard = ({ product, href, delay }: { product: Product; href: string; de
         <div className="relative aspect-[4/3] overflow-hidden"
           style={{ background: cat ? `linear-gradient(135deg, ${cat.bg}, ${cat.bg}cc)` : "var(--light-gray)" }}>
           {img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img loading="lazy" decoding="async" src={img} alt={product.name}
-              className="h-full w-full object-cover transition-transform duration-400 group-hover:scale-105" />
+            <Image src={img} alt={product.name} fill sizes="208px"
+              className="object-cover transition-transform duration-400 group-hover:scale-105" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-3xl">{cat?.icon ?? "📦"}</div>
           )}

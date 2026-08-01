@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+// Relative import, not the `@/` alias — next.config.ts is loaded through a
+// separate, lightweight TS transpile step that doesn't apply the app's
+// tsconfig path mapping.
+import { INDUSTRY_CATEGORIES } from "./src/features/product/utils/categories";
 
 // The app runs as a Next server (SSR + ISR) so that public product/seller
 // detail pages can be server-rendered with per-item metadata, Open Graph tags
@@ -18,6 +22,19 @@ const nextConfig: NextConfig = {
   // platform-level 404 even though the build "succeeds". Anchoring root here
   // keeps tracing correct regardless of any parent-directory lockfiles.
   turbopack: { root: __dirname },
+  // next/image blocks any remote hostname not explicitly allowlisted here —
+  // required for the S3-hosted product/company images (bucket
+  // arvann-prod-uploads, region ap-south-1; see BACKEND-DEPLOYMENT.md and
+  // storage.service.js's URL builder) to render via <Image> instead of a raw
+  // <img>. Both URL forms storage.service.js can emit are covered: the
+  // region-qualified `bucket.s3.<region>.amazonaws.com` form (normal case)
+  // and the bucket-only `bucket.s3.amazonaws.com` fallback.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "arvann-prod-uploads.s3.ap-south-1.amazonaws.com", pathname: "/uploads/**" },
+      { protocol: "https", hostname: "arvann-prod-uploads.s3.amazonaws.com", pathname: "/uploads/**" },
+    ],
+  },
   async rewrites() {
     const target = process.env.NEXT_PUBLIC_DEV_PROXY_TARGET ?? "https://api.arvann.in";
     return [
@@ -48,6 +65,18 @@ const nextConfig: NextConfig = {
       // Fallbacks when the id is missing.
       { source: "/products/detail", destination: "/products", permanent: false },
       { source: "/sellers/detail", destination: "/products", permanent: false },
+      // Legacy category browse URLs -> the new /industries/[id] editorial
+      // pages, for every REAL industry only (one explicit entry per id, not
+      // a wildcard) — the 7 generic legacy buckets (finished-goods,
+      // components, etc.) have no /industries page and keep using
+      // /products/category/[id] as-is. See getCategoryHref, which is what
+      // every internal link now points at directly instead of relying on
+      // this redirect.
+      ...INDUSTRY_CATEGORIES.map((cat) => ({
+        source: `/products/category/${cat.id}`,
+        destination: `/industries/${cat.id}`,
+        permanent: true,
+      })),
     ];
   },
   // Baseline security headers on every response. Deliberately conservative: no

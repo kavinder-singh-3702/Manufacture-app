@@ -7,7 +7,7 @@ import { productService } from "@/src/services/product";
 import { chatService } from "@/src/services/chat";
 import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
-import { formatCurrency, getCategoryMeta, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
+import { formatCurrency, getCategoryMeta, getCategoryHref, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
 import { buildSpecRows, buildAdditionalInfoRows, buildCompanyRows, getMoq } from "@/src/features/product/utils/specs";
 import { buildTrustBadges, formatCompanyLocation } from "@/src/features/product/utils/seller";
 import { VariantSelector, type SelectedVariant } from "@/src/features/product/components/VariantSelector";
@@ -223,7 +223,7 @@ export const PublicProductDetail = ({
           {cat && (
             <>
               <span style={{ color: "var(--medium-gray)" }}>/</span>
-              <Link href={`/products/category/${product.category}`}
+              <Link href={getCategoryHref(product.category)}
                 className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
                 {cat.title}
               </Link>

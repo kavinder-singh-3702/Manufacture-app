@@ -30,11 +30,27 @@ const stripAddress = (address) => {
   return { city, state, country };
 };
 
+const stripContact = (contact) => {
+  if (!contact) return undefined;
+  const { email, phone, website, supportEmail, supportPhone } = contact;
+  if (!email && !phone && !website && !supportEmail && !supportPhone) return undefined;
+  return { email, phone, website, supportEmail, supportPhone };
+};
+
 // Field-whitelisted shape for the unauthenticated public seller profile page
 // (arvann.in/sellers/:id). This is deliberately NOT buildCompanyResponse
 // filtered down — it's built up field-by-field so a future addition to the
-// Company schema (e.g. a new compliance or contact field) is private by
-// default instead of silently becoming public.
+// Company schema (e.g. a new compliance field) is private by default instead
+// of silently becoming public.
+//
+// `contact` (phone/email/website) is included on purpose: it's the
+// business's own listed sales contact, not personal owner PII, and the
+// frontend's RevealPhoneButton / email-link / website-link UI on this exact
+// page already assumes it's there (the sign-in gate in that UI is a
+// conversion prompt, not access control — this is just the first time the
+// data actually reaches that UI instead of 401ing before it arrives).
+// Never included: documents (gstNumber/panNumber/cinNumber/attachments),
+// owner/createdBy/updatedBy, metadata, settings, archivedReason.
 const buildPublicCompanyResponse = (company) => {
   if (!company) return null;
   const plain = typeof company.toObject === 'function' ? company.toObject({ versionKey: false }) : company;
@@ -49,6 +65,8 @@ const buildPublicCompanyResponse = (company) => {
     sizeBucket: plain.sizeBucket,
     foundedAt: plain.foundedAt,
     complianceStatus: plain.complianceStatus,
+    type: plain.type,
+    contact: stripContact(plain.contact),
     headquarters: stripAddress(plain.headquarters),
     locations: Array.isArray(plain.locations)
       ? plain.locations.map(stripAddress).filter(Boolean)

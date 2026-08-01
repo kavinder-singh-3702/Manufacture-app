@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import type { ProductImage } from "@/src/types/product";
 import type { CategoryMeta } from "../../utils/categories";
 
@@ -116,9 +117,9 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
             {images.map((img, i) => (
               <button key={img.url ?? i} type="button" role="tab" aria-selected={i === activeIndex}
                 onClick={() => goTo(i)}
-                className="aspect-square flex-shrink-0 overflow-hidden rounded-xl transition-all"
+                className="relative aspect-square flex-shrink-0 overflow-hidden rounded-xl transition-all"
                 style={{ border: i === activeIndex ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
+                {img.url && <Image src={img.url} alt="" fill sizes="80px" className="object-cover" />}
               </button>
             ))}
           </div>
@@ -137,8 +138,17 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
                 onMouseLeave={() => setZoomPos(null)}>
                 {img.url ? (
                   <button type="button" onClick={() => setLightboxOpen(true)} className="block h-full w-full cursor-zoom-in" aria-label="Open full-size image">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img loading={i === 0 ? "eager" : "lazy"} decoding="async" src={img.url} alt={i === 0 ? productName : ""} className="h-full w-full object-cover" />
+                    <Image
+                      src={img.url}
+                      alt={i === 0 ? productName : ""}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      // The first (cover) image is the LCP element on the product detail
+                      // page — eagerly load and mark it high-priority instead of lazy.
+                      priority={i === 0}
+                      loading={i === 0 ? undefined : "lazy"}
+                      className="object-cover"
+                    />
                   </button>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-7xl">{categoryMeta?.icon ?? "📦"}</div>
@@ -182,9 +192,9 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
               {images.map((img, i) => (
                 <button key={img.url ?? i} type="button" role="tab" aria-selected={i === activeIndex}
                   onClick={() => goTo(i)}
-                  className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl transition-all"
+                  className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl transition-all"
                   style={{ border: i === activeIndex ? "2px solid var(--primary)" : "1px solid var(--border)" }}>
-                  {img.url && <img loading="lazy" decoding="async" src={img.url} alt="" className="h-full w-full object-cover" />}
+                  {img.url && <Image src={img.url} alt="" fill sizes="64px" className="object-cover" />}
                 </button>
               ))}
             </div>
@@ -212,6 +222,12 @@ export const ProductGallery = ({ images, productName, categoryMeta, stockBadge }
               </button>
             </>
           )}
+          {/* Intentionally a raw <img>, not next/image: this only mounts after
+              a click (not part of initial paint/LCP), and needs to size
+              itself naturally within max-h-full/max-w-full at the image's own
+              aspect ratio — next/image's `fill` needs a pre-sized container,
+              which isn't knowable here without the image's dimensions ahead
+              of time. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={cover} alt={productName} className="max-h-full max-w-full rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
           {count > 1 && (

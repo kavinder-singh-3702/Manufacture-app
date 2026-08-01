@@ -91,8 +91,13 @@ const config = {
   smtpConnectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
   smtpSocketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 20000),
   smtpGreetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
-  emailFrom: process.env.EMAIL_FROM || 'ARVANN <noreply@arvann.com>',
-  supportEmail: process.env.SUPPORT_EMAIL || 'support@manufacture.run',
+  emailFrom: process.env.EMAIL_FROM || 'ARVANN <arvann100@gmail.com>',
+  // Contact-form submissions (email.service.js `sendContactMessageEmail`) land
+  // here. This fallback used to be 'support@manufacture.run' — a leftover from
+  // the repo's internal codename, not a mailbox ARVANN owns — so with
+  // SUPPORT_EMAIL unset (as it is in every .env this repo ships), contact
+  // form leads were being silently sent into the void. See BACKEND-DEPLOYMENT.md.
+  supportEmail: process.env.SUPPORT_EMAIL || 'arvann100@gmail.com',
   appName: process.env.APP_NAME || 'ARVANN',
   appUrl: process.env.APP_URL || 'http://localhost:3000',
   notificationsEmailEnabled: process.env.NOTIFICATIONS_EMAIL_ENABLED !== 'false',

@@ -10,8 +10,8 @@ const CHANNELS = [
     icon: "✉️",
     title: "Email support",
     body: "Reach our team for any account, verification, or order question.",
-    actionLabel: "support@manufacture.run",
-    href: "mailto:support@manufacture.run",
+    actionLabel: "arvann100@gmail.com",
+    href: "mailto:arvann100@gmail.com",
   },
   {
     icon: "💬",
@@ -138,7 +138,7 @@ export const SupportPage = () => (
             style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
             Contact us →
           </Link>
-          <a href="mailto:support@manufacture.run"
+          <a href="mailto:arvann100@gmail.com"
             className="rounded-2xl px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-70"
             style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
             Email support
