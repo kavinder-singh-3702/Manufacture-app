@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { type ReactNode } from "react";
+import { useMotionSafe } from "./motion";
 
 // ============================================
 // PAGE TRANSITION VARIANTS
@@ -112,20 +113,37 @@ interface AnimatedPageProps {
   variant?: keyof typeof variantMap;
 }
 
+/**
+ * Enter-only page transition, keyed by route.
+ *
+ * This deliberately does NOT use `<AnimatePresence mode="wait">`. That variant
+ * withholds the incoming page until the outgoing one finishes its exit
+ * animation, so any interruption of that ~300ms window — a rapid second
+ * navigation, a `router.replace` from a debounced filter, a redirect route —
+ * could leave the presence stack with nothing mounted, producing a blank page
+ * that only a refresh recovered from. It was worse under `app/(auth)/template.tsx`,
+ * because a template remounts on every navigation, so the exit never played.
+ *
+ * Changing `key` remounts the subtree and replays `initial → enter`, which gives
+ * the same perceived transition while guaranteeing content is always mounted.
+ */
 export const AnimatedPage = ({ children, pageKey, className = "", variant = "slide" }: AnimatedPageProps) => {
+  const motionSafe = useMotionSafe();
+
+  if (!motionSafe) {
+    return <div className={className}>{children}</div>;
+  }
+
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={pageKey}
-        initial="initial"
-        animate="enter"
-        exit="exit"
-        variants={variantMap[variant]}
-        className={className}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pageKey}
+      initial="initial"
+      animate="enter"
+      variants={variantMap[variant]}
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 };
 

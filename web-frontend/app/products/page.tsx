@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PublicMarketplacePageClient } from "@/src/features/marketing/components/PublicMarketplacePageClient";
+import { MarketplaceSkeleton } from "@/src/features/marketing/components/MarketplaceSkeleton";
 
 export const metadata: Metadata = {
   title: "ARVANN — Products Marketplace",
@@ -7,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function ProductsPage() {
-  return <PublicMarketplacePageClient />;
+  return (
+    <Suspense fallback={<MarketplaceSkeleton />}>
+      <PublicMarketplacePageClient />
+    </Suspense>
+  );
 }

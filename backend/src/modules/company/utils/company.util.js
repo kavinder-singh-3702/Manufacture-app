@@ -23,7 +23,41 @@ const buildCompanyResponse = (company) => {
   return normalize(company);
 };
 
+const stripAddress = (address) => {
+  if (!address) return undefined;
+  const { city, state, country } = address;
+  if (!city && !state && !country) return undefined;
+  return { city, state, country };
+};
+
+// Field-whitelisted shape for the unauthenticated public seller profile page
+// (arvann.in/sellers/:id). This is deliberately NOT buildCompanyResponse
+// filtered down — it's built up field-by-field so a future addition to the
+// Company schema (e.g. a new compliance or contact field) is private by
+// default instead of silently becoming public.
+const buildPublicCompanyResponse = (company) => {
+  if (!company) return null;
+  const plain = typeof company.toObject === 'function' ? company.toObject({ versionKey: false }) : company;
+  return {
+    id: plain.id || plain._id?.toString(),
+    displayName: plain.displayName,
+    legalName: plain.legalName,
+    description: plain.description,
+    logoUrl: plain.logoUrl,
+    coverImageUrl: plain.coverImageUrl,
+    categories: plain.categories,
+    sizeBucket: plain.sizeBucket,
+    foundedAt: plain.foundedAt,
+    complianceStatus: plain.complianceStatus,
+    headquarters: stripAddress(plain.headquarters),
+    locations: Array.isArray(plain.locations)
+      ? plain.locations.map(stripAddress).filter(Boolean)
+      : undefined
+  };
+};
+
 module.exports = {
   normalizeCategories,
-  buildCompanyResponse
+  buildCompanyResponse,
+  buildPublicCompanyResponse
 };

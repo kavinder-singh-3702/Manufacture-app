@@ -1,41 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { ProductSort } from "@/src/types/product";
 import { getCategoryMeta } from "@/src/features/product/utils/categories";
+import { SearchBar, useUrlSearchQuery } from "@/src/features/search";
 import {
   FilterSidebar, EMPTY_LISTING_FILTERS, hasActiveFilters,
   SortSelect, ListingResults, type ListingFilterState,
 } from "@/src/features/product/components/listing";
 
-type Props = { initialCategory?: string; initialSearch?: string; companyId?: string };
+type Props = { initialCategory?: string; companyId?: string };
 
-export const PublicMarketplace = ({ initialCategory = "", initialSearch = "", companyId }: Props) => {
-  const router = useRouter();
-  const [searchInput, setSearchInput] = useState(initialSearch);
-  const [search, setSearch] = useState(initialSearch);
+export const PublicMarketplace = ({ initialCategory = "", companyId }: Props) => {
+  // The URL is the source of truth for the query, so a search submitted from
+  // the global topbar while already on this page, a shared link, and browser
+  // back/forward all drive the results. This used to be
+  // `useState(initialSearch)` — read once at mount — so none of those worked.
+  // A seller storefront (companyId) keeps its query local instead of writing
+  // to the shared `?q=`.
+  const { input: searchInput, setInput: setSearchInput, query: search, submit: submitSearch } =
+    useUrlSearchQuery({ syncToUrl: !companyId });
+
   const [filters, setFilters] = useState<ListingFilterState>({ ...EMPTY_LISTING_FILTERS, category: initialCategory });
   const [sort, setSort] = useState<ProductSort | "">("");
   const [total, setTotal] = useState(0);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  // Debounce search input, sync to URL so search results are shareable.
-  useEffect(() => {
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      const q = searchInput.trim();
-      setSearch(q);
-      if (!companyId && typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        if (q) url.searchParams.set("q", q); else url.searchParams.delete("q");
-        router.replace(url.pathname + (url.search || ""), { scroll: false });
-      }
-    }, 320);
-    return () => clearTimeout(searchTimer.current);
-  }, [searchInput, companyId, router]);
 
   const activeCat = getCategoryMeta(filters.category);
   const priceMin = filters.priceMin ? parseFloat(filters.priceMin) : undefined;
@@ -83,15 +73,14 @@ export const PublicMarketplace = ({ initialCategory = "", initialSearch = "", co
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Filters {hasActiveFilters(filters) && "•"}
           </button>
-          <div className="relative flex-1">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="var(--medium-gray)" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search products by name, SKU, description…"
-              className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }} />
-          </div>
+          <SearchBar
+            size="md"
+            value={searchInput}
+            onChange={setSearchInput}
+            onSubmit={submitSearch}
+            placeholder="Search products by name, SKU, description…"
+            className="flex-1"
+          />
           <SortSelect value={sort} onChange={setSort} />
         </div>
 

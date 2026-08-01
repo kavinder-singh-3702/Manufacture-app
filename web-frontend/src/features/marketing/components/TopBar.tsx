@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
 import { useAuth } from "@/src/hooks/useAuth";
+import { SearchBar, buildSearchHref, PRODUCT_SEARCH_ROUTES } from "@/src/features/search";
 
 const CATEGORIES = [
   { id: "food-beverage-manufacturing",          title: "Food & Beverage",   icon: "🍚" },
@@ -71,7 +72,9 @@ const CategoryDropdown = ({ onClose }: { onClose: () => void }) => (
         style={{ color: "var(--primary)" }}>
         <span>🛍️</span> All products
       </Link>
-      <Link href="/dashboard/products/search" onClick={onClose}
+      {/* Public route — this used to point at /dashboard/products/search,
+          which bounced signed-out visitors to the sign-in page. */}
+      <Link href={PRODUCT_SEARCH_ROUTES.public} onClick={onClose}
         className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
         style={{ color: "var(--foreground)" }}>
         <span>🔍</span> Search products
@@ -93,11 +96,12 @@ export const TopBar = () => {
   const accountLabel = user?.displayName ?? user?.firstName ?? user?.email ?? "Account";
 
   // Reachable from every page — IndiaMART's search bar isn't confined to the
-  // marketplace page body. Hands off to /products, which already reads `?q=`.
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
+  // marketplace page body. Hands off to /products, which reads `?q=` reactively
+  // (see useUrlSearchQuery), so submitting while already on /products now
+  // re-runs the search instead of silently changing the URL.
+  const handleSearchSubmit = (q: string) => {
+    router.push(buildSearchHref("public", q));
+    setSearchQuery("");
   };
 
   // Close dropdown on outside click
@@ -161,17 +165,14 @@ export const TopBar = () => {
         </nav>
 
         {/* Global search — reachable from every page, not just the marketplace body */}
-        <form onSubmit={handleSearchSubmit} className="hidden max-w-xs flex-1 lg:block">
-          <div className="relative">
-            <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="var(--medium-gray)" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search products…" aria-label="Search products"
-              className="w-full rounded-xl py-2 pl-9 pr-3 text-sm outline-none"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }} />
-          </div>
-        </form>
+        <SearchBar
+          size="sm"
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSubmit={handleSearchSubmit}
+          placeholder="Search products…"
+          className="hidden max-w-xs flex-1 lg:block"
+        />
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-3 lg:flex">
@@ -222,6 +223,16 @@ export const TopBar = () => {
             exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }}
             className="overflow-hidden border-t px-6 pb-5 pt-3 lg:hidden"
             style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
+            {/* Search is lg-only in the bar above, so mobile gets it here —
+                previously there was no way to search from a phone at all. */}
+            <SearchBar
+              size="md"
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSubmit={(q) => { setMobileOpen(false); handleSearchSubmit(q); }}
+              placeholder="Search products…"
+              className="mb-3"
+            />
             <nav className="space-y-1">
               <Link href="/products" onClick={() => setMobileOpen(false)}
                 className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all hover:bg-[var(--primary-light)]"

@@ -1,35 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductCategory } from "@/src/types/product";
+import { SearchBar, useRecentSearches, useUrlSearchQuery } from "@/src/features/search";
 import { PRODUCT_CATEGORIES } from "../utils/categories";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;
-const MAX_RECENT = 8;
-const STORAGE_KEY = "manufacture:recent-searches";
-
-const loadRecent = (): string[] => {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-};
-
-const saveRecent = (query: string, prev: string[]) => {
-  const updated = [query, ...prev.filter((q) => q !== query)].slice(0, MAX_RECENT);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {
-    // ignore storage errors
-  }
-  return updated;
-};
 
 const fade = (delay = 0) => ({
   initial: { opacity: 0, y: 12 },
@@ -39,12 +20,11 @@ const fade = (delay = 0) => ({
 
 export const ProductSearchContainer = () => {
   const router = useRouter();
-  // Seeded from ?q= — the topbar search (DashboardTopbar) navigates here with
-  // the typed query, mirroring the app's onSearchPress → ProductSearch{initialQuery}.
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") ?? "";
-  const [query, setQuery] = useState(initialQuery);
-  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  // Bound to `?q=`, so arriving from the topbar, following a shared link, and
+  // browser back/forward all drive the results — and typing here keeps the URL
+  // shareable. Recents are the app-wide list, shared with every other search bar.
+  const { input: query, setInput: setQuery, query: debouncedQuery, submit } = useUrlSearchQuery();
+  const { recent: recentSearches, clear: clearRecent } = useRecentSearches();
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -53,16 +33,7 @@ export const ProductSearchContainer = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categoryStats, setCategoryStats] = useState<ProductCategory[]>([]);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Load recent searches on mount
-  useEffect(() => {
-    setRecentSearches(loadRecent());
-    inputRef.current?.focus();
-  }, []);
 
   // Load category stats
   useEffect(() => {
@@ -70,13 +41,6 @@ export const ProductSearchContainer = () => {
       .then((res) => setCategoryStats(res.categories))
       .catch(() => {});
   }, []);
-
-  // Debounce search
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedQuery(query), 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query]);
 
   const search = useCallback(async (q: string, mode: "fresh" | "more" = "fresh") => {
     if (!q.trim()) { setProducts([]); setTotal(0); return; }
@@ -119,16 +83,9 @@ export const ProductSearchContainer = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
-  const handleSearch = (q: string) => {
-    if (!q.trim()) return;
-    setRecentSearches((prev) => saveRecent(q.trim(), prev));
-    setQuery(q.trim());
-  };
-
-  const clearRecent = () => {
-    setRecentSearches([]);
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-  };
+  // SearchBar records the query in the shared recents list itself, so this
+  // only has to commit it to the URL.
+  const handleSearch = (q: string) => submit(q);
 
   const showResults = debouncedQuery.trim().length > 0;
   const showIdle = !showResults;
@@ -136,35 +93,15 @@ export const ProductSearchContainer = () => {
   return (
     <div className="space-y-6">
       {/* Search bar */}
-      <motion.div {...fade(0)} className="relative">
-        <div
-          className="flex items-center gap-3 rounded-2xl px-4 py-3.5"
-          style={{ border: "1.5px solid var(--primary)", backgroundColor: "var(--surface)", boxShadow: "var(--shadow-primary)" }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: "var(--primary)", flexShrink: 0 }}>
-            <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="search"
-            placeholder="Search products by name, category, SKU…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch(query)}
-            className="flex-1 bg-transparent text-base focus:outline-none"
-            style={{ color: "var(--foreground)" }}
-            aria-label="Search products"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => { setQuery(""); setDebouncedQuery(""); setProducts([]); }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold transition-opacity hover:opacity-60"
-              style={{ color: "var(--medium-gray)" }}
-              aria-label="Clear"
-            >✕</button>
-          )}
-        </div>
+      <motion.div {...fade(0)}>
+        <SearchBar
+          size="lg"
+          autoFocus
+          value={query}
+          onChange={setQuery}
+          onSubmit={handleSearch}
+          placeholder="Search products by name, category, SKU…"
+        />
       </motion.div>
 
       {/* Idle state: Recent + Categories */}
@@ -338,7 +275,7 @@ export const ProductSearchContainer = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setQuery(""); setDebouncedQuery(""); }}
+                  onClick={() => submit("")}
                   className="mt-1 rounded-xl px-4 py-2 text-sm font-bold text-white"
                   style={{ backgroundColor: "var(--primary)" }}
                 >Browse categories</button>

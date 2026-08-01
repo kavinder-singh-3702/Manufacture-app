@@ -9,6 +9,7 @@ import { buildInitials } from "./helpers";
 import { useCart } from "@/src/providers/CartProvider";
 import { CartDrawer } from "@/src/features/cart/components/CartDrawer";
 import { useThemeMode } from "@/src/providers/ThemeProvider";
+import { SearchBar, buildSearchHref } from "@/src/features/search";
 
 const getPageTitle = (pathname: string) => {
   const item = navItems.find(
@@ -40,9 +41,8 @@ export const DashboardTopbar = ({
   // Real product search — mirrors the app's HomeToolbar SearchBar
   // (topBarMode: "two_row"), which submits to ProductSearch{initialQuery}.
   const [searchQuery, setSearchQuery] = useState("");
-  const submitSearch = () => {
-    const q = searchQuery.trim();
-    router.push(q ? `/dashboard/products/search?q=${encodeURIComponent(q)}` : "/dashboard/products/search");
+  const submitSearch = (q: string) => {
+    router.push(buildSearchHref("dashboard", q));
     setSearchQuery("");
   };
 
@@ -74,28 +74,15 @@ export const DashboardTopbar = ({
       <div className="flex items-center gap-2">
         {/* Search — real product search from sm+; collapses onto a second
             row below the header on mobile (see the block after the header). */}
-        <div
-          className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm sm:flex"
-          style={{
-            border: "1px solid var(--border)",
-            backgroundColor: "var(--background)",
-            color: "var(--medium-gray)",
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitSearch()}
-            placeholder="Search products or SKUs"
-            aria-label="Search products or SKUs"
-            className="w-36 bg-transparent text-[13px] focus:outline-none lg:w-52"
-            style={{ color: "var(--foreground)" }}
-          />
-        </div>
+        <SearchBar
+          size="sm"
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSubmit={submitSearch}
+          placeholder="Search products or SKUs"
+          aria-label="Search products or SKUs"
+          className="hidden w-44 sm:block lg:w-60"
+        />
 
         {/* Theme toggle — reachable from the drawer on mobile, so it's hidden
             below sm to keep the compact bar from crowding at 390px. */}
@@ -204,24 +191,15 @@ export const DashboardTopbar = ({
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      <div
-        className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2"
-        style={{ border: "1px solid var(--border)", backgroundColor: "var(--background)" }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "var(--medium-gray)", flexShrink: 0 }}>
-          <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitSearch()}
-          placeholder="Search products or SKUs"
-          aria-label="Search products or SKUs"
-          className="w-full bg-transparent text-[13px] focus:outline-none"
-          style={{ color: "var(--foreground)" }}
-        />
-      </div>
+      <SearchBar
+        size="sm"
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onSubmit={submitSearch}
+        placeholder="Search products or SKUs"
+        aria-label="Search products or SKUs"
+        className="flex-1"
+      />
     </div>
 
     <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />

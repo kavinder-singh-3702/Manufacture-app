@@ -3,6 +3,7 @@ const {
   createCompanyController,
   listCompaniesController,
   getCompanyController,
+  getPublicCompanyController,
   switchCompanyController,
   updateCompanyController,
   uploadCompanyFileController
@@ -19,6 +20,13 @@ const companyVerificationRouter = require('../../companyVerification/routes/comp
 const { uploadMemory } = require('../../../middleware/upload');
 
 const router = Router();
+
+// Unauthenticated — powers the public /sellers/:id profile page. Must be
+// registered before router.use(authenticate) below. Field-whitelisted at the
+// controller/service layer (getPublicCompanyController -> getPublicCompany ->
+// buildPublicCompanyResponse) — never returns documents, GST/PAN/CIN,
+// contact info, owner, or metadata.
+router.get('/:companyId/public', validate(companyIdParamValidation), getPublicCompanyController);
 
 router.use(authenticate);
 

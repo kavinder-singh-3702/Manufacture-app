@@ -1,9 +1,18 @@
+const mongoose = require('mongoose');
 const createError = require('http-errors');
 const Company = require('../../../models/company.model');
 const User = require('../../../models/user.model');
-const { normalizeCategories, buildCompanyResponse } = require('../utils/company.util');
+const { normalizeCategories, buildCompanyResponse, buildPublicCompanyResponse } = require('../utils/company.util');
 const { uploadCompanyDocument } = require('../../../services/storage.service');
 const { INHOUSE_COMPANY_EXCLUDE_QUERY } = require('../utils/inhouseCatalog.util');
+
+// Company statuses eligible for the public seller profile page. Excludes
+// 'suspended'/'archived' (moderation/offboarded) — 'pending-verification' is
+// the default status for a brand-new company and is intentionally allowed
+// through, matching the marketplace product listing, which never filters on
+// company.status (see product.service.js) so a company's products can already
+// be publicly visible before its own status flips to 'active'.
+const PUBLIC_COMPANY_STATUSES = ['pending-verification', 'active'];
 
 const pruneUndefined = (obj = {}) =>
   Object.entries(obj).reduce((acc, [key, value]) => {
@@ -154,6 +163,28 @@ const uploadCompanyFile = async (ownerId, companyId, payload) => {
   };
 };
 
+// Unauthenticated lookup for the public seller profile page — no owner check,
+// but restricted to a field whitelist (buildPublicCompanyResponse) and to
+// companies in a public-eligible status, and never the internal in-house
+// catalog company (that has its own /shop page, not a seller profile).
+const getPublicCompany = async (companyId) => {
+  if (!mongoose.Types.ObjectId.isValid(companyId)) {
+    throw createError(404, 'Company not found');
+  }
+
+  const company = await Company.findOne({
+    _id: companyId,
+    status: { $in: PUBLIC_COMPANY_STATUSES },
+    ...INHOUSE_COMPANY_EXCLUDE_QUERY
+  });
+
+  if (!company) {
+    throw createError(404, 'Company not found');
+  }
+
+  return buildPublicCompanyResponse(company);
+};
+
 const switchActiveCompany = async (ownerId, companyId) => {
   const company = await ensureOwnedCompany(ownerId, companyId);
 
@@ -176,6 +207,7 @@ module.exports = {
   createCompany,
   listCompanies,
   getCompany,
+  getPublicCompany,
   switchActiveCompany,
   updateCompany,
   uploadCompanyFile

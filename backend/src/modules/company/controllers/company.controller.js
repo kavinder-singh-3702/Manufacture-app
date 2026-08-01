@@ -2,6 +2,7 @@ const {
   createCompany,
   listCompanies,
   getCompany,
+  getPublicCompany,
   switchActiveCompany,
   updateCompany,
   uploadCompanyFile
@@ -42,6 +43,18 @@ const listCompaniesController = async (req, res, next) => {
 const getCompanyController = async (req, res, next) => {
   try {
     const company = await getCompany(req.user.id, req.params.companyId, req.user.role);
+    return res.json({ company });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Unauthenticated — powers the public seller profile page (web-frontend
+// /sellers/[id]). Only ever returns the field whitelist built by
+// getPublicCompany/buildPublicCompanyResponse.
+const getPublicCompanyController = async (req, res, next) => {
+  try {
+    const company = await getPublicCompany(req.params.companyId);
     return res.json({ company });
   } catch (error) {
     return next(error);
@@ -117,6 +130,7 @@ module.exports = {
   createCompanyController,
   listCompaniesController,
   getCompanyController,
+  getPublicCompanyController,
   switchCompanyController,
   updateCompanyController,
   uploadCompanyFileController

@@ -66,9 +66,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => setUnauthorizedHandler(null);
   }, []);
 
+  // `initializing` gates a full-screen loader in DashboardFrame, so it must
+  // only ever describe the *first* session bootstrap. refreshUser() is also
+  // called after profile saves, avatar uploads and company switches; flipping
+  // it back to true there tore the whole dashboard down to a spinner and
+  // rebuilt it — read as the page "going blank" mid-interaction.
+  const bootstrappedRef = useRef(false);
+
   const refreshUser = useCallback(async () => {
     try {
-      setInitializing(true);
+      if (!bootstrappedRef.current) setInitializing(true);
       const { user: currentUser } = await userService.getCurrentUser();
       setUser(currentUser);
       setBootstrapError(null);
@@ -87,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setBootstrapError("Unable to connect to backend API.");
       }
     } finally {
+      bootstrappedRef.current = true;
       setInitializing(false);
     }
   }, []);

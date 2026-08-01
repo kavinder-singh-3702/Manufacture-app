@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { PublicMarketplace } from "@/src/features/marketing/components/PublicMarketplace";
+import { MarketplaceSkeleton } from "@/src/features/marketing/components/MarketplaceSkeleton";
 import { getCategoryMeta, PRODUCT_CATEGORIES } from "@/src/features/product/utils/categories";
 
 type Props = { params: Promise<{ categoryId: string }> };
@@ -19,5 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicCategoryPage({ params }: Props) {
   const { categoryId } = await params;
-  return <PublicMarketplace initialCategory={categoryId} />;
+  return (
+    <Suspense fallback={<MarketplaceSkeleton />}>
+      <PublicMarketplace initialCategory={categoryId} />
+    </Suspense>
+  );
 }
