@@ -59,4 +59,51 @@ describe('Product variant controller company scope guard', () => {
     expect(error.code).toBe('ACTIVE_COMPANY_REQUIRED');
     expect(variantService.getVariantById).not.toHaveBeenCalled();
   });
+
+  // Regression coverage: a missing scope must resolve owner-or-public (the
+  // viewer's own company plus anyone's published products), not default to
+  // the viewer's own company — that default is what 404'd the variant panel
+  // on any product the viewer didn't own.
+  test('list with no scope resolves owner-or-public, not the viewer\'s own company', async () => {
+    variantService.listVariants.mockResolvedValue({ variants: [], pagination: { total: 0, hasMore: false } });
+
+    const req = {
+      params: { productId: 'product1' },
+      query: {},
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await listProductVariantsController(req, res, next);
+
+    expect(variantService.listVariants).toHaveBeenCalledWith('product1', {
+      viewerCompanyId: 'viewerCo',
+      ownerOnly: false,
+      limit: undefined,
+      offset: undefined,
+      status: undefined
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('get with scope=company restricts strictly to the viewer\'s own company', async () => {
+    variantService.getVariantById.mockResolvedValue({ _id: 'variant1' });
+
+    const req = {
+      params: { productId: 'product1', variantId: 'variant1' },
+      query: { scope: 'company' },
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductVariantController(req, res, next);
+
+    expect(variantService.getVariantById).toHaveBeenCalledWith('product1', 'variant1', {
+      viewerCompanyId: 'viewerCo',
+      ownerOnly: true
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
 });

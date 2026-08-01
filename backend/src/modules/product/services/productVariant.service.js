@@ -147,18 +147,43 @@ const ensureProductExists = async (productId, companyId) => {
   return Product.findOne(query).select('_id company').lean();
 };
 
-const listVariants = async (productId, companyId, { limit = 20, offset = 0, status } = {}) => {
-  const product = await ensureProductExists(productId, companyId);
+// Read-path equivalent of ensureProductExists that additionally allows a
+// viewer to see the parent product's variants when the product itself is
+// published ('public' + 'active'), even if it belongs to a different company
+// — mirrors getProductById's owner-or-public rule in product.service.js so
+// the variant panel doesn't 404 for marketplace browsing. `ownerOnly: true`
+// (scope=company) keeps the strict same-company-only contract for writes.
+const resolveViewableProduct = async (productId, { viewerCompanyId, ownerOnly } = {}) => {
+  const query = { _id: productId, deletedAt: { $exists: false } };
+
+  if (ownerOnly) {
+    if (viewerCompanyId) {
+      query.company = new mongoose.Types.ObjectId(viewerCompanyId);
+    }
+  } else if (viewerCompanyId) {
+    query.$or = [
+      { company: new mongoose.Types.ObjectId(viewerCompanyId) },
+      { visibility: 'public', status: 'active' }
+    ];
+  } else {
+    query.visibility = 'public';
+    query.status = 'active';
+  }
+
+  return Product.findOne(query).select('_id company').lean();
+};
+
+const listVariants = async (productId, { viewerCompanyId, ownerOnly, limit = 20, offset = 0, status } = {}) => {
+  const product = await resolveViewableProduct(productId, { viewerCompanyId, ownerOnly });
   if (!product) return null;
 
   const parsedLimit = Number.isFinite(Number(limit)) ? Number(limit) : 20;
   const parsedOffset = Number.isFinite(Number(offset)) ? Number(offset) : 0;
   const cappedLimit = Math.min(Math.max(parsedLimit, 1), MAX_LIMIT);
 
-  const query = { product: productId, deletedAt: { $exists: false } };
-  if (companyId) {
-    query.company = new mongoose.Types.ObjectId(companyId);
-  }
+  // Filter by the product's own company, not the viewer's — those differ
+  // whenever a viewer is browsing someone else's published product.
+  const query = { product: productId, company: product.company, deletedAt: { $exists: false } };
   if (status) {
     query.status = status;
   }
@@ -179,11 +204,11 @@ const listVariants = async (productId, companyId, { limit = 20, offset = 0, stat
   };
 };
 
-const getVariantById = async (productId, variantId, companyId) => {
-  const query = { _id: variantId, product: productId, deletedAt: { $exists: false } };
-  if (companyId) {
-    query.company = new mongoose.Types.ObjectId(companyId);
-  }
+const getVariantById = async (productId, variantId, { viewerCompanyId, ownerOnly } = {}) => {
+  const product = await resolveViewableProduct(productId, { viewerCompanyId, ownerOnly });
+  if (!product) return null;
+
+  const query = { _id: variantId, product: productId, company: product.company, deletedAt: { $exists: false } };
 
   const variant = await ProductVariant.findOne(query).lean();
   return variant ? shapeVariant(variant) : null;

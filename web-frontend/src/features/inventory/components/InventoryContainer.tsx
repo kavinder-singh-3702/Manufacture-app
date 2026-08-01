@@ -7,6 +7,7 @@ import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductStockStatus } from "@/src/types/product";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { productDetailHref } from "@/src/features/product/utils/links";
 
 type StatusFilter = "all" | ProductStockStatus;
 
@@ -39,7 +40,7 @@ const ProductRow = ({ product, delay }: { product: Product; delay: number }) => 
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
       className="rounded-2xl overflow-hidden"
       style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
-      <Link href={`/dashboard/products/detail?productId=${product._id}`}
+      <Link href={productDetailHref(product._id)}
         className="flex items-start gap-3 p-4 hover:opacity-90 transition-opacity">
         {img ? (
           <img loading="lazy" decoding="async" src={img} alt={product.name} className="h-14 w-14 rounded-xl object-cover flex-shrink-0" />

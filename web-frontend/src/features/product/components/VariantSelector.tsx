@@ -74,7 +74,10 @@ export const VariantSelector = ({ productId, onSelect, compact = false }: Props)
   const load = useCallback(async () => {
     try {
       setLoading(true); setError(null);
-      const res = await productVariantService.list(productId, { limit: 100 });
+      // "marketplace" scope: this selector is mounted on both the dashboard
+      // and public PDPs, where the product may not belong to the viewer's
+      // own active company — a missing scope 404s server-side in that case.
+      const res = await productVariantService.list(productId, { scope: "marketplace", limit: 100 });
       setVariants(res.variants ?? []);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load variants");

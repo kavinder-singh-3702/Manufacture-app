@@ -384,11 +384,36 @@ const getAllProducts = async (
   };
 };
 
-const getProductById = async (productId, companyId, { includeVariantSummary } = {}) => {
+// `ownerOnly: true` restricts the lookup to products owned by `viewerCompanyId`
+// (the strict `scope=company` contract). Otherwise the viewer sees their own
+// company's products (any status/visibility) plus everyone else's published
+// ('public' + 'active') products — a guest (no viewerCompanyId) only ever sees
+// the published set. This keeps drafts/private products from leaking to
+// anyone holding the id who isn't the owner.
+const getProductById = async (
+  productId,
+  { viewerCompanyId, ownerOnly = false, includeVariantSummary } = {}
+) => {
   const query = { _id: productId, deletedAt: { $exists: false } };
-  if (companyId) {
-    query.company = new mongoose.Types.ObjectId(companyId);
+
+  if (ownerOnly) {
+    // No viewerCompanyId with ownerOnly is only hit by internal post-write
+    // refetches whose write already ran without a company filter (matches
+    // that same, pre-existing lack of scoping rather than 404ing on a write
+    // that just succeeded).
+    if (viewerCompanyId) {
+      query.company = new mongoose.Types.ObjectId(viewerCompanyId);
+    }
+  } else if (viewerCompanyId) {
+    query.$or = [
+      { company: new mongoose.Types.ObjectId(viewerCompanyId) },
+      { visibility: 'public', status: 'active' }
+    ];
+  } else {
+    query.visibility = 'public';
+    query.status = 'active';
   }
+
   const product = await Product.findOne(query)
     .populate({
       path: 'company',
@@ -400,7 +425,12 @@ const getProductById = async (productId, companyId, { includeVariantSummary } = 
 
   if (!includeVariantSummary) return shapeProduct(product);
 
-  const [withSummary] = await attachVariantSummary([product], companyId);
+  // Variant summary must be scoped to the product's own company, not the
+  // viewer's — those differ whenever a viewer is browsing someone else's
+  // published product, and scoping to the viewer's company would silently
+  // return an empty variant summary for a product that does have variants.
+  const ownerCompanyId = product.company?._id ?? product.company;
+  const [withSummary] = await attachVariantSummary([product], ownerCompanyId);
   return shapeProduct(withSummary);
 };
 
@@ -447,7 +477,7 @@ const createProduct = async (payload, userId, companyId, creatorRole = 'user') =
     }
   }
 
-  return getProductById(product._id, companyId);
+  return getProductById(product._id, { viewerCompanyId: companyId, ownerOnly: true });
 };
 
 const updateProduct = async (productId, updates, userId, companyId) => {
@@ -478,7 +508,7 @@ const updateProduct = async (productId, updates, userId, companyId) => {
   );
 
   if (!product) return null;
-  return getProductById(product._id, companyId);
+  return getProductById(product._id, { viewerCompanyId: companyId, ownerOnly: true });
 };
 
 const adjustQuantity = async (productId, adjustment, userId, companyId) => {
@@ -547,7 +577,7 @@ const applyTargetedDiscount = async (productId, companyId, discountPayload, acto
   product.lastUpdatedBy = actorUserId;
   await product.save();
 
-  return getProductById(product._id, companyId);
+  return getProductById(product._id, { viewerCompanyId: companyId, ownerOnly: true });
 };
 
 const addProductImage = async (productId, companyId, filePayload, userId) => {
@@ -581,7 +611,7 @@ const addProductImage = async (productId, companyId, filePayload, userId) => {
   await product.save();
 
   const image = product.images[product.images.length - 1];
-  const refreshedProduct = await getProductById(product._id, companyId);
+  const refreshedProduct = await getProductById(product._id, { viewerCompanyId: companyId, ownerOnly: true });
 
   return {
     product: refreshedProduct,

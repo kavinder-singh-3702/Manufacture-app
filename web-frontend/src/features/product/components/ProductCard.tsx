@@ -5,6 +5,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { productDetailHref } from "../utils/links";
 import { useCart, MAX_CART_ITEMS } from "@/src/providers/CartProvider";
 import { useToast } from "@/src/components/ui/Toast";
 
@@ -95,7 +96,7 @@ export const ProductCard = ({
       className="relative"
     >
       <Link
-        href={`/dashboard/products/detail?productId=${encodeURIComponent(product._id)}`}
+        href={productDetailHref(product._id)}
         className="group relative block overflow-hidden rounded-2xl transition-shadow duration-200"
         style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}
       >

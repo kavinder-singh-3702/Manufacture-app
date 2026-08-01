@@ -200,4 +200,90 @@ describe('Product controller companyId filter rules', () => {
     expect(error.code).toBe('ACTIVE_COMPANY_REQUIRED');
     expect(productService.getProductById).not.toHaveBeenCalled();
   });
+
+  // Regression coverage for the reported bug: a signed-in viewer opening a
+  // product that belongs to a *different* company than their active one.
+  test('get endpoint with no scope resolves owner-or-public, not the viewer\'s own company', async () => {
+    productService.getProductById.mockResolvedValue({ _id: 'product1' });
+
+    const req = {
+      params: { productId: 'product1' },
+      query: { includeVariantSummary: 'true' },
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductController(req, res, next);
+
+    expect(productService.getProductById).toHaveBeenCalledWith('product1', {
+      viewerCompanyId: 'viewerCo',
+      ownerOnly: false,
+      includeVariantSummary: true
+    });
+    expect(res.json).toHaveBeenCalledWith({ product: { _id: 'product1' } });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('get endpoint with scope=marketplace also resolves owner-or-public', async () => {
+    productService.getProductById.mockResolvedValue({ _id: 'product1' });
+
+    const req = {
+      params: { productId: 'product1' },
+      query: { scope: 'marketplace' },
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductController(req, res, next);
+
+    expect(productService.getProductById).toHaveBeenCalledWith('product1', {
+      viewerCompanyId: 'viewerCo',
+      ownerOnly: false,
+      includeVariantSummary: false
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('get endpoint with scope=company restricts strictly to the viewer\'s own company', async () => {
+    productService.getProductById.mockResolvedValue({ _id: 'product1' });
+
+    const req = {
+      params: { productId: 'product1' },
+      query: { scope: 'company' },
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductController(req, res, next);
+
+    expect(productService.getProductById).toHaveBeenCalledWith('product1', {
+      viewerCompanyId: 'viewerCo',
+      ownerOnly: true,
+      includeVariantSummary: false
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('get endpoint surfaces a real 404 message (not a bare {error} body) when the product is missing', async () => {
+    productService.getProductById.mockResolvedValue(null);
+
+    const req = {
+      params: { productId: 'missing1' },
+      query: {},
+      user: { id: 'user1', role: 'user', activeCompany: 'viewerCo' }
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await getProductController(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    const error = next.mock.calls[0][0];
+    expect(error.statusCode || error.status).toBe(404);
+    expect(error.message).toBe('Product not found');
+    expect(res.json).not.toHaveBeenCalled();
+  });
 });

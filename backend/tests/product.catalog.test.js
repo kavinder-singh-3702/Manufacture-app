@@ -42,7 +42,15 @@ const createCompany = async (user, suffix) =>
     }
   });
 
-const createProduct = async ({ company, user, suffix, createdByRole = 'user', namePrefix = 'Catalog Item' }) =>
+const createProduct = async ({
+  company,
+  user,
+  suffix,
+  createdByRole = 'user',
+  namePrefix = 'Catalog Item',
+  visibility,
+  status
+}) =>
   Product.create({
     name: `${namePrefix} ${suffix}`,
     category: PRODUCT_CATEGORIES[0].id,
@@ -53,6 +61,8 @@ const createProduct = async ({ company, user, suffix, createdByRole = 'user', na
     company: company._id,
     createdBy: user._id,
     createdByRole,
+    ...(visibility ? { visibility } : {}),
+    ...(status ? { status } : {}),
     sku: `SKU-${suffix}`
   });
 
@@ -160,14 +170,78 @@ describe('Product catalog services', () => {
     });
     await createVariant({ product, company: ownerCompany, user: owner, suffix: '250ml', price: 90, qty: 2 });
 
-    const deniedByCompanyScope = await getProductById(product._id, outsiderCompany._id, { includeVariantSummary: true });
+    const deniedByCompanyScope = await getProductById(product._id, {
+      viewerCompanyId: outsiderCompany._id,
+      ownerOnly: true,
+      includeVariantSummary: true
+    });
     expect(deniedByCompanyScope).toBeNull();
 
-    const marketplaceResult = await getProductById(product._id, undefined, { includeVariantSummary: true });
+    const marketplaceResult = await getProductById(product._id, { includeVariantSummary: true });
     expect(marketplaceResult).toBeTruthy();
     expect(marketplaceResult.company.displayName).toBe(ownerCompany.displayName);
     expect(marketplaceResult.variantSummary.totalVariants).toBe(1);
     expect(marketplaceResult.variantSummary.inStockVariants).toBe(1);
+  });
+
+  // Regression coverage for the "Product not found" bug: opening a product
+  // detail page as a signed-in user whose active company doesn't own the
+  // product used to 404 because the default (no-scope) lookup silently
+  // scoped to the viewer's own company. It should instead behave like
+  // marketplace browsing — see anyone's published product — while still
+  // hiding drafts/private listings from non-owners.
+  test('getProductById: a signed-in viewer from a different company sees published products but not drafts/private ones', async () => {
+    const owner = await createUser('3010');
+    const viewer = await createUser('3011');
+    const ownerCompany = await createCompany(owner, '3010');
+    const viewerCompany = await createCompany(viewer, '3011');
+
+    const published = await createProduct({ company: ownerCompany, user: owner, suffix: 'PUB1' });
+    const draft = await createProduct({ company: ownerCompany, user: owner, suffix: 'DRAFT1', status: 'draft' });
+    const privateProduct = await createProduct({ company: ownerCompany, user: owner, suffix: 'PRIV1', visibility: 'private' });
+
+    // No scope param — the bug scenario: viewer has an active company, but
+    // it isn't the product's owner.
+    const viewerSeesPublished = await getProductById(published._id, { viewerCompanyId: viewerCompany._id });
+    expect(viewerSeesPublished).toBeTruthy();
+    expect(String(viewerSeesPublished._id)).toBe(String(published._id));
+
+    const viewerBlockedFromDraft = await getProductById(draft._id, { viewerCompanyId: viewerCompany._id });
+    expect(viewerBlockedFromDraft).toBeNull();
+
+    const viewerBlockedFromPrivate = await getProductById(privateProduct._id, { viewerCompanyId: viewerCompany._id });
+    expect(viewerBlockedFromPrivate).toBeNull();
+
+    // The owner's own company still sees its drafts and private products in full.
+    const ownerSeesDraft = await getProductById(draft._id, { viewerCompanyId: ownerCompany._id });
+    expect(ownerSeesDraft).toBeTruthy();
+
+    const ownerSeesPrivate = await getProductById(privateProduct._id, { viewerCompanyId: ownerCompany._id });
+    expect(ownerSeesPrivate).toBeTruthy();
+
+    // A guest (no viewer company at all) behaves like the marketplace case above.
+    const guestSeesPublished = await getProductById(published._id, {});
+    expect(guestSeesPublished).toBeTruthy();
+    const guestBlockedFromDraft = await getProductById(draft._id, {});
+    expect(guestBlockedFromDraft).toBeNull();
+  });
+
+  test('listVariants: a viewer from a different company sees variants of a published product but not a private one', async () => {
+    const owner = await createUser('3012');
+    const viewer = await createUser('3013');
+    const ownerCompany = await createCompany(owner, '3012');
+    const viewerCompany = await createCompany(viewer, '3013');
+
+    const published = await createProduct({ company: ownerCompany, user: owner, suffix: 'PUB2' });
+    await createVariant({ product: published, company: ownerCompany, user: owner, suffix: 'V1', price: 50, qty: 5 });
+    const privateProduct = await createProduct({ company: ownerCompany, user: owner, suffix: 'PRIV2', visibility: 'private' });
+
+    const viewerVariants = await listVariants(published._id, { viewerCompanyId: viewerCompany._id, limit: 20, offset: 0 });
+    expect(viewerVariants).toBeTruthy();
+    expect(viewerVariants.variants).toHaveLength(1);
+
+    const viewerVariantsDenied = await listVariants(privateProduct._id, { viewerCompanyId: viewerCompany._id, limit: 20, offset: 0 });
+    expect(viewerVariantsDenied).toBeNull();
   });
 
   test('category listing and variant listing work for marketplace scope', async () => {
@@ -190,7 +264,7 @@ describe('Product catalog services', () => {
     expect(matched).toBeTruthy();
     expect(matched.variantSummary.totalVariants).toBe(1);
 
-    const variantsMarketplace = await listVariants(product._id, undefined, { limit: 20, offset: 0 });
+    const variantsMarketplace = await listVariants(product._id, { limit: 20, offset: 0 });
     expect(variantsMarketplace).toBeTruthy();
     expect(variantsMarketplace.variants).toHaveLength(1);
   });

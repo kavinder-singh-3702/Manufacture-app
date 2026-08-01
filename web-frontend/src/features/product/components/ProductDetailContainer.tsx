@@ -11,6 +11,7 @@ import type { CreateProductInput, Product } from "@/src/types/product";
 import { useToast } from "@/src/components/ui/Toast";
 import type { PendingImage } from "./ProductImageUploader";
 import { getBuyerStock, getCategoryMeta, STATUS_COLORS, STOCK_STATUS_COLORS } from "../utils/categories";
+import { productDetailHref } from "../utils/links";
 import { ProductGallery, PriceBlock, SpecTable } from "./pdp";
 import type { SpecRow } from "../utils/specs";
 import { ProductFormDrawer } from "./ProductFormDrawer";
@@ -115,6 +116,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
@@ -127,10 +129,15 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
 
   const load = useCallback(async () => {
     try {
-      setLoading(true); setError(null);
-      const p = await productService.get(productId, { includeVariantSummary: true });
+      setLoading(true); setError(null); setErrorStatus(null);
+      // "marketplace" scope: my own company's products (any status) plus
+      // everyone else's published ones — matches the mobile app and the
+      // public PDP. Omitting scope here used to default to "my company
+      // only" server-side, 404ing on any product the viewer didn't own.
+      const p = await productService.get(productId, { scope: "marketplace", includeVariantSummary: true });
       setProduct(p);
     } catch (err) {
+      setErrorStatus(err instanceof ApiError ? err.status : null);
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load product");
     } finally { setLoading(false); }
   }, [productId]);
@@ -226,15 +233,34 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   }
 
   if (error || !product) {
+    // A missing product (never fetched, no error) reads the same as a 404 —
+    // otherwise split on status so a network hiccup or backend error offers
+    // Retry instead of the misleading "not found".
+    const isNotFound = errorStatus === 404 || (!error && !product);
     return (
       <div className="rounded-2xl p-8 text-center" style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-        <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>Product not found</h2>
-        <p className="mt-1 text-sm" style={{ color: "var(--medium-gray)" }}>{error ?? "It may have been deleted."}</p>
-        <Link href="/dashboard/products"
-          className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
-          style={{ backgroundColor: "var(--primary)", color: "#fff" }}>
-          ← Back to products
-        </Link>
+        <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+          {isNotFound ? "Product not found" : "Couldn't load this product"}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--medium-gray)" }}>
+          {isNotFound
+            ? "This product is no longer available. It may have been removed or made private."
+            : (error ?? "Something went wrong. Please try again.")}
+        </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          {!isNotFound && (
+            <button type="button" onClick={load}
+              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+              style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>
+              Retry
+            </button>
+          )}
+          <Link href="/dashboard/products"
+            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+            style={{ backgroundColor: "var(--primary)", color: "#fff" }}>
+            ← Back to products
+          </Link>
+        </div>
       </div>
     );
   }
@@ -563,7 +589,7 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
 
       {/* Auth toast */}
       <AnimatePresence>
-        {showAuthToast && <AuthToast returnTo={`/dashboard/products/detail?productId=${productId}`} onDismiss={() => setShowAuthToast(false)} />}
+        {showAuthToast && <AuthToast returnTo={productDetailHref(productId)} onDismiss={() => setShowAuthToast(false)} />}
       </AnimatePresence>
     </div>
   );

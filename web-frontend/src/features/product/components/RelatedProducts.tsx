@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
 import { getCategoryMeta } from "../utils/categories";
+import { productDetailHref } from "../utils/links";
 import { ProductCarousel } from "./pdp";
 
 // ── Mini card shared between both sections ────────────────────────────────────
@@ -136,10 +137,7 @@ export const RelatedProducts = ({
   const [loadingSimilar, setLoadingSimilar] = useState(true);
 
   const makeHref = useCallback(
-    (p: Product) =>
-      routePrefix === "/products"
-        ? `/products/${encodeURIComponent(p._id)}`
-        : `/dashboard/products/detail?productId=${encodeURIComponent(p._id)}`,
+    (p: Product) => productDetailHref(p._id, routePrefix === "/products" ? "public" : "dashboard"),
     [routePrefix]
   );
 

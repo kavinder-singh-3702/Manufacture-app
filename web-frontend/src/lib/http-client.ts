@@ -109,7 +109,12 @@ export class HttpClient {
       if (response.status === 401) {
         unauthorizedHandler?.();
       }
-      const errorMessage = (parsedBody as { message?: string })?.message ?? "Request failed";
+      // Most backend errors use { message }, but a handful of older
+      // controller sites still respond with { error } directly instead of
+      // going through the shared errorHandler — fall back to that before
+      // giving up and showing the generic "Request failed".
+      const body = parsedBody as { message?: string; error?: string } | undefined;
+      const errorMessage = body?.message ?? body?.error ?? "Request failed";
       throw new ApiError(errorMessage, response.status, parsedBody);
     }
 

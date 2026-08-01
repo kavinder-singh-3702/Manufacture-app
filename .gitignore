@@ -24,3 +24,5 @@ app-frontend/.expo/
 # Android build artifacts
 app-frontend/*.apk
 app-frontend/*.apk.sha256
+.vercel
+.env*

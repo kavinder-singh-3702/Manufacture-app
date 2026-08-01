@@ -140,13 +140,22 @@ const listProductsController = async (req, res, next) => {
 const getProductController = async (req, res, next) => {
   try {
     const { scope, includeVariantSummary } = req.query;
-    const companyId = resolveScopeCompanyId(scope, req.user);
-    const product = await getProductById(req.params.productId, companyId, {
+    // Unlike list/category/stats, a missing scope here must NOT default to
+    // the viewer's own company — that 404s the moment a signed-in user opens
+    // a product they don't own. Default (and `scope=marketplace`) resolve to
+    // "my company's products, plus anyone's published ones"; only an explicit
+    // `scope=company` restricts strictly to the viewer's own company.
+    if (scope === 'company' && !req.user?.activeCompany) {
+      throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
+    }
+    const product = await getProductById(req.params.productId, {
+      viewerCompanyId: req.user?.activeCompany,
+      ownerOnly: scope === 'company',
       includeVariantSummary: parseBooleanQuery(includeVariantSummary)
     });
 
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      throw createError(404, 'Product not found');
     }
 
     return res.json({ product });

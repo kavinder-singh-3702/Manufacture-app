@@ -11,21 +11,25 @@ const {
 
 const ACTIVE_COMPANY_REQUIRED_CODE = 'ACTIVE_COMPANY_REQUIRED';
 
-const resolveScopeCompanyId = (scope, user) => {
-  if (scope === 'company' && !user?.activeCompany) {
-    throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
-  }
-  return scope === 'company' ? user?.activeCompany : scope === 'marketplace' ? undefined : user?.activeCompany;
-};
-
 const listProductVariantsController = async (req, res, next) => {
   try {
     const { scope } = req.query;
-    const companyId = resolveScopeCompanyId(scope, req.user);
+    // Same owner-or-public rule as the parent product's GET /products/:id —
+    // a missing/marketplace scope must not default to the viewer's own
+    // company, or the variant panel 404s on any product the viewer doesn't own.
+    if (scope === 'company' && !req.user?.activeCompany) {
+      throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
+    }
     const { productId } = req.params;
     const { limit, offset, status } = req.query;
 
-    const result = await listVariants(productId, companyId, { limit, offset, status });
+    const result = await listVariants(productId, {
+      viewerCompanyId: req.user?.activeCompany,
+      ownerOnly: scope === 'company',
+      limit,
+      offset,
+      status
+    });
     if (!result) {
       throw createError(404, 'Product not found');
     }
@@ -39,10 +43,15 @@ const listProductVariantsController = async (req, res, next) => {
 const getProductVariantController = async (req, res, next) => {
   try {
     const { scope } = req.query;
-    const companyId = resolveScopeCompanyId(scope, req.user);
+    if (scope === 'company' && !req.user?.activeCompany) {
+      throw createError(400, 'No active company selected', { code: ACTIVE_COMPANY_REQUIRED_CODE });
+    }
     const { productId, variantId } = req.params;
 
-    const variant = await getVariantById(productId, variantId, companyId);
+    const variant = await getVariantById(productId, variantId, {
+      viewerCompanyId: req.user?.activeCompany,
+      ownerOnly: scope === 'company'
+    });
     if (!variant) {
       throw createError(404, 'Variant not found');
     }
@@ -71,7 +80,7 @@ const createProductVariantController = async (req, res, next) => {
     return res.status(201).json({ variant, message: 'Variant created successfully' });
   } catch (error) {
     if (error?.code === 11000) {
-      return res.status(400).json({ error: 'Variant already exists (duplicate SKU or option combination)' });
+      return next(createError(400, 'Variant already exists (duplicate SKU or option combination)'));
     }
     return next(error);
   }
@@ -95,7 +104,7 @@ const updateProductVariantController = async (req, res, next) => {
     return res.json({ variant });
   } catch (error) {
     if (error?.code === 11000) {
-      return res.status(400).json({ error: 'Variant already exists (duplicate SKU or option combination)' });
+      return next(createError(400, 'Variant already exists (duplicate SKU or option combination)'));
     }
     return next(error);
   }

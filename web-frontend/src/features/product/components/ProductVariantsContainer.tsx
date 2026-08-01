@@ -152,7 +152,10 @@ export const ProductVariantsContainer = ({
     try {
       setLoading(true);
       setError(null);
-      const res = await productVariantService.list(productId, { limit: 100 });
+      // "marketplace" scope mirrors ProductDetailContainer's product fetch:
+      // the parent product may belong to a different company than the
+      // viewer's active one, and a missing scope 404s server-side in that case.
+      const res = await productVariantService.list(productId, { scope: "marketplace", limit: 100 });
       setVariants(res.variants);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load variants");

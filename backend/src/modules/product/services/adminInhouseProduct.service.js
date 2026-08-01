@@ -38,7 +38,7 @@ const listInhouseProducts = async ({ actorUserId, query = {} } = {}) => {
 
 const getInhouseProductById = async ({ actorUserId, productId, includeVariantSummary } = {}) => {
   const companyId = await resolveInhouseCompanyId(actorUserId);
-  return getProductById(productId, companyId, { includeVariantSummary });
+  return getProductById(productId, { viewerCompanyId: companyId, ownerOnly: true, includeVariantSummary });
 };
 
 const createInhouseProduct = async ({ actorUserId, actorRole, payload } = {}) => {
@@ -60,7 +60,7 @@ const adjustInhouseProductQuantity = async ({ actorUserId, productId, adjustment
   const companyId = await resolveInhouseCompanyId(actorUserId);
   const product = await adjustQuantity(productId, adjustment, actorUserId, companyId);
   if (!product) return null;
-  return getProductById(productId, companyId);
+  return getProductById(productId, { viewerCompanyId: companyId, ownerOnly: true });
 };
 
 const deleteInhouseProduct = async ({ actorUserId, productId } = {}) => {
@@ -75,12 +75,12 @@ const addInhouseProductImage = async ({ actorUserId, productId, filePayload } = 
 
 const listInhouseVariants = async ({ actorUserId, productId, query = {} } = {}) => {
   const companyId = await resolveInhouseCompanyId(actorUserId);
-  return listVariants(productId, companyId, query);
+  return listVariants(productId, { viewerCompanyId: companyId, ownerOnly: true, ...query });
 };
 
 const getInhouseVariantById = async ({ actorUserId, productId, variantId } = {}) => {
   const companyId = await resolveInhouseCompanyId(actorUserId);
-  return getVariantById(productId, variantId, companyId);
+  return getVariantById(productId, variantId, { viewerCompanyId: companyId, ownerOnly: true });
 };
 
 const createInhouseVariant = async ({ actorUserId, productId, payload } = {}) => {
