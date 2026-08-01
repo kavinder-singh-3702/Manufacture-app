@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useLogout } from "@/src/hooks/useLogout";
 import { authService } from "@/src/services/auth";
 import { AnimatedInput } from "@/src/components/ui/Input";
 import { AnimatedButton } from "@/src/components/ui/Button";
@@ -22,7 +23,8 @@ const PHONE_PATTERN = /^[0-9+]{7,15}$/;
  * auth feature rather than either shell.
  */
 export const PhoneGate = () => {
-  const { user, setUser, logout } = useAuth();
+  const { user, setUser } = useAuth();
+  const { signOut, loggingOut } = useLogout();
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,11 +119,12 @@ export const PhoneGate = () => {
 
         <button
           type="button"
-          onClick={() => void logout()}
-          className="mt-4 w-full text-center text-sm font-semibold transition-opacity hover:opacity-70"
+          onClick={() => void signOut()}
+          disabled={loggingOut}
+          className="mt-4 w-full text-center text-sm font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
           style={{ color: "var(--medium-gray)" }}
         >
-          Sign out
+          {loggingOut ? "Signing out…" : "Sign out"}
         </button>
       </motion.div>
     </div>

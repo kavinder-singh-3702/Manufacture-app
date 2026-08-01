@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useLogout } from "@/src/hooks/useLogout";
 import { companyVerificationService } from "@/src/services/companyVerification";
 import type { CompanyVerificationRequest } from "@/src/types/company";
 import { adminService, AdminOverview as AdminOverviewData, AdminAuditEvent } from "@/src/services/admin";
@@ -54,6 +55,15 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
     }
   }, [initializing, user, isAdmin, router]);
 
+  // Without this, a sign-out triggered from inside this shell (e.g.
+  // PhoneGate's "Sign out") leaves `user` null with nothing navigating away —
+  // the guard below just renders "Checking your session…" forever.
+  useEffect(() => {
+    if (!initializing && !user) {
+      router.replace("/signin");
+    }
+  }, [initializing, user, router]);
+
   if (initializing || !user) {
     return (
       <div className="mx-auto max-w-3xl py-24 text-center text-sm font-semibold text-[var(--foreground)]">
@@ -90,11 +100,10 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
 
 const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onToggleSidebar: () => void }) => {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { signOut, loggingOut } = useLogout();
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const q = query.trim().toLowerCase();
   const matches = q ? adminNavItems.filter((i) => i.label.toLowerCase().includes(q)) : [];
@@ -102,9 +111,8 @@ const AdminTopbar = ({ userEmail, onToggleSidebar }: { userEmail?: string; onTog
 
   const go = (href: string) => { setQuery(""); setSearchFocused(false); router.push(href); };
   const handleLogout = async () => {
-    setLoggingOut(true);
-    try { await logout(); router.push("/signin"); }
-    finally { setLoggingOut(false); setMenuOpen(false); }
+    setMenuOpen(false);
+    await signOut();
   };
 
   return (

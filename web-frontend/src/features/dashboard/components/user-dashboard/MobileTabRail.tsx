@@ -4,7 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useCart } from "@/src/providers/CartProvider";
+import { useLogout } from "@/src/hooks/useLogout";
 import { Sheet } from "@/src/components/ui/Sheet";
+import { useDashboardContext } from "./context";
+import { buildInitials } from "./helpers";
 import { navItems, NavIcon } from "./Navigation";
 
 type TabItem = {
@@ -38,8 +41,14 @@ const TABS: TabItem[] = [
  * sidebar takes over.
  */
 export const MobileTabRail = ({ activePath }: { activePath: string }) => {
-  const { totalCount } = useCart();
+  const { totalCount, clearCart } = useCart();
+  const { user } = useDashboardContext();
+  const { signOut, loggingOut } = useLogout({ onBeforeLogout: clearCart });
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const userLabel = user.displayName ?? user.email;
+  const userInitials = buildInitials(userLabel ?? "U");
+  const userAvatar = typeof user.avatarUrl === "string" ? user.avatarUrl : undefined;
 
   const isTabActive = (tab: TabItem) => (tab.href === "/dashboard" ? activePath === tab.href : activePath.startsWith(tab.href));
   const isMoreActive = !TABS.some(isTabActive);
@@ -156,6 +165,39 @@ export const MobileTabRail = ({ activePath }: { activePath: string }) => {
               </Link>
             );
           })}
+        </div>
+
+        {/* Account footer — mirrors Sidebar's "User section" (desktop has no
+            equivalent gap since Sidebar is always visible there; on mobile
+            this sheet is the only place a signed-in user can sign out). */}
+        <div
+          className="mt-4 flex items-center gap-2.5 rounded-2xl p-2.5"
+          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}
+        >
+          <div
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg"
+            style={{ backgroundColor: "var(--primary-light)" }}
+          >
+            {userAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img loading="lazy" decoding="async" src={userAvatar} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-[13px] font-bold" style={{ color: "var(--primary)" }}>{userInitials}</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>{userLabel}</p>
+            <p className="truncate text-[11px] leading-tight" style={{ color: "var(--medium-gray)" }}>{user.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setMoreOpen(false); void signOut(); }}
+            disabled={loggingOut}
+            className="flex-shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+            style={{ color: "#DC2626" }}
+          >
+            {loggingOut ? "Signing out…" : "Sign out"}
+          </button>
         </div>
       </Sheet>
     </>

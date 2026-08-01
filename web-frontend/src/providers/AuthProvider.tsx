@@ -112,9 +112,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const logout = useCallback(async () => {
-    await authService.logout();
-    setUser(null);
-    setActiveAuthView("login");
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
+      setActiveAuthView("login");
+    }
   }, []);
 
   const switchCompany = useCallback(

@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { AnimatedPage } from "@/src/components/ui/PageTransition";
 import { useMotionSafe } from "@/src/components/ui/motion";
 import { DashboardTopbar } from "./user-dashboard/DashboardTopbar";
-import { Sidebar } from "./user-dashboard/Navigation";
+import { SidebarWithLogout } from "./user-dashboard/Navigation";
 import { MobileTabRail } from "./user-dashboard/MobileTabRail";
 import { OverviewSection } from "./user-dashboard/OverviewSection";
 import { ProfileSummaryCard } from "./user-dashboard/profile/ProfileSummaryCard";
@@ -71,7 +71,7 @@ const GuestTopbar = () => (
 );
 
 export const DashboardFrame = ({ children }: { children: ReactNode }) => {
-  const { user, initializing, refreshUser, logout, switchCompany } = useAuth();
+  const { user, initializing, refreshUser, switchCompany } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const motionSafe = useMotionSafe();
@@ -190,11 +190,6 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/signin");
-  };
-
   return (
     <CartProvider>
     <DashboardContext.Provider
@@ -202,12 +197,11 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
     >
       <div className="h-screen-safe flex overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
         {/* Sidebar — desktop only; MobileTabRail below replaces it on mobile */}
-        <Sidebar
+        <SidebarWithLogout
           activePath={pathname}
           onOpenCompanyCreate={() => setCompanyModalOpen(true)}
           onSwitchCompany={handleSwitchCompany}
           switchingCompanyId={switchingCompanyId}
-          onLogout={handleLogout}
         />
 
         {/* Main column */}

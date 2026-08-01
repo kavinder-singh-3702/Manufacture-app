@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useDashboardContext } from "./context";
 import { buildInitials, resolveCompanyLabel } from "./helpers";
 import { BrandWordmark, BrandLogo } from "@/src/components/BrandLogo";
+import { useCart } from "@/src/providers/CartProvider";
+import { useLogout } from "@/src/hooks/useLogout";
 
 // No `description` field — every row is icon + label only. Subtext lines
 // under each nav item read as consumer-y rather than professional, and the
@@ -269,6 +271,7 @@ type SidebarContentProps = {
   onSwitchCompany: (id: string) => Promise<void>;
   switchingCompanyId: string | null;
   onLogout: () => void;
+  loggingOut?: boolean;
   /** Desktop-only icon-rail mode — no effect inside the mobile overlay. */
   collapsed?: boolean;
   onExpand?: () => void;
@@ -281,6 +284,7 @@ const SidebarContent = ({
   onSwitchCompany,
   switchingCompanyId,
   onLogout,
+  loggingOut = false,
   collapsed = false,
   onExpand,
 }: SidebarContentProps) => {
@@ -441,14 +445,22 @@ const SidebarContent = ({
           <button
             type="button"
             onClick={onLogout}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-70"
+            disabled={loggingOut}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
             style={{ color: "var(--medium-gray)" }}
             aria-label="Logout"
             title={collapsed ? "Logout" : undefined}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {loggingOut ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" />
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -472,7 +484,7 @@ export type SidebarProps = Omit<SidebarContentProps, "onNavigate" | "collapsed" 
 const readCollapsedState = (): boolean =>
   typeof window !== "undefined" && window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === "1";
 
-export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout }: SidebarProps) => {
+export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, switchingCompanyId, onLogout, loggingOut }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(readCollapsedState);
 
   const toggleCollapsed = () => {
@@ -504,6 +516,7 @@ export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, swit
         onSwitchCompany={onSwitchCompany}
         switchingCompanyId={switchingCompanyId}
         onLogout={onLogout}
+        loggingOut={loggingOut}
         collapsed={collapsed}
         onExpand={() => { setCollapsed(false); window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, "0"); }}
       />
@@ -522,4 +535,17 @@ export const Sidebar = ({ activePath, onOpenCompanyCreate, onSwitchCompany, swit
       </button>
     </aside>
   );
+};
+
+/**
+ * Sidebar wired to the shared logout flow (confirm + clearCart + redirect).
+ * A separate component (rather than calling useCart/useLogout in Sidebar
+ * directly) so Sidebar itself stays a plain presentational component —
+ * useCart() needs a CartProvider ancestor, which only exists on this
+ * sub-tree, not in DashboardFrame's own render.
+ */
+export const SidebarWithLogout = (props: Omit<SidebarProps, "onLogout" | "loggingOut">) => {
+  const { clearCart } = useCart();
+  const { signOut, loggingOut } = useLogout({ onBeforeLogout: clearCart });
+  return <Sidebar {...props} onLogout={signOut} loggingOut={loggingOut} />;
 };
