@@ -11,3 +11,17 @@ export const productDetailHref = (
   context === "public"
     ? `/products/${encodeURIComponent(productId)}`
     : `/dashboard/products/detail?productId=${encodeURIComponent(productId)}`;
+
+/**
+ * Seller-side "My Products" routes. Distinct from `productDetailHref` above:
+ * those are the buyer-facing PDP, these are the owner's manage-my-catalog
+ * pages (read-only detail + variants, create, edit).
+ */
+export const MY_PRODUCTS_HREF = "/dashboard/products/mine";
+export const NEW_MY_PRODUCT_HREF = "/dashboard/products/mine/new";
+
+export const myProductHref = (productId: string): string =>
+  `${MY_PRODUCTS_HREF}/${encodeURIComponent(productId)}`;
+
+export const myProductEditHref = (productId: string): string =>
+  `${myProductHref(productId)}/edit`;

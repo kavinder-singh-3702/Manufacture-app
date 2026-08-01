@@ -2,16 +2,15 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import type { ProductSort, ProductStatus } from "@/src/types/product";
+import type { ProductSort } from "@/src/types/product";
 import { PRODUCT_CATEGORIES, getCategoryMeta } from "../utils/categories";
 
-const STATUS_OPTIONS: { value: "" | ProductStatus | "in_stock" | "low_stock" | "out_of_stock"; label: string }[] = [
-  { value: "", label: "All status" },
-  { value: "active", label: "Active" },
-  { value: "draft", label: "Draft" },
-  { value: "inactive", label: "Inactive" },
+// Availability only — this is a buyer-facing catalog, so the seller-side
+// lifecycle statuses (active/draft/inactive) don't belong here; the
+// marketplace never surfaces anything but published products anyway.
+const STATUS_OPTIONS: { value: "" | "in_stock" | "out_of_stock"; label: string }[] = [
+  { value: "", label: "All availability" },
   { value: "in_stock", label: "In stock" },
-  { value: "low_stock", label: "Low stock" },
   { value: "out_of_stock", label: "Out of stock" },
 ];
 
@@ -27,19 +26,16 @@ export type FiltersState = {
   category: string;
   status: string;
   sort: ProductSort | "";
-  scope: "company" | "marketplace";
 };
 
 export const ProductFilters = ({
   value,
   onChange,
   totalResults,
-  isGuest = false,
 }: {
   value: FiltersState;
   onChange: (next: FiltersState) => void;
   totalResults?: number;
-  isGuest?: boolean;
 }) => {
   const [searchDraft, setSearchDraft] = useState(value.search);
 
@@ -62,7 +58,7 @@ export const ProductFilters = ({
 
   return (
     <div className="space-y-4">
-      {/* Top bar — search + scope + sort */}
+      {/* Top bar — search + sort + availability */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         {/* Search */}
         <div
@@ -92,73 +88,6 @@ export const ProductFilters = ({
             </button>
           )}
         </div>
-
-        {/* Scope toggle — hidden for guests (they only see marketplace) */}
-        {!isGuest && (
-        <div
-          role="tablist"
-          aria-label="Product scope"
-          className="flex flex-shrink-0 rounded-xl p-1"
-          style={{
-            backgroundColor: "var(--light-gray)",
-            border: "1px solid var(--border)",
-            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)",
-          }}
-        >
-          {(["company", "marketplace"] as const).map((scope) => {
-            const isActive = value.scope === scope;
-            const label = scope === "company" ? "My Catalog" : "Marketplace";
-            return (
-              <motion.button
-                key={scope}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onChange({ ...value, scope })}
-                whileTap={{ scale: 0.96 }}
-                className="relative flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-200"
-                style={{ color: isActive ? "#fff" : "var(--foreground)" }}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="scope-pill"
-                    className="absolute inset-0 rounded-lg"
-                    style={{
-                      backgroundColor: "var(--primary)",
-                      boxShadow: "0 4px 12px rgba(20,141,178,0.35), 0 1px 2px rgba(20,141,178,0.2)",
-                    }}
-                    transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  {scope === "company" ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path
-                        d="M3 7.5 12 3l9 4.5M3 7.5v9L12 21l9-4.5v-9M3 7.5l9 4.5m0 0 9-4.5m-9 4.5V21"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path
-                        d="M3 9V7l2-4h14l2 4v2m-18 0a2 2 0 1 0 4 0m-4 0v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9m-18 0a2 2 0 1 1 4 0m0 0a2 2 0 1 0 4 0m0 0a2 2 0 1 1 4 0m0 0a2 2 0 1 0 4 0M9 21v-7h6v7"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                  {label}
-                </span>
-              </motion.button>
-            );
-          })}
-        </div>
-        )}
 
         {/* Sort */}
         <div className="relative">

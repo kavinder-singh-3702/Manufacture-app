@@ -31,6 +31,7 @@ const workspaceNav: NavItem[] = [
 ];
 
 const modulesNav: NavItem[] = [
+  { id: "my-products",        label: "My Products",    href: "/dashboard/products/mine" },
   { id: "orders",             label: "My Orders",      href: "/dashboard/orders" },
   { id: "cart",               label: "Cart",           href: "/dashboard/cart" },
   { id: "accounting",         label: "Accounting",     href: "/dashboard/accounting" },
@@ -43,6 +44,28 @@ const modulesNav: NavItem[] = [
 ];
 
 export const navItems: ReadonlyArray<NavItem> = [...workspaceNav, ...modulesNav];
+
+/**
+ * Longest-prefix match, not "first row whose href is a prefix": nested
+ * destinations like /dashboard/products/mine are a prefix match for BOTH
+ * "Products" and "My Products", and highlighting both would render two active
+ * pills sharing one framer-motion layoutId.
+ */
+/**
+ * Longest-prefix match. A plain `startsWith` lights up both "Products"
+ * (/dashboard/products) and "My Products" (/dashboard/products/mine) on the
+ * nested route — which in the sidebar also meant two rows fighting over one
+ * framer-motion layoutId. Exported so MobileTabRail's "More" sheet resolves
+ * the active tile identically instead of re-deriving it.
+ */
+export const resolveActiveNavId = (activePath: string): string | null => {
+  let best: NavItem | null = null;
+  for (const item of navItems) {
+    const matches = item.href === "/dashboard" ? activePath === item.href : activePath === item.href || activePath.startsWith(`${item.href}/`);
+    if (matches && (!best || item.href.length > best.href.length)) best = item;
+  }
+  return best?.id ?? null;
+};
 
 type NavId = string;
 
@@ -69,6 +92,15 @@ export const NavIcon = ({ id, active, color: colorOverride }: { id: NavId; activ
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M21 8 12 3 3 8m18 0v8l-9 5m9-13L12 13m0 0L3 8m9 5v8m0 0L3 16V8" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "my-products":
+      // Price tag — reads as "my listings", distinct from the cube used for
+      // the marketplace "Products" row above it.
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 11.5V4a1 1 0 0 1 1-1h7.5a1 1 0 0 1 .7.3l8.5 8.5a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 12.2a1 1 0 0 1-.3-.7z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="7.5" cy="7.5" r="1.4" stroke={color} strokeWidth="1.8" />
         </svg>
       );
     case "company":
@@ -195,7 +227,9 @@ const NavGroup = ({
   collapsed?: boolean;
   /** Shared framer-motion layoutId so the active pill glides between items on navigation instead of hard-cutting. */
   pillId: string;
-}) => (
+}) => {
+  const activeId = resolveActiveNavId(activePath);
+  return (
   <div className={className}>
     {!collapsed && (
       <p
@@ -207,9 +241,7 @@ const NavGroup = ({
     )}
     <div className="space-y-0.5">
       {items.map((item) => {
-        const isActive =
-          activePath === item.href ||
-          (item.href !== "/dashboard" && activePath.startsWith(item.href));
+        const isActive = activeId === item.id;
         return (
           <Link
             key={item.id}
@@ -262,7 +294,8 @@ const NavGroup = ({
       })}
     </div>
   </div>
-);
+  );
+};
 
 type SidebarContentProps = {
   activePath: string;

@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
-import type { CreateProductInput, Product, ProductVisibility } from "@/src/types/product";
+import type { Product, ProductVisibility } from "@/src/types/product";
 import { useDashboardContext } from "@/src/features/dashboard/components/user-dashboard/context";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { useDeleteProduct } from "../hooks/useDeleteProduct";
+import { NEW_MY_PRODUCT_HREF, myProductEditHref, myProductHref } from "../utils/links";
 import { ProductGrid } from "./ProductGrid";
-import { ProductFormDrawer } from "./ProductFormDrawer";
 
 const PAGE_SIZE = 24;
 
@@ -23,6 +25,8 @@ const VISIBILITY_CHIPS: { label: string; value: VisibilityFilter }[] = [
 
 export const MyProductsContainer = () => {
   const { activeCompany } = useDashboardContext();
+  const router = useRouter();
+  const { requestDelete, deletingId } = useDeleteProduct();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
@@ -33,7 +37,6 @@ export const MyProductsContainer = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -85,13 +88,6 @@ export const MyProductsContainer = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, visibility]);
 
-  const handleCreate = async (data: CreateProductInput) => {
-    await productService.create(data);
-    setDrawerOpen(false);
-    setOffset(0);
-    await load("fresh");
-  };
-
   const noCompany = !activeCompany;
 
   return (
@@ -119,18 +115,20 @@ export const MyProductsContainer = () => {
             >
               Browse Marketplace →
             </Link>
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              disabled={noCompany}
-              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            {/* Creating is its own page now — a link, not a drawer, so the
+                form is deep-linkable and survives a refresh. */}
+            <Link
+              href={NEW_MY_PRODUCT_HREF}
+              aria-disabled={noCompany || undefined}
+              tabIndex={noCompany ? -1 : undefined}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 ${noCompany ? "pointer-events-none opacity-50" : ""}`}
               style={{ backgroundColor: "var(--accent)", boxShadow: "var(--shadow-accent)" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
               </svg>
               New product
-            </button>
+            </Link>
           </>
         }
       />
@@ -224,7 +222,7 @@ export const MyProductsContainer = () => {
         products={products}
         loading={loading}
         error={error}
-        onCreate={() => setDrawerOpen(true)}
+        onCreate={() => router.push(NEW_MY_PRODUCT_HREF)}
         onRetry={() => load("fresh")}
         hasMore={hasMore}
         loadingMore={loadingMore}
@@ -233,12 +231,14 @@ export const MyProductsContainer = () => {
         hasFilters={Boolean(debouncedSearch || visibility !== "all")}
         onClearFilters={() => { setSearch(""); setVisibility("all"); }}
         companyName={activeCompany?.displayName}
-      />
-
-      <ProductFormDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSubmit={handleCreate}
+        ownerActions={(product) => ({
+          href: myProductHref(product._id),
+          editHref: myProductEditHref(product._id),
+          deleting: deletingId === product._id,
+          // Refetch rather than splice locally so the count and pagination
+          // stay honest after the delete.
+          onDelete: () => { requestDelete(product, () => { setOffset(0); return load("fresh"); }); },
+        })}
       />
     </div>
   );

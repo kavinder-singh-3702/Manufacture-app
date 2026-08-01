@@ -71,34 +71,45 @@ const AddToCartButton = ({ product }: { product: Product }) => {
   );
 };
 
+/**
+ * Owner (seller) mode. Present only on "My Products", where the card links to
+ * the owner detail page instead of the buyer PDP and carries manage actions
+ * rather than an add-to-cart button.
+ */
+export type ProductCardOwnerActions = {
+  href: string;
+  editHref: string;
+  onDelete: () => void;
+  deleting?: boolean;
+};
+
 export const ProductCard = ({
   product,
   index = 0,
   buyerView = false,
+  owner,
 }: {
   product: Product;
   index?: number;
   /** Buyer-facing browse: hide exact quantity (they contact for quantity). */
   buyerView?: boolean;
+  owner?: ProductCardOwnerActions;
 }) => {
   const cat = getCategoryMeta(product.category);
   const status = STATUS_COLORS[product.status] ?? STATUS_COLORS.draft;
   const stockStatus = product.stockStatus ? STOCK_STATUS_COLORS[product.stockStatus] : null;
   const buyerStock = getBuyerStock(product.stockStatus, product.availableQuantity);
   const cover = product.images?.[0]?.url;
+  // In owner mode the surface moves to the outer wrapper so the action row can
+  // sit outside the <Link> — a button/link nested inside an anchor is invalid.
+  const surfaceStyle = { border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4 }}
-      className="relative"
-    >
+  const card = (
+    <>
       <Link
-        href={productDetailHref(product._id)}
+        href={owner ? owner.href : productDetailHref(product._id)}
         className="group relative block overflow-hidden rounded-2xl transition-shadow duration-200"
-        style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}
+        style={owner ? undefined : surfaceStyle}
       >
         {/* Image / Cover */}
         <div
@@ -218,23 +229,72 @@ export const ProductCard = ({
             </div>
           )}
 
-          {/* Footer — company + cart */}
-          <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
-            <p className="min-w-0 truncate text-xs" style={{ color: "var(--medium-gray)" }}>
-              {product.company?.displayName ?? "—"}
-            </p>
-            <div className="flex flex-shrink-0 items-center gap-1.5">
-              {product.purchaseOptions?.checkoutEligible && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
-                  Buy now
-                </span>
-              )}
-              <AddToCartButton product={product} />
+          {/* Footer — company + cart. Owners get manage actions below instead. */}
+          {!owner && (
+            <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <p className="min-w-0 truncate text-xs" style={{ color: "var(--medium-gray)" }}>
+                {product.company?.displayName ?? "—"}
+              </p>
+              <div className="flex flex-shrink-0 items-center gap-1.5">
+                {product.purchaseOptions?.checkoutEligible && (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+                    Buy now
+                  </span>
+                )}
+                <AddToCartButton product={product} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </Link>
+
+      {owner && (
+        <div className="flex items-center gap-1.5 border-t px-4 py-2.5" style={{ borderColor: "var(--border)" }}>
+          <Link
+            href={owner.href}
+            className="flex-1 rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}
+          >
+            View
+          </Link>
+          <Link
+            href={owner.editHref}
+            className="flex-1 rounded-xl px-3 py-1.5 text-center text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}
+          >
+            Edit
+          </Link>
+          <button
+            type="button"
+            onClick={owner.onDelete}
+            disabled={owner.deleting}
+            aria-label={`Delete ${product.name}`}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-opacity hover:opacity-70 disabled:opacity-50"
+            style={{ border: "1px solid var(--border)", color: "var(--accent)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.4), ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4 }}
+      className="relative"
+    >
+      {owner ? (
+        <div className="overflow-hidden rounded-2xl" style={surfaceStyle}>{card}</div>
+      ) : (
+        card
+      )}
     </motion.div>
   );
 };

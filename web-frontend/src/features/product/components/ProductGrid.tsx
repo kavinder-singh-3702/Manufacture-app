@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { Product } from "@/src/types/product";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, type ProductCardOwnerActions } from "./ProductCard";
 
 const CardSkeleton = ({ index }: { index: number }) => (
   <motion.div
@@ -156,6 +156,7 @@ export const ProductGrid = ({
   onSwitchToMarketplace,
   companyName,
   buyerView = false,
+  ownerActions,
 }: {
   products: Product[];
   loading: boolean;
@@ -172,6 +173,8 @@ export const ProductGrid = ({
   companyName?: string;
   /** Buyer-facing browse: hide exact quantity on cards. */
   buyerView?: boolean;
+  /** Seller view ("My Products"): per-card view/edit/delete actions. */
+  ownerActions?: (product: Product) => ProductCardOwnerActions;
 }) => {
   if (loading && products.length === 0) {
     return (
@@ -202,7 +205,7 @@ export const ProductGrid = ({
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {products.map((p, i) => (
-          <ProductCard key={p._id} product={p} index={i} buyerView={buyerView} />
+          <ProductCard key={p._id} product={p} index={i} buyerView={buyerView} owner={ownerActions?.(p)} />
         ))}
       </div>
 

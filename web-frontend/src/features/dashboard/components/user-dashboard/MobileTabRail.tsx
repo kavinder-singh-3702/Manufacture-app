@@ -8,7 +8,7 @@ import { useLogout } from "@/src/hooks/useLogout";
 import { Sheet } from "@/src/components/ui/Sheet";
 import { useDashboardContext } from "./context";
 import { buildInitials } from "./helpers";
-import { navItems, NavIcon } from "./Navigation";
+import { navItems, NavIcon, resolveActiveNavId } from "./Navigation";
 
 type TabItem = {
   id: string;
@@ -45,6 +45,7 @@ export const MobileTabRail = ({ activePath }: { activePath: string }) => {
   const { user } = useDashboardContext();
   const { signOut, loggingOut } = useLogout({ onBeforeLogout: clearCart });
   const [moreOpen, setMoreOpen] = useState(false);
+  const activeNavId = resolveActiveNavId(activePath);
 
   const userLabel = user.displayName ?? user.email;
   const userInitials = buildInitials(userLabel ?? "U");
@@ -141,7 +142,7 @@ export const MobileTabRail = ({ activePath }: { activePath: string }) => {
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Menu">
         <div className="grid grid-cols-3 gap-2.5">
           {navItems.map((item) => {
-            const isActive = item.href === "/dashboard" ? activePath === item.href : activePath.startsWith(item.href);
+            const isActive = item.id === activeNavId;
             return (
               <Link
                 key={item.id}
