@@ -77,7 +77,9 @@ export const TopBar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tabletSearchOpen, setTabletSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const tabletSearchRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { user, initializing } = useAuth();
@@ -93,11 +95,14 @@ export const TopBar = () => {
     setSearchQuery("");
   };
 
-  // Close dropdown on outside click
+  // Close dropdown / tablet search on outside click
   useEffect(() => {
     const handle = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (tabletSearchRef.current && !tabletSearchRef.current.contains(e.target as Node)) {
+        setTabletSearchOpen(false);
       }
     };
     document.addEventListener("mousedown", handle);
@@ -153,7 +158,9 @@ export const TopBar = () => {
           )}
         </nav>
 
-        {/* Global search — reachable from every page, not just the marketplace body */}
+        {/* Global search — reachable from every page, not just the marketplace body.
+            Full inline bar only once there's room for it (lg+); the tablet
+            range gets a compact icon trigger instead (below). */}
         <SearchBar
           size="sm"
           value={searchQuery}
@@ -163,8 +170,49 @@ export const TopBar = () => {
           className="hidden max-w-xs flex-1 lg:block"
         />
 
-        {/* Desktop CTA */}
-        <div className="hidden items-center gap-3 lg:flex">
+        {/* Tablet-only compact search trigger — md..lg has room for the logo,
+            a compact search icon, and auth CTAs, but not the full nav-link
+            row + wide search bar, which stay gated to lg. */}
+        <div ref={tabletSearchRef} className="relative hidden md:flex lg:hidden">
+          <button
+            type="button"
+            onClick={() => setTabletSearchOpen((v) => !v)}
+            aria-label="Search products"
+            aria-expanded={tabletSearchOpen}
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all hover:bg-[var(--primary-light)]"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+          <AnimatePresence>
+            {tabletSearchOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl p-2"
+                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.12)" }}
+              >
+                <SearchBar
+                  size="md"
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  onSubmit={(q) => { setTabletSearchOpen(false); handleSearchSubmit(q); }}
+                  placeholder="Search products…"
+                  autoFocus
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Auth CTA — moved up to md: with the nav-link row and full search
+            bar gated to lg:, there's headroom for it a breakpoint earlier so
+            tablet visitors aren't dropped straight to the hamburger. */}
+        <div className="hidden items-center gap-3 md:flex">
           {isAuthed ? (
             <Link href="/dashboard"
               className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition-opacity hover:opacity-80"
@@ -223,22 +271,39 @@ export const TopBar = () => {
               className="mb-3"
             />
             <nav className="space-y-1">
-              <Link href="/products" onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all hover:bg-[var(--primary-light)]"
-                style={{ color: "var(--primary)" }}>
-                🛍️ Products & Marketplace
-              </Link>
-              {/* Category list on mobile */}
-              <div className="grid grid-cols-2 gap-1 px-1 py-2">
-                {CATEGORIES.slice(0, 8).map((cat) => (
-                  <Link key={cat.id} href={getCategoryHref(cat.id)} onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:bg-[var(--primary-light)]"
-                    style={{ color: "var(--foreground)" }}>
-                    <span>{cat.icon}</span>{cat.title}
+              {/* Browse by industry — mirrors the desktop mega-dropdown's
+                  structure (full category list + "All products" / "Search
+                  products" footer) instead of silently truncating to 8 with
+                  no escape hatch. */}
+              <div className="rounded-xl pb-2">
+                <p className="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--primary)" }}>
+                  Browse by industry
+                </p>
+                <div className="grid max-h-64 grid-cols-2 gap-1 overflow-y-auto px-1">
+                  {CATEGORIES.map((cat) => (
+                    <Link key={cat.id} href={getCategoryHref(cat.id)} onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:bg-[var(--primary-light)]"
+                      style={{ color: "var(--foreground)" }}>
+                      <span>{cat.icon}</span>{cat.title}
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-1.5 grid grid-cols-2 gap-2 px-1 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+                  <Link href="/products" onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
+                    style={{ color: "var(--primary)" }}>
+                    🛍️ All products
                   </Link>
-                ))}
+                  <Link href={PRODUCT_SEARCH_ROUTES.public} onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all hover:bg-[var(--primary-light)]"
+                    style={{ color: "var(--foreground)" }}>
+                    🔍 Search products
+                  </Link>
+                </div>
               </div>
+
               {[
+                { href: "/shop", label: "Shop" },
                 { href: "/about", label: "About" },
                 { href: "/support", label: "Support" },
                 { href: "/contact", label: "Contact" },

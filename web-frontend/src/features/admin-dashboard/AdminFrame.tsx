@@ -3,17 +3,18 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAuth } from "@/src/hooks/useAuth";
-import { useLogout } from "@/src/hooks/useLogout";
 import { companyVerificationService } from "@/src/services/companyVerification";
 import type { CompanyVerificationRequest } from "@/src/types/company";
 import { adminService, AdminOverview as AdminOverviewData, AdminAuditEvent } from "@/src/services/admin";
 import { ApiError } from "@/src/lib/api-error";
 import { PhoneGate } from "@/src/features/auth/components/PhoneGate";
 import { AnimatedNumber, DonutChart, DonutLegend, FunnelBar, type DonutSegment } from "@/src/components/ui/charts";
+import { PageHeader } from "@/src/components/ui/Surface";
 import { AdminMobileRail } from "./AdminMobileRail";
-import { adminNavItems } from "./adminNavItems";
+import { AdminSidebar } from "./AdminSidebar";
+import { AdminTopbar } from "./AdminTopbar";
 
 const statusColors = {
   pending: { background: "rgba(250, 204, 21, 0.18)", color: "#854d0e" },
@@ -74,187 +75,33 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <AdminTopbar userEmail={user.email} />
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <AdminSidebar activePath={pathname} />
-        {/* pb reserves room for AdminMobileRail's fixed bottom bar below lg,
-            mirroring the user shell's `.dashboard-main` padding (see
-            app/globals.css) so the rail never overlaps page content. */}
-        <div className="flex-1 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 pb-[calc(var(--tabrail-h)+var(--safe-bottom)+1.5rem)] shadow-lg shadow-[rgba(20,141,178,0.08)] lg:pb-5">
+    <div className="h-screen-safe flex overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+      {/* Sidebar — desktop only; AdminMobileRail below replaces it on mobile */}
+      <AdminSidebar activePath={pathname} />
+
+      {/* Main column */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <AdminTopbar activePath={pathname} />
+        <main className="dashboard-main flex-1 overflow-y-auto" style={{ backgroundColor: "var(--background)", overscrollBehavior: "contain" }}>
           {children}
-        </div>
+        </main>
       </div>
+
       <AdminMobileRail activePath={pathname} />
     </div>
   );
 };
 
-const AdminTopbar = ({ userEmail }: { userEmail?: string }) => {
-  const router = useRouter();
-  const { signOut, loggingOut } = useLogout();
-  const [query, setQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const q = query.trim().toLowerCase();
-  const matches = q ? adminNavItems.filter((i) => i.label.toLowerCase().includes(q)) : [];
-  const initial = (userEmail ?? "A").charAt(0).toUpperCase();
-
-  const go = (href: string) => { setQuery(""); setSearchFocused(false); router.push(href); };
-  const handleLogout = async () => {
-    setMenuOpen(false);
-    await signOut();
-  };
-
-  return (
-    <motion.header
-      className="relative z-20 flex flex-col gap-4 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.07)] lg:flex-row lg:items-center lg:justify-between"
-      initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-    >
-      <div className="flex items-center gap-3">
-        {/* Mobile nav lives entirely in AdminMobileRail's fixed bottom bar +
-            "More" sheet now — no hamburger trigger here, so mobile has
-            exactly one nav surface instead of two. */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>Admin console</p>
-          <p className="text-lg font-semibold text-[var(--foreground)]">Compliance & moderation</p>
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-        {/* Section quick-search */}
-        <div className="relative lg:w-72">
-          <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 7.5-7.5 7.5 7.5 0 0 1-7.5 7.5z" stroke="var(--medium-gray)" strokeWidth="1.6" />
-            </svg>
-            <input
-              type="search" value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-              onKeyDown={(e) => { if (e.key === "Enter" && matches[0]) go(matches[0].href); }}
-              placeholder="Jump to a section…"
-              className="w-full bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--medium-gray)] focus:outline-none"
-            />
-          </div>
-          <AnimatePresence>
-            {searchFocused && matches.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
-                {matches.map((m) => (
-                  <button key={m.id} onMouseDown={() => go(m.href)}
-                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--background)]">
-                    {m.label}
-                    <span className="text-xs text-[var(--medium-gray)]">↵</span>
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Account menu */}
-        <div className="relative">
-          <button onClick={() => setMenuOpen((v) => !v)}
-            className="flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 transition-opacity hover:opacity-90 lg:w-auto">
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>{initial}</span>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--medium-gray)" }}>Admin</span>
-              <span className="block max-w-[160px] truncate text-xs font-semibold text-[var(--foreground)]">{userEmail ?? "admin"}</span>
-            </span>
-            <motion.svg width="14" height="14" viewBox="0 0 24 24" fill="none" animate={{ rotate: menuOpen ? 180 : 0 }}>
-              <path d="M6 9l6 6 6-6" stroke="var(--medium-gray)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </motion.svg>
-          </button>
-          <AnimatePresence>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                  className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
-                  <div className="border-b border-[var(--border)] px-4 py-3">
-                    <p className="text-xs font-semibold text-[var(--medium-gray)]">Signed in as</p>
-                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">{userEmail ?? "admin"}</p>
-                  </div>
-                  <Link href="/dashboard" onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--background)]">
-                    <span>🏠</span> User dashboard
-                  </Link>
-                  <button onClick={handleLogout} disabled={loggingOut}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-[var(--background)] disabled:opacity-50"
-                    style={{ color: "var(--accent)" }}>
-                    <span>↩︎</span> {loggingOut ? "Signing out…" : "Sign out"}
-                  </button>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </motion.header>
-  );
-};
-
-// Desktop-only static box now — the `lg:hidden` hamburger drawer this used
-// to render below `lg` was replaced by AdminMobileRail's fixed bottom bar +
-// "More" sheet, mirroring how the user shell's real Sidebar is `hidden
-// lg:flex` and MobileTabRail owns mobile nav entirely. Mobile has exactly
-// one nav surface instead of two drifting out of sync.
-const AdminSidebar = ({ activePath }: { activePath: string }) => (
-  <div className="hidden w-full max-w-xs flex-shrink-0 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg shadow-[rgba(20,141,178,0.08)] lg:block">
-    <AdminSidebarContent activePath={activePath} onNavigate={() => {}} />
-  </div>
-);
-
-const AdminSidebarContent = ({ activePath, onNavigate }: { activePath: string; onNavigate: () => void }) => (
-  <div className="space-y-4">
-    <div className="rounded-2xl bg-[var(--background)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>
-        Admin tools
-      </p>
-      <p className="mt-1 text-sm text-[var(--foreground)]">Jump between moderation workstreams</p>
-    </div>
-    <div className="space-y-2">
-      {adminNavItems.map((item) => {
-        const isActive = activePath === item.href;
-        return (
-          <Link
-            key={item.id}
-            href={item.href}
-            onClick={onNavigate}
-            className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left"
-          >
-            {isActive && (
-              <motion.span
-                layoutId="admin-sidebar-highlight"
-                className="absolute inset-0 rounded-2xl border border-[var(--primary)] bg-[var(--card)] shadow-xl shadow-[rgba(20,141,178,0.20)]"
-                transition={{ type: "spring", stiffness: 350, damping: 30 }}
-              />
-            )}
-            <span className={`relative z-10 text-sm font-semibold ${isActive ? "text-[var(--primary)]" : "text-[var(--foreground)]"}`}>
-              {item.label}
-            </span>
-          </Link>
-        );
-      })}
-    </div>
-  </div>
-);
-
 const QUICK_LINKS = [
-  { label: "Users",             href: "/admin/users",                 icon: "👤", desc: "Manage accounts" },
-  { label: "Companies",         href: "/admin/companies",             icon: "🏢", desc: "Status & compliance" },
-  { label: "Orders pipeline",   href: "/admin/orders",                icon: "🗂️", desc: "Requests by stage" },
-  { label: "In-house products", href: "/admin/products",              icon: "📦", desc: "Catalog & stock" },
-  { label: "Ops console",       href: "/admin/ops",                   icon: "📋", desc: "Service & startup requests" },
-  { label: "Product inquiries", href: "/admin/product-inquiries",     icon: "📩", desc: "Buyer leads" },
-  { label: "Notifications",     href: "/admin/notifications",         icon: "🔔", desc: "Dispatch & history" },
-  { label: "Ad studio",         href: "/admin/ad-studio",             icon: "📣", desc: "Campaigns & insights" },
-  { label: "Verification",      href: "/admin/verification-requests", icon: "🛡️", desc: "Compliance queue" },
+  { label: "Users",             href: "/admin/users",                 icon: "👤" },
+  { label: "Companies",         href: "/admin/companies",             icon: "🏢" },
+  { label: "Orders pipeline",   href: "/admin/orders",                icon: "🗂️" },
+  { label: "In-house products", href: "/admin/products",              icon: "📦" },
+  { label: "Ops console",       href: "/admin/ops",                   icon: "📋" },
+  { label: "Product inquiries", href: "/admin/product-inquiries",     icon: "📩" },
+  { label: "Notifications",     href: "/admin/notifications",         icon: "🔔" },
+  { label: "Ad studio",         href: "/admin/ad-studio",             icon: "📣" },
+  { label: "Verification",      href: "/admin/verification-requests", icon: "🛡️" },
 ] as const;
 
 const auditActorLabel = (e: AdminAuditEvent) =>
@@ -346,23 +193,19 @@ export const AdminOverview = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-            Admin overview
-          </p>
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">Command center</h1>
-          <p className="text-sm text-[#6c4f5b]">Platform health, moderation throughput, and recent activity.</p>
-        </div>
-        <button
-          type="button"
-          onClick={loadAll}
-          className="rounded-full px-5 py-2 text-sm font-semibold text-white"
-          style={{ backgroundColor: "var(--primary)", boxShadow: "0 10px 25px rgba(90,48,66,0.2)" }}
-        >
-          Refresh data
-        </button>
-      </div>
+      <PageHeader
+        title="Command center"
+        actions={
+          <button
+            type="button"
+            onClick={loadAll}
+            className="rounded-full px-5 py-2 text-sm font-semibold text-white"
+            style={{ backgroundColor: "var(--primary)", boxShadow: "0 10px 25px rgba(90,48,66,0.2)" }}
+          >
+            Refresh data
+          </button>
+        }
+      />
 
       {/* KPI tiles */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -435,8 +278,7 @@ export const AdminOverview = () => {
       {overview && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>Verification aging</p>
-            <p className="mt-0.5 mb-4 text-xs text-[var(--medium-gray)]">How long pending requests have been waiting</p>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>Verification aging</p>
             <FunnelBar rows={[
               { label: "< 24h", value: overview.verificationAging.lt24h, color: "#16A34A" },
               { label: "24–72h", value: overview.verificationAging.from24hTo72h, color: "#F59E0B" },
@@ -445,8 +287,7 @@ export const AdminOverview = () => {
           </div>
           {overview.servicesQueue && (
             <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>Services queue</p>
-              <p className="mt-0.5 mb-4 text-xs text-[var(--medium-gray)]">Open service & startup requests</p>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: "var(--primary)" }}>Services queue</p>
               <FunnelBar rows={[
                 { label: "Pending", value: overview.servicesQueue.pending, color: "#F59E0B" },
                 { label: "In progress", value: overview.servicesQueue.inProgress, color: "var(--primary)" },
@@ -464,7 +305,6 @@ export const AdminOverview = () => {
             className="flex flex-col items-center gap-2 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 text-center transition hover:-translate-y-0.5 hover:shadow-lg">
             <span className="text-2xl">{q.icon}</span>
             <span className="text-sm font-bold text-[var(--foreground)]">{q.label}</span>
-            <span className="text-[11px] text-[#6c4f5b]">{q.desc}</span>
           </Link>
         ))}
       </div>
@@ -475,12 +315,7 @@ export const AdminOverview = () => {
         {/* Recent verification submissions */}
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-                Recent submissions
-              </p>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">Company reviews</h2>
-            </div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Company reviews</h2>
             <Link href="/admin/verification-requests" className="text-sm font-semibold text-[var(--primary)]">
               View all
             </Link>
@@ -520,14 +355,7 @@ export const AdminOverview = () => {
 
         {/* Recent platform activity */}
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-                Recent activity
-              </p>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">Audit log</h2>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Audit log</h2>
           {loading ? (
             <p className="mt-6 text-sm text-[var(--foreground)]">Loading activity…</p>
           ) : activity.length ? (

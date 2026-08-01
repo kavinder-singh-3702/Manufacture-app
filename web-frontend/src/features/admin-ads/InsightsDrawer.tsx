@@ -73,7 +73,7 @@ export const InsightsDrawer = ({ campaign, onClose }: { campaign: AdCampaign; on
   const placementLabel = (p: AdPlacement) => PLACEMENTS.find((x) => x.key === p)?.label ?? p;
 
   return (
-    <Drawer onClose={onClose}>
+    <Drawer onRequestClose={onClose}>
       <DrawerHeader title="Campaign insights" subtitle={campaign.creative?.title || campaign.name} onClose={onClose} />
       <div className="p-5 space-y-4">
         {/* Date range */}

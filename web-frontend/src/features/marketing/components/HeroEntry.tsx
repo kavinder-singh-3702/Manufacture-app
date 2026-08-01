@@ -4,13 +4,17 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeUp, useMotionSafe } from "@/src/components/ui/motion";
 import { Stat } from "@/src/components/ui/Surface";
+import { AnimatedNumber } from "@/src/components/ui/charts";
 import { AdBanner } from "@/src/features/ads/components/AdBanner";
 import type { MarketplaceSnapshot } from "../server/publicData";
 
-const previewRows = [
-  { label: "Live sourcing", color: "var(--primary)" },
-  { label: "Verified compliance", color: "var(--success)" },
-  { label: "Direct RFQs", color: "var(--accent)" },
+// Per-card accent + independent drift timing/amplitude for the floating
+// glass stat cards — deliberately not in lockstep, so the cluster reads as
+// "live" rather than a single mechanically synced animation.
+const GLASS_CARD_STYLE = [
+  { color: "var(--primary)", duration: 5.5, amplitude: 9 },
+  { color: "var(--accent)", duration: 7, amplitude: 6 },
+  { color: "var(--success)", duration: 6.2, amplitude: 11 },
 ] as const;
 
 /**
@@ -20,6 +24,14 @@ const previewRows = [
  * suppliers", "94% on-time delivery") as fact. Every stat here comes from
  * `snapshot` (see server/publicData.ts::getMarketplaceSnapshot) — a null
  * field simply drops its tile instead of falling back to a placeholder.
+ *
+ * The right-hand visual used to be a generic "mock browser window" SaaS
+ * illustration with fake preview rows. It's now a layered abstract mesh
+ * (multiple drifting blurred blobs at different depths/speeds + a faint
+ * blueprint/engineering-grid texture, nodding at manufacturing) with the
+ * SAME real snapshot numbers as the left-side `Stat` row surfaced again as
+ * floating frosted-glass cards — so the hero visual is actual live data,
+ * not decoration standing in for it.
  */
 export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
   const motionSafe = useMotionSafe();
@@ -32,8 +44,20 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
 
   return (
     <section className="relative overflow-hidden" style={{ background: "var(--background)" }}>
-      {/* Ambient background — slow-drifting brand-color mesh, stilled under prefers-reduced-motion */}
+      {/* Ambient background — layered slow-drifting brand-color mesh at varied
+          depth/blur/speed, plus a faint blueprint-grid texture, stilled under
+          prefers-reduced-motion */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <div
+          className="absolute inset-0 opacity-[0.5]"
+          style={{
+            backgroundImage:
+              "linear-gradient(color-mix(in srgb, var(--foreground) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--foreground) 7%, transparent) 1px, transparent 1px)",
+            backgroundSize: "36px 36px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 65% 30%, black, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 65% 30%, black, transparent 75%)",
+          }}
+        />
         <motion.div
           className="absolute -right-40 -top-40 h-[600px] w-[600px] rounded-full opacity-20"
           style={{ background: "radial-gradient(circle, var(--primary), transparent 70%)" }}
@@ -45,6 +69,18 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
           style={{ background: "radial-gradient(circle, var(--accent), transparent 70%)" }}
           animate={motionSafe ? { x: [0, -20, 0], y: [0, 20, 0], scale: [1, 1.1, 1] } : undefined}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute right-[8%] top-[38%] h-64 w-64 rounded-full opacity-[0.12] blur-2xl"
+          style={{ background: "radial-gradient(circle, var(--success), transparent 70%)" }}
+          animate={motionSafe ? { x: [0, -16, 0], y: [0, 18, 0], scale: [1, 1.12, 1] } : undefined}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute -left-16 top-8 h-72 w-72 rounded-full opacity-[0.1] blur-3xl"
+          style={{ background: "radial-gradient(circle, var(--primary), transparent 70%)" }}
+          animate={motionSafe ? { x: [0, 14, 0], y: [0, -12, 0], scale: [1, 1.06, 1] } : undefined}
+          transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
 
@@ -97,7 +133,10 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
             )}
           </div>
 
-          {/* Right: product preview illustration (not a data claim — an illustrative mock of the workspace) */}
+          {/* Right: premium abstract mesh + floating glass stat cards. Reuses
+              the exact `stats` computed above (same snapshot data as the
+              left `Stat` row) — aria-hidden so screen readers aren't handed
+              the same three numbers twice. */}
           <motion.div
             initial={{ opacity: 0, x: 40, scale: 0.97 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -106,66 +145,111 @@ export const HeroEntry = ({ snapshot }: { snapshot: MarketplaceSnapshot }) => {
             aria-hidden
           >
             <div
-              className="overflow-hidden rounded-3xl"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", boxShadow: "var(--shadow-lg)" }}
+              className="relative overflow-hidden rounded-3xl p-6 sm:p-8"
+              style={{ border: "1px solid var(--border)", backgroundColor: "color-mix(in srgb, var(--surface) 60%, transparent)", boxShadow: "var(--shadow-lg)" }}
             >
-              <div
-                className="flex items-center gap-3 px-5 py-3.5"
-                style={{ borderBottom: "1px solid var(--border)", background: "var(--gradient-brand-deep)" }}
-              >
-                <div className="flex gap-1.5">
-                  {["#ef4444", "#f59e0b", "#22c55e"].map((c) => (
-                    <div key={c} className="h-3 w-3 rounded-full" style={{ backgroundColor: c }} />
-                  ))}
-                </div>
-                <div className="flex-1 rounded-lg px-3 py-1.5 text-xs text-white/60" style={{ backgroundColor: "rgba(255,255,255,0.1)" }}>
-                  arvann.app / dashboard
-                </div>
+              {/* Depth layer local to the panel — separate timing from the
+                  section-wide blobs so nothing drifts in lockstep */}
+              <motion.div
+                className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full opacity-25 blur-2xl"
+                style={{ background: "radial-gradient(circle, var(--primary), transparent 70%)" }}
+                animate={motionSafe ? { x: [0, 18, 0], y: [0, -14, 0] } : undefined}
+                transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full opacity-20 blur-2xl"
+                style={{ background: "radial-gradient(circle, var(--accent), transparent 70%)" }}
+                animate={motionSafe ? { x: [0, -14, 0], y: [0, 12, 0] } : undefined}
+                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+              />
+
+              <div className="relative flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--primary)" }}>
+                  Live on ARVANN
+                </p>
+                <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+                  <motion.span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: "var(--primary)" }}
+                    animate={motionSafe ? { opacity: [1, 0.35, 1] } : undefined}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  Live
+                </span>
               </div>
 
-              <div className="space-y-3 p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em]" style={{ color: "var(--primary)" }}>
-                    Command Center
-                  </p>
-                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
-                    Live
-                  </span>
-                </div>
-
-                {previewRows.map((row, i) => (
-                  <motion.div
-                    key={row.label}
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
-                    className="flex items-center gap-3 rounded-2xl p-3.5"
-                    style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
-                  >
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-                    <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{row.label}</p>
-                  </motion.div>
-                ))}
-
-                {snapshot.categoryNames.length > 0 && (
-                  <div className="rounded-2xl p-3.5" style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--medium-gray)" }}>
-                      On the marketplace
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {snapshot.categoryNames.map((name) => (
-                        <span
-                          key={name}
-                          className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                          style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}
+              {stats.length > 0 ? (
+                <div className="relative mt-6 grid gap-4 sm:grid-cols-2">
+                  {stats.map((stat, i) => {
+                    const style = GLASS_CARD_STYLE[i % GLASS_CARD_STYLE.length];
+                    return (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.4 + i * 0.1 }}
+                        className={i === 0 ? "sm:col-span-2" : ""}
+                      >
+                        <motion.div
+                          className="rounded-2xl p-4"
+                          style={{
+                            border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
+                            backgroundColor: "color-mix(in srgb, var(--card) 65%, transparent)",
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            boxShadow: "var(--shadow-sm)",
+                          }}
+                          animate={motionSafe ? { y: [0, -style.amplitude, 0] } : undefined}
+                          transition={{ duration: style.duration, repeat: Infinity, ease: "easeInOut" }}
                         >
-                          {name}
-                        </span>
-                      ))}
-                    </div>
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: style.color }} />
+                            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--medium-gray)" }}>
+                              {stat.label}
+                            </p>
+                          </div>
+                          <p className={`mt-1.5 font-bold ${i === 0 ? "text-4xl" : "text-2xl"}`} style={{ color: "var(--foreground)" }}>
+                            <AnimatedNumber value={stat.value} duration={1.2} />
+                          </p>
+                        </motion.div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="relative mt-6 rounded-2xl p-6 text-center" style={{ border: "1px dashed var(--border)" }}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--medium-gray)" }}>
+                    Connecting India&apos;s manufacturing network
+                  </p>
+                </div>
+              )}
+
+              {snapshot.categoryNames.length > 0 && (
+                <div
+                  className="relative mt-4 rounded-2xl p-3.5"
+                  style={{
+                    border: "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
+                    backgroundColor: "color-mix(in srgb, var(--card) 50%, transparent)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                  }}
+                >
+                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--medium-gray)" }}>
+                    On the marketplace
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {snapshot.categoryNames.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                        style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}
+                      >
+                        {name}
+                      </span>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

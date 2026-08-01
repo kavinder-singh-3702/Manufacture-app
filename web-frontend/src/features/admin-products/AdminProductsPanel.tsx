@@ -6,6 +6,7 @@ import { adminService, AdminInhouseProduct } from "@/src/services/admin";
 import type { ProductCategory, CreateProductInput, ProductStatus } from "@/src/types/product";
 import { ApiError } from "@/src/lib/api-error";
 import { useConfirm } from "@/src/components/ui/ConfirmDialog";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const PAGE_SIZE = 24;
 const fmt = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -112,19 +113,26 @@ export const AdminProductsPanel = () => {
 
   return (
     <div className="space-y-5">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Admin</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>In-house Products</h1>
-          {!loading && <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>{pagination.total.toLocaleString("en-IN")} products</p>}
-        </div>
-        <button onClick={() => setFormProduct("new")}
-          className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-          style={{ backgroundColor: "var(--primary)" }}>
-          + New product
-        </button>
-      </motion.div>
+      <PageHeader
+        title={
+          <>
+            In-house Products
+            {!loading && (
+              <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
+                style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+                {pagination.total.toLocaleString("en-IN")}
+              </span>
+            )}
+          </>
+        }
+        actions={
+          <button onClick={() => setFormProduct("new")}
+            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+            style={{ backgroundColor: "var(--primary)" }}>
+            + New product
+          </button>
+        }
+      />
 
       {/* Search + filters */}
       <div className="space-y-2">

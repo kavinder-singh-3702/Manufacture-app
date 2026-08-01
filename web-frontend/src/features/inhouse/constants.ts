@@ -15,7 +15,13 @@ export const INHOUSE_QUERY = {
 /** Route to the full in-house Shop page. */
 export const INHOUSE_SHOP_HREF = "/shop";
 
-/** Marketing copy shared across in-house surfaces. */
+/**
+ * Marketing copy shared across in-house surfaces. `subheading` is the real
+ * page-description text under `/shop`'s hero `<h1>` (`InhouseShop.tsx`);
+ * `InhouseProductsShowcase` also defaults to it but accepts a `subheading`
+ * override (pass "" to omit) for embeds like the homepage's, where restating
+ * it next to "Browse by industry" read as filler.
+ */
 export const INHOUSE_COPY = {
   eyebrow: "ARVANN Select",
   heading: "In-house catalog",

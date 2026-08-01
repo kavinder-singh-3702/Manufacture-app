@@ -21,6 +21,15 @@ const CardSkeleton = () => (
 export type InhouseProductsShowcaseProps = {
   /** Override the section heading (defaults to the shared in-house copy). */
   heading?: string;
+  /**
+   * Override the subheading (defaults to the shared in-house copy). Pass ""
+   * to omit it — e.g. the homepage embed sits inside a page already carrying
+   * a "Browse by industry" eyebrow+heading two sections up, so restating
+   * "Curated, ready-to-ship products…" here read as filler; `/shop`'s own
+   * hero renders {@link INHOUSE_COPY.subheading} directly and independently
+   * of this component, so that copy is unaffected either way.
+   */
+  subheading?: string;
   className?: string;
   /** How many cards to preview. Defaults to {@link INHOUSE_PREVIEW_LIMIT}. */
   limit?: number;
@@ -34,6 +43,7 @@ export type InhouseProductsShowcaseProps = {
  */
 export const InhouseProductsShowcase = ({
   heading = INHOUSE_COPY.heading,
+  subheading = INHOUSE_COPY.subheading,
   className,
   limit = INHOUSE_PREVIEW_LIMIT,
 }: InhouseProductsShowcaseProps) => {
@@ -85,9 +95,11 @@ export const InhouseProductsShowcase = ({
           >
             {heading}
           </motion.h2>
-          <p className="mt-1 max-w-xl text-sm" style={{ color: "var(--medium-gray)" }}>
-            {INHOUSE_COPY.subheading}
-          </p>
+          {subheading && (
+            <p className="mt-1 max-w-xl text-sm" style={{ color: "var(--medium-gray)" }}>
+              {subheading}
+            </p>
+          )}
         </div>
 
         <Link

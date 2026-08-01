@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { adminService, AdminOpsRequest } from "@/src/services/admin";
 import { ApiError } from "@/src/lib/api-error";
 import { AnimatedNumber, DonutChart, DonutLegend, FunnelBar, type DonutSegment } from "@/src/components/ui/charts";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 // Pipeline columns mirror the app's AdminOrders kanban — ops + business-setup
 // requests bucketed by lifecycle stage.
@@ -98,21 +99,23 @@ export const AdminOrdersBoard = () => {
 
   return (
     <div className="space-y-5">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Admin</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Orders Pipeline</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>
-            Service &amp; startup requests by stage · <Link href="/admin/ops" className="font-semibold hover:opacity-70" style={{ color: "var(--primary)" }}>list view →</Link>
-          </p>
-        </div>
-        <button onClick={load} disabled={loading}
-          className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
-          style={{ border: "1px solid var(--border)", color: "var(--medium-gray)", backgroundColor: "var(--surface)" }}>
-          {loading ? "Refreshing…" : "↻ Refresh"}
-        </button>
-      </motion.div>
+      <PageHeader
+        title="Orders Pipeline"
+        actions={
+          <>
+            <Link href="/admin/ops"
+              className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70"
+              style={{ border: "1px solid var(--border)", color: "var(--primary)", backgroundColor: "var(--surface)" }}>
+              List view →
+            </Link>
+            <button onClick={load} disabled={loading}
+              className="rounded-xl px-3.5 py-2 text-sm font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+              style={{ border: "1px solid var(--border)", color: "var(--medium-gray)", backgroundColor: "var(--surface)" }}>
+              {loading ? "Refreshing…" : "↻ Refresh"}
+            </button>
+          </>
+        }
+      />
 
       <div className="relative max-w-md">
         <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none">

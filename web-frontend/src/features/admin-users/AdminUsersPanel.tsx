@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { adminService, AdminUser } from "@/src/services/admin";
 import { ApiError } from "@/src/lib/api-error";
 import { AnimatedNumber, DonutChart, DonutLegend, type DonutSegment } from "@/src/components/ui/charts";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const PAGE_SIZE = 30;
 
@@ -96,15 +97,19 @@ export const AdminUsersPanel = () => {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Admin</p>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Users</h1>
-          {!loading && <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>{pagination.total.toLocaleString("en-IN")} total</p>}
-        </div>
-      </motion.div>
+      <PageHeader
+        title={
+          <>
+            Users
+            {!loading && (
+              <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
+                style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
+                {pagination.total.toLocaleString("en-IN")}
+              </span>
+            )}
+          </>
+        }
+      />
 
       {/* User analytics */}
       {summary && (() => {

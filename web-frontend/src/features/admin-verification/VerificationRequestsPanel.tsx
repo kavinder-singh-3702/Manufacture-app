@@ -5,6 +5,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { companyVerificationService } from "../../services/companyVerification";
 import { CompanyVerificationRequest } from "../../types/company";
 import { ApiError } from "../../lib/api-error";
+import { PageHeader } from "../../components/ui/Surface";
 
 type FilterValue = "all" | "pending" | "approved" | "rejected";
 type ActionType = "approve" | "reject";
@@ -132,29 +133,23 @@ export const VerificationRequestsPanel = () => {
         color: "var(--foreground)",
       }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em]" style={{ color: "var(--primary)" }}>
-            Compliance review
-          </p>
-          <h2 className="text-2xl font-semibold text-[var(--foreground)]">Company verification queue</h2>
-          <p className="text-sm text-[#6c4f5b]">
-            Approve or reject GST + Aadhaar submissions from manufacturers.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={loadRequests}
-          className="rounded-full px-5 py-2 text-sm font-semibold shadow"
-          style={{
-            backgroundColor: "var(--primary)",
-            color: "#fff",
-          }}
-          disabled={!canModerate}
-        >
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="Verification Requests"
+        actions={
+          <button
+            type="button"
+            onClick={loadRequests}
+            className="rounded-full px-5 py-2 text-sm font-semibold shadow"
+            style={{
+              backgroundColor: "var(--primary)",
+              color: "#fff",
+            }}
+            disabled={!canModerate}
+          >
+            Refresh
+          </button>
+        }
+      />
 
       <div className="mt-6 flex flex-wrap gap-2">
         {FILTERS.map((filter) => {

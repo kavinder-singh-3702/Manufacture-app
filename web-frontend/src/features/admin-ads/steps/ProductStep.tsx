@@ -15,7 +15,11 @@ export const ProductStep = ({ wizard }: { wizard: CampaignWizardApi }) => {
   const needsOwner = wizard.productSource === "user_listings" && !wizard.ownerUserId;
 
   useEffect(() => {
-    if (wizard.adSource !== "internal" || needsOwner) { setProducts([]); return; }
+    // No setProducts([]) reset needed here: when `needsOwner` is true the
+    // render below branches on it before ever reading `products`, and
+    // adSource === "external" returns a whole separate view above — so a
+    // stale `products` array from a previous owner/source is never shown.
+    if (wizard.adSource !== "internal" || needsOwner) return;
     let active = true;
     const controller = new AbortController();
     setLoading(true);

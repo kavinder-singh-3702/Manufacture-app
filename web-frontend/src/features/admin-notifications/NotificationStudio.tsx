@@ -10,6 +10,7 @@ import {
   NotificationChannel,
 } from "@/src/services/notification";
 import { ApiError } from "@/src/lib/api-error";
+import { PageHeader } from "@/src/components/ui/Surface";
 
 const PAGE_SIZE = 20;
 
@@ -142,11 +143,7 @@ export const NotificationStudio = () => {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.35em]" style={{ color: "var(--primary)" }}>Admin</p>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>Notification Studio</h1>
-        <p className="text-sm mt-0.5" style={{ color: "var(--medium-gray)" }}>Compose and dispatch notifications, review delivery history.</p>
-      </motion.div>
+      <PageHeader title="Notification Studio" />
 
       <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
         {/* ── Compose ──────────────────────────────────────── */}

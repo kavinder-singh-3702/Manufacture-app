@@ -32,12 +32,15 @@ export const FooterCTA = () => (
           Sign in
         </Link>
       </div>
-      <p className="mt-6 text-sm text-white/70">
-        Need a hand? Email{" "}
-        <a href="mailto:arvann100@gmail.com" className="font-semibold text-white transition-opacity hover:opacity-80">
-          arvann100@gmail.com
-        </a>
-      </p>
+      {/* De-emphasized rather than removed — was a full-size line competing
+          with the CTAs above it for attention; the support contact is still
+          reachable, just quieter. */}
+      <a
+        href="mailto:arvann100@gmail.com"
+        className="mt-5 inline-block text-xs text-white/50 transition-opacity hover:opacity-80"
+      >
+        Need a hand? arvann100@gmail.com
+      </a>
     </div>
   </section>
 );

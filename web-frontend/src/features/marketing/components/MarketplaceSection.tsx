@@ -8,7 +8,7 @@ import type { Product } from "@/src/types/product";
 import { ProductCarousel } from "@/src/features/product/components/pdp";
 import { ProductListRow } from "@/src/features/product/components/listing";
 import { InhouseProductsShowcase } from "@/src/features/inhouse";
-import { PRODUCT_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
+import { INDUSTRY_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
 import { Section } from "@/src/components/ui/Surface";
 import { fadeUp } from "@/src/components/ui/motion";
 
@@ -27,7 +27,6 @@ const ProductSkeleton = () => (
 export const MarketplaceSection = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subCategoriesByCategory, setSubCategoriesByCategory] = useState<Record<string, string[]>>({});
 
   const loadFeatured = useCallback(async () => {
     try {
@@ -39,59 +38,46 @@ export const MarketplaceSection = () => {
 
   useEffect(() => { loadFeatured(); }, [loadFeatured]);
 
-  // Subcategory previews under each tile — matches IndiaMART's category
-  // module density. Falls back to no preview lines if the request fails.
-  useEffect(() => {
-    productService.getCategoryStats({ scope: "marketplace" })
-      .then((res) => {
-        const map: Record<string, string[]> = {};
-        (res.categories ?? []).forEach((c) => { map[c.id] = c.subCategories ?? []; });
-        setSubCategoriesByCategory(map);
-      })
-      .catch(() => {});
-  }, []);
-
   return (
     <div className="space-y-16">
       {/* ── Browse by Industry ─────────────────────────────────────────────── */}
+      {/* INDUSTRY_CATEGORIES (20 real industries) rather than the full
+          PRODUCT_CATEGORIES (27) — the latter includes 7 legacy catch-all
+          buckets ("Other", "Components & Parts", …) that aren't industries
+          and don't belong under this heading. Icon + title only: the
+          per-card subcategory bullets (fetched separately per render) added
+          text noise without much scan value at this tile size and forced an
+          extra network round-trip just to populate three truncated lines;
+          dropping them also means the grid no longer waits on that fetch. */}
       <Section title="Browse by industry" reveal>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {PRODUCT_CATEGORIES.map((cat, i) => {
-            const subCategories = (subCategoriesByCategory[cat.id] ?? []).slice(0, 3);
-            return (
-              <motion.div key={cat.id}
-                initial={{ opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.28) }}
-                whileHover={{ y: -3 }}>
-                <Link href={getCategoryHref(cat.id)}
-                  className="flex flex-col gap-2 rounded-2xl p-4 transition-shadow hover:shadow-lg"
-                  style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xl" style={{ backgroundColor: cat.bg }}>
-                      {cat.icon}
-                    </span>
-                    <span className="text-[13px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>
-                      {cat.title}
-                    </span>
-                  </div>
-                  {subCategories.length > 0 && (
-                    <ul className="space-y-0.5 pl-0.5">
-                      {subCategories.map((sub) => (
-                        <li key={sub} className="truncate text-[11px]" style={{ color: "var(--medium-gray)" }}>· {sub}</li>
-                      ))}
-                    </ul>
-                  )}
-                </Link>
-              </motion.div>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {INDUSTRY_CATEGORIES.map((cat, i) => (
+            <motion.div key={cat.id}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.28) }}
+              whileHover={{ y: -3 }}>
+              <Link href={getCategoryHref(cat.id)}
+                className="flex flex-col items-center gap-3 rounded-2xl px-3 py-6 text-center transition-shadow hover:shadow-lg"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-2xl" style={{ backgroundColor: cat.bg }}>
+                  {cat.icon}
+                </span>
+                <span className="text-[13px] font-bold leading-snug" style={{ color: "var(--foreground)" }}>
+                  {cat.title}
+                </span>
+              </Link>
+            </motion.div>
+          ))}
         </div>
       </Section>
 
-      {/* ── In-house / ARVANN Select (admin-listed) — premium, above buyer grid ─ */}
-      <InhouseProductsShowcase />
+      {/* ── In-house / ARVANN Select (admin-listed) — premium, above buyer grid.
+          subheading="" — this sits two sections below "Browse by industry"'s
+          own eyebrow+heading; restating "Curated, ready-to-ship products…"
+          here was filler. `/shop`'s hero keeps the full copy independently. */}
+      <InhouseProductsShowcase subheading="" />
 
       {/* ── Featured products ──────────────────────────────────────────────── */}
       <Section
