@@ -24,6 +24,7 @@ import { adminService, AdminStats } from "../services/admin.service";
 import { productService, Product, ProductCategory } from "../services/product.service";
 import { preferenceService } from "../services/preference.service";
 import { adService, AdFeedCard } from "../services/ad.service";
+import { openAdDestination } from "../services/adDestination";
 import { RootStackParamList } from "../navigation/types";
 import { routes } from "../navigation/routes";
 import { AppRole, isAdminRole } from "../constants/roles";
@@ -998,17 +999,17 @@ const UserDashboardContent = () => {
         sessionId: card.sessionId,
         metadata: { action: "banner_tap" },
       }).catch(() => {});
-      if (card.deepLink) {
-        // Future: handle deep links
-      } else {
-        navigation.navigate("ProductDetails", { productId: card.product.id });
-      }
+      openAdDestination(card);
     },
-    [navigation]
+    []
   );
 
-  const buildContactProduct = useCallback((card: AdFeedCard): Product => {
+  // Dead-simple contact card for the sponsored swipe deck's message/call
+  // actions — only meaningful for internal ads (external ads have no seller
+  // to contact), hence the nullable return.
+  const buildContactProduct = useCallback((card: AdFeedCard): Product | null => {
     const product = card.product;
+    if (!product) return null;
     const promotedPrice = card.pricing?.advertised || card.priceOverride || product.price;
     return {
       _id: product.id,
@@ -1049,9 +1050,9 @@ const UserDashboardContent = () => {
         sessionId: card.sessionId,
         metadata: { action: "view_product" },
       }).catch(() => {});
-      navigation.navigate("ProductDetails", { productId: card.product.id });
+      openAdDestination(card);
     },
-    [navigation]
+    []
   );
 
   const handleAdDismiss = useCallback((card: AdFeedCard) => {
@@ -1067,8 +1068,10 @@ const UserDashboardContent = () => {
 
   const handleAdMessage = useCallback(
     (card: AdFeedCard) => {
+      const contactProduct = buildContactProduct(card);
+      if (!contactProduct) return; // external ads have no seller to message
       startProductConversation({
-        product: buildContactProduct(card),
+        product: contactProduct,
         isGuest,
         currentUserId: user?.id,
         requestLogin,
@@ -1088,8 +1091,10 @@ const UserDashboardContent = () => {
 
   const handleAdCall = useCallback(
     (card: AdFeedCard) => {
+      const contactProduct = buildContactProduct(card);
+      if (!contactProduct) return; // external ads have no seller to call
       callProductSeller({
-        product: buildContactProduct(card),
+        product: contactProduct,
         toastError,
       });
       adService.logEvent({
@@ -1512,11 +1517,11 @@ const AdSwipeDeck = ({
         }}
       >
         {cards.map((card) => {
-          const imageUrl = card.product.images?.[0]?.url;
-          const canMessage = Boolean(card.product.createdBy && card.product.contactPreferences?.allowChat !== false);
-          const canCall = Boolean(card.product.company?.contact?.phone && card.product.contactPreferences?.allowCall !== false);
-          const listedPrice = card.pricing?.listed || card.product.price;
-          const advertisedPrice = card.pricing?.advertised || card.priceOverride || card.product.price;
+          const imageUrl = card.product?.images?.[0]?.url;
+          const canMessage = Boolean(card.product?.createdBy && card.product?.contactPreferences?.allowChat !== false);
+          const canCall = Boolean(card.product?.company?.contact?.phone && card.product?.contactPreferences?.allowCall !== false);
+          const listedPrice = card.pricing?.listed || card.product?.price;
+          const advertisedPrice = card.pricing?.advertised || card.priceOverride || card.product?.price;
           const hasDiscount =
             card.pricing?.isDiscounted ||
             (Number(advertisedPrice?.amount || 0) > 0 &&

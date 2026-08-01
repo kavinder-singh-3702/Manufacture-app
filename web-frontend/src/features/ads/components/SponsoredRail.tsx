@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAdFeed } from "../useAdFeed";
 import { buildAdView } from "../adView";
+import { AdLink } from "./AdLink";
 import { Section, Card } from "@/src/components/ui/Surface";
 import { fadeUp } from "@/src/components/ui/motion";
 import type { AdFeedCard } from "@/src/services/ad";
@@ -44,7 +44,7 @@ const SponsoredCard = ({ card, index, onClick }: { card: AdFeedCard; index: numb
 
   return (
     <motion.div {...fadeUp(index * 0.06)}>
-      <Link href={view.productHref} onClick={onClick}>
+      <AdLink destination={view.destination} onClick={onClick}>
         <Card interactive padding="none" className="overflow-hidden">
           <div className="relative aspect-[4/3] w-full" style={{ backgroundColor: "var(--background)" }}>
             {view.heroImage ? (
@@ -72,15 +72,17 @@ const SponsoredCard = ({ card, index, onClick }: { card: AdFeedCard; index: numb
             {view.companyName && (
               <p className="truncate text-xs" style={{ color: "var(--medium-gray)" }}>{view.companyName}</p>
             )}
-            <div className="mt-1.5 flex items-baseline gap-1.5">
-              <span className="text-sm font-bold" style={{ color: "var(--primary)" }}>{view.priceText}</span>
-              {view.originalPriceText && (
-                <span className="text-xs line-through" style={{ color: "var(--medium-gray)" }}>{view.originalPriceText}</span>
-              )}
-            </div>
+            {view.priceText && (
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <span className="text-sm font-bold" style={{ color: "var(--primary)" }}>{view.priceText}</span>
+                {view.originalPriceText && (
+                  <span className="text-xs line-through" style={{ color: "var(--medium-gray)" }}>{view.originalPriceText}</span>
+                )}
+              </div>
+            )}
           </div>
         </Card>
-      </Link>
+      </AdLink>
     </motion.div>
   );
 };

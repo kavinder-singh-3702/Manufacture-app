@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/src/providers/CartProvider";
 import { useAdFeed } from "../useAdFeed";
 import { buildAdView } from "../adView";
+import { openAdDestination } from "../adDestination";
 
 /**
  * "Sponsored · You may also like" strip for the cart, matched to the category +
@@ -55,15 +56,15 @@ export const AdCrossSell = () => {
               type="button"
               onClick={() => {
                 logEvent(card, "click", { origin: "web_cart_cross_sell" });
-                router.push(view.productHref);
+                openAdDestination(view.destination, router);
               }}
               className="flex items-center gap-3 rounded-xl p-2.5 text-left transition-opacity hover:opacity-90"
               style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}
             >
               <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg" style={{ backgroundColor: "var(--background)" }}>
-                {view.productImage ? (
+                {view.productImage || view.heroImage ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={view.productImage} alt={view.productName} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <img src={view.productImage || view.heroImage} alt={view.productName} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">

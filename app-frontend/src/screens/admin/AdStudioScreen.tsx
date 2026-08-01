@@ -48,10 +48,19 @@ export type AudiencePreset =
 type WizardState = {
   name: string;
   description: string;
+  adSource: "internal" | "external";
   productSource: ProductSourceMode;
   ownerUserId: string;
   ownerUserName: string;
   productId: string;
+
+  // External (third-party, non-catalog) campaigns
+  externalDestinationUrl: string;
+  externalAdvertiserName: string;
+  externalAdvertiserLogoUri: string;
+  externalAdvertiserLogoBase64: string;
+  externalCategory: string;
+  externalSubCategory: string;
 
   audiencePreset: AudiencePreset;
   targetingMode: "any" | "all";
@@ -80,7 +89,7 @@ type WizardState = {
   priceOverrideAmount: string;
   priceOverrideCurrency: string;
 
-  selectedPlacement: "dashboard_home" | "hero_banner" | "cart_cross_sell";
+  selectedPlacements: Array<"dashboard_home" | "hero_banner" | "cart_cross_sell">;
   bannerMediaUri: string;
   bannerMediaBase64: string;
   bannerMediaType: "image" | "video" | "";
@@ -226,10 +235,18 @@ export const AdStudioScreen = () => {
     () => ({
       name: "",
       description: "",
+      adSource: "internal",
       productSource: "user_listings",
       ownerUserId: route.params?.prefillOwnerUserId || "",
       ownerUserName: route.params?.prefillOwnerUserName || "",
       productId: "",
+
+      externalDestinationUrl: "",
+      externalAdvertiserName: "",
+      externalAdvertiserLogoUri: "",
+      externalAdvertiserLogoBase64: "",
+      externalCategory: "",
+      externalSubCategory: "",
 
       audiencePreset: route.params?.prefillTargetUserId ? "specific_users" : "everyone",
       targetingMode: "any",
@@ -258,7 +275,7 @@ export const AdStudioScreen = () => {
       priceOverrideAmount: "",
       priceOverrideCurrency: "INR",
 
-      selectedPlacement: "dashboard_home",
+      selectedPlacements: ["dashboard_home"],
       bannerMediaUri: "",
       bannerMediaBase64: "",
       bannerMediaType: "",
@@ -763,12 +780,14 @@ export const AdStudioScreen = () => {
         setWizard((prev) => ({
           ...prev,
           productSource: "admin_listings",
-          selectedPlacement:
-            campaign.placements?.[0] === "hero_banner"
-              ? "hero_banner"
-              : campaign.placements?.[0] === "cart_cross_sell"
-                ? "cart_cross_sell"
-                : "dashboard_home",
+          adSource: campaign.adSource === "external" ? "external" : "internal",
+          externalDestinationUrl: campaign.external?.destinationUrl || "",
+          externalAdvertiserName: campaign.external?.advertiserName || "",
+          externalAdvertiserLogoUri: campaign.external?.advertiserLogoUrl || "",
+          externalAdvertiserLogoBase64: "",
+          externalCategory: campaign.external?.category || "",
+          externalSubCategory: campaign.external?.subCategory || "",
+          selectedPlacements: campaign.placements?.length ? campaign.placements : ["dashboard_home"],
           bannerMediaType: existingType,
           bannerMediaUri:
             existingType === "image"
@@ -854,6 +873,17 @@ export const AdStudioScreen = () => {
     (step: number): string | null => {
       if (step === 0) {
         if (!wizard.name.trim()) return "Campaign name is required.";
+        if (wizard.adSource === "external") {
+          const url = wizard.externalDestinationUrl.trim();
+          if (!url) return "Enter the destination URL.";
+          try {
+            if (new URL(url).protocol !== "https:") return "Destination URL must start with https://.";
+          } catch {
+            return "Destination URL must start with https://.";
+          }
+          if (!wizard.externalAdvertiserName.trim()) return "Enter the advertiser name.";
+          return null;
+        }
         if (wizard.productSource === "user_listings" && !wizard.ownerUserId.trim()) {
           return "Select an owner user for user listings.";
         }
@@ -861,6 +891,7 @@ export const AdStudioScreen = () => {
       }
 
       if (step === 1) {
+        if (wizard.adSource === "external") return null; // external ads have no catalog product
         if (!wizard.productId.trim()) return "Select a promoted product.";
         return null;
       }
@@ -887,6 +918,17 @@ export const AdStudioScreen = () => {
       }
 
       if (step === 3) {
+        if (!wizard.selectedPlacements.length) return "Pick at least one placement.";
+        if (wizard.adSource === "external") {
+          if (!wizard.bannerMediaUri) return "External ads need a banner image or video.";
+          if (
+            wizard.selectedPlacements.includes("cart_cross_sell") &&
+            (!wizard.externalCategory.trim() || !wizard.externalSubCategory.trim())
+          ) {
+            return "Cart cross-sell needs a category + sub-category to match against.";
+          }
+          return null;
+        }
         if (wizard.usePriceOverride) {
           const parsed = Number(wizard.priceOverrideAmount);
           if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -918,6 +960,18 @@ export const AdStudioScreen = () => {
 
   const currentStepError = useMemo(() => validateStep(wizardStep), [validateStep, wizardStep]);
 
+  const togglePlacement = useCallback((placement: WizardState["selectedPlacements"][number]) => {
+    setWizard((prev) => {
+      const exists = prev.selectedPlacements.includes(placement);
+      return {
+        ...prev,
+        selectedPlacements: exists
+          ? prev.selectedPlacements.filter((p) => p !== placement)
+          : [...prev.selectedPlacements, placement],
+      };
+    });
+  }, []);
+
   const toggleUserId = useCallback((userId: string) => {
     setWizard((prev) => {
       const exists = prev.specificUserIds.includes(userId);
@@ -942,10 +996,18 @@ export const AdStudioScreen = () => {
   }, []);
 
   const submitCampaign = useCallback(async () => {
-    const finalStepError = validateStep(4);
-    if (finalStepError) {
-      setWizardError(finalStepError);
-      return;
+    // Every step is re-checked here, not just the last one — the per-step
+    // "Next" gate only stops the admin from *advancing* with bad data, but
+    // jumping directly to a later step (or resuming a half-filled wizard)
+    // could otherwise post an incomplete payload (e.g. productId: "") and
+    // 400 with a message the admin can't act on.
+    for (let i = 0; i < stepLabels.length; i += 1) {
+      const stepError = validateStep(i);
+      if (stepError) {
+        setWizardStep(i);
+        setWizardError(stepError);
+        return;
+      }
     }
 
     const shouldRequireSameCategory =
@@ -954,9 +1016,20 @@ export const AdStudioScreen = () => {
     const payload: UpsertAdCampaignInput = {
       name: wizard.name.trim(),
       description: wizard.description.trim() || undefined,
-      productId: wizard.productId.trim(),
+      adSource: wizard.adSource,
+      ...(wizard.adSource === "external"
+        ? {
+          external: {
+            destinationUrl: wizard.externalDestinationUrl.trim(),
+            advertiserName: wizard.externalAdvertiserName.trim(),
+            category: wizard.selectedPlacements.includes("cart_cross_sell") ? wizard.externalCategory : undefined,
+            subCategory: wizard.selectedPlacements.includes("cart_cross_sell") ? wizard.externalSubCategory : undefined,
+            ...(wizard.externalAdvertiserLogoBase64 ? { advertiserLogoBase64: wizard.externalAdvertiserLogoBase64 } : {}),
+          },
+        }
+        : { productId: wizard.productId.trim() }),
       status: editingCampaign ? editingCampaign.status : wizard.launchNow ? "active" : "draft",
-      placements: [wizard.selectedPlacement],
+      placements: wizard.selectedPlacements,
       targeting: {
         mode: wizard.targetingMode,
         userIds: wizard.specificUserIds,
@@ -978,7 +1051,7 @@ export const AdStudioScreen = () => {
       priority: parsePositiveInt(wizard.priority, 50, 1, 100),
       creative: {
         priceOverride:
-          wizard.usePriceOverride && wizard.priceOverrideAmount.trim()
+          wizard.adSource === "internal" && wizard.usePriceOverride && wizard.priceOverrideAmount.trim()
             ? {
                 amount: Number(wizard.priceOverrideAmount),
                 currency:
@@ -1177,6 +1250,103 @@ export const AdStudioScreen = () => {
                   multiline
                 />
 
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Source</Text>
+                <View style={styles.row}>
+                  <SelectCard
+                    icon="cube-outline"
+                    title="Internal product"
+                    subtitle="Promote a catalog listing"
+                    active={wizard.adSource === "internal"}
+                    onPress={() =>
+                      setWizard((prev) => ({
+                        ...prev,
+                        adSource: "internal",
+                        creativeCtaLabel: prev.creativeCtaLabel.trim() === "Learn more" ? "View Product" : prev.creativeCtaLabel,
+                      }))
+                    }
+                  />
+                  <SelectCard
+                    icon="link-outline"
+                    title="External link"
+                    subtitle="Promote a third-party URL"
+                    active={wizard.adSource === "external"}
+                    onPress={() =>
+                      setWizard((prev) => ({
+                        ...prev,
+                        adSource: "external",
+                        creativeCtaLabel: prev.creativeCtaLabel.trim() === "View Product" ? "Learn more" : prev.creativeCtaLabel,
+                      }))
+                    }
+                  />
+                </View>
+
+                {wizard.adSource === "external" ? (
+                  <View style={styles.stack}>
+                    <Field
+                      label="Destination URL"
+                      value={wizard.externalDestinationUrl}
+                      onChangeText={(value) => setWizard((prev) => ({ ...prev, externalDestinationUrl: value }))}
+                      required
+                      placeholder="https://partner-site.com/offer"
+                      keyboardType="url"
+                      autoCapitalize="none"
+                    />
+                    <Field
+                      label="Advertiser name"
+                      value={wizard.externalAdvertiserName}
+                      onChangeText={(value) => setWizard((prev) => ({ ...prev, externalAdvertiserName: value }))}
+                      required
+                      placeholder="e.g. Acme Tools Co"
+                    />
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Advertiser logo (optional)</Text>
+                    <View style={styles.row}>
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaPickerButton,
+                          { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+                        ]}
+                        onPress={async () => {
+                          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
+                          if (!result.canceled && result.assets[0]) {
+                            const optimized = await compressBannerImage(result.assets[0].uri);
+                            if (!optimized?.base64) {
+                              setWizardError("Couldn't process that image. Try another one.");
+                              return;
+                            }
+                            setWizardError(null);
+                            setWizard((prev) => ({
+                              ...prev,
+                              externalAdvertiserLogoUri: optimized.uri,
+                              externalAdvertiserLogoBase64: optimized.base64,
+                            }));
+                          }
+                        }}
+                      >
+                        <Ionicons name="image-outline" size={24} color={colors.primary} />
+                        <Text style={{ color: colors.text, marginTop: 4, fontSize: fs(13) }}>
+                          {wizard.externalAdvertiserLogoUri ? "Change logo" : "Pick logo"}
+                        </Text>
+                      </TouchableOpacity>
+                      {wizard.externalAdvertiserLogoUri ? (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setWizard((prev) => ({ ...prev, externalAdvertiserLogoUri: "", externalAdvertiserLogoBase64: "" }))
+                          }
+                          style={[
+                            styles.mediaPickerButton,
+                            { borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+                          ]}
+                        >
+                          <Image source={{ uri: wizard.externalAdvertiserLogoUri }} style={{ width: 40, height: 40, borderRadius: 8 }} />
+                          <Text style={{ color: colors.textMuted, marginTop: 4, fontSize: fs(12) }}>Remove</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+
+                {wizard.adSource === "internal" ? (
+                <>
                 <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Product source</Text>
                 <View style={styles.row}>
                   <SelectCard
@@ -1340,11 +1510,22 @@ export const AdStudioScreen = () => {
                     </View>
                   ) : null
                 ) : null}
+                </>
+                ) : null}
               </View>
             ) : null}
 
             {wizardStep === 1 ? (
               <View style={styles.stack}>
+                {wizard.adSource === "external" ? (
+                  <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
+                    <Text style={[styles.previewTitle, { color: colors.text }]}>No product needed</Text>
+                    <Text style={[styles.previewMeta, { color: colors.textMuted }]}>
+                      External campaigns link out to {wizard.externalDestinationUrl || "a third-party URL"} — nothing to pick here. Continue to Audience.
+                    </Text>
+                  </View>
+                ) : (
+                <>
                 <Field
                   label="Search products"
                   value={productSearch}
@@ -1408,6 +1589,8 @@ export const AdStudioScreen = () => {
                     </Text>
                   </View>
                 ) : null}
+                </>
+                )}
               </View>
             ) : null}
 
@@ -1591,41 +1774,63 @@ export const AdStudioScreen = () => {
 
             {wizardStep === 3 ? (
               <View style={styles.stack}>
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Ad placement</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Ad placement (pick one or more)</Text>
                 <View style={styles.row}>
                   <SelectCard
                     icon="grid-outline"
                     title="Product Card"
                     subtitle="Shows in sponsored spotlight feed"
-                    active={wizard.selectedPlacement === "dashboard_home"}
-                    onPress={() =>
-                      setWizard((prev) => ({ ...prev, selectedPlacement: "dashboard_home" }))
-                    }
+                    active={wizard.selectedPlacements.includes("dashboard_home")}
+                    onPress={() => togglePlacement("dashboard_home")}
                   />
                   <SelectCard
                     icon="image-outline"
                     title="Hero Banner"
                     subtitle="Full-width banner at top of home"
-                    active={wizard.selectedPlacement === "hero_banner"}
-                    onPress={() =>
-                      setWizard((prev) => ({ ...prev, selectedPlacement: "hero_banner" }))
-                    }
+                    active={wizard.selectedPlacements.includes("hero_banner")}
+                    onPress={() => togglePlacement("hero_banner")}
                   />
                   <SelectCard
                     icon="cart-outline"
                     title="Cart Cross-sell"
                     subtitle="'You may also like' in the cart"
-                    active={wizard.selectedPlacement === "cart_cross_sell"}
-                    onPress={() =>
-                      setWizard((prev) => ({ ...prev, selectedPlacement: "cart_cross_sell" }))
-                    }
+                    active={wizard.selectedPlacements.includes("cart_cross_sell")}
+                    onPress={() => togglePlacement("cart_cross_sell")}
                   />
                 </View>
 
+                {wizard.adSource === "external" && wizard.selectedPlacements.includes("cart_cross_sell") ? (
+                  <View style={styles.stack}>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Cross-sell category (required)</Text>
+                    <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                      External ads have no real product, so cart cross-sell matches against this instead.
+                    </Text>
+                    <CategoryChips
+                      label="Category"
+                      options={categoryOptions}
+                      selected={wizard.externalCategory ? [wizard.externalCategory] : []}
+                      onToggle={(id) => setWizard((prev) => ({ ...prev, externalCategory: id, externalSubCategory: "" }))}
+                    />
+                    <Field
+                      label="Sub-category"
+                      value={wizard.externalSubCategory}
+                      onChangeText={(value) => setWizard((prev) => ({ ...prev, externalSubCategory: value }))}
+                      placeholder="e.g. Precision tools"
+                      required
+                    />
+                  </View>
+                ) : null}
+
                 {(
                   <View style={styles.stack}>
-                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Banner media (optional)</Text>
-                    <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Image or video shown full-screen in the home banner. Leave empty to auto-build from the product.</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
+                      Banner media {wizard.adSource === "external" ? "(required)" : "(optional)"}
+                    </Text>
+                    <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                      {wizard.adSource === "external"
+                        ? "Image or video shown full-screen in the home banner. External ads have no product image to fall back on."
+                        : "Image or video shown full-screen in the home banner. Leave empty to auto-build from the product."}
+                    </Text>
                     <View style={styles.row}>
                       <TouchableOpacity
                         style={[
@@ -1846,6 +2051,8 @@ export const AdStudioScreen = () => {
                   placeholder="Sponsored / New / Hot"
                 />
 
+                {wizard.adSource === "internal" ? (
+                <>
                 <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Price in ad</Text>
                 <View style={styles.row}>
                   <SelectCard
@@ -1904,19 +2111,21 @@ export const AdStudioScreen = () => {
                     ) : null}
                   </View>
                 ) : null}
+                </>
+                ) : null}
 
-                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
+                <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}>
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Live preview</Text>
                   {wizard.creativeBadge.trim() ? (
-                    <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: colors.badgeWarning, alignSelf: "flex-start" }]}> 
+                    <View style={[styles.statusChip, { borderRadius: radius.pill, backgroundColor: colors.badgeWarning, alignSelf: "flex-start" }]}>
                       <Text style={[styles.statusChipText, { color: colors.warningStrong }]}>{wizard.creativeBadge.trim()}</Text>
                     </View>
                   ) : null}
-                  <Text style={[styles.optionTitle, { color: colors.text }]}> 
-                    {wizard.creativeTitle.trim() || selectedProduct?.name || "Featured product"}
+                  <Text style={[styles.optionTitle, { color: colors.text }]}>
+                    {wizard.creativeTitle.trim() || (wizard.adSource === "internal" ? selectedProduct?.name : wizard.externalAdvertiserName.trim()) || "Featured product"}
                   </Text>
-                  <Text style={[styles.optionMeta, { color: colors.textMuted }]}> 
-                    {wizard.creativeSubtitle.trim() || selectedProduct?.company?.displayName || "Recommended for your dashboard"}
+                  <Text style={[styles.optionMeta, { color: colors.textMuted }]}>
+                    {wizard.creativeSubtitle.trim() || (wizard.adSource === "internal" ? selectedProduct?.company?.displayName : wizard.externalAdvertiserName.trim()) || "Recommended for your dashboard"}
                   </Text>
                   {selectedProduct?.price?.amount != null ? (
                     <View style={styles.row}>
@@ -1985,17 +2194,28 @@ export const AdStudioScreen = () => {
                 <View style={[styles.previewCard, neuPressed(isDark), { borderColor: "transparent", borderRadius: radius.lg, backgroundColor: neuInsetBg(isDark) }]}> 
                   <Text style={[styles.previewTitle, { color: colors.text }]}>Review</Text>
                   <InfoLine label="Campaign" value={wizard.name || "-"} />
-                  <InfoLine
-                    label="Source"
-                    value={wizard.productSource === "user_listings" ? "User listings" : "Admin listings"}
-                  />
-                  {wizard.productSource === "user_listings" ? (
-                    <InfoLine
-                      label="Owner"
-                      value={wizard.ownerUserName || selectedOwner?.displayName || selectedOwner?.email || wizard.ownerUserId || "-"}
-                    />
-                  ) : null}
-                  <InfoLine label="Product" value={selectedProduct?.name || wizard.productId || "-"} />
+                  {wizard.adSource === "external" ? (
+                    <>
+                      <InfoLine label="Source" value="External link" />
+                      <InfoLine label="Advertiser" value={wizard.externalAdvertiserName || "-"} />
+                      <InfoLine label="Destination" value={wizard.externalDestinationUrl || "-"} />
+                    </>
+                  ) : (
+                    <>
+                      <InfoLine
+                        label="Source"
+                        value={wizard.productSource === "user_listings" ? "User listings" : "Admin listings"}
+                      />
+                      {wizard.productSource === "user_listings" ? (
+                        <InfoLine
+                          label="Owner"
+                          value={wizard.ownerUserName || selectedOwner?.displayName || selectedOwner?.email || wizard.ownerUserId || "-"}
+                        />
+                      ) : null}
+                      <InfoLine label="Product" value={selectedProduct?.name || wizard.productId || "-"} />
+                    </>
+                  )}
+                  <InfoLine label="Placements" value={wizard.selectedPlacements.join(", ") || "-"} />
                   <InfoLine label="Audience" value={stepSummary} />
                   <InfoLine label="Logic" value={wizard.targetingMode.toUpperCase()} />
                   <InfoLine
@@ -2126,7 +2346,9 @@ export const AdStudioScreen = () => {
                         </View>
                       </View>
                       <Text style={[styles.optionMeta, { color: colors.textMuted }]} numberOfLines={1}>
-                        {campaign.product?.name || "Product unavailable"}
+                        {campaign.adSource === "external"
+                          ? `🔗 ${campaign.external?.advertiserName || "External link"}`
+                          : campaign.product?.name || "Product unavailable"}
                       </Text>
                       <Text style={[styles.optionMeta, { color: colors.textTertiary }]}>
                         Priority {campaign.priority} • Cap {campaign.frequencyCapPerDay}/day
@@ -2167,7 +2389,9 @@ export const AdStudioScreen = () => {
 
                 {/* Info */}
                 <Text style={[styles.modalMeta, { color: colors.textMuted }]}>
-                  {actionModalCampaign.product?.name || "Product unavailable"} • Priority {actionModalCampaign.priority}
+                  {actionModalCampaign.adSource === "external"
+                    ? `🔗 ${actionModalCampaign.external?.advertiserName || "External link"}`
+                    : actionModalCampaign.product?.name || "Product unavailable"} • Priority {actionModalCampaign.priority}
                 </Text>
                 <View style={[styles.modalStatusRow, { backgroundColor: statusTone(actionModalCampaign.status).bg, borderRadius: radius.pill, alignSelf: "flex-start" }]}>
                   <Text style={[styles.modalStatusText, { color: statusTone(actionModalCampaign.status).fg }]}>
@@ -2285,7 +2509,14 @@ export const AdStudioScreen = () => {
                 </View>
 
                 <View style={[styles.detailSection, neuPressed(isDark), { backgroundColor: neuInsetBg(isDark), borderRadius: radius.lg }]}>
-                  <InfoLine label="Product" value={detailModalCampaign.product?.name || "N/A"} />
+                  {detailModalCampaign.adSource === "external" ? (
+                    <>
+                      <InfoLine label="Advertiser" value={detailModalCampaign.external?.advertiserName || "N/A"} />
+                      <InfoLine label="Destination" value={detailModalCampaign.external?.destinationUrl || "N/A"} />
+                    </>
+                  ) : (
+                    <InfoLine label="Product" value={detailModalCampaign.product?.name || "N/A"} />
+                  )}
                   <InfoLine label="Priority" value={String(detailModalCampaign.priority)} />
                   <InfoLine label="Targeting" value={detailModalCampaign.targeting?.mode?.toUpperCase() || "ANY"} />
                   <InfoLine label="Freq. cap" value={`${detailModalCampaign.frequencyCapPerDay}/day`} />
@@ -2647,6 +2878,7 @@ const Field = ({
   required,
   multiline,
   keyboardType,
+  autoCapitalize,
 }: {
   label: string;
   value: string;
@@ -2654,7 +2886,8 @@ const Field = ({
   placeholder?: string;
   required?: boolean;
   multiline?: boolean;
-  keyboardType?: "default" | "number-pad";
+  keyboardType?: "default" | "number-pad" | "url";
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }) => {
   const { colors, radius } = useTheme();
   const { resolvedMode } = useThemeMode();
@@ -2673,6 +2906,7 @@ const Field = ({
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
         keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
         multiline={multiline}
         style={[
           styles.fieldInput,

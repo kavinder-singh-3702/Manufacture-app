@@ -40,17 +40,19 @@ export type CrossSellView = {
 // Derives everything the modal and the inline strip need from a feed card, so the
 // two presentations stay perfectly in sync.
 export const buildCrossSellView = (card: AdFeedCard): CrossSellView => {
-  const product = card.product || ({} as AdFeedCard["product"]);
-  const productImage = product?.images?.[0]?.url;
-  const productName = card.title || product?.name || "Featured product";
-  const companyName = card.subtitle || product?.company?.displayName || "";
-  const categoryLabel = titleCase(product?.subCategory || product?.category);
+  const isExternal = card.adSource === "external";
+  const product = card.product;
+  const productImage = product?.images?.[0]?.url || card.external?.advertiserLogoUrl;
+  const productName = card.title || product?.name || card.external?.advertiserName || "Featured product";
+  const companyName = card.subtitle || product?.company?.displayName || card.external?.advertiserName || "";
+  const categoryLabel = isExternal ? "" : titleCase(product?.subCategory || product?.category);
 
-  const listed = card.pricing?.listed || product?.price;
-  const advertised = card.pricing?.advertised || card.priceOverride;
+  const listed = isExternal ? undefined : card.pricing?.listed || product?.price;
+  const advertised = isExternal ? undefined : card.pricing?.advertised || card.priceOverride;
   const isDiscounted =
-    Boolean(card.pricing?.isDiscounted) ||
-    Boolean(advertised?.amount && listed?.amount && Number(advertised.amount) < Number(listed.amount));
+    !isExternal &&
+    (Boolean(card.pricing?.isDiscounted) ||
+      Boolean(advertised?.amount && listed?.amount && Number(advertised.amount) < Number(listed.amount)));
   const displayPrice = advertised || listed;
 
   const savings =
@@ -64,7 +66,7 @@ export const buildCrossSellView = (card: AdFeedCard): CrossSellView => {
   const discountBadge = discountPct >= 1 ? `${discountPct}% OFF` : "";
 
   // Urgency, most-compelling first: scarce stock → ending deal → generic low stock.
-  const qty = product?.availableQuantity;
+  const qty = isExternal ? undefined : product?.availableQuantity;
   const minQty = product?.minStockQuantity ?? 0;
   let urgency: CrossSellUrgency = null;
 
@@ -72,7 +74,7 @@ export const buildCrossSellView = (card: AdFeedCard): CrossSellView => {
 
   if (typeof qty === "number" && qty > 0 && qty <= Math.max(5, minQty)) {
     urgency = { icon: "flame", text: `Only ${qty} left` };
-  } else if (Number.isFinite(hoursLeft) && hoursLeft > 0 && hoursLeft <= 48) {
+  } else if (!isExternal && Number.isFinite(hoursLeft) && hoursLeft > 0 && hoursLeft <= 48) {
     urgency =
       hoursLeft <= 1
         ? { icon: "time", text: "Deal ends soon" }
@@ -101,7 +103,7 @@ export const buildCrossSellView = (card: AdFeedCard): CrossSellView => {
     discountBadge,
     reason,
     urgency,
-    ctaLabel: card.ctaLabel || "View product",
+    ctaLabel: card.ctaLabel || (isExternal ? "Learn more" : "View product"),
   };
 };
 

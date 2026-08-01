@@ -7,6 +7,7 @@ import { AdPlacement } from "@/src/services/ad";
 import { useMotionSafe } from "@/src/components/ui/motion";
 import { useAdFeed } from "../useAdFeed";
 import { buildAdView } from "../adView";
+import { openAdDestination } from "../adDestination";
 
 const AUTO_ROTATE_MS = 4500;
 
@@ -78,7 +79,7 @@ export const AdBanner = ({ placement, extraPlacements, limit = 5, className = ""
 
   const handleClick = () => {
     logEvent(card, "click", { origin: `web_${placement}` });
-    router.push(view.productHref);
+    openAdDestination(view.destination, router);
   };
 
   return (

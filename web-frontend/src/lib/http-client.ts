@@ -113,9 +113,26 @@ export class HttpClient {
       // controller sites still respond with { error } directly instead of
       // going through the shared errorHandler — fall back to that before
       // giving up and showing the generic "Request failed".
-      const body = parsedBody as { message?: string; error?: string } | undefined;
-      const errorMessage = body?.message ?? body?.error ?? "Request failed";
-      throw new ApiError(errorMessage, response.status, parsedBody);
+      const body = parsedBody as { message?: string; error?: string; errors?: Array<{ path?: string; param?: string; msg?: string }> } | undefined;
+
+      // express-validator's `validate` middleware (backend/src/middleware/validate.js)
+      // returns 422 with ONLY `{ errors: [...] }` — no `message`/`error` key —
+      // so without this, every validation failure surfaced as the useless
+      // generic "Request failed" string with no indication of which field or
+      // why. Parse the array into a field->message map and use the first
+      // message as the headline error so callers get a real reason even if
+      // they don't read `fieldErrors`.
+      let fieldErrors: Record<string, string> | undefined;
+      if (Array.isArray(body?.errors) && body.errors.length > 0) {
+        fieldErrors = {};
+        for (const e of body.errors) {
+          const key = e.path ?? e.param;
+          if (key && e.msg) fieldErrors[key] = e.msg;
+        }
+      }
+
+      const errorMessage = body?.message ?? body?.error ?? body?.errors?.[0]?.msg ?? "Request failed";
+      throw new ApiError(errorMessage, response.status, parsedBody, fieldErrors);
     }
 
     return parsedBody as T;

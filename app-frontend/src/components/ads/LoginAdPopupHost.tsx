@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { AppRole, isAdminRole } from "../../constants/roles";
 import { adService, AdFeedCard } from "../../services/ad.service";
-import { navigateRoot } from "../../navigation/navigationRef";
+import { openAdDestination } from "../../services/adDestination";
 import { adPopupStorage } from "../../services/adPopupStorage";
 import { LoginAdPopupModal } from "./LoginAdPopupModal";
 
@@ -47,7 +47,7 @@ export const LoginAdPopupHost = () => {
     (c: AdFeedCard) => {
       logEvent(c, "click");
       close();
-      if (c.product?.id) navigateRoot("ProductDetails", { productId: c.product.id });
+      openAdDestination(c);
     },
     [logEvent, close]
   );

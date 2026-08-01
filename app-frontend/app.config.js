@@ -124,6 +124,7 @@ module.exports = ({ config }) => {
       ],
       "./plugins/withArvannAndroidReleaseSigning",
       "expo-video",
+      "expo-web-browser",
     ],
   };
 };

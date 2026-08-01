@@ -15,7 +15,8 @@ const {
   AD_PLACEMENTS,
   AD_MEDIA_TYPES,
   AD_EVENT_TYPES,
-  AD_TARGETING_MODES
+  AD_TARGETING_MODES,
+  AD_SOURCES
 } = require('../../../constants/ad');
 
 const toObjectId = (value) => {
@@ -170,6 +171,45 @@ const normalizeCreative = (creative, fallbackPrice = {}) => {
   return normalized;
 };
 
+// External (third-party) campaigns have no product to derive a name/link from,
+// so their destination + advertiser identity is normalized/validated here —
+// this is the security boundary that keeps the click-through to a safe https URL.
+const normalizeExternal = (external) => {
+  if (!external || typeof external !== 'object') {
+    throw createError(400, 'External campaigns require a destination URL and advertiser name');
+  }
+
+  const destinationUrl = typeof external.destinationUrl === 'string' ? external.destinationUrl.trim() : '';
+  const advertiserName = typeof external.advertiserName === 'string' ? external.advertiserName.trim() : '';
+
+  if (!destinationUrl) {
+    throw createError(400, 'External campaigns require a destination URL');
+  }
+  if (!advertiserName) {
+    throw createError(400, 'External campaigns require an advertiser name');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(destinationUrl);
+  } catch {
+    throw createError(400, 'External destination URL is not a valid URL');
+  }
+  if (parsed.protocol !== 'https:') {
+    throw createError(400, 'External destination URL must use https://');
+  }
+
+  return {
+    destinationUrl,
+    advertiserName,
+    advertiserLogoUrl: typeof external.advertiserLogoUrl === 'string' && external.advertiserLogoUrl.trim()
+      ? external.advertiserLogoUrl.trim()
+      : undefined,
+    category: typeof external.category === 'string' ? external.category.trim() : undefined,
+    subCategory: typeof external.subCategory === 'string' ? external.subCategory.trim() : undefined
+  };
+};
+
 // Uploads any base64 banner media (image or video) to storage and returns the
 // resolved creative fields. Image and video are mutually exclusive.
 const processBannerMedia = async ({ creative, campaignId }) => {
@@ -262,6 +302,40 @@ const ensureProductIsEligible = async (productId) => {
   return product;
 };
 
+// External ads have no product image to fall back on, so a banner is mandatory.
+const assertExternalCreativeIsRenderable = (creative) => {
+  if (!creative?.bannerImageUrl && !creative?.bannerVideoUrl) {
+    throw createError(400, 'External campaigns require a banner image or video');
+  }
+};
+
+// Single seam both createCampaign/updateCampaign/activateCampaign go through to
+// resolve what a campaign promotes — an internal Product doc, or a third-party
+// destination. Keeping the branch here (rather than scattered through callers)
+// is what lets the rest of the service stay source-agnostic.
+const resolveCampaignTarget = async ({ adSource, productId, external }) => {
+  if (adSource === 'external') {
+    return {
+      adSource: 'external',
+      product: null,
+      external: normalizeExternal(external),
+      advertiserUser: undefined,
+      advertiserCompany: undefined,
+      fallbackPrice: {}
+    };
+  }
+
+  const product = await ensureProductIsEligible(productId);
+  return {
+    adSource: 'internal',
+    product,
+    external: undefined,
+    advertiserUser: product.createdBy,
+    advertiserCompany: product.company?._id || product.company,
+    fallbackPrice: product.price || {}
+  };
+};
+
 const shapeCampaign = (doc) => {
   const plain = typeof doc?.toObject === 'function' ? doc.toObject() : doc;
   if (!plain) return null;
@@ -271,6 +345,8 @@ const shapeCampaign = (doc) => {
     name: plain.name,
     description: plain.description,
     status: plain.status,
+    adSource: plain.adSource === 'external' ? 'external' : 'internal',
+    external: plain.external || undefined,
     product: plain.product
       ? {
         id: plain.product._id?.toString?.() || plain.product.toString(),
@@ -363,9 +439,15 @@ const listAdminCampaigns = async (filters = {}) => {
 };
 
 const createCampaign = async ({ payload, actorId }) => {
-  const product = await ensureProductIsEligible(payload.productId);
-  const creative = normalizeCreative(payload.creative, product.price || {});
-  assertPriceOverrideWithinListedPrice(creative.priceOverride, product);
+  const adSource = payload.adSource === 'external' ? 'external' : 'internal';
+  const target = await resolveCampaignTarget({ adSource, productId: payload.productId, external: payload.external });
+
+  const creative = normalizeCreative(payload.creative, target.fallbackPrice);
+  if (adSource === 'external') {
+    delete creative.priceOverride;
+  } else {
+    assertPriceOverrideWithinListedPrice(creative.priceOverride, target.product);
+  }
 
   const status = AD_CAMPAIGN_STATUSES.includes(payload.status) ? payload.status : 'draft';
   const targeting = normalizeTargeting(payload.targeting);
@@ -378,14 +460,20 @@ const createCampaign = async ({ payload, actorId }) => {
   const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId });
   const finalCreative = bannerUpdate ? { ...creative, ...bannerUpdate } : creative;
 
+  if (adSource === 'external') {
+    assertExternalCreativeIsRenderable(finalCreative);
+  }
+
   const campaign = await AdCampaign.create({
     _id: campaignId,
     name: payload.name,
     description: payload.description,
     status,
-    product: product._id,
-    advertiserUser: product.createdBy,
-    advertiserCompany: product.company?._id || product.company,
+    adSource,
+    product: target.product?._id,
+    external: target.external,
+    advertiserUser: target.advertiserUser,
+    advertiserCompany: target.advertiserCompany,
     placements: Array.isArray(payload.placements) && payload.placements.length
       ? payload.placements.filter((item) => AD_PLACEMENTS.includes(item))
       : ['dashboard_home'],
@@ -429,12 +517,37 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
     payload.creative.priceOverride !== null
   );
 
-  if (payload.productId) {
-    resolvedProduct = await ensureProductIsEligible(payload.productId);
-    campaign.product = resolvedProduct._id;
-    campaign.advertiserUser = resolvedProduct.createdBy;
-    campaign.advertiserCompany = resolvedProduct.company?._id || resolvedProduct.company;
+  // A campaign's adSource can flip in either direction on update. `switchingSource`
+  // covers both directions: internal→external needs a fresh destination URL,
+  // external→internal needs a fresh eligible product.
+  const currentAdSource = campaign.adSource === 'external' ? 'external' : 'internal';
+  const adSource = payload.adSource === 'external' || payload.adSource === 'internal'
+    ? payload.adSource
+    : currentAdSource;
+  const switchingSource = adSource !== currentAdSource;
+
+  if (adSource === 'external') {
+    // Merge onto the existing external block so a partial update (e.g. only
+    // touching creative) doesn't have to resend destinationUrl/advertiserName.
+    const merged = { ...(campaign.external?.toObject?.() ?? campaign.external ?? {}), ...(payload.external || {}) };
+    campaign.external = normalizeExternal(merged);
+    campaign.product = undefined;
+    campaign.advertiserUser = undefined;
+    campaign.advertiserCompany = undefined;
+  } else {
+    if (payload.productId) {
+      resolvedProduct = await ensureProductIsEligible(payload.productId);
+      campaign.product = resolvedProduct._id;
+      campaign.advertiserUser = resolvedProduct.createdBy;
+      campaign.advertiserCompany = resolvedProduct.company?._id || resolvedProduct.company;
+    } else if (switchingSource) {
+      throw createError(400, 'Switching to an internal campaign requires a productId');
+    }
+    if (switchingSource) {
+      campaign.external = undefined;
+    }
   }
+  campaign.adSource = adSource;
 
   if (payload.name !== undefined) campaign.name = String(payload.name || '').trim();
   if (payload.description !== undefined) campaign.description = String(payload.description || '').trim();
@@ -476,7 +589,7 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
   }
 
   if (payload.creative) {
-    if (!resolvedProduct && (shouldHandlePriceOverride || payload.productId)) {
+    if (adSource === 'internal' && !resolvedProduct && (shouldHandlePriceOverride || payload.productId)) {
       resolvedProduct = await ensureProductIsEligible(campaign.product);
     }
 
@@ -488,7 +601,9 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
       )
     };
 
-    if (Object.prototype.hasOwnProperty.call(creative, 'priceOverride')) {
+    if (adSource === 'external') {
+      delete nextCreative.priceOverride;
+    } else if (Object.prototype.hasOwnProperty.call(creative, 'priceOverride')) {
       if (creative.priceOverride) {
         assertPriceOverrideWithinListedPrice(creative.priceOverride, resolvedProduct);
         nextCreative.priceOverride = creative.priceOverride;
@@ -509,9 +624,16 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
     if (nextCreative.bannerPosterUrl === null) delete nextCreative.bannerPosterUrl;
 
     campaign.creative = nextCreative;
+  } else if (adSource === 'external') {
+    // Switched to external with no accompanying creative update — strip any
+    // leftover internal-only price override so it can't linger on the doc.
+    const existing = campaign.creative?.toObject?.() ?? campaign.creative;
+    if (existing?.priceOverride) {
+      campaign.creative = { ...existing, priceOverride: undefined };
+    }
   }
 
-  if (payload.productId && campaign.creative?.priceOverride) {
+  if (adSource === 'internal' && payload.productId && campaign.creative?.priceOverride) {
     assertPriceOverrideWithinListedPrice(campaign.creative.priceOverride, resolvedProduct);
   }
 
@@ -529,8 +651,13 @@ const activateCampaign = async ({ campaignId, actorId }) => {
   const campaign = await AdCampaign.findById(toObjectId(campaignId));
   if (!campaign) return null;
 
-  const product = await ensureProductIsEligible(campaign.product);
-  assertPriceOverrideWithinListedPrice(campaign.creative?.priceOverride, product);
+  if (campaign.adSource === 'external') {
+    normalizeExternal(campaign.external?.toObject?.() ?? campaign.external);
+    assertExternalCreativeIsRenderable(campaign.creative?.toObject?.() ?? campaign.creative ?? {});
+  } else {
+    const product = await ensureProductIsEligible(campaign.product);
+    assertPriceOverrideWithinListedPrice(campaign.creative?.priceOverride, product);
+  }
 
   campaign.status = 'active';
   campaign.activatedAt = new Date();
@@ -712,8 +839,42 @@ const matchTargeting = ({ campaign, userId, signals, productCategory }) => {
   return conditions.some(Boolean);
 };
 
+const isExternalCampaign = (campaign) => campaign.adSource === 'external';
+
+// Category/sub-category read from whichever side of adSource actually has
+// them — internal reads the promoted product, external reads the admin-set
+// tag. Used by BOTH the cart_cross_sell gate and matchTargeting's
+// requireListedProductInSameCategory check, so the two sources compete fairly.
+const campaignCategoryOf = (campaign) =>
+  isExternalCampaign(campaign) ? campaign.external?.category : campaign.product?.category;
+const campaignSubCategoryOf = (campaign) =>
+  isExternalCampaign(campaign) ? campaign.external?.subCategory : campaign.product?.subCategory;
+
+const isInternalCampaignServable = (campaign, inactiveOwnerIdSet) => {
+  const product = campaign.product;
+  if (!product) return false;
+  if (product.deletedAt) return false;
+  if (product.status !== 'active') return false;
+  if (product.visibility !== 'public') return false;
+  const creatorRole = String(product.createdByRole || 'user').toLowerCase();
+  if (!['user', 'admin'].includes(creatorRole)) return false;
+  if (product.createdBy && inactiveOwnerIdSet.has(product.createdBy.toString())) return false;
+  return true;
+};
+
+const isExternalCampaignServable = (campaign) =>
+  Boolean(campaign.external?.destinationUrl) &&
+  Boolean(campaign.creative?.bannerImageUrl || campaign.creative?.bannerVideoUrl);
+
+const isCampaignServable = (campaign, inactiveOwnerIdSet) =>
+  isExternalCampaign(campaign)
+    ? isExternalCampaignServable(campaign)
+    : isInternalCampaignServable(campaign, inactiveOwnerIdSet);
+
 const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   ...(function computePricing() {
+    if (isExternalCampaign(campaign)) return {};
+
     const listed = campaign.product?.price || undefined;
     const override = campaign.creative?.priceOverride || undefined;
     const listedAmount = Number(listed?.amount);
@@ -737,12 +898,14 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   campaignId: campaign._id.toString(),
   sessionId,
   placement,
-  title: campaign.creative?.title || campaign.product?.name || 'Featured product',
+  adSource: isExternalCampaign(campaign) ? 'external' : 'internal',
+  title: campaign.creative?.title || campaign.product?.name || campaign.external?.advertiserName || 'Sponsored',
   subtitle:
     campaign.creative?.subtitle ||
     campaign.product?.company?.displayName ||
+    campaign.external?.advertiserName ||
     'Recommended for you',
-  ctaLabel: campaign.creative?.ctaLabel || 'View Product',
+  ctaLabel: campaign.creative?.ctaLabel || (isExternalCampaign(campaign) ? 'Learn more' : 'View Product'),
   badge: campaign.creative?.badge || undefined,
   // Frequency controls: the server enforces frequencyCapPerDay for logged-in
   // users (via AdEvent counts) but has no identity to key that off of for
@@ -757,27 +920,36 @@ const shapeFeedCard = ({ campaign, placement, sessionId }) => ({
   priority: campaign.priority,
   // Scarcity cue: when the campaign has an end date the client can show a countdown.
   endsAt: campaign.schedule?.endAt || undefined,
-  product: {
-    id: campaign.product?._id?.toString?.() || campaign.product?.toString?.(),
-    name: campaign.product?.name,
-    createdBy: campaign.product?.createdBy?.toString?.() || campaign.product?.createdBy,
-    category: campaign.product?.category,
-    subCategory: campaign.product?.subCategory,
-    price: campaign.product?.price,
-    images: campaign.product?.images || [],
-    // Stock signals power the "Only N left" urgency cue on the client.
-    availableQuantity: campaign.product?.availableQuantity,
-    minStockQuantity: campaign.product?.minStockQuantity,
-    contactPreferences: campaign.product?.contactPreferences || {},
-    company: campaign.product?.company
-      ? {
-        id: campaign.product.company._id?.toString?.() || campaign.product.company.toString(),
-        displayName: campaign.product.company.displayName,
-        complianceStatus: campaign.product.company.complianceStatus,
-        contact: campaign.product.company.contact
-      }
-      : null
-  }
+  external: isExternalCampaign(campaign)
+    ? {
+      destinationUrl: campaign.external?.destinationUrl,
+      advertiserName: campaign.external?.advertiserName,
+      advertiserLogoUrl: campaign.external?.advertiserLogoUrl
+    }
+    : undefined,
+  product: isExternalCampaign(campaign)
+    ? null
+    : {
+      id: campaign.product?._id?.toString?.() || campaign.product?.toString?.(),
+      name: campaign.product?.name,
+      createdBy: campaign.product?.createdBy?.toString?.() || campaign.product?.createdBy,
+      category: campaign.product?.category,
+      subCategory: campaign.product?.subCategory,
+      price: campaign.product?.price,
+      images: campaign.product?.images || [],
+      // Stock signals power the "Only N left" urgency cue on the client.
+      availableQuantity: campaign.product?.availableQuantity,
+      minStockQuantity: campaign.product?.minStockQuantity,
+      contactPreferences: campaign.product?.contactPreferences || {},
+      company: campaign.product?.company
+        ? {
+          id: campaign.product.company._id?.toString?.() || campaign.product.company.toString(),
+          displayName: campaign.product.company.displayName,
+          complianceStatus: campaign.product.company.complianceStatus,
+          contact: campaign.product.company.contact
+        }
+        : null
+    }
 });
 
 const getFeed = async ({
@@ -839,17 +1011,7 @@ const getFeed = async ({
       .map((id) => id.toString())
   );
 
-  const campaigns = activeCampaigns.filter((campaign) => {
-    const product = campaign.product;
-    if (!product) return false;
-    if (product.deletedAt) return false;
-    if (product.status !== 'active') return false;
-    if (product.visibility !== 'public') return false;
-    const creatorRole = String(product.createdByRole || 'user').toLowerCase();
-    if (!['user', 'admin'].includes(creatorRole)) return false;
-    if (product.createdBy && inactiveOwnerIdSet.has(product.createdBy.toString())) return false;
-    return true;
-  });
+  const campaigns = activeCampaigns.filter((campaign) => isCampaignServable(campaign, inactiveOwnerIdSet));
 
   if (!campaigns.length) {
     return { cards: [], placement: safePlacement };
@@ -924,20 +1086,21 @@ const getFeed = async ({
       return false;
     }
 
-    // Cross-sell gate: promoted product must match the added item's category +
-    // sub-category, and must not be the item the user just added.
+    // Cross-sell gate: the promoted item (product category, or the external
+    // campaign's manually-tagged category) must match the added item's
+    // category + sub-category, and must not be the item the user just added.
     if (isCrossSell) {
-      const product = campaign.product || {};
-      if (crossSellExcludeId && (product._id?.toString?.() === crossSellExcludeId)) return false;
-      if ((product.category || '').toLowerCase() !== crossSellCategory) return false;
-      if ((product.subCategory || '').toLowerCase() !== crossSellSubCategory) return false;
+      const productId = campaign.product?._id?.toString?.();
+      if (crossSellExcludeId && productId === crossSellExcludeId) return false;
+      if ((campaignCategoryOf(campaign) || '').toLowerCase() !== crossSellCategory) return false;
+      if ((campaignSubCategoryOf(campaign) || '').toLowerCase() !== crossSellSubCategory) return false;
     }
 
     return matchTargeting({
       campaign,
       userId,
       signals,
-      productCategory: campaign.product?.category
+      productCategory: campaignCategoryOf(campaign)
     });
   });
 
@@ -1047,7 +1210,11 @@ const getCampaignInsights = async ({ campaignId, from, to }) => {
       { $match: baseMatch },
       { $group: { _id: { placement: '$placement', type: '$type' }, count: { $sum: 1 } } }
     ]),
-    computeAttribution({ campaignObjectId, productId: campaign.product, matchDate: dateFilter })
+    // External campaigns have no internal product to attribute quotes/inquiries/
+    // orders to, so the block is omitted rather than shown as all-zero.
+    campaign.adSource === 'external'
+      ? Promise.resolve(undefined)
+      : computeAttribution({ campaignObjectId, productId: campaign.product, matchDate: dateFilter })
   ]);
 
   const summary = {

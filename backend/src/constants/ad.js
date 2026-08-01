@@ -28,10 +28,16 @@ const AD_EVENT_TYPES = Object.freeze([
   'dismiss'
 ]);
 
+const AD_SOURCES = Object.freeze([
+  'internal',
+  'external'
+]);
+
 module.exports = {
   AD_CAMPAIGN_STATUSES,
   AD_PLACEMENTS,
   AD_MEDIA_TYPES,
   AD_TARGETING_MODES,
-  AD_EVENT_TYPES
+  AD_EVENT_TYPES,
+  AD_SOURCES
 };

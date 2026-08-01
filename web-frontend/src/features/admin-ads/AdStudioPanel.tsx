@@ -241,6 +241,7 @@ export const AdStudioPanel = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {campaigns.map((c, i) => {
               const statusAccent = STATUS_ACCENT[c.status];
+              const isExternal = c.adSource === "external";
               const banner = c.creative?.bannerImageUrl ?? c.product?.images?.[0]?.url;
               const busy = actionId === c.id;
               return (
@@ -259,6 +260,12 @@ export const AdStudioPanel = () => {
                       style={{ backgroundColor: tintBg(statusAccent), color: statusAccent }}>
                       {STATUS_LABEL[c.status]}
                     </span>
+                    {isExternal && (
+                      <span className="absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[10px] font-bold"
+                        style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "#fff" }}>
+                        External
+                      </span>
+                    )}
                   </div>
                   {/* Body */}
                   <div className="flex flex-1 flex-col gap-2 p-4">
@@ -267,7 +274,9 @@ export const AdStudioPanel = () => {
                         {c.creative?.title || c.name}
                       </p>
                       <p className="text-xs truncate" style={{ color: "var(--medium-gray)" }}>
-                        {c.product?.name ?? "No product"} · {relativeDate(c.createdAt)}
+                        {isExternal
+                          ? (c.external?.advertiserName ?? "External link")
+                          : (c.product?.name ?? "No product")} · {relativeDate(c.createdAt)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">

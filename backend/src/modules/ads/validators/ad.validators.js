@@ -5,7 +5,8 @@ const {
   AD_PLACEMENTS,
   AD_MEDIA_TYPES,
   AD_TARGETING_MODES,
-  AD_EVENT_TYPES
+  AD_EVENT_TYPES,
+  AD_SOURCES
 } = require('../../../constants/ad');
 
 const isObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
@@ -75,11 +76,40 @@ const adScheduleValidation = [
   body('schedule.endAt').optional().isISO8601().toDate()
 ];
 
+const adExternalValidation = [
+  body('adSource').optional().isIn(AD_SOURCES),
+  body('external').optional().isObject(),
+  body('external.destinationUrl')
+    .optional({ nullable: true })
+    .isURL({ protocols: ['https'], require_protocol: true })
+    .withMessage('external.destinationUrl must be a valid https:// URL')
+    .isLength({ max: 2048 }),
+  body('external.advertiserName').optional({ nullable: true }).isString().isLength({ max: 120 }),
+  body('external.advertiserLogoUrl').optional({ nullable: true }).isString().isLength({ max: 2048 }),
+  body('external.advertiserLogoBase64').optional({ nullable: true }).isString(),
+  body('external.category').optional({ nullable: true }).isString().isLength({ max: 120 }),
+  body('external.subCategory').optional({ nullable: true }).isString().isLength({ max: 120 })
+];
+
+// productId/destinationUrl are cross-conditional on adSource, so they're
+// validated with a single custom() per field rather than two exclusive chains.
 const createCampaignValidation = [
   body('name').trim().notEmpty().isLength({ max: 160 }),
   body('description').optional().isString().isLength({ max: 1000 }),
   body('status').optional().isIn(AD_CAMPAIGN_STATUSES),
-  body('productId').custom(isObjectId).withMessage('Valid product id is required'),
+  body('productId')
+    .if((value, { req }) => req.body.adSource !== 'external')
+    .custom(isObjectId)
+    .withMessage('Valid product id is required'),
+  body('external.destinationUrl')
+    .if((value, { req }) => req.body.adSource === 'external')
+    .notEmpty()
+    .withMessage('external.destinationUrl is required for external campaigns'),
+  body('external.advertiserName')
+    .if((value, { req }) => req.body.adSource === 'external')
+    .trim()
+    .notEmpty()
+    .withMessage('external.advertiserName is required for external campaigns'),
   body('placements').optional().isArray(),
   body('placements.*').optional().isIn(AD_PLACEMENTS),
   ...adTargetingValidation,
@@ -88,6 +118,7 @@ const createCampaignValidation = [
   body('popupCooldownMinutes').optional().isInt({ min: 5, max: 1440 }),
   body('priority').optional().isInt({ min: 1, max: 100 }),
   ...adCreativeValidation,
+  ...adExternalValidation,
   body('sourceServiceRequest').optional().custom(isObjectId).withMessage('sourceServiceRequest must be valid id'),
   body('metadata').optional().isObject()
 ];
@@ -105,6 +136,7 @@ const updateCampaignValidation = [
   body('popupCooldownMinutes').optional().isInt({ min: 5, max: 1440 }),
   body('priority').optional().isInt({ min: 1, max: 100 }),
   ...adCreativeValidation,
+  ...adExternalValidation,
   body('metadata').optional().isObject()
 ];
 

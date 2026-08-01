@@ -632,4 +632,148 @@ describe('Ad platform service', () => {
     const stillEligibleFeed = await getFeed({ userId: undefined, placement: 'dashboard_home', limit: 5 });
     expect(stillEligibleFeed.cards.length).toBe(1);
   });
+
+  describe('external (third-party) campaigns', () => {
+    const externalPayload = (overrides = {}) => ({
+      name: 'Third-party spotlight',
+      adSource: 'external',
+      status: 'active',
+      placements: ['hero_banner', 'dashboard_home', 'cart_cross_sell'],
+      external: {
+        destinationUrl: 'https://partner.example.com/promo',
+        advertiserName: 'Acme Tools Co',
+        category: PRODUCT_CATEGORIES[0].id,
+        subCategory: 'precision'
+      },
+      creative: { bannerImageUrl: 'https://cdn.test/ad-banners/preset-banner.jpg' },
+      ...overrides
+    });
+
+    test('creates without a productId and serves with product: null and no pricing', async () => {
+      const admin = await createUser('8701', 'admin');
+      const campaign = await createCampaign({ actorId: admin._id, payload: externalPayload() });
+
+      expect(campaign.adSource).toBe('external');
+      expect(campaign.product).toBeNull();
+      expect(campaign.external.advertiserName).toBe('Acme Tools Co');
+
+      const feed = await getFeed({ userId: undefined, placement: 'hero_banner', limit: 5 });
+      expect(feed.cards.length).toBe(1);
+      const card = feed.cards[0];
+      expect(card.adSource).toBe('external');
+      expect(card.product).toBeNull();
+      expect(card.external.destinationUrl).toBe('https://partner.example.com/promo');
+      expect(card.pricing).toBeUndefined();
+      expect(card.priceOverride).toBeUndefined();
+    });
+
+    test('rejects a non-https destination URL', async () => {
+      const admin = await createUser('8702', 'admin');
+      await expect(
+        createCampaign({
+          actorId: admin._id,
+          payload: externalPayload({ external: { ...externalPayload().external, destinationUrl: 'http://partner.example.com' } })
+        })
+      ).rejects.toThrow(/https/i);
+    });
+
+    test('rejects a javascript: destination URL', async () => {
+      const admin = await createUser('8703', 'admin');
+      await expect(
+        createCampaign({
+          actorId: admin._id,
+          payload: externalPayload({ external: { ...externalPayload().external, destinationUrl: 'javascript:alert(1)' } })
+        })
+      ).rejects.toThrow();
+    });
+
+    test('creation rejects an external campaign with no banner', async () => {
+      const admin = await createUser('8704', 'admin');
+      await expect(
+        createCampaign({ actorId: admin._id, payload: externalPayload({ status: 'draft', creative: {} }) })
+      ).rejects.toThrow(/banner/i);
+    });
+
+    test('activation re-checks the banner for a campaign that lost its creative after creation', async () => {
+      const admin = await createUser('8709', 'admin');
+      const campaign = await createCampaign({
+        actorId: admin._id,
+        payload: externalPayload({ status: 'draft' })
+      });
+
+      // Simulate the banner being cleared out-of-band (e.g. a partial edit)
+      // so activate() is the one to catch it, independent of create().
+      await AdCampaign.findByIdAndUpdate(campaign.id, { $set: { creative: {} } });
+
+      await expect(activateCampaign({ campaignId: campaign.id, actorId: admin._id })).rejects.toThrow(/banner/i);
+    });
+
+    test('cart_cross_sell matches on the external campaign\'s tagged category', async () => {
+      const admin = await createUser('8705', 'admin');
+      const category = PRODUCT_CATEGORIES[1].id;
+      await createCampaign({
+        actorId: admin._id,
+        payload: externalPayload({
+          external: { ...externalPayload().external, category, subCategory: 'precision' }
+        })
+      });
+
+      const matchedFeed = await getFeed({
+        userId: undefined,
+        placement: 'cart_cross_sell',
+        matchCategory: category,
+        matchSubCategory: 'precision'
+      });
+      expect(matchedFeed.cards.length).toBe(1);
+
+      const unmatchedFeed = await getFeed({
+        userId: undefined,
+        placement: 'cart_cross_sell',
+        matchCategory: category,
+        matchSubCategory: 'other-sub'
+      });
+      expect(unmatchedFeed.cards.length).toBe(0);
+    });
+
+    test('insights omit attribution for external campaigns', async () => {
+      const admin = await createUser('8706', 'admin');
+      const campaign = await createCampaign({ actorId: admin._id, payload: externalPayload() });
+
+      await recordAdEvent({ campaignId: campaign.id, userId: undefined, type: 'impression', placement: 'hero_banner', sessionId: 's1' });
+      await recordAdEvent({ campaignId: campaign.id, userId: undefined, type: 'click', placement: 'hero_banner', sessionId: 's1' });
+
+      const insights = await getCampaignInsights({ campaignId: campaign.id });
+      expect(insights.attribution).toBeUndefined();
+      expect(insights.summary.impression.count).toBe(1);
+      expect(insights.summary.click.count).toBe(1);
+    });
+
+    test('a pre-existing internal campaign with no adSource field still serves unchanged', async () => {
+      const admin = await createUser('8707', 'admin');
+      const seller = await createUser('8708', 'user');
+      const sellerCompany = await createCompany(seller, '8707');
+      const category = PRODUCT_CATEGORIES[2].id;
+      const product = await createMarketplaceProduct({ company: sellerCompany, user: seller, suffix: '8707', category });
+
+      // Simulate a legacy document written before adSource existed by inserting
+      // directly and unsetting the field, bypassing the schema default.
+      const legacy = await AdCampaign.create({
+        name: 'Legacy campaign',
+        status: 'active',
+        product: product._id,
+        advertiserUser: seller._id,
+        advertiserCompany: sellerCompany._id,
+        placements: ['dashboard_home'],
+        creative: { title: 'Legacy ad' },
+        createdBy: admin._id
+      });
+      await AdCampaign.collection.updateOne({ _id: legacy._id }, { $unset: { adSource: '' } });
+
+      const feed = await getFeed({ userId: undefined, placement: 'dashboard_home', limit: 5 });
+      expect(feed.cards.length).toBe(1);
+      expect(feed.cards[0].campaignId).toBe(legacy._id.toString());
+      expect(feed.cards[0].adSource).toBe('internal');
+      expect(feed.cards[0].product.id).toBe(product._id.toString());
+    });
+  });
 });

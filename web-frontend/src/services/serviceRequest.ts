@@ -13,8 +13,13 @@ const toQuery = (params?: Record<string, unknown>): QueryParams | undefined => {
 };
 
 const create = async (payload: CreateServiceRequestInput) => {
-  const res = await httpClient.post<{ request: ServiceRequest }>("/services", payload);
-  return res.request;
+  // Controller returns `{ service, message }` (backend/src/modules/services/
+  // controllers/service.controller.js) — this used to read `res.request`,
+  // which is always undefined. Harmless while the return value went unused,
+  // but blocks anything (e.g. a success screen showing the created request)
+  // from relying on it.
+  const res = await httpClient.post<{ service: ServiceRequest }>("/services", payload);
+  return res.service;
 };
 
 // Param is named `serviceType` (not `type`) to match what the backend's
@@ -25,8 +30,11 @@ const list = (params?: { serviceType?: ServiceType; status?: ServiceStatus; limi
   httpClient.get<ServiceListResponse>("/services", { params: toQuery(params) });
 
 const getById = async (serviceId: string) => {
-  const res = await httpClient.get<{ request: ServiceRequest }>(`/services/${serviceId}`);
-  return res.request;
+  // Same `{ service }` shape as create() — was reading `res.request` and
+  // always resolving `undefined`, which is why the detail page showed
+  // "Request not found" for every valid service request.
+  const res = await httpClient.get<{ service: ServiceRequest }>(`/services/${serviceId}`);
+  return res.service;
 };
 
 export const serviceRequestService = { create, list, getById };

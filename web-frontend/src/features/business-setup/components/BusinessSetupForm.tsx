@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { businessSetupService } from "@/src/services/businessSetup";
 import { ApiError } from "@/src/lib/api-error";
+import { Field, FieldInput, FieldTextarea } from "@/src/components/ui/FormField";
+import { BUSINESS_TONE } from "@/src/components/ui/ActionBanner";
 import type {
   BusinessBudgetRange, BusinessContactChannel, BusinessFounderExperience,
   BusinessStartTimeline, BusinessSupportArea, BusinessWorkModel,
@@ -69,24 +70,9 @@ const CONTACT_CHANNELS: Array<{ value: BusinessContactChannel; label: string; ic
 ];
 
 /* ─── Shared UI atoms ────────────────────────────────────────── */
-
-const baseInput: React.CSSProperties = {
-  border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)",
-};
-const inputCls = "w-full rounded-xl px-3.5 py-2.5 text-sm focus:outline-none transition-shadow focus:shadow-[0_0_0_2px_rgba(20,141,178,0.2)]";
-
-const Field = ({ label, required, hint, error, children }: {
-  label: string; required?: boolean; hint?: string; error?: string; children: React.ReactNode;
-}) => (
-  <div className="space-y-1.5">
-    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-      {label}{required && <span style={{ color: "var(--accent)" }}> *</span>}
-    </p>
-    {children}
-    {hint && !error && <p className="text-[11px]" style={{ color: "var(--medium-gray)" }}>{hint}</p>}
-    {error && <p className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{error}</p>}
-  </div>
-);
+// `Field`/`FieldInput`/`FieldTextarea` come from the shared FormField
+// primitives (src/components/ui/FormField.tsx) — this file used to hand-roll
+// its own copy of all three, byte-for-byte duplicating ServiceRequestForm's.
 
 /** Single-select chip row */
 const ChipSelect = <T extends string>({
@@ -208,7 +194,6 @@ const INITIAL: FormState = {
 /* ─── Main component ─────────────────────────────────────────── */
 
 export const BusinessSetupForm = () => {
-  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -369,12 +354,13 @@ export const BusinessSetupForm = () => {
           <span style={{ color: "var(--foreground)" }}>Business setup</span>
         </div>
 
-        {/* Hero banner — indigo gradient matches the app's BUSINESS_ACCENT
-            palette used on the Home screen's "Start your own business" card,
-            so the CTA and this landing page read as the same feature. */}
+        {/* Hero banner — reuses BUSINESS_TONE (src/components/ui/ActionBanner.tsx),
+            the same indigo gradient as the app's BUSINESS_ACCENT palette and
+            the dashboard "Start your own business" CTA, so all three surfaces
+            read as the same feature instead of three independently-picked hexes. */}
         <div
           className="mt-4 overflow-hidden rounded-3xl p-6 md:p-8"
-          style={{ background: "linear-gradient(135deg, #312E81 0%, #0F0C45 100%)", color: "#fff" }}
+          style={{ background: `linear-gradient(135deg, ${BUSINESS_TONE.gradient[0]} 0%, ${BUSINESS_TONE.gradient[1]} 100%)`, color: "#fff" }}
         >
           <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             {/* Decorative circles */}
@@ -429,10 +415,10 @@ export const BusinessSetupForm = () => {
 
                 <Field label="What business are you starting?" required error={errors.businessType}
                   hint="Describe your idea: e.g. Snacks manufacturing, packaging unit, textile trading">
-                  <input
-                    className={inputCls} style={baseInput}
+                  <FieldInput
                     placeholder="e.g. Spice manufacturing unit for export"
                     value={form.businessType}
+                    error={errors.businessType}
                     onChange={(e) => set("businessType", e.target.value)}
                   />
                 </Field>
@@ -442,10 +428,10 @@ export const BusinessSetupForm = () => {
                 </Field>
 
                 <Field label="Location" required error={errors.location} hint="City and state where you plan to operate">
-                  <input
-                    className={inputCls} style={baseInput}
+                  <FieldInput
                     placeholder="e.g. Surat, Gujarat"
                     value={form.location}
+                    error={errors.location}
                     onChange={(e) => set("location", e.target.value)}
                   />
                 </Field>
@@ -502,9 +488,8 @@ export const BusinessSetupForm = () => {
                     />
                   </Field>
                   <Field label="Current team size" hint="0 if starting solo">
-                    <input
-                      type="number" min="0" max="10000"
-                      className={inputCls} style={baseInput}
+                    <FieldInput
+                      type="number" min={0} max={10000}
                       placeholder="0"
                       value={form.teamSize}
                       onChange={(e) => set("teamSize", e.target.value.replace(/\D/g, ""))}
@@ -528,22 +513,22 @@ export const BusinessSetupForm = () => {
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <Field label="Your name">
-                    <input className={inputCls} style={baseInput} placeholder="Full name"
+                    <FieldInput placeholder="Full name"
                       value={form.contactName} onChange={(e) => set("contactName", e.target.value)} />
                   </Field>
                   <Field label="Phone">
-                    <input type="tel" className={inputCls} style={baseInput} placeholder="+91 98765 43210"
+                    <FieldInput type="tel" placeholder="+91 98765 43210"
                       value={form.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} />
                   </Field>
                   <Field label="Email" error={errors.contactEmail}>
-                    <input type="email" className={inputCls} style={{ ...baseInput, borderColor: errors.contactEmail ? "var(--accent)" : "var(--border)" }}
+                    <FieldInput type="email" error={errors.contactEmail}
                       placeholder="you@company.com"
                       value={form.contactEmail} onChange={(e) => set("contactEmail", e.target.value)} />
                   </Field>
                 </div>
 
                 <Field label="Additional notes" hint="Describe any constraints, timeline pressures, or specific requirements">
-                  <textarea rows={3} className={inputCls} style={baseInput}
+                  <FieldTextarea rows={3}
                     placeholder="Share anything that helps us understand your situation better…"
                     value={form.notes} onChange={(e) => set("notes", e.target.value)} />
                 </Field>

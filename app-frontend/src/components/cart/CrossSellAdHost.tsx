@@ -5,9 +5,9 @@ import { useCart } from "../../hooks/useCart";
 import { useToast } from "../ui/Toast";
 import { AppRole } from "../../constants/roles";
 import { adService, AdFeedCard } from "../../services/ad.service";
+import { openAdDestination } from "../../services/adDestination";
 import { productService } from "../../services/product.service";
 import { crossSellEvents } from "../../services/cartCrossSell.events";
-import { navigateRoot } from "../../navigation/navigationRef";
 import { buildCrossSellView } from "./crossSell.shared";
 import { CrossSellAdModal } from "./CrossSellAdModal";
 import { CrossSellAdStrip } from "./CrossSellAdStrip";
@@ -78,7 +78,7 @@ export const CrossSellAdHost = () => {
     (c: AdFeedCard) => {
       logEvent(c, "click");
       close();
-      if (c.product?.id) navigateRoot("ProductDetails", { productId: c.product.id });
+      openAdDestination(c);
     },
     [logEvent, close]
   );

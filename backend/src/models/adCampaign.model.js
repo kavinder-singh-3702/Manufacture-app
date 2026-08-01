@@ -3,7 +3,8 @@ const {
   AD_CAMPAIGN_STATUSES,
   AD_PLACEMENTS,
   AD_MEDIA_TYPES,
-  AD_TARGETING_MODES
+  AD_TARGETING_MODES,
+  AD_SOURCES
 } = require('../constants/ad');
 
 const { Schema } = mongoose;
@@ -58,13 +59,36 @@ const AdCreativeSchema = new Schema(
   { _id: false }
 );
 
+// Third-party (non-catalog) creative: a campaign either promotes an internal
+// `product` OR links out to this external destination — never both.
+const AdExternalSchema = new Schema(
+  {
+    destinationUrl: { type: String, trim: true, maxlength: 2048 },
+    advertiserName: { type: String, trim: true, maxlength: 120 },
+    advertiserLogoUrl: { type: String, trim: true },
+    // Used only to satisfy the cart_cross_sell placement's category match,
+    // since there's no real product to read category/subCategory from.
+    category: { type: String, trim: true, maxlength: 120 },
+    subCategory: { type: String, trim: true, maxlength: 120 }
+  },
+  { _id: false }
+);
+
 const adCampaignSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 160 },
     description: { type: String, trim: true, maxlength: 1000 },
     status: { type: String, enum: AD_CAMPAIGN_STATUSES, default: 'draft', index: true },
 
-    product: { type: Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
+    adSource: { type: String, enum: AD_SOURCES, default: 'internal', index: true },
+
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: 'Product',
+      required: function isInternalCampaign() { return this.adSource !== 'external'; },
+      index: true
+    },
+    external: { type: AdExternalSchema, default: undefined },
     advertiserUser: { type: Schema.Types.ObjectId, ref: 'User' },
     advertiserCompany: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
 

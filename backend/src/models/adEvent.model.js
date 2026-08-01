@@ -9,7 +9,8 @@ const adEventSchema = new Schema(
     // Optional: anonymous (logged-out) web/app visitors also generate events —
     // only the campaign + type matter for impression/CTR counts in that case.
     user: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-    product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    // Absent for external (non-catalog) campaigns.
+    product: { type: Schema.Types.ObjectId, ref: 'Product' },
     advertiserCompany: { type: Schema.Types.ObjectId, ref: 'Company' },
 
     type: { type: String, enum: AD_EVENT_TYPES, required: true, index: true },

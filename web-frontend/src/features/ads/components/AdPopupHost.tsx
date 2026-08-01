@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
 import { adService, AdFeedCard } from "@/src/services/ad";
 import { canShowByCap, canShowPopupNow, isDismissed, recordDismiss, recordImpression, setPopupLastShownAt } from "../adFrequency";
+import { buildAdView } from "../adView";
+import { openAdDestination } from "../adDestination";
 import { AdPopup } from "./AdPopup";
 
 // Reuses the hero_banner placement for the top-priority ad — same choice the
@@ -58,7 +60,7 @@ export const AdPopupHost = () => {
     (c: AdFeedCard) => {
       logEvent(c, "click");
       close();
-      router.push(c.product?.id ? `/products/${c.product.id}` : "/products");
+      openAdDestination(buildAdView(c).destination, router);
     },
     [logEvent, close, router]
   );

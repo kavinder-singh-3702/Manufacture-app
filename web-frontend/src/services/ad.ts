@@ -7,7 +7,21 @@ export type AdPlacement = "dashboard_home" | "hero_banner" | "cart_cross_sell";
 export type AdMediaType = "image" | "video";
 export type AdTargetingMode = "any" | "all";
 export type AdEventType = "impression" | "click" | "dismiss";
+export type AdSource = "internal" | "external";
 export type AdPrice = { amount?: number; currency?: string; unit?: string };
+
+// A campaign either promotes an internal catalog `product` (adSource:
+// "internal") OR links out to this third-party destination (adSource:
+// "external") — never both. Category/subCategory are only used to satisfy
+// the cart_cross_sell placement's match, since there's no real product.
+export type AdExternal = {
+  destinationUrl: string;
+  advertiserName: string;
+  advertiserLogoUrl?: string;
+  advertiserLogoBase64?: string;
+  category?: string;
+  subCategory?: string;
+};
 
 export type AdTargeting = {
   mode?: AdTargetingMode;
@@ -54,7 +68,9 @@ export type AdCampaign = {
   name: string;
   description?: string;
   status: AdCampaignStatus;
+  adSource: AdSource;
   product: AdProductSummary | null;
+  external?: AdExternal;
   placements: AdPlacement[];
   targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
@@ -104,7 +120,9 @@ export type UpsertAdCampaignInput = {
   name: string;
   description?: string;
   status?: AdCampaignStatus;
-  productId: string;
+  adSource?: AdSource;
+  productId?: string;
+  external?: AdExternal;
   placements?: AdPlacement[];
   targeting?: AdTargeting;
   schedule?: { startAt?: string; endAt?: string };
@@ -126,6 +144,7 @@ export type AdFeedCard = {
   campaignId: string;
   sessionId: string;
   placement: AdPlacement;
+  adSource: AdSource;
   title: string;
   subtitle?: string;
   ctaLabel?: string;
@@ -135,7 +154,8 @@ export type AdFeedCard = {
   popupCooldownMinutes?: number;
   priceOverride?: AdPrice;
   pricing?: { listed?: AdPrice; advertised?: AdPrice; isDiscounted?: boolean };
-  product: AdProductSummary;
+  product: AdProductSummary | null;
+  external?: Pick<AdExternal, "destinationUrl" | "advertiserName" | "advertiserLogoUrl">;
   bannerImageUrl?: string;
   bannerVideoUrl?: string;
   bannerPosterUrl?: string;

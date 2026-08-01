@@ -115,31 +115,37 @@ export const CrossSellAdModal = ({ visible, card, adding, onAdd, onView, onDismi
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              disabled={adding}
-              onPress={() => onAdd(card)}
-              style={styles.ctaWrap}
-            >
-              <LinearGradient
-                colors={["#2E3192", "#1B1464"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cta}
+            {card.adSource !== "external" && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                disabled={adding}
+                onPress={() => onAdd(card)}
+                style={styles.ctaWrap}
               >
-                {adding ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="cart" size={16} color="#fff" />
-                    <Text style={styles.ctaText}>Add to cart</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={["#2E3192", "#1B1464"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cta}
+                >
+                  {adding ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="cart" size={16} color="#fff" />
+                      <Text style={styles.ctaText}>Add to cart</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity activeOpacity={0.8} onPress={() => onView(card)} style={styles.viewBtn}>
-              <Text style={styles.viewText}>View</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => onView(card)}
+              style={[styles.viewBtn, card.adSource === "external" && styles.viewBtnFull]}
+            >
+              <Text style={styles.viewText}>{card.adSource === "external" ? v.ctaLabel : "View"}</Text>
             </TouchableOpacity>
           </View>
 
@@ -264,6 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   viewText: { color: "#2E3192", fontSize: 14, fontWeight: "800" },
+  viewBtnFull: { flex: 1 },
   secondaryBtn: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
   secondaryTextLink: { color: "#9AA0AE", fontSize: 13, fontWeight: "700" },
 });

@@ -21,18 +21,30 @@ export const fieldInputStyle = (error?: string): React.CSSProperties => ({
 
 export const Field = ({
   label,
+  required,
+  hint,
   error,
   children,
 }: {
   label: string;
+  /** Renders a red " *" after the label — services and business-setup forms both used to hand-roll this locally. */
+  required?: boolean;
+  /** Muted helper line shown under the input when there's no error. */
+  hint?: string;
   error?: string;
   children: ReactNode;
 }) => (
   <div className="space-y-1.5">
     <label className="block text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
       {label}
+      {required && <span style={{ color: "var(--accent)" }}> *</span>}
     </label>
     {children}
+    {hint && !error && (
+      <p className="text-[11px]" style={{ color: "var(--medium-gray)" }}>
+        {hint}
+      </p>
+    )}
     {error && (
       <motion.p
         initial={{ opacity: 0, y: -4 }}

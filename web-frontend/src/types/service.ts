@@ -4,6 +4,29 @@ export type ServiceType = "machine_repair" | "worker" | "transport" | "advertise
 export type ServiceStatus = "pending" | "in_review" | "scheduled" | "in_progress" | "completed" | "cancelled";
 export type ServicePriority = "low" | "normal" | "high" | "urgent";
 
+export type ServiceLocation = {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+};
+
+export type ServiceAvailabilityWindow = {
+  startDate?: string;
+  endDate?: string;
+  isFlexible?: boolean;
+  notes?: string;
+};
+
+export type ServiceContact = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  preferredChannel?: "phone" | "email" | "chat";
+};
+
 export type ServiceRequest = {
   _id: string;
   serviceType: ServiceType;
@@ -13,18 +36,59 @@ export type ServiceRequest = {
   priority: ServicePriority;
   company?: string;
   createdBy: string;
-  contact?: { name?: string; email?: string; phone?: string };
-  location?: { line1?: string; city?: string; state?: string; country?: string };
-  schedule?: { start?: string; end?: string; flexible?: boolean; notes?: string };
-  budget?: { estimatedCost?: number; currency?: string };
+  contact?: ServiceContact;
+  location?: ServiceLocation;
+  schedule?: ServiceAvailabilityWindow;
+  budget?: { estimatedCost?: number; currency?: string; notes?: string };
+  statusHistory?: Array<{ from?: ServiceStatus; to: ServiceStatus; at: string; reason?: string; note?: string }>;
+  // Mirrors backend/src/models/serviceRequest.model.js's MachineRepairDetailsSchema
+  // field-for-field. `machineType` is a fixed id (see
+  // src/constants/services.ts MACHINE_TYPE_IDS) — never free text.
   machineRepairDetails?: {
-    machineType?: string; machineName?: string; issueSummary?: string; severity?: string;
+    machineType?: string;
+    machineName?: string;
+    manufacturer?: string;
+    model?: string;
+    issueSummary?: string;
+    issueDetails?: string;
+    severity?: "low" | "medium" | "high" | "critical";
+    requiresDowntime?: boolean;
+    warrantyStatus?: "in_warranty" | "out_of_warranty" | "unknown";
+    preferredSchedule?: ServiceAvailabilityWindow;
   };
+  // Mirrors WorkerRequestDetailsSchema. `industry` is a fixed id (see
+  // WORKER_INDUSTRY_IDS) — never free text.
   workerDetails?: {
-    industry?: string; headcount?: number; roles?: string[]; contractType?: string;
+    industry?: string;
+    roles?: string[];
+    headcount?: number;
+    experienceLevel?: "entry" | "mid" | "senior" | "expert";
+    shiftType?: "day" | "night" | "rotational" | "flexible";
+    contractType?: "one_time" | "short_term" | "long_term";
+    startDate?: string;
+    durationWeeks?: number;
+    skills?: string[];
+    certifications?: string[];
+    safetyClearances?: string[];
+    languagePreferences?: string[];
+    budgetPerWorker?: { amount?: number; currency?: string };
   };
+  // Mirrors TransportDetailsSchema — `pickupLocation`/`dropLocation` are
+  // nested location objects, NOT flat `pickupCity`/`dropCity` strings. The
+  // web form previously sent the flat shape; express-validator doesn't
+  // reject unknown keys, so it passed validation and Mongoose silently
+  // dropped the route data on save.
   transportDetails?: {
-    pickupCity?: string; dropCity?: string; loadType?: string; vehicleType?: string;
+    mode?: "road" | "rail" | "air" | "sea";
+    pickupLocation?: ServiceLocation;
+    dropLocation?: ServiceLocation;
+    loadType?: string;
+    loadWeightTons?: number;
+    vehicleType?: string;
+    requiresReturnTrip?: boolean;
+    availability?: ServiceAvailabilityWindow;
+    specialHandling?: string;
+    insuranceNeeded?: boolean;
   };
   /**
    * Mirrors the backend's AdvertisementDetailsSchema
@@ -72,7 +136,7 @@ export type CreateServiceRequestInput = {
   contact?: ServiceRequest["contact"];
   location?: ServiceRequest["location"];
   schedule?: ServiceRequest["schedule"];
-  budget?: { estimatedCost?: number; currency?: string };
+  budget?: ServiceRequest["budget"];
   machineRepairDetails?: ServiceRequest["machineRepairDetails"];
   workerDetails?: ServiceRequest["workerDetails"];
   transportDetails?: ServiceRequest["transportDetails"];

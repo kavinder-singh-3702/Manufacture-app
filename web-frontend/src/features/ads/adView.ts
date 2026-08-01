@@ -20,6 +20,10 @@ const titleCase = (value?: string) =>
 
 export type AdUrgency = { label: string } | null;
 
+// Where a click on this card should go — an internal route, or a third-party
+// URL that must open outside the SPA's own navigation. See adDestination.ts.
+export type AdDestination = { kind: "internal"; href: string } | { kind: "external"; url: string };
+
 export type AdView = {
   heroImage?: string;
   productImage?: string;
@@ -33,21 +37,23 @@ export type AdView = {
   discountBadge: string;
   urgency: AdUrgency;
   ctaLabel: string;
-  productHref: string;
+  destination: AdDestination;
 };
 
 export const buildAdView = (card: AdFeedCard): AdView => {
+  const isExternal = card.adSource === "external";
   const product = card.product;
   const productImage = product?.images?.[0]?.url;
-  const productName = card.title || product?.name || "Featured product";
-  const companyName = card.subtitle || product?.company?.displayName || "";
-  const categoryLabel = titleCase(product?.subCategory || product?.category);
+  const productName = card.title || product?.name || card.external?.advertiserName || "Sponsored";
+  const companyName = card.subtitle || product?.company?.displayName || card.external?.advertiserName || "";
+  const categoryLabel = isExternal ? "" : titleCase(product?.subCategory || product?.category);
 
-  const listed = card.pricing?.listed || product?.price;
-  const advertised = card.pricing?.advertised || card.priceOverride;
+  const listed = isExternal ? undefined : card.pricing?.listed || product?.price;
+  const advertised = isExternal ? undefined : card.pricing?.advertised || card.priceOverride;
   const isDiscounted =
-    Boolean(card.pricing?.isDiscounted) ||
-    Boolean(advertised?.amount && listed?.amount && Number(advertised.amount) < Number(listed.amount));
+    !isExternal &&
+    (Boolean(card.pricing?.isDiscounted) ||
+      Boolean(advertised?.amount && listed?.amount && Number(advertised.amount) < Number(listed.amount)));
   const displayPrice = advertised || listed;
 
   const savings =
@@ -60,11 +66,16 @@ export const buildAdView = (card: AdFeedCard): AdView => {
   const hoursLeft = card.endsAt ? (new Date(card.endsAt).getTime() - Date.now()) / 3_600_000 : Infinity;
 
   let urgency: AdUrgency = null;
-  if (typeof qty === "number" && qty > 0 && qty <= Math.max(5, minQty)) {
+  if (!isExternal && typeof qty === "number" && qty > 0 && qty <= Math.max(5, minQty)) {
     urgency = { label: `Only ${qty} left` };
-  } else if (Number.isFinite(hoursLeft) && hoursLeft > 0 && hoursLeft <= 48) {
+  } else if (!isExternal && Number.isFinite(hoursLeft) && hoursLeft > 0 && hoursLeft <= 48) {
     urgency = { label: hoursLeft <= 24 ? `Deal ends in ${Math.max(1, Math.ceil(hoursLeft))}h` : "Deal ends tomorrow" };
   }
+
+  const destination: AdDestination =
+    isExternal && card.external?.destinationUrl
+      ? { kind: "external", url: card.external.destinationUrl }
+      : { kind: "internal", href: product?.id ? `/products/${product.id}` : "/products" };
 
   return {
     heroImage: card.bannerPosterUrl || card.bannerImageUrl || productImage,
@@ -78,7 +89,7 @@ export const buildAdView = (card: AdFeedCard): AdView => {
     isDiscounted,
     discountBadge,
     urgency,
-    ctaLabel: card.ctaLabel || "View product",
-    productHref: product?.id ? `/products/${product.id}` : "/products",
+    ctaLabel: card.ctaLabel || (isExternal ? "Learn more" : "View product"),
+    destination,
   };
 };

@@ -102,13 +102,13 @@ export const CrossSellAdStrip = ({
         <TouchableOpacity
           activeOpacity={0.85}
           disabled={adding}
-          onPress={() => onAdd(card)}
+          onPress={() => (card.adSource === "external" ? onView(card) : onAdd(card))}
           style={styles.addBtn}
         >
           {adding ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name={card.adSource === "external" ? "arrow-forward" : "add"} size={20} color="#fff" />
           )}
         </TouchableOpacity>
 
