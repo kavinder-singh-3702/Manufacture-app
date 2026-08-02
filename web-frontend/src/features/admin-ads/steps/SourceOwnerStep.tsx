@@ -87,8 +87,8 @@ export const SourceOwnerStep = ({ wizard, motionSafe }: { wizard: CampaignWizard
             <TextInput value={wizard.advertiserName} onChange={(e) => wizard.setAdvertiserName(e.target.value)} placeholder="e.g. Acme Tools Co" />
           </Field>
           <Field label="Advertiser logo (optional)">
-            <MediaDropzone label="+ Upload logo" accept="image/*" preview={wizard.advertiserLogoPreview} height="h-16"
-              onFile={wizard.handleAdvertiserLogo} onRemove={() => { wizard.setAdvertiserLogoPreview(null); wizard.setAdvertiserLogoBase64(null); }} />
+            <MediaDropzone label="+ Upload logo" accept="image/*" preview={wizard.advertiserLogo.preview} height="h-16"
+              onFile={wizard.advertiserLogo.pick} onRemove={wizard.advertiserLogo.remove} />
           </Field>
         </div>
       </Reveal>

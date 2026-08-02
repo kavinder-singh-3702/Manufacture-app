@@ -95,7 +95,7 @@ export const AudienceStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
                   options={[{ value: "any", label: "Match ANY rule" }, { value: "all", label: "Match ALL rules" }]} />
               </div>
               <Field label="Signal lookback (days)">
-                <TextInput type="number" min="1" max="365" value={wizard.lookbackDays}
+                <TextInput type="number" inputMode="numeric" enterKeyHint="done" min="1" max="365" value={wizard.lookbackDays}
                   onChange={(e) => wizard.setLookbackDays(e.target.value.replace(/[^0-9]/g, ""))} />
               </Field>
             </div>

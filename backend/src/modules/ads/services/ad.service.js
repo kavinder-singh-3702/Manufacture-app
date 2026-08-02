@@ -210,46 +210,76 @@ const normalizeExternal = (external) => {
   };
 };
 
-// Uploads any base64 banner media (image or video) to storage and returns the
-// resolved creative fields. Image and video are mutually exclusive.
-const processBannerMedia = async ({ creative, campaignId }) => {
-  if (!creative || typeof creative !== 'object') return null;
+// Uploads banner media (image or video, plus an optional poster) to storage
+// and returns the resolved creative fields. Image and video are mutually
+// exclusive. `mediaFiles` (raw multipart buffers from parseAdMultipart) is
+// preferred when present; the `*Base64` fields on `creative` remain a
+// fallback for callers with no multipart request to draw a buffer from
+// (e.g. the service-request prefill flow) — see uploadAdBanner.
+const processBannerMedia = async ({ creative, campaignId, mediaFiles }) => {
+  if ((!creative || typeof creative !== 'object') && !mediaFiles) return null;
+  const files = mediaFiles || {};
+  const c = creative || {};
 
   let result = null;
 
-  if (typeof creative.bannerImageBase64 === 'string' && creative.bannerImageBase64.trim()) {
+  if (files.bannerImage || (typeof c.bannerImageBase64 === 'string' && c.bannerImageBase64.trim())) {
     const uploaded = await uploadAdBanner({
       campaignId,
       kind: 'image',
-      base64: creative.bannerImageBase64,
-      mimeType: creative.bannerMimeType,
+      buffer: files.bannerImage?.buffer,
+      base64: c.bannerImageBase64,
+      mimeType: files.bannerImage?.mimetype || c.bannerMimeType,
       fileName: 'ad-banner.jpg'
     });
     result = { bannerImageUrl: uploaded.url, bannerVideoUrl: null, bannerMediaType: 'image' };
-  } else if (typeof creative.bannerVideoBase64 === 'string' && creative.bannerVideoBase64.trim()) {
+  } else if (files.bannerVideo || (typeof c.bannerVideoBase64 === 'string' && c.bannerVideoBase64.trim())) {
     const uploaded = await uploadAdBanner({
       campaignId,
       kind: 'video',
-      base64: creative.bannerVideoBase64,
-      mimeType: creative.bannerMimeType,
+      buffer: files.bannerVideo?.buffer,
+      base64: c.bannerVideoBase64,
+      mimeType: files.bannerVideo?.mimetype || c.bannerMimeType,
       fileName: 'ad-banner.mp4'
     });
     result = { bannerVideoUrl: uploaded.url, bannerImageUrl: null, bannerMediaType: 'video' };
   }
 
   // Poster image (uploaded independently — typically paired with a video banner).
-  if (typeof creative.bannerPosterBase64 === 'string' && creative.bannerPosterBase64.trim()) {
+  if (files.bannerPoster || (typeof c.bannerPosterBase64 === 'string' && c.bannerPosterBase64.trim())) {
     const uploaded = await uploadAdBanner({
       campaignId,
       kind: 'image',
-      base64: creative.bannerPosterBase64,
-      mimeType: creative.bannerPosterMimeType || creative.bannerMimeType,
+      buffer: files.bannerPoster?.buffer,
+      base64: c.bannerPosterBase64,
+      mimeType: files.bannerPoster?.mimetype || c.bannerPosterMimeType || c.bannerMimeType,
       fileName: 'ad-poster.jpg'
     });
     result = { ...(result || {}), bannerPosterUrl: uploaded.url };
   }
 
   return result;
+};
+
+// Advertiser logo upload for external campaigns — mirrors processBannerMedia's
+// buffer-preferred/base64-fallback shape. Previously this upload simply
+// didn't exist: normalizeExternal only ever read a pre-set `advertiserLogoUrl`,
+// so `external.advertiserLogoBase64` sent by both the web and app wizards was
+// silently dropped and no external campaign's logo was ever actually saved.
+const processAdvertiserLogo = async ({ external, campaignId, mediaFiles }) => {
+  const file = mediaFiles?.advertiserLogo;
+  const base64 = external?.advertiserLogoBase64;
+  if (!file && !(typeof base64 === 'string' && base64.trim())) return undefined;
+
+  const uploaded = await uploadAdBanner({
+    campaignId,
+    kind: 'image',
+    buffer: file?.buffer,
+    base64,
+    mimeType: file?.mimetype || external?.advertiserLogoMimeType,
+    fileName: 'advertiser-logo.jpg'
+  });
+  return uploaded.url;
 };
 
 const assertPriceOverrideWithinListedPrice = (priceOverride, product) => {
@@ -438,7 +468,7 @@ const listAdminCampaigns = async (filters = {}) => {
   };
 };
 
-const createCampaign = async ({ payload, actorId }) => {
+const createCampaign = async ({ payload, actorId, mediaFiles }) => {
   const adSource = payload.adSource === 'external' ? 'external' : 'internal';
   const target = await resolveCampaignTarget({ adSource, productId: payload.productId, external: payload.external });
 
@@ -457,10 +487,12 @@ const createCampaign = async ({ payload, actorId }) => {
   // and upload BEFORE the DB row is written. A media-upload failure now aborts
   // the whole request instead of leaving an orphan campaign with no bannerUrl.
   const campaignId = new mongoose.Types.ObjectId();
-  const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId });
+  const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId, mediaFiles });
   const finalCreative = bannerUpdate ? { ...creative, ...bannerUpdate } : creative;
 
   if (adSource === 'external') {
+    const logoUrl = await processAdvertiserLogo({ external: payload.external, campaignId, mediaFiles });
+    if (logoUrl) target.external = { ...target.external, advertiserLogoUrl: logoUrl };
     assertExternalCreativeIsRenderable(finalCreative);
   }
 
@@ -506,7 +538,7 @@ const getCampaignById = async (campaignId) => {
   return shapeCampaign(campaign);
 };
 
-const updateCampaign = async ({ campaignId, payload, actorId }) => {
+const updateCampaign = async ({ campaignId, payload, actorId, mediaFiles }) => {
   const campaign = await AdCampaign.findById(toObjectId(campaignId));
   if (!campaign) return null;
 
@@ -529,8 +561,19 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
   if (adSource === 'external') {
     // Merge onto the existing external block so a partial update (e.g. only
     // touching creative) doesn't have to resend destinationUrl/advertiserName.
+    // An explicit `advertiserLogoUrl: null` in payload.external overwrites
+    // the existing string here, and normalizeExternal already maps a
+    // non-string value to `undefined` — so a clear "just works" without any
+    // extra handling below.
     const merged = { ...(campaign.external?.toObject?.() ?? campaign.external ?? {}), ...(payload.external || {}) };
     campaign.external = normalizeExternal(merged);
+
+    // A freshly uploaded/replaced logo overrides whatever URL survived the
+    // merge above. Previously this upload didn't happen at all — see
+    // processAdvertiserLogo's comment.
+    const logoUrl = await processAdvertiserLogo({ external: payload.external, campaignId: campaign._id, mediaFiles });
+    if (logoUrl) campaign.external = { ...campaign.external, advertiserLogoUrl: logoUrl };
+
     campaign.product = undefined;
     campaign.advertiserUser = undefined;
     campaign.advertiserCompany = undefined;
@@ -613,7 +656,7 @@ const updateCampaign = async ({ campaignId, payload, actorId }) => {
     }
 
     // Resolve any uploaded banner media (overrides direct-URL fields above).
-    const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId: campaign._id });
+    const bannerUpdate = await processBannerMedia({ creative: payload.creative, campaignId: campaign._id, mediaFiles });
     if (bannerUpdate) {
       Object.assign(nextCreative, bannerUpdate);
     }

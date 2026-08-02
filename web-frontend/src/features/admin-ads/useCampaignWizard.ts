@@ -13,6 +13,12 @@
  * (paste a hosted URL) is a deliberate web-only addition on top of the app's
  * fields — kept because it lets an admin skip a slow re-upload when a video is
  * already hosted somewhere.
+ *
+ * All four media kinds (banner image, banner video, poster, advertiser logo)
+ * go through `useMediaSlot` — File + `URL.createObjectURL`, never base64/
+ * `FileReader` — and travel to the backend as real multipart files
+ * (`adService.createCampaign`/`updateCampaign`'s `AdMediaFiles` param), not
+ * embedded in the JSON body. See useMediaSlot.ts and src/services/ad.ts.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,8 +32,11 @@ import {
   UpsertAdCampaignInput,
 } from "@/src/services/ad";
 import { adminService, type AdminUser } from "@/src/services/admin";
+import { productService } from "@/src/services/product";
 import type { Product } from "@/src/types/product";
 import { ApiError } from "@/src/lib/api-error";
+import { useMediaSlot } from "./useMediaSlot";
+import { readCampaignDraft, writeCampaignDraft, clearCampaignDraft, type CampaignDraftData } from "./campaignDraft";
 
 export type ProductSourceMode = "user_listings" | "admin_listings";
 export type AudiencePreset = "everyone" | "specific_users" | "shopper_category" | "buy_intent" | "same_category_listers";
@@ -41,6 +50,9 @@ export const AUDIENCE_PRESETS: { key: AudiencePreset; label: string; hint: strin
   { key: "buy_intent",             label: "Buying signal",        hint: "Added-to-cart / accepted quotes in category", icon: "🛒" },
   { key: "same_category_listers",  label: "Same-category sellers", hint: "Users who list in this product's category",  icon: "🏭" },
 ];
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // matches backend MAX_AD_IMAGE_SIZE_BYTES (storage.service.js)
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // matches backend MAX_AD_VIDEO_SIZE_BYTES
 
 const isoToLocalInput = (iso?: string) => {
   if (!iso) return "";
@@ -88,13 +100,16 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
 
   const [destinationUrl, setDestinationUrl] = useState(campaign?.external?.destinationUrl ?? "");
   const [advertiserName, setAdvertiserName] = useState(campaign?.external?.advertiserName ?? "");
-  const [advertiserLogoBase64, setAdvertiserLogoBase64] = useState<string | null>(null);
-  const [advertiserLogoPreview, setAdvertiserLogoPreview] = useState<string | null>(campaign?.external?.advertiserLogoUrl ?? null);
   const [externalCategory, setExternalCategory] = useState(campaign?.external?.category ?? "");
   const [externalSubCategory, setExternalSubCategory] = useState(campaign?.external?.subCategory ?? "");
 
   const [name, setName] = useState(campaign?.name ?? "");
   const [description, setDescription] = useState(campaign?.description ?? "");
+
+  const [error, setError] = useState<string | null>(null);
+  const surfaceError = useCallback((message: string) => setError(message), []);
+
+  const advertiserLogo = useMediaSlot({ initialUrl: campaign?.external?.advertiserLogoUrl ?? null, maxBytes: MAX_IMAGE_BYTES, onError: surfaceError });
 
   // ── Select Product ───────────────────────────────────────────────────────
   const [product, setProduct] = useState<Product | null>(null);
@@ -105,14 +120,32 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
   const [ctaLabel, setCtaLabel] = useState(campaign?.creative?.ctaLabel ?? "");
   const [badge, setBadge] = useState(campaign?.creative?.badge ?? "");
   const [mediaType, setMediaType] = useState<AdMediaType>(campaign?.creative?.bannerMediaType === "video" ? "video" : "image");
-  const [bannerBase64, setBannerBase64] = useState<string | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(campaign?.creative?.bannerImageUrl ?? null);
+  const originalMediaType = campaign?.creative?.bannerMediaType;
+
+  const bannerImage = useMediaSlot({ initialUrl: campaign?.creative?.bannerImageUrl ?? null, maxBytes: MAX_IMAGE_BYTES, onError: surfaceError });
+  const bannerVideo = useMediaSlot({ initialUrl: campaign?.creative?.bannerVideoUrl ?? null, maxBytes: MAX_VIDEO_BYTES, onError: surfaceError });
+  const bannerPoster = useMediaSlot({ initialUrl: campaign?.creative?.bannerPosterUrl ?? null, maxBytes: MAX_IMAGE_BYTES, onError: surfaceError });
   const [bannerVideoUrl, setBannerVideoUrl] = useState(campaign?.creative?.bannerVideoUrl ?? "");
-  const [bannerVideoFile, setBannerVideoFile] = useState<File | null>(null);
-  const [bannerVideoFilePreview, setBannerVideoFilePreview] = useState<string | null>(null);
   const [aspectWarning, setAspectWarning] = useState<string | null>(null);
-  const [posterBase64, setPosterBase64] = useState<string | null>(null);
-  const [posterPreview, setPosterPreview] = useState<string | null>(campaign?.creative?.bannerPosterUrl ?? null);
+
+  // Aspect-ratio hint for the banner image — the hero crops to ~16:9, so a
+  // near-square/tall upload gets cropped hard. Recomputed whenever the
+  // preview (a fresh pick or the existing remote image) changes.
+  useEffect(() => {
+    if (mediaType !== "image" || !bannerImage.preview) { setAspectWarning(null); return; }
+    let active = true;
+    const img = new Image();
+    img.onload = () => {
+      if (!active) return;
+      const ratio = img.width / img.height;
+      setAspectWarning(ratio < 1.3 || ratio > 2.4
+        ? `Banner is ${img.width}×${img.height} (${ratio.toFixed(2)}:1). The hero crops to ~16:9 — use a wide image to avoid cropping.`
+        : null);
+    };
+    img.src = bannerImage.preview;
+    return () => { active = false; };
+  }, [mediaType, bannerImage.preview]);
+
   const [useDiscount, setUseDiscount] = useState(!!campaign?.creative?.priceOverride?.amount);
   const [discountAmount, setDiscountAmount] = useState(
     campaign?.creative?.priceOverride?.amount != null ? String(campaign.creative.priceOverride.amount) : "",
@@ -164,7 +197,7 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
   const [direction, setDirection] = useState(0);
   const [maxStep, setMaxStep] = useState(isEdit ? STEPS.length - 1 : 0);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
   // ── Derived product/pricing display ──────────────────────────────────────
   const productId = product?._id ?? campaign?.product?.id ?? "";
@@ -178,13 +211,14 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
 
   const wantsCrossSell = placements.includes("cart_cross_sell");
   const hasBanner = mediaType === "image"
-    ? Boolean(bannerPreview)
-    : Boolean(bannerVideoFilePreview || bannerVideoUrl.trim());
+    ? bannerImage.hasMedia
+    : Boolean(bannerVideo.hasMedia || bannerVideoUrl.trim());
 
   // Sets the product + backfills productSource/owner from its ownership —
   // used when a product arrives from a source other than the Select Product
-  // list (e.g. hydrating a prefill from an approved service request), so the
-  // Source & Owner step stays consistent with whatever got selected.
+  // list (e.g. hydrating a prefill from an approved service request, or a
+  // resumed local draft), so the Source & Owner step stays consistent with
+  // whatever got selected.
   const applyProductOwnershipContext = useCallback((p: Product) => {
     setProduct(p);
     const isAdminOwned = p.createdByRole === "admin";
@@ -227,46 +261,6 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
   const toggleInList = (list: string[], setList: (v: string[]) => void, id: string) =>
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
-  // ── Media handlers ────────────────────────────────────────────────────────
-  const readAsDataUrl = (file: File, onDone: (base64: string, dataUrl: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.includes(",") ? result.split(",")[1] ?? "" : result;
-      onDone(base64, result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleBanner = (file: File) => {
-    readAsDataUrl(file, (base64, dataUrl) => {
-      setBannerPreview(dataUrl);
-      setBannerBase64(base64);
-      const img = new Image();
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        setAspectWarning(ratio < 1.3 || ratio > 2.4
-          ? `Banner is ${img.width}×${img.height} (${ratio.toFixed(2)}:1). The hero crops to ~16:9 — use a wide image to avoid cropping.`
-          : null);
-      };
-      img.src = dataUrl;
-    });
-  };
-  const handlePoster = (file: File) => readAsDataUrl(file, (base64, dataUrl) => { setPosterPreview(dataUrl); setPosterBase64(base64); });
-  const handleAdvertiserLogo = (file: File) => readAsDataUrl(file, (base64, dataUrl) => { setAdvertiserLogoPreview(dataUrl); setAdvertiserLogoBase64(base64); });
-
-  const handleVideoFile = (file: File) => {
-    if (file.size > 100 * 1024 * 1024) { setError("Video must be under 100MB."); return; }
-    setError(null);
-    setBannerVideoFilePreview((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
-    setBannerVideoFile(file);
-    setBannerVideoUrl("");
-  };
-  const clearVideoFile = () => {
-    setBannerVideoFilePreview((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
-    setBannerVideoFile(null);
-  };
-
   // ── Prefill from an approved service request ─────────────────────────────
   // Maps the backend's UpsertAdCampaignInput-shaped prefill onto wizard
   // fields — mirrors AdStudioScreen.tsx mapPrefillToWizard.
@@ -306,21 +300,108 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
     setSourceRequestId(prefill.sourceServiceRequest ?? "");
   }, []);
 
+  // ── Local draft recovery (create mode only) ──────────────────────────────
+  // Debounced snapshot of every *serializable* field (never media — see
+  // campaignDraft.ts) so a half-built campaign survives an accidental close,
+  // refresh, or a mobile browser tab getting evicted in the background.
+  const draftSnapshot = useCallback((): CampaignDraftData => ({
+    adSource, productSource, ownerUserId, ownerUserName,
+    productId, productName: productDisplay?.name ?? "",
+    destinationUrl, advertiserName, externalCategory, externalSubCategory,
+    name, description, title, subtitle, ctaLabel, badge, useDiscount, discountAmount,
+    mediaType, bannerVideoUrl,
+    audience, shopperCategories, shopperSubCategories, buyIntentCategories, buyIntentSubCategories,
+    listedProductCategories, listedProductSubCategories, requireSameCategory, specificUserIds,
+    targetingMode, lookbackDays, placements, priority, freqCap, popupCooldown, startAt, endAt,
+    publish, sourceRequestId,
+  }), [
+    adSource, productSource, ownerUserId, ownerUserName, productId, productDisplay?.name,
+    destinationUrl, advertiserName, externalCategory, externalSubCategory,
+    name, description, title, subtitle, ctaLabel, badge, useDiscount, discountAmount,
+    mediaType, bannerVideoUrl,
+    audience, shopperCategories, shopperSubCategories, buyIntentCategories, buyIntentSubCategories,
+    listedProductCategories, listedProductSubCategories, requireSameCategory, specificUserIds,
+    targetingMode, lookbackDays, placements, priority, freqCap, popupCooldown, startAt, endAt,
+    publish, sourceRequestId,
+  ]);
+
+  const [draftAvailable, setDraftAvailable] = useState(() => (!isEdit ? !!readCampaignDraft() : false));
+
+  const applyDraftData = useCallback(async (data: CampaignDraftData) => {
+    setAdSource(data.adSource);
+    setProductSource(data.productSource);
+    setOwnerUserId(data.ownerUserId);
+    setOwnerUserName(data.ownerUserName);
+    setDestinationUrl(data.destinationUrl);
+    setAdvertiserName(data.advertiserName);
+    setExternalCategory(data.externalCategory);
+    setExternalSubCategory(data.externalSubCategory);
+    setName(data.name);
+    setDescription(data.description);
+    setTitle(data.title);
+    setSubtitle(data.subtitle);
+    setCtaLabel(data.ctaLabel);
+    setBadge(data.badge);
+    setUseDiscount(data.useDiscount);
+    setDiscountAmount(data.discountAmount);
+    setMediaType(data.mediaType);
+    setBannerVideoUrl(data.bannerVideoUrl);
+    setAudienceRaw(data.audience as AudiencePreset);
+    setShopperCategories(data.shopperCategories);
+    setShopperSubCategories(data.shopperSubCategories);
+    setBuyIntentCategories(data.buyIntentCategories);
+    setBuyIntentSubCategories(data.buyIntentSubCategories);
+    setListedProductCategories(data.listedProductCategories);
+    setListedProductSubCategories(data.listedProductSubCategories);
+    setRequireSameCategory(data.requireSameCategory);
+    setSpecificUserIds(data.specificUserIds);
+    setTargetingMode(data.targetingMode as AdTargetingMode);
+    setLookbackDays(data.lookbackDays);
+    setPlacements(data.placements as AdPlacement[]);
+    setPriority(data.priority);
+    setFreqCap(data.freqCap);
+    setPopupCooldown(data.popupCooldown);
+    setStartAt(data.startAt);
+    setEndAt(data.endAt);
+    setPublish(data.publish);
+    setSourceRequestId(data.sourceRequestId);
+    setDraftAvailable(false);
+
+    if (data.productId) {
+      try {
+        const p = await productService.get(data.productId, { scope: "marketplace" });
+        applyProductOwnershipContext(p);
+      } catch {
+        // Best-effort — everything else from the draft still applied.
+      }
+    }
+  }, [applyProductOwnershipContext]);
+
+  // Public surface for the "Resume your unsaved campaign?" banner
+  // (CampaignDrawer.tsx) — reads the stored draft itself so the caller
+  // doesn't need to juggle the raw data.
+  const resumeDraft = useCallback(() => {
+    const draft = readCampaignDraft();
+    if (draft) void applyDraftData(draft.data);
+  }, [applyDraftData]);
+
+  const dismissDraft = useCallback(() => { clearCampaignDraft(); setDraftAvailable(false); }, []);
+
   // ── Validation ────────────────────────────────────────────────────────────
-  const discountError = (() => {
+  const discountError = useMemo(() => {
     if (adSource !== "internal" || !useDiscount) return null;
     const amt = Number(discountAmount);
     if (!Number.isFinite(amt) || amt <= 0) return "Discounted price must be greater than 0.";
     if (listedPrice != null && amt > listedPrice) return "Discounted price can't exceed the listed price.";
     return null;
-  })();
+  }, [adSource, useDiscount, discountAmount, listedPrice]);
 
-  const scheduleError = (() => {
+  const scheduleError = useMemo(() => {
     if (startAt && Number.isNaN(new Date(startAt).getTime())) return "Start date is invalid.";
     if (endAt && Number.isNaN(new Date(endAt).getTime())) return "End date is invalid.";
     if (startAt && endAt && new Date(startAt).getTime() > new Date(endAt).getTime()) return "End date must be after start date.";
     return null;
-  })();
+  }, [startAt, endAt]);
 
   const stepErrors: (string | null)[] = useMemo(() => [
     // 0. Source & Owner
@@ -352,8 +433,24 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
   const validationError = stepErrors.find(Boolean) ?? null;
   const canSave = !validationError;
   const stepError = stepErrors[step];
+  // Whether a "Save as draft" quick-action is safe to offer from the close
+  // dialog without navigating the admin through every step — only Source &
+  // Owner and Select Product carry fields a draft can't be saved without;
+  // Audience/Creative/Schedule all have workable defaults.
+  const canSaveAsDraft = !stepErrors[0] && !stepErrors[1];
 
   // ── Step navigation ───────────────────────────────────────────────────────
+  // Stamped whenever the wizard *arrives* at the last step — submit() uses
+  // this as a short arm-guard window so a ghost click that lands right after
+  // a Continue tap (iOS's ~350ms double-tap-to-zoom delay retyping the same
+  // button node from Continue to Publish — see CampaignDrawer.tsx) can't
+  // immediately re-trigger a submit. Belt-and-braces on top of the button
+  // key/type fixes, for hardware this couldn't be tested against directly.
+  const lastStepArmedAtRef = useRef(0);
+  useEffect(() => {
+    if (step === STEPS.length - 1) lastStepArmedAtRef.current = Date.now();
+  }, [step]);
+
   const goNext = () => {
     if (stepError) { setError(stepError); return; }
     setError(null);
@@ -369,31 +466,43 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
   // Anything a blank/prefilled form doesn't already have counts as dirty —
   // compared against a snapshot captured once, at mount, from the campaign
   // (edit) or blank defaults (create). New media picks are checked separately
-  // since base64/File values aren't meaningfully diffable against a URL.
-  const comparable = () => JSON.stringify({
-    adSource, productSource, ownerUserId, destinationUrl, advertiserName, externalCategory, externalSubCategory,
-    name, description, productId, title, subtitle, ctaLabel, badge, useDiscount, discountAmount, mediaType, bannerVideoUrl,
-    audience, shopperCategories, shopperSubCategories, buyIntentCategories, buyIntentSubCategories,
-    listedProductCategories, listedProductSubCategories, requireSameCategory, specificUserIds, targetingMode, lookbackDays,
-    placements, priority, freqCap, popupCooldown, startAt, endAt, publish, sourceRequestId,
-  });
+  // since a File isn't meaningfully diffable against a URL.
+  const comparable = () => JSON.stringify(draftSnapshot());
   const initialSnapshotRef = useRef<string | null>(null);
   if (initialSnapshotRef.current === null) initialSnapshotRef.current = comparable();
-  const hasNewMedia = !!(bannerBase64 || bannerVideoFile || posterBase64 || advertiserLogoBase64);
-  const isDirty = hasNewMedia || comparable() !== initialSnapshotRef.current;
+  const hasNewMedia = !!(bannerImage.file || bannerVideo.file || bannerPoster.file || advertiserLogo.file);
+  const hasClearedMedia = bannerImage.cleared || bannerVideo.cleared || bannerPoster.cleared || advertiserLogo.cleared;
+  const isDirty = hasNewMedia || hasClearedMedia || comparable() !== initialSnapshotRef.current;
+
+  // Debounced local draft write — create mode only. Deliberately excludes
+  // File/objectURL data (see campaignDraft.ts); a resumed draft never
+  // restores uploaded media, only the fields typed/picked around it.
+  useEffect(() => {
+    if (isEdit || !isDirty) return;
+    const t = setTimeout(() => writeCampaignDraft(draftSnapshot()), 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, isDirty, draftSnapshot]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = useCallback(async (opts?: { statusOverride?: "draft" }) => {
     // Re-validate every step, not just the current one — jumping directly to
     // a later step (StepRail) could otherwise post an incomplete payload.
     // Mirrors AdStudioScreen.tsx submitCampaign's belt-and-braces re-check.
-    if (!canSave) {
-      const bad = stepErrors.findIndex(Boolean);
-      if (bad >= 0) jumpToStep(bad);
-      setError(validationError);
-      return;
+    // Skipped for the "Save as draft" quick action from the close dialog,
+    // which only requires canSaveAsDraft (checked by the caller before this
+    // is even invoked) — later steps' defaults are fine for a draft.
+    if (!opts?.statusOverride) {
+      if (!canSave) {
+        const bad = stepErrors.findIndex(Boolean);
+        if (bad >= 0) jumpToStep(bad);
+        setError(validationError);
+        return;
+      }
+      if (step === STEPS.length - 1 && Date.now() - lastStepArmedAtRef.current < 400) return;
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -414,14 +523,22 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
         lookbackDays: Math.min(Math.max(parseInt(lookbackDays, 10) || 60, 1), 365),
       };
 
-      const bannerMedia: Partial<NonNullable<UpsertAdCampaignInput["creative"]>> =
-        mediaType === "image"
-          ? (bannerBase64 ? { bannerMediaType: "image", bannerImageBase64: bannerBase64 } : {})
-          : bannerVideoFile
-            ? { bannerMediaType: "video" }
-            : bannerVideoUrl.trim()
-              ? { bannerMediaType: "video", bannerVideoUrl: bannerVideoUrl.trim() }
-              : {};
+      // Media: only ever a media-type hint + explicit `null`s for anything
+      // abandoned. The actual bytes travel as multipart files (`mediaFiles`
+      // below), never base64 in this JSON.
+      const bannerMedia: Partial<NonNullable<UpsertAdCampaignInput["creative"]>> = {};
+      const switchedMediaType = isEdit && !!originalMediaType && originalMediaType !== mediaType;
+      if (mediaType === "image") {
+        if (bannerImage.file) bannerMedia.bannerMediaType = "image";
+        else if (bannerImage.cleared) { bannerMedia.bannerMediaType = "image"; bannerMedia.bannerImageUrl = null; }
+        if (switchedMediaType) { bannerMedia.bannerMediaType = "image"; bannerMedia.bannerVideoUrl = null; bannerMedia.bannerPosterUrl = null; }
+      } else {
+        if (bannerVideo.file) bannerMedia.bannerMediaType = "video";
+        else if (bannerVideoUrl.trim()) { bannerMedia.bannerMediaType = "video"; bannerMedia.bannerVideoUrl = bannerVideoUrl.trim(); }
+        else if (bannerVideo.cleared) { bannerMedia.bannerMediaType = "video"; bannerMedia.bannerVideoUrl = null; }
+        if (bannerPoster.cleared && !bannerPoster.file) bannerMedia.bannerPosterUrl = null;
+        if (switchedMediaType) { bannerMedia.bannerMediaType = "video"; bannerMedia.bannerImageUrl = null; }
+      }
 
       const creative: UpsertAdCampaignInput["creative"] = {
         title: title.trim() || (adSource === "internal" ? productDisplay?.name : advertiserName.trim()) || undefined,
@@ -432,13 +549,11 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
           ? { amount: Number(discountAmount), currency: productCurrency }
           : null,
         ...bannerMedia,
-        ...(mediaType === "video" && posterBase64 ? { bannerPosterBase64: posterBase64 } : {}),
       };
 
-      // Draft/active only: paused/completed/archived campaigns keep their
-      // lifecycle owned by the campaign card's Activate/Pause/Archive
-      // actions, not this wizard — see `editableStatus` above.
-      const statusForSubmit = !isEdit || editableStatus ? (publish ? "active" : "draft") : undefined;
+      const statusForSubmit = opts?.statusOverride
+        ? "draft"
+        : !isEdit || editableStatus ? (publish ? "active" : "draft") : undefined;
 
       const payload: UpsertAdCampaignInput = {
         name: name.trim(),
@@ -452,7 +567,7 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
               advertiserName: advertiserName.trim(),
               category: wantsCrossSell ? externalCategory : undefined,
               subCategory: wantsCrossSell ? externalSubCategory : undefined,
-              ...(advertiserLogoBase64 ? { advertiserLogoBase64 } : {}),
+              ...(advertiserLogo.cleared && !advertiserLogo.file ? { advertiserLogoUrl: null } : {}),
             },
           }),
         placements,
@@ -466,24 +581,42 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
         ...(statusForSubmit ? { status: statusForSubmit } : {}),
       };
 
-      const videoFile = mediaType === "video" ? bannerVideoFile : null;
-      let saved: AdCampaign;
-      if (isEdit && campaign) {
-        saved = videoFile
-          ? await adService.updateCampaignWithMedia(campaign.id, payload, videoFile)
-          : await adService.updateCampaign(campaign.id, payload);
-      } else if (videoFile) {
-        saved = await adService.createCampaignWithMedia(payload, videoFile);
-      } else {
-        saved = await adService.createCampaign(payload);
-      }
+      const mediaFiles = {
+        ...(mediaType === "image" && bannerImage.file ? { bannerImage: bannerImage.file } : {}),
+        ...(mediaType === "video" && bannerVideo.file ? { bannerVideo: bannerVideo.file } : {}),
+        ...(mediaType === "video" && bannerPoster.file ? { bannerPoster: bannerPoster.file } : {}),
+        ...(adSource === "external" && advertiserLogo.file ? { advertiserLogo: advertiserLogo.file } : {}),
+      };
+
+      const saved = isEdit && campaign
+        ? await adService.updateCampaign(campaign.id, payload, mediaFiles)
+        : await adService.createCampaign(payload, mediaFiles);
+
+      clearCampaignDraft();
       onSaved(saved);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} campaign`);
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    canSave, stepErrors, validationError, step, startAt, endAt, targetingMode, audience, specificUserIds,
+    shopperCategories, shopperSubCategories, buyIntentCategories, buyIntentSubCategories,
+    listedProductCategories, listedProductSubCategories, requireSameCategory, lookbackDays,
+    mediaType, bannerImage.file, bannerImage.cleared, bannerVideo.file, bannerVideo.cleared, bannerVideoUrl,
+    bannerPoster.file, bannerPoster.cleared, advertiserLogo.file, advertiserLogo.cleared, originalMediaType,
+    title, subtitle, ctaLabel, badge, useDiscount, discountAmount, productCurrency, productDisplay,
+    isEdit, editableStatus, publish, name, description, adSource, productId, destinationUrl, advertiserName,
+    wantsCrossSell, externalCategory, externalSubCategory, placements, priority, freqCap, popupCooldown,
+    sourceRequestId, campaign, onSaved,
+  ]);
+
+  // Thin wrapper for the `<form onSubmit>` — belt-and-braces in case any
+  // future control ends up a submit button; the wizard's own Continue/
+  // Publish buttons call `submit()` directly (see CampaignDrawer.tsx).
+  const handleFormSubmit = (e: React.FormEvent) => { e.preventDefault(); void submit(); };
 
   return {
     isEdit, campaign,
@@ -491,17 +624,16 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
     adSource, setAdSource, productSource, setProductSource, ownerUserId, setOwnerUserId, ownerUserName, setOwnerUserName,
     sourceRequestId, setSourceRequestId, applyPrefill, applyProductOwnershipContext,
     destinationUrl, setDestinationUrl, advertiserName, setAdvertiserName,
-    advertiserLogoBase64, advertiserLogoPreview, setAdvertiserLogoPreview, handleAdvertiserLogo,
-    setAdvertiserLogoBase64,
+    advertiserLogo,
     externalCategory, setExternalCategory, externalSubCategory, setExternalSubCategory,
     name, setName, description, setDescription,
     // Product
     product, setProduct, productId, listedPrice, productCurrency, productDisplay,
     // Creative
     title, setTitle, subtitle, setSubtitle, ctaLabel, setCtaLabel, badge, setBadge,
-    mediaType, setMediaType, bannerBase64, bannerPreview, setBannerPreview, setBannerBase64, handleBanner,
-    bannerVideoUrl, setBannerVideoUrl, bannerVideoFile, bannerVideoFilePreview, handleVideoFile, clearVideoFile,
-    aspectWarning, setAspectWarning, posterBase64, posterPreview, setPosterPreview, setPosterBase64, handlePoster,
+    mediaType, setMediaType, bannerImage, bannerVideo, bannerPoster,
+    bannerVideoUrl, setBannerVideoUrl,
+    aspectWarning,
     useDiscount, setUseDiscount, discountAmount, setDiscountAmount, hasBanner,
     placements, togglePlacement, wantsCrossSell,
     // Audience
@@ -518,9 +650,11 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
     // Navigation
     step, direction, maxStep, goNext, goBack, jumpToStep,
     // Validation
-    stepErrors, stepError, validationError, canSave,
+    stepErrors, stepError, validationError, canSave, canSaveAsDraft,
     // Submit
-    saving, error, setError, handleSubmit, isDirty,
+    saving, error, setError, submit, handleFormSubmit, isDirty,
+    // Local draft
+    draftAvailable, resumeDraft, dismissDraft,
   };
 }
 

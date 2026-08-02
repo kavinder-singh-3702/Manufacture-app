@@ -28,6 +28,7 @@ import {
   AdCampaign,
   AdCampaignStatus,
   AdInsights,
+  AdMediaFiles,
   UpsertAdCampaignInput,
 } from "../../services/ad.service";
 import { Product, ProductCategory, productService } from "../../services/product.service";
@@ -58,7 +59,6 @@ type WizardState = {
   externalDestinationUrl: string;
   externalAdvertiserName: string;
   externalAdvertiserLogoUri: string;
-  externalAdvertiserLogoBase64: string;
   externalCategory: string;
   externalSubCategory: string;
 
@@ -91,12 +91,10 @@ type WizardState = {
 
   selectedPlacements: Array<"dashboard_home" | "hero_banner" | "cart_cross_sell">;
   bannerMediaUri: string;
-  bannerMediaBase64: string;
   bannerMediaType: "image" | "video" | "";
   bannerMediaMimeType: string;
   bannerMediaFileName: string;
   bannerPosterUri: string;
-  bannerPosterBase64: string;
 
   launchNow: boolean;
   sourceRequestId: string;
@@ -156,17 +154,20 @@ const inferAudiencePreset = (prefill: UpsertAdCampaignInput): AudiencePreset => 
 
 const categoryTitle = (category: ProductCategory) => category.title || category.id;
 
-// Downscale + compress banner artwork before upload so the base64 payload stays
-// small — much faster to upload for the admin and faster to load in the home
-// banner. Banners render full-width on phones, so 1280px wide is plenty.
-const compressBannerImage = async (uri: string): Promise<{ uri: string; base64: string } | null> => {
+// Downscale + compress banner artwork before upload — much faster to upload
+// for the admin and faster to load in the home banner. Banners render
+// full-width on phones, so 1280px wide is plenty. Deliberately does NOT
+// request `base64: true` — the picked/compressed file uploads as a real
+// multipart file via its local `uri` (see submitCampaign's mediaFiles),
+// never read into a base64 string, so there's no on-device encode spent on
+// output nothing downstream needs.
+const compressBannerImage = async (uri: string): Promise<{ uri: string } | null> => {
   try {
     const result = await manipulateAsync(uri, [{ resize: { width: 1280 } }], {
       compress: 0.6,
       format: SaveFormat.JPEG,
-      base64: true,
     });
-    return { uri: result.uri, base64: result.base64 || "" };
+    return { uri: result.uri };
   } catch {
     return null;
   }
@@ -244,7 +245,6 @@ export const AdStudioScreen = () => {
       externalDestinationUrl: "",
       externalAdvertiserName: "",
       externalAdvertiserLogoUri: "",
-      externalAdvertiserLogoBase64: "",
       externalCategory: "",
       externalSubCategory: "",
 
@@ -277,12 +277,10 @@ export const AdStudioScreen = () => {
 
       selectedPlacements: ["dashboard_home"],
       bannerMediaUri: "",
-      bannerMediaBase64: "",
       bannerMediaType: "",
       bannerMediaMimeType: "",
       bannerMediaFileName: "",
       bannerPosterUri: "",
-      bannerPosterBase64: "",
 
       launchNow: false,
       sourceRequestId: route.params?.prefillServiceRequestId || "",
@@ -784,7 +782,6 @@ export const AdStudioScreen = () => {
           externalDestinationUrl: campaign.external?.destinationUrl || "",
           externalAdvertiserName: campaign.external?.advertiserName || "",
           externalAdvertiserLogoUri: campaign.external?.advertiserLogoUrl || "",
-          externalAdvertiserLogoBase64: "",
           externalCategory: campaign.external?.category || "",
           externalSubCategory: campaign.external?.subCategory || "",
           selectedPlacements: campaign.placements?.length ? campaign.placements : ["dashboard_home"],
@@ -795,11 +792,9 @@ export const AdStudioScreen = () => {
               : existingType === "video"
                 ? creative.bannerVideoUrl || ""
                 : "",
-          bannerMediaBase64: "",
           bannerMediaMimeType: "",
           bannerMediaFileName: "",
           bannerPosterUri: creative.bannerPosterUrl || "",
-          bannerPosterBase64: "",
         }));
         setSelectedProductDetail(null); // the productId effect hydrates the product
         setWizardStep(0);
@@ -1013,6 +1008,17 @@ export const AdStudioScreen = () => {
     const shouldRequireSameCategory =
       wizard.audiencePreset === "same_category_listers" || wizard.requireSameCategory;
 
+    // Every media kind (banner image, video, poster, advertiser logo) travels
+    // as a real multipart file now, never base64-in-JSON — mirrors the web
+    // wizard's useMediaSlot. `isLocalMediaUri` tells a fresh on-device pick
+    // (file://, content://, ph://) apart from an already-uploaded https://
+    // URL kept as-is; an explicit clear (admin removed a saved image with no
+    // replacement) sends the corresponding URL field as `null` so the
+    // backend actually unsets it instead of silently keeping the old one.
+    const mediaFiles: AdMediaFiles = {};
+    const originalMediaType = editingCampaign?.creative?.bannerMediaType;
+    const switchedMediaType = !!editingCampaign && !!originalMediaType && originalMediaType !== wizard.bannerMediaType;
+
     const payload: UpsertAdCampaignInput = {
       name: wizard.name.trim(),
       description: wizard.description.trim() || undefined,
@@ -1024,7 +1030,11 @@ export const AdStudioScreen = () => {
             advertiserName: wizard.externalAdvertiserName.trim(),
             category: wizard.selectedPlacements.includes("cart_cross_sell") ? wizard.externalCategory : undefined,
             subCategory: wizard.selectedPlacements.includes("cart_cross_sell") ? wizard.externalSubCategory : undefined,
-            ...(wizard.externalAdvertiserLogoBase64 ? { advertiserLogoBase64: wizard.externalAdvertiserLogoBase64 } : {}),
+            ...(wizard.externalAdvertiserLogoUri && isLocalMediaUri(wizard.externalAdvertiserLogoUri)
+              ? {}
+              : !wizard.externalAdvertiserLogoUri && editingCampaign?.external?.advertiserLogoUrl
+                ? { advertiserLogoUrl: null }
+                : {}),
           },
         }
         : { productId: wizard.productId.trim() }),
@@ -1065,20 +1075,55 @@ export const AdStudioScreen = () => {
         subtitle: wizard.creativeSubtitle.trim() || undefined,
         ctaLabel: wizard.creativeCtaLabel.trim() || undefined,
         badge: wizard.creativeBadge.trim() || undefined,
-        bannerImageBase64:
-          wizard.bannerMediaType === "image" && wizard.bannerMediaBase64
-            ? wizard.bannerMediaBase64
-            : undefined,
         bannerMediaType: wizard.bannerMediaType
           ? (wizard.bannerMediaType as "image" | "video")
           : undefined,
-        bannerPosterBase64:
-          wizard.bannerMediaType === "video" && wizard.bannerPosterBase64
-            ? wizard.bannerPosterBase64
-            : undefined,
       },
       sourceServiceRequest: wizard.sourceRequestId.trim() || undefined,
     };
+
+    // Resolve the banner image/video/poster fields: a fresh local pick goes
+    // into `mediaFiles` (uploaded as a real file); an explicit removal with
+    // nothing to replace it sends the URL field as `null`; media-type
+    // switches (image campaign edited into a video one, or vice versa)
+    // abandon the other side's URL so an old image doesn't keep serving
+    // alongside a newly-uploaded video.
+    if (wizard.bannerMediaType === "image") {
+      if (wizard.bannerMediaUri && isLocalMediaUri(wizard.bannerMediaUri)) {
+        mediaFiles.bannerImage = { uri: wizard.bannerMediaUri, type: "image/jpeg", name: "banner.jpg" };
+      } else if (!wizard.bannerMediaUri && editingCampaign?.creative?.bannerImageUrl) {
+        payload.creative!.bannerImageUrl = null;
+      }
+      if (switchedMediaType) {
+        payload.creative!.bannerVideoUrl = null;
+        payload.creative!.bannerPosterUrl = null;
+      }
+    } else if (wizard.bannerMediaType === "video") {
+      if (wizard.bannerMediaUri && isLocalMediaUri(wizard.bannerMediaUri)) {
+        mediaFiles.bannerVideo = {
+          uri: wizard.bannerMediaUri,
+          type: wizard.bannerMediaMimeType || "video/mp4",
+          name: wizard.bannerMediaFileName || "video.mp4",
+        };
+      } else if (!wizard.bannerMediaUri && editingCampaign?.creative?.bannerVideoUrl) {
+        payload.creative!.bannerVideoUrl = null;
+      }
+      if (wizard.bannerPosterUri && isLocalMediaUri(wizard.bannerPosterUri)) {
+        mediaFiles.bannerPoster = { uri: wizard.bannerPosterUri, type: "image/jpeg", name: "poster.jpg" };
+      } else if (!wizard.bannerPosterUri && editingCampaign?.creative?.bannerPosterUrl) {
+        payload.creative!.bannerPosterUrl = null;
+      }
+      if (switchedMediaType) payload.creative!.bannerImageUrl = null;
+    } else if (editingCampaign && originalMediaType) {
+      // Banner removed entirely in edit mode (media type cleared, nothing picked).
+      payload.creative!.bannerImageUrl = null;
+      payload.creative!.bannerVideoUrl = null;
+      payload.creative!.bannerPosterUrl = null;
+    }
+
+    if (wizard.adSource === "external" && wizard.externalAdvertiserLogoUri && isLocalMediaUri(wizard.externalAdvertiserLogoUri)) {
+      mediaFiles.advertiserLogo = { uri: wizard.externalAdvertiserLogoUri, type: "image/jpeg", name: "advertiser-logo.jpg" };
+    }
 
     if (!payload.status || !payload.placements?.length) {
       setWizardError("Missing placement or status. Reload the wizard and try again.");
@@ -1089,24 +1134,9 @@ export const AdStudioScreen = () => {
       setSubmitting(true);
       setWizardError(null);
 
-      const videoFile = {
-        uri: wizard.bannerMediaUri,
-        type: wizard.bannerMediaMimeType || "video/mp4",
-        name: wizard.bannerMediaFileName || "video.mp4",
-      };
-      // Only a freshly-picked local file uploads; an existing remote video stays as-is.
-      const hasNewVideoFile = wizard.bannerMediaType === "video" && isLocalMediaUri(wizard.bannerMediaUri);
-
-      let created: AdCampaign;
-      if (editingCampaign) {
-        created = hasNewVideoFile
-          ? await adService.updateCampaignWithMedia(editingCampaign.id, payload, videoFile)
-          : await adService.updateCampaign(editingCampaign.id, payload);
-      } else if (hasNewVideoFile) {
-        created = await adService.createCampaignWithMedia(payload, videoFile);
-      } else {
-        created = await adService.createCampaign(payload);
-      }
+      const created = editingCampaign
+        ? await adService.updateCampaign(editingCampaign.id, payload, mediaFiles)
+        : await adService.createCampaign(payload, mediaFiles);
 
       setCreateMode(false);
       setEditingCampaign(null);
@@ -1309,7 +1339,7 @@ export const AdStudioScreen = () => {
                           const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
                           if (!result.canceled && result.assets[0]) {
                             const optimized = await compressBannerImage(result.assets[0].uri);
-                            if (!optimized?.base64) {
+                            if (!optimized?.uri) {
                               setWizardError("Couldn't process that image. Try another one.");
                               return;
                             }
@@ -1317,7 +1347,6 @@ export const AdStudioScreen = () => {
                             setWizard((prev) => ({
                               ...prev,
                               externalAdvertiserLogoUri: optimized.uri,
-                              externalAdvertiserLogoBase64: optimized.base64,
                             }));
                           }
                         }}
@@ -1330,7 +1359,7 @@ export const AdStudioScreen = () => {
                       {wizard.externalAdvertiserLogoUri ? (
                         <TouchableOpacity
                           onPress={() =>
-                            setWizard((prev) => ({ ...prev, externalAdvertiserLogoUri: "", externalAdvertiserLogoBase64: "" }))
+                            setWizard((prev) => ({ ...prev, externalAdvertiserLogoUri: "" }))
                           }
                           style={[
                             styles.mediaPickerButton,
@@ -1844,7 +1873,7 @@ export const AdStudioScreen = () => {
                           });
                           if (!result.canceled && result.assets[0]) {
                             const optimized = await compressBannerImage(result.assets[0].uri);
-                            if (!optimized?.base64) {
+                            if (!optimized?.uri) {
                               setWizardError("Couldn't process that image. Try another one.");
                               return;
                             }
@@ -1852,7 +1881,6 @@ export const AdStudioScreen = () => {
                             setWizard((prev) => ({
                               ...prev,
                               bannerMediaUri: optimized.uri,
-                              bannerMediaBase64: optimized.base64,
                               bannerMediaType: "image",
                             }));
                           }
@@ -1926,7 +1954,6 @@ export const AdStudioScreen = () => {
                             setWizard((prev) => ({
                               ...prev,
                               bannerMediaUri: asset.uri,
-                              bannerMediaBase64: "",
                               bannerMediaType: "video",
                               bannerMediaMimeType: "video/mp4",
                               bannerMediaFileName: derivedName,
@@ -1962,10 +1989,8 @@ export const AdStudioScreen = () => {
                             setWizard((prev) => ({
                               ...prev,
                               bannerMediaUri: "",
-                              bannerMediaBase64: "",
                               bannerMediaType: "",
                               bannerPosterUri: "",
-                              bannerPosterBase64: "",
                             }))
                           }
                         >
@@ -1986,7 +2011,7 @@ export const AdStudioScreen = () => {
                               resizeMode="cover"
                             />
                             <TouchableOpacity
-                              onPress={() => setWizard((prev) => ({ ...prev, bannerPosterUri: "", bannerPosterBase64: "" }))}
+                              onPress={() => setWizard((prev) => ({ ...prev, bannerPosterUri: "" }))}
                             >
                               <Text style={{ color: colors.error, fontSize: fs(13), fontWeight: "600" }}>Remove poster</Text>
                             </TouchableOpacity>
@@ -2004,7 +2029,7 @@ export const AdStudioScreen = () => {
                               });
                               if (!result.canceled && result.assets[0]) {
                                 const optimized = await compressBannerImage(result.assets[0].uri);
-                                if (!optimized?.base64) {
+                                if (!optimized?.uri) {
                                   setWizardError("Couldn't process that image. Try another one.");
                                   return;
                                 }
@@ -2012,7 +2037,6 @@ export const AdStudioScreen = () => {
                                 setWizard((prev) => ({
                                   ...prev,
                                   bannerPosterUri: optimized.uri,
-                                  bannerPosterBase64: optimized.base64,
                                 }));
                               }
                             }}

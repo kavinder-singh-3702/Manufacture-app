@@ -23,13 +23,13 @@ export const ScheduleStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
           className="w-full accent-[var(--primary)]" />
         <p className="text-[11px]" style={{ color: "var(--medium-gray)" }}>Higher priority wins when several ads compete for the same slot.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Frequency cap / day">
-          <TextInput type="number" min="1" max="50" value={wizard.freqCap} onChange={(e) => wizard.setFreqCap(e.target.value)} />
+          <TextInput type="number" inputMode="numeric" enterKeyHint="done" min="1" max="50" value={wizard.freqCap} onChange={(e) => wizard.setFreqCap(e.target.value)} />
           <p className="mt-1 text-[11px]" style={{ color: "var(--medium-gray)" }}>Max impressions per visitor, per day, across all placements.</p>
         </Field>
         <Field label="Popup cadence (min)">
-          <TextInput type="number" min="5" max="1440" value={wizard.popupCooldown} onChange={(e) => wizard.setPopupCooldown(e.target.value)} />
+          <TextInput type="number" inputMode="numeric" enterKeyHint="done" min="5" max="1440" value={wizard.popupCooldown} onChange={(e) => wizard.setPopupCooldown(e.target.value)} />
           <p className="mt-1 text-[11px]" style={{ color: "var(--medium-gray)" }}>Minutes between interstitial popup showings.</p>
         </Field>
       </div>
@@ -40,7 +40,7 @@ export const ScheduleStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
             className="text-[11px] font-bold" style={{ color: "var(--medium-gray)" }}>Clear</button>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Starts">
           <TextInput type="datetime-local" value={wizard.startAt} onChange={(e) => wizard.setStartAt(e.target.value)} />
         </Field>

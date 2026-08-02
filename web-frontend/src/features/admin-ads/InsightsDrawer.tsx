@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { adService, AdCampaign, AdInsights, AdPlacement } from "@/src/services/ad";
 import { ApiError } from "@/src/lib/api-error";
 import { DonutChart, GroupedBars, FunnelBar, type DonutSegment, type BarGroup } from "@/src/components/ui/charts";
-import { Drawer, DrawerHeader, PLACEMENTS } from "./adStudioShared";
+import { Sheet } from "@/src/components/ui/Sheet";
+import { DrawerTitle, PLACEMENTS } from "./adStudioShared";
 
 const INSIGHT_RANGES: { key: string; label: string; days: number | null }[] = [
   { key: "7",   label: "7d",  days: 7 },
@@ -13,7 +14,22 @@ const INSIGHT_RANGES: { key: string; label: string; days: number | null }[] = [
   { key: "all", label: "All", days: null },
 ];
 
-export const InsightsDrawer = ({ campaign, onClose }: { campaign: AdCampaign; onClose: () => void }) => {
+// `Sheet` stays permanently mounted (its animated-open contract) while this
+// body only renders once a campaign is picked — `key={campaign.id}` resets
+// local state like `rangeKey` fresh for each campaign opened, matching the
+// old mount-per-open behavior even though the outer Sheet no longer remounts.
+export const InsightsDrawer = ({ campaign, open, onClose }: { campaign: AdCampaign | null; open: boolean; onClose: () => void }) => (
+  <Sheet
+    open={open}
+    onClose={onClose}
+    width={480}
+    title={<DrawerTitle title="Campaign insights" subtitle={campaign?.creative?.title || campaign?.name} />}
+  >
+    {campaign && <InsightsDrawerBody key={campaign.id} campaign={campaign} />}
+  </Sheet>
+);
+
+const InsightsDrawerBody = ({ campaign }: { campaign: AdCampaign }) => {
   const [insights, setInsights] = useState<AdInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,25 +89,24 @@ export const InsightsDrawer = ({ campaign, onClose }: { campaign: AdCampaign; on
   const placementLabel = (p: AdPlacement) => PLACEMENTS.find((x) => x.key === p)?.label ?? p;
 
   return (
-    <Drawer onRequestClose={onClose}>
-      <DrawerHeader title="Campaign insights" subtitle={campaign.creative?.title || campaign.name} onClose={onClose} />
-      <div className="p-5 space-y-4">
-        {/* Date range */}
-        <div className="flex gap-1.5">
-          {INSIGHT_RANGES.map((r) => (
-            <button key={r.key} onClick={() => setRangeKey(r.key)}
-              className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-all"
-              style={{
-                backgroundColor: rangeKey === r.key ? "var(--primary)" : "var(--surface)",
-                color: rangeKey === r.key ? "#fff" : "var(--foreground)",
-                border: "1px solid var(--border)",
-              }}>
-              {r.label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      {/* Date range */}
+      <div className="flex gap-1.5">
+        {INSIGHT_RANGES.map((r) => (
+          <button key={r.key} type="button" onClick={() => setRangeKey(r.key)}
+            className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-all"
+            style={{
+              backgroundColor: rangeKey === r.key ? "var(--primary)" : "var(--surface)",
+              color: rangeKey === r.key ? "#fff" : "var(--foreground)",
+              touchAction: "manipulation",
+              border: "1px solid var(--border)",
+            }}>
+            {r.label}
+          </button>
+        ))}
+      </div>
 
-        {loading ? (
+      {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl" style={{ backgroundColor: "var(--border)" }} />)}
           </div>
@@ -194,7 +209,6 @@ export const InsightsDrawer = ({ campaign, onClose }: { campaign: AdCampaign; on
             )}
           </>
         ) : null}
-      </div>
-    </Drawer>
+    </div>
   );
 };

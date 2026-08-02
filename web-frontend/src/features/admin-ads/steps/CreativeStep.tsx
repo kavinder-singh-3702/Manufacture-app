@@ -25,7 +25,7 @@ export const CreativeStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
       <Field label="Subtitle">
         <TextInput value={wizard.subtitle} onChange={(e) => wizard.setSubtitle(e.target.value)} placeholder="Optional supporting line" />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="CTA label">
           <TextInput value={wizard.ctaLabel} onChange={(e) => wizard.setCtaLabel(e.target.value)} placeholder={wizard.adSource === "internal" ? "View product" : "Learn more"} />
         </Field>
@@ -45,7 +45,7 @@ export const CreativeStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
           <Reveal show={wizard.useDiscount} motionSafe={motionSafe}>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <span className="text-sm font-bold" style={{ color: "var(--medium-gray)" }}>₹</span>
-              <input type="number" min="1" value={wizard.discountAmount} onChange={(e) => wizard.setDiscountAmount(e.target.value)} placeholder="Advertised price"
+              <input type="number" inputMode="numeric" enterKeyHint="done" min="1" value={wizard.discountAmount} onChange={(e) => wizard.setDiscountAmount(e.target.value)} placeholder="Advertised price"
                 className="w-full bg-transparent text-sm outline-none" style={{ color: "var(--foreground)" }} />
               {wizard.listedPrice != null && Number(wizard.discountAmount) > 0 && Number(wizard.discountAmount) < wizard.listedPrice && (
                 <span className="whitespace-nowrap text-[11px] font-bold" style={{ color: "#16A34A" }}>
@@ -75,7 +75,7 @@ export const CreativeStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
       </div>
 
       <Reveal show={wizard.adSource === "external" && wizard.wantsCrossSell} motionSafe={motionSafe}>
-        <div className="grid grid-cols-2 gap-3 rounded-xl p-3" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
+        <div className="grid grid-cols-1 gap-3 rounded-xl p-3 sm:grid-cols-2" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
           <Field label="Category" required>
             <select value={wizard.externalCategory} onChange={(e) => { wizard.setExternalCategory(e.target.value); wizard.setExternalSubCategory(""); }}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={selectStyle}>
@@ -99,10 +99,10 @@ export const CreativeStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
       <div className="space-y-3 rounded-xl p-3" style={{ border: "1px dashed var(--border)", backgroundColor: "var(--surface)" }}>
         <Label required={wizard.adSource === "external"}>Live preview</Label>
         <CreativePreview
-          bannerImage={wizard.mediaType === "image" ? wizard.bannerPreview : null}
-          videoUrl={wizard.mediaType === "video" ? (wizard.bannerVideoFilePreview ?? (wizard.bannerVideoUrl.trim() || undefined)) : undefined}
-          poster={wizard.posterPreview}
-          productImage={wizard.adSource === "internal" ? wizard.productDisplay?.image : wizard.advertiserLogoPreview ?? undefined}
+          bannerImage={wizard.mediaType === "image" ? wizard.bannerImage.preview : null}
+          videoUrl={wizard.mediaType === "video" ? (wizard.bannerVideo.preview ?? (wizard.bannerVideoUrl.trim() || undefined)) : undefined}
+          poster={wizard.bannerPoster.preview}
+          productImage={wizard.adSource === "internal" ? wizard.productDisplay?.image : wizard.advertiserLogo.preview ?? undefined}
           title={wizard.title.trim() || (wizard.adSource === "internal" ? wizard.productDisplay?.name : wizard.advertiserName.trim()) || "Featured"}
           subtitle={wizard.subtitle.trim()}
           ctaLabel={wizard.ctaLabel.trim() || (wizard.adSource === "internal" ? "View product" : "Learn more")}
@@ -117,24 +117,24 @@ export const CreativeStep = ({ wizard, motionSafe }: { wizard: CampaignWizardApi
 
         {wizard.mediaType === "image" ? (
           <div>
-            <MediaDropzone label="+ Upload banner image (16:9)" accept="image/*" preview={wizard.bannerPreview}
-              onFile={wizard.handleBanner} onRemove={() => { wizard.setBannerPreview(null); wizard.setBannerBase64(null); wizard.setAspectWarning(null); }} />
+            <MediaDropzone label="+ Upload banner image (16:9)" accept="image/*" preview={wizard.bannerImage.preview}
+              onFile={wizard.bannerImage.pick} onRemove={wizard.bannerImage.remove} />
             {wizard.aspectWarning && (
               <p className="mt-1 text-[11px] font-semibold" style={{ color: "#B45309" }}>⚠ {wizard.aspectWarning}</p>
             )}
           </div>
         ) : (
           <div className="space-y-3">
-            <MediaDropzone label="+ Upload video (mp4, ≤ 100MB)" accept="video/*" kind="video" height="h-32" preview={wizard.bannerVideoFilePreview}
-              onFile={wizard.handleVideoFile} onRemove={wizard.clearVideoFile} />
-            {!wizard.bannerVideoFile && (
+            <MediaDropzone label="+ Upload video (mp4, ≤ 100MB)" accept="video/*" kind="video" height="h-32" preview={wizard.bannerVideo.preview}
+              onFile={wizard.bannerVideo.pick} onRemove={wizard.bannerVideo.remove} />
+            {!wizard.bannerVideo.file && (
               <Field label="or paste a hosted video URL">
                 <TextInput value={wizard.bannerVideoUrl} onChange={(e) => wizard.setBannerVideoUrl(e.target.value)} placeholder="https://…" type="url" />
               </Field>
             )}
             <Field label="Poster image (shown before the video plays)">
-              <MediaDropzone label="+ Upload poster image" accept="image/*" preview={wizard.posterPreview} height="h-24"
-                onFile={wizard.handlePoster} onRemove={() => { wizard.setPosterPreview(null); wizard.setPosterBase64(null); }} />
+              <MediaDropzone label="+ Upload poster image" accept="image/*" preview={wizard.bannerPoster.preview} height="h-24"
+                onFile={wizard.bannerPoster.pick} onRemove={wizard.bannerPoster.remove} />
             </Field>
           </div>
         )}

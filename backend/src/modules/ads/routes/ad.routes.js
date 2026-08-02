@@ -2,7 +2,7 @@ const { Router } = require('express');
 const createError = require('http-errors');
 const { authenticate, authenticateOptional, authorizeRoles } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
-const { uploadAdMedia } = require('../../../middleware/upload');
+const { uploadAdMediaFields } = require('../../../middleware/upload');
 const {
   getAdFeedController,
   recordAdEventController,
@@ -28,8 +28,19 @@ const {
 
 const router = Router();
 
-// Accepts either a JSON body or a multipart body where the campaign fields are a
-// JSON string in `payload` and an optional banner video is uploaded as `bannerVideo`.
+// Named multipart file slots the campaign wizard can send — see
+// uploadAdMediaFields (middleware/upload.js). Keyed by field name so the
+// resulting `req.body._mediaFiles` can be handed straight to ad.service.js
+// without a base64 round-trip.
+const MEDIA_FIELDS = ['bannerVideo', 'bannerImage', 'bannerPoster', 'advertiserLogo'];
+
+// Accepts either a plain JSON body or a multipart body where the campaign
+// fields are a JSON string in `payload` plus zero or more of the named
+// MEDIA_FIELDS uploaded as real files. Uploaded files are attached as raw
+// buffers on `req.body._mediaFiles` (never re-encoded to base64) — the
+// service layer prefers those and falls back to the legacy `*Base64` JSON
+// fields only for callers with no multipart request to draw a buffer from
+// (e.g. the service-request prefill flow).
 const parseAdMultipart = (req, res, next) => {
   if (req.body && typeof req.body.payload === 'string') {
     try {
@@ -39,11 +50,23 @@ const parseAdMultipart = (req, res, next) => {
     }
   }
 
-  if (req.file) {
-    req.body.creative = { ...(req.body.creative || {}) };
-    req.body.creative.bannerVideoBase64 = req.file.buffer.toString('base64');
-    req.body.creative.bannerMimeType = req.file.mimetype;
-    req.body.creative.bannerMediaType = 'video';
+  const uploaded = req.files || {};
+  const mediaFiles = {};
+  MEDIA_FIELDS.forEach((field) => {
+    const file = uploaded[field] && uploaded[field][0];
+    if (file) mediaFiles[field] = { buffer: file.buffer, mimetype: file.mimetype };
+  });
+
+  if (Object.keys(mediaFiles).length) {
+    req.body._mediaFiles = mediaFiles;
+    // Authoritative media-type hint straight from what was actually
+    // uploaded — mirrors what the old single-video shim did, now covering
+    // the image case too instead of relying solely on the client's
+    // `creative.bannerMediaType` claim.
+    if (mediaFiles.bannerVideo || mediaFiles.bannerImage) {
+      req.body.creative = { ...(req.body.creative || {}) };
+      req.body.creative.bannerMediaType = mediaFiles.bannerVideo ? 'video' : 'image';
+    }
   }
 
   return next();
@@ -67,7 +90,7 @@ router.post(
   '/admin/campaigns',
   authenticate,
   authorizeRoles('admin'),
-  uploadAdMedia.single('bannerVideo'),
+  uploadAdMediaFields,
   parseAdMultipart,
   validate(createCampaignValidation),
   createCampaignController
@@ -85,7 +108,7 @@ router.patch(
   '/admin/campaigns/:campaignId',
   authenticate,
   authorizeRoles('admin'),
-  uploadAdMedia.single('bannerVideo'),
+  uploadAdMediaFields,
   parseAdMultipart,
   validate([...campaignIdParamValidation, ...updateCampaignValidation]),
   updateCampaignController

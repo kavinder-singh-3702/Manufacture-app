@@ -55,8 +55,13 @@ const listAdminCampaignsController = async (req, res, next) => {
 
 const createCampaignController = async (req, res, next) => {
   try {
+    // `_mediaFiles` (raw multipart buffers, set by parseAdMultipart) is a
+    // transport detail, not a campaign field — split it out of the payload
+    // rather than let it ride along as an extra key on `req.body`.
+    const { _mediaFiles: mediaFiles, ...payload } = req.body;
     const campaign = await createCampaign({
-      payload: req.body,
+      payload,
+      mediaFiles,
       actorId: req.user?.id
     });
     return res.status(201).json({ campaign, message: 'Campaign created' });
@@ -79,9 +84,11 @@ const getCampaignController = async (req, res, next) => {
 
 const updateCampaignController = async (req, res, next) => {
   try {
+    const { _mediaFiles: mediaFiles, ...payload } = req.body;
     const campaign = await updateCampaign({
       campaignId: req.params.campaignId,
-      payload: req.body,
+      payload,
+      mediaFiles,
       actorId: req.user?.id
     });
     if (!campaign) {

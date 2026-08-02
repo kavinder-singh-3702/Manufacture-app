@@ -17,8 +17,8 @@ export type AdPrice = { amount?: number; currency?: string; unit?: string };
 export type AdExternal = {
   destinationUrl: string;
   advertiserName: string;
-  advertiserLogoUrl?: string;
-  advertiserLogoBase64?: string;
+  /** `null` is an explicit "clear the saved logo" instruction on update; a fresh logo upload travels as a multipart file, never here. */
+  advertiserLogoUrl?: string | null;
   category?: string;
   subCategory?: string;
 };
@@ -54,13 +54,11 @@ export type AdCreative = {
   subtitle?: string;
   ctaLabel?: string;
   badge?: string;
-  bannerImageUrl?: string;
-  bannerImageBase64?: string;
-  bannerVideoUrl?: string;
-  bannerVideoBase64?: string;
+  /** `null` explicitly clears a saved value on update; a fresh upload travels as a multipart file, never here. */
+  bannerImageUrl?: string | null;
+  bannerVideoUrl?: string | null;
   bannerMediaType?: AdMediaType;
-  bannerPosterUrl?: string;
-  bannerPosterBase64?: string;
+  bannerPosterUrl?: string | null;
 };
 
 export type AdCampaign = {
@@ -214,36 +212,56 @@ const listCampaigns = (params?: { status?: AdCampaignStatus; search?: string; li
 const getCampaign = (campaignId: string) =>
   httpClient.get<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`).then((r) => r.campaign);
 
-const createCampaign = (payload: UpsertAdCampaignInput) =>
-  httpClient.post<{ campaign: AdCampaign }>(BASE, payload).then((r) => r.campaign);
-
-const updateCampaign = (campaignId: string, payload: Partial<UpsertAdCampaignInput>) =>
-  httpClient.patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, payload).then((r) => r.campaign);
+// One optional File per media slot a campaign can carry. Every slot travels
+// as a real multipart file now — none of them are read into a base64 string
+// and embedded in the JSON body anymore (see useCampaignWizard.ts's
+// useMediaSlot). Previously only `bannerVideo` did; banner image, poster,
+// and advertiser logo were base64-in-JSON, which cost ~33% wire bloat on
+// top of a main-thread FileReader encode, and could combine with the
+// backend's 10mb JSON body limit to overflow on nothing more than a banner +
+// poster in one request.
+export type AdMediaFiles = {
+  bannerImage?: File;
+  bannerVideo?: File;
+  bannerPoster?: File;
+  advertiserLogo?: File;
+};
 
 // Long timeout for uploads — banner videos can be up to ~100MB.
 const UPLOAD_TIMEOUT_MS = 120_000;
 
-// Multipart variants: send the JSON campaign payload alongside a banner video
-// file. The backend (parseAdMultipart) JSON-parses `payload` and stores the
-// uploaded `bannerVideo` as the campaign's video creative.
-const buildMediaForm = (payload: UpsertAdCampaignInput, video: File) => {
+const hasAnyMediaFile = (files?: AdMediaFiles) =>
+  !!files && (!!files.bannerImage || !!files.bannerVideo || !!files.bannerPoster || !!files.advertiserLogo);
+
+// The campaign JSON payload plus whichever media files are present, as
+// multipart form data. The backend (parseAdMultipart) JSON-parses `payload`
+// and attaches each uploaded field as a raw buffer — no server-side base64
+// round-trip either. Field names are shared with the app's FormData builder
+// (ad.service.ts) so the backend needs no per-platform branching.
+const buildMediaForm = (payload: UpsertAdCampaignInput, files: AdMediaFiles) => {
   const form = new FormData();
   form.append("payload", JSON.stringify(payload));
-  form.append("bannerVideo", video);
+  if (files.bannerImage) form.append("bannerImage", files.bannerImage);
+  if (files.bannerVideo) form.append("bannerVideo", files.bannerVideo);
+  if (files.bannerPoster) form.append("bannerPoster", files.bannerPoster);
+  if (files.advertiserLogo) form.append("advertiserLogo", files.advertiserLogo);
   return form;
 };
 
-const createCampaignWithMedia = (payload: UpsertAdCampaignInput, video: File) =>
-  httpClient
-    .post<{ campaign: AdCampaign }>(BASE, buildMediaForm(payload, video), { timeoutMs: UPLOAD_TIMEOUT_MS })
-    .then((r) => r.campaign);
+// A pure text/field edit (no new media picked) still sends plain JSON — no
+// gratuitous multipart overhead when there's nothing binary to send. The
+// long upload timeout only applies once a file is actually attached.
+const createCampaign = (payload: UpsertAdCampaignInput, files?: AdMediaFiles) =>
+  hasAnyMediaFile(files)
+    ? httpClient.post<{ campaign: AdCampaign }>(BASE, buildMediaForm(payload, files!), { timeoutMs: UPLOAD_TIMEOUT_MS }).then((r) => r.campaign)
+    : httpClient.post<{ campaign: AdCampaign }>(BASE, payload).then((r) => r.campaign);
 
-const updateCampaignWithMedia = (campaignId: string, payload: Partial<UpsertAdCampaignInput>, video: File) =>
-  httpClient
-    .patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, buildMediaForm(payload as UpsertAdCampaignInput, video), {
-      timeoutMs: UPLOAD_TIMEOUT_MS,
-    })
-    .then((r) => r.campaign);
+const updateCampaign = (campaignId: string, payload: Partial<UpsertAdCampaignInput>, files?: AdMediaFiles) =>
+  hasAnyMediaFile(files)
+    ? httpClient
+        .patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, buildMediaForm(payload as UpsertAdCampaignInput, files!), { timeoutMs: UPLOAD_TIMEOUT_MS })
+        .then((r) => r.campaign)
+    : httpClient.patch<{ campaign: AdCampaign }>(`${BASE}/${campaignId}`, payload).then((r) => r.campaign);
 
 const activateCampaign = (campaignId: string) =>
   httpClient.post<{ campaign: AdCampaign }>(`${BASE}/${campaignId}/activate`).then((r) => r.campaign);
@@ -281,9 +299,7 @@ export const adService = {
   listCampaigns,
   getCampaign,
   createCampaign,
-  createCampaignWithMedia,
   updateCampaign,
-  updateCampaignWithMedia,
   activateCampaign,
   pauseCampaign,
   stopCampaign,

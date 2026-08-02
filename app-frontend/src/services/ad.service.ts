@@ -14,8 +14,8 @@ export type AdPrice = { amount?: number; currency?: string; unit?: string };
 export type AdExternal = {
   destinationUrl: string;
   advertiserName: string;
-  advertiserLogoUrl?: string;
-  advertiserLogoBase64?: string;
+  /** `null` explicitly clears a saved logo on update; a fresh logo upload travels as a multipart file (see AdMediaFiles), never base64 here. */
+  advertiserLogoUrl?: string | null;
   category?: string;
   subCategory?: string;
 };
@@ -155,11 +155,10 @@ export type UpsertAdCampaignInput = {
     subtitle?: string;
     ctaLabel?: string;
     badge?: string;
-    bannerImageUrl?: string;
-    bannerImageBase64?: string;
-    bannerVideoUrl?: string;
-    bannerVideoBase64?: string;
-    bannerPosterBase64?: string;
+    /** `null` explicitly clears a saved value on update; a fresh upload travels as a multipart file (see AdMediaFiles), never base64 here. */
+    bannerImageUrl?: string | null;
+    bannerVideoUrl?: string | null;
+    bannerPosterUrl?: string | null;
     bannerMediaType?: AdMediaType;
   };
   sourceServiceRequest?: string;
@@ -191,6 +190,47 @@ export type CampaignFromRequestResponse = {
   message?: string;
 };
 
+// A locally-picked file, in the shape React Native's `FormData` expects.
+export type AdMediaFile = { uri: string; type: string; name: string };
+
+// One optional file per media slot a campaign can carry. Every slot travels
+// as a real multipart file now — none of them are base64-encoded and
+// embedded in the JSON body anymore. Previously only the banner video did;
+// banner image, poster, and advertiser logo were read into a base64 string
+// via `expo-image-manipulator`'s `base64: true` output, which cost an
+// on-device encode for data that was just going to be re-decoded server
+// side, plus the same ~33% wire bloat the web client had. Field names match
+// the web client's `AdMediaFiles` (`src/services/ad.ts`) so the backend
+// needs no per-platform branching.
+export type AdMediaFiles = {
+  bannerImage?: AdMediaFile;
+  bannerVideo?: AdMediaFile;
+  bannerPoster?: AdMediaFile;
+  advertiserLogo?: AdMediaFile;
+};
+
+const hasAnyMediaFile = (files?: AdMediaFiles) =>
+  !!files && (!!files.bannerImage || !!files.bannerVideo || !!files.bannerPoster || !!files.advertiserLogo);
+
+const appendMediaFile = (form: FormData, field: string, file?: AdMediaFile) => {
+  if (!file) return;
+  form.append(field, { uri: file.uri, type: file.type, name: file.name } as unknown as Blob);
+};
+
+// The campaign JSON payload plus whichever media files are present, as
+// multipart form data — mirrors the web client's `buildMediaForm`
+// (`src/services/ad.ts`). The backend (parseAdMultipart) JSON-parses
+// `payload` and attaches each uploaded field as a raw buffer.
+const buildMediaForm = (payload: UpsertAdCampaignInput, files: AdMediaFiles) => {
+  const form = new FormData();
+  form.append("payload", JSON.stringify(payload));
+  appendMediaFile(form, "bannerImage", files.bannerImage);
+  appendMediaFile(form, "bannerVideo", files.bannerVideo);
+  appendMediaFile(form, "bannerPoster", files.bannerPoster);
+  appendMediaFile(form, "advertiserLogo", files.advertiserLogo);
+  return form;
+};
+
 class AdService {
   async getFeed(params?: {
     placement?: AdPlacement;
@@ -214,23 +254,10 @@ class AdService {
     return apiClient.get<CampaignListResponse>("/ads/admin/campaigns", { params });
   }
 
-  async createCampaign(payload: UpsertAdCampaignInput): Promise<AdCampaign> {
-    const response = await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", payload);
-    return response.campaign;
-  }
-
-  async createCampaignWithMedia(
-    payload: UpsertAdCampaignInput,
-    videoFile: { uri: string; type: string; name: string },
-  ): Promise<AdCampaign> {
-    const formData = new FormData();
-    formData.append("payload", JSON.stringify(payload));
-    formData.append("bannerVideo", {
-      uri: videoFile.uri,
-      type: videoFile.type,
-      name: videoFile.name,
-    } as unknown as Blob);
-    const response = await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", formData);
+  async createCampaign(payload: UpsertAdCampaignInput, mediaFiles?: AdMediaFiles): Promise<AdCampaign> {
+    const response = hasAnyMediaFile(mediaFiles)
+      ? await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", buildMediaForm(payload, mediaFiles!))
+      : await apiClient.post<{ campaign: AdCampaign }>("/ads/admin/campaigns", payload);
     return response.campaign;
   }
 
@@ -239,24 +266,10 @@ class AdService {
     return response.campaign;
   }
 
-  async updateCampaign(campaignId: string, payload: UpdateAdCampaignInput): Promise<AdCampaign> {
-    const response = await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, payload);
-    return response.campaign;
-  }
-
-  async updateCampaignWithMedia(
-    campaignId: string,
-    payload: UpdateAdCampaignInput,
-    videoFile: { uri: string; type: string; name: string },
-  ): Promise<AdCampaign> {
-    const formData = new FormData();
-    formData.append("payload", JSON.stringify(payload));
-    formData.append("bannerVideo", {
-      uri: videoFile.uri,
-      type: videoFile.type,
-      name: videoFile.name,
-    } as unknown as Blob);
-    const response = await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, formData);
+  async updateCampaign(campaignId: string, payload: UpdateAdCampaignInput, mediaFiles?: AdMediaFiles): Promise<AdCampaign> {
+    const response = hasAnyMediaFile(mediaFiles)
+      ? await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, buildMediaForm(payload as UpsertAdCampaignInput, mediaFiles!))
+      : await apiClient.patch<{ campaign: AdCampaign }>(`/ads/admin/campaigns/${campaignId}`, payload);
     return response.campaign;
   }
 

@@ -4,6 +4,16 @@
  * Shared primitives for the Ad Studio drawers — split out of what used to be
  * a single 1486-line AdStudioPanel.tsx so the list view, the campaign wizard,
  * and the insights view can each live in their own file.
+ *
+ * The drawer shell itself lives in `src/components/ui/Sheet.tsx` (a private
+ * `Drawer`/`DrawerHeader` pair used to live here, but Sheet is the app-wide
+ * responsive drawer primitive and Ad Studio was the one remaining place that
+ * hadn't adopted it — `DrawerTitle` below is the title+subtitle content
+ * CampaignDrawer/InsightsDrawer pass into Sheet's `title` slot). `UserPicker`
+ * below is built on the app-wide `Modal` shell for the same reason — it and
+ * `ProductPicker` (`src/features/ads/components/ProductPicker.tsx`) used to
+ * be near-identical hand-rolled `fixed inset-0 z-[60] flex items-center …`
+ * overlays.
  */
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +21,7 @@ import { useEffect, useState, type InputHTMLAttributes, type TextareaHTMLAttribu
 import type { AdPlacement } from "@/src/services/ad";
 import type { AdminUser } from "@/src/services/admin";
 import { adminService } from "@/src/services/admin";
+import { Modal } from "@/src/components/ui/Modal";
 
 export const PLACEMENTS: { key: AdPlacement; label: string }[] = [
   { key: "dashboard_home",  label: "Dashboard home" },
@@ -22,6 +33,17 @@ export const PLACEMENTS: { key: AdPlacement; label: string }[] = [
 // src/components/ui/motion.ts (fadeUp). Kept local since the step-transition
 // shape (directional slide) doesn't fit that helper's signature.
 export const EASE = [0.22, 1, 0.36, 1] as const;
+
+// Sheet's `title` slot takes a plain ReactNode — this is the title+subtitle
+// stack both Ad Studio drawers pass into it (was baked into the old private
+// `DrawerHeader`; Sheet renders its own close button alongside whatever this
+// renders).
+export const DrawerTitle = ({ title, subtitle }: { title: React.ReactNode; subtitle?: React.ReactNode }) => (
+  <div className="min-w-0">
+    <p className="truncate text-base font-bold" style={{ color: "var(--foreground)" }}>{title}</p>
+    {subtitle && <p className="mt-0.5 truncate text-xs font-normal" style={{ color: "var(--medium-gray)" }}>{subtitle}</p>}
+  </div>
+);
 
 // Collapsible wrapper for conditionally-shown fields (discount amount, audience
 // sub-panels, external-only inputs) — the form grows/shrinks instead of popping.
@@ -38,48 +60,6 @@ export const Reveal = ({ show, motionSafe, children }: { show: boolean; motionSa
       </motion.div>
     )}
   </AnimatePresence>
-);
-
-// `onRequestClose` — NOT a direct close. The backdrop click and Escape key
-// only *request* a close; the caller decides whether that's safe (clean vs.
-// dirty form, mid-save, etc.) and only unmounts the drawer if it agrees. This
-// used to be a bare `onClose` wired straight to the backdrop's onClick, so a
-// single stray click outside the ~448px-wide panel silently discarded the
-// entire wizard — including an uploaded banner — with no confirmation and no
-// guard against closing mid-save.
-export const Drawer = ({ children, onRequestClose }: { children: React.ReactNode; onRequestClose: () => void }) => {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onRequestClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onRequestClose]);
-
-  return (
-    <>
-      <motion.div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onRequestClose} />
-      <motion.aside
-        className="fixed inset-y-0 right-0 z-50 w-full max-w-lg overflow-y-auto shadow-2xl"
-        style={{ backgroundColor: "var(--surface)", borderLeft: "1px solid var(--border)" }}
-        initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 28, stiffness: 280 }}>
-        {children}
-      </motion.aside>
-    </>
-  );
-};
-
-export const DrawerHeader = ({ title, subtitle, onClose }: { title: string; subtitle?: string; onClose: () => void }) => (
-  <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-5 py-4"
-    style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
-    <div>
-      <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>{title}</p>
-      {subtitle && <p className="text-xs mt-0.5 truncate" style={{ color: "var(--medium-gray)" }}>{subtitle}</p>}
-    </div>
-    <button type="button" onClick={onClose}
-      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-60"
-      style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--medium-gray)" }}>✕</button>
-  </div>
 );
 
 export const Label = ({ children, required }: { children: React.ReactNode; required?: boolean }) => (
@@ -225,58 +205,67 @@ export const UserPicker = ({ selectedIds, onToggle, onClose, title, single = fal
 
   const showingTop = !search.trim();
 
+  // `Modal` here is mounted only while this component itself is (callers use
+  // the usual `{open && <UserPicker .../>}` pattern), with `open` hardcoded
+  // true — it always gets its entrance animation (that only depends on
+  // mount, not on AnimatePresence), it just skips an exit animation on close
+  // in favor of instant unmount, an acceptable trade for a secondary picker.
+  // Every button below is `type="button"` because this used to render
+  // *inside* the wizard's `<form>` via a `position: fixed` div (DOM ancestry
+  // doesn't change with fixed positioning) — an untyped `<button>` defaults
+  // to `type="submit"`, so tapping a user row, Done, or ✕ used to submit the
+  // whole campaign wizard. `Modal` renders in the same tree position, so the
+  // fix has to be the button types, not just moving to a shell component.
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-between p-4" style={{ borderBottom: "1px solid var(--border)" }}>
-          <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
-            {title ?? (single ? "Select owner" : `Target specific users · ${selectedIds.length} selected`)}
-          </p>
-          <button onClick={onClose} className="text-lg font-bold leading-none hover:opacity-60" style={{ color: "var(--medium-gray)" }}>✕</button>
-        </div>
-        <div className="p-3" style={{ borderBottom: "1px solid var(--border)" }}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus placeholder="Search by name, email, phone…"
-            className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          {showingTop && (
-            <p className="mt-2 text-[11px]" style={{ color: "var(--medium-gray)" }}>Showing 3 recent users — search to find anyone.</p>
-          )}
-        </div>
-        <div className="max-h-72 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-transparent" style={{ borderTopColor: "var(--primary)" }} />
-            </div>
-          ) : !results.length ? (
-            <p className="py-8 text-center text-sm" style={{ color: "var(--medium-gray)" }}>No users found.</p>
-          ) : results.map((u) => {
-            const active = selectedIds.includes(u.id);
-            return (
-              <button key={u.id} onClick={() => { onToggle(u); if (single) onClose(); }}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--background)]"
-                style={{ borderBottom: "1px solid var(--border)" }}>
-                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{ backgroundColor: active ? "var(--primary)" : "var(--background)", color: active ? "#fff" : "var(--medium-gray)" }}>
-                  {active ? "✓" : (u.displayName || u.email || "?").charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{u.displayName || "Unnamed user"}</p>
-                  <p className="text-xs truncate" style={{ color: "var(--medium-gray)" }}>{u.email}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        {!single && (
-          <div className="p-3" style={{ borderTop: "1px solid var(--border)" }}>
-            <button onClick={onClose} className="w-full rounded-xl py-2.5 text-sm font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>Done</button>
-          </div>
+    <Modal open onClose={onClose} ariaLabel={title ?? "Select users"}>
+      <div className="flex items-center justify-between p-4" style={{ borderBottom: "1px solid var(--border)" }}>
+        <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
+          {title ?? (single ? "Select owner" : `Target specific users · ${selectedIds.length} selected`)}
+        </p>
+        <button type="button" onClick={onClose} style={{ touchAction: "manipulation", color: "var(--medium-gray)" }}
+          className="text-lg font-bold leading-none hover:opacity-60">✕</button>
+      </div>
+      <div className="p-3" style={{ borderBottom: "1px solid var(--border)" }}>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} autoFocus placeholder="Search by name, email, phone…"
+          data-modal-initial-focus="true"
+          className="w-full rounded-xl px-3 py-2 text-sm outline-none"
+          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+        {showingTop && (
+          <p className="mt-2 text-[11px]" style={{ color: "var(--medium-gray)" }}>Showing 3 recent users — search to find anyone.</p>
         )}
-      </motion.div>
-    </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-transparent" style={{ borderTopColor: "var(--primary)" }} />
+          </div>
+        ) : !results.length ? (
+          <p className="py-8 text-center text-sm" style={{ color: "var(--medium-gray)" }}>No users found.</p>
+        ) : results.map((u) => {
+          const active = selectedIds.includes(u.id);
+          return (
+            <button key={u.id} type="button" onClick={() => { onToggle(u); if (single) onClose(); }}
+              style={{ borderBottom: "1px solid var(--border)", touchAction: "manipulation" }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--background)]">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                style={{ backgroundColor: active ? "var(--primary)" : "var(--background)", color: active ? "#fff" : "var(--medium-gray)" }}>
+                {active ? "✓" : (u.displayName || u.email || "?").charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>{u.displayName || "Unnamed user"}</p>
+                <p className="text-xs truncate" style={{ color: "var(--medium-gray)" }}>{u.email}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {!single && (
+        <div className="p-3" style={{ borderTop: "1px solid var(--border)" }}>
+          <button type="button" onClick={onClose} style={{ touchAction: "manipulation", backgroundColor: "var(--primary)" }}
+            className="w-full rounded-xl py-2.5 text-sm font-bold text-white">Done</button>
+        </div>
+      )}
+    </Modal>
   );
 };
 

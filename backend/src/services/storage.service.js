@@ -266,8 +266,13 @@ const ALLOWED_AD_VIDEO_MIME_TYPES = ['video/mp4'];
 const ALLOWED_AD_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 //=====>>>Upload ad banner media (image or video) <<<===-
-const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, base64 }) => {
-  if (!base64 || typeof base64 !== 'string') {
+// Accepts either a raw `buffer` (the multipart path — a file straight off
+// multer's memory storage, no encode/decode round-trip) or a `base64` string
+// (the legacy JSON-body path, still used by callers with no multipart
+// request to draw a buffer from, e.g. the service-request prefill flow).
+// `buffer` wins when both happen to be present.
+const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, base64, buffer }) => {
+  if (!buffer && (!base64 || typeof base64 !== 'string')) {
     throw createError(400, 'Invalid banner media payload supplied');
   }
 
@@ -289,21 +294,20 @@ const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, 
 
   const s3 = getS3Client();
   const objectKey = buildAdBannerObjectKey({ campaignId, kind, fileName });
-  const cleanedBase64 = normalizeBase64Payload(base64);
-  const buffer = Buffer.from(cleanedBase64, 'base64');
+  const mediaBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(normalizeBase64Payload(base64), 'base64');
 
-  if (!buffer.length) {
+  if (!mediaBuffer.length) {
     throw createError(400, 'Banner media content cannot be empty');
   }
 
-  if (buffer.length > maxBytes) {
+  if (mediaBuffer.length > maxBytes) {
     throw createError(413, `Banner ${kind} exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB limit`);
   }
 
   const putCommand = new PutObjectCommand({
     Bucket: config.awsS3Bucket,
     Key: objectKey,
-    Body: buffer,
+    Body: mediaBuffer,
     ContentType: mimeType || defaultMime
   });
 
@@ -314,7 +318,7 @@ const uploadAdBanner = async ({ campaignId, kind = 'image', fileName, mimeType, 
     url: buildPublicUrl(objectKey),
     fileName,
     contentType: mimeType || defaultMime,
-    size: buffer.length,
+    size: mediaBuffer.length,
     mediaType: isVideo ? 'video' : 'image',
     uploadedAt: new Date()
   };

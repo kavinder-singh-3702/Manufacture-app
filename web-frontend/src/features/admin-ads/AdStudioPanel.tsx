@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { adService, AdCampaign, AdCampaignStatus } from "@/src/services/ad";
 import { ApiError } from "@/src/lib/api-error";
 import { DonutChart, DonutLegend, AnimatedNumber, type DonutSegment } from "@/src/components/ui/charts";
@@ -61,10 +61,29 @@ export const AdStudioPanel = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [actionId, setActionId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  // CampaignDrawer/InsightsDrawer now stay permanently mounted (Sheet's
+  // contract — an `open` boolean, not conditional mounting) so their
+  // slide/backdrop animation plays on both open *and* close; a bumped
+  // `session` forces a fresh wizard/local-state per open instead of reusing
+  // whatever the previous session left behind. See CampaignDrawer.tsx.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSession, setDrawerSession] = useState(0);
   const [editing, setEditing] = useState<AdCampaign | null>(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsFor, setInsightsFor] = useState<AdCampaign | null>(null);
   const [summary, setSummary] = useState<Record<AdCampaignStatus, number> | null>(null);
+
+  const openDrawer = (campaign: AdCampaign | null) => {
+    setEditing(campaign);
+    setDrawerOpen(true);
+    setDrawerSession((s) => s + 1);
+  };
+  const closeDrawer = () => setDrawerOpen(false);
+
+  const openInsights = (campaign: AdCampaign) => {
+    setInsightsFor(campaign);
+    setInsightsOpen(true);
+  };
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Accurate per-status totals (independent of the active filter / pagination).
@@ -142,9 +161,8 @@ export const AdStudioPanel = () => {
           </>
         }
         actions={
-          <button onClick={() => setCreateOpen(true)}
-            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-            style={{ backgroundColor: "var(--primary)" }}>
+          <button type="button" onClick={() => openDrawer(null)} style={{ touchAction: "manipulation", backgroundColor: "var(--primary)" }}
+            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5">
             + New campaign
           </button>
         }
@@ -199,13 +217,14 @@ export const AdStudioPanel = () => {
         </div>
         <div className="flex flex-wrap gap-1.5">
           {STATUS_CHIPS.map((chip) => (
-            <button key={chip.key} onClick={() => setStatusFilter(chip.key)}
-              className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
+            <button key={chip.key} type="button" onClick={() => setStatusFilter(chip.key)}
               style={{
                 backgroundColor: statusFilter === chip.key ? "var(--primary)" : "var(--surface)",
                 color: statusFilter === chip.key ? "#fff" : "var(--foreground)",
                 border: "1px solid var(--border)",
-              }}>
+                touchAction: "manipulation",
+              }}
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all">
               {chip.label}
             </button>
           ))}
@@ -216,7 +235,7 @@ export const AdStudioPanel = () => {
         <div className="flex items-center justify-between rounded-xl px-4 py-3 text-sm"
           style={{ backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger)", color: "var(--danger-strong)" }}>
           <span>{error}</span>
-          <button onClick={() => load(0)} className="text-xs font-bold underline ml-4">Retry</button>
+          <button type="button" onClick={() => load(0)} className="ml-4 text-xs font-bold underline">Retry</button>
         </div>
       )}
 
@@ -232,7 +251,8 @@ export const AdStudioPanel = () => {
           <span className="text-4xl">📣</span>
           <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>No campaigns</p>
           <p className="text-sm" style={{ color: "var(--medium-gray)" }}>Create your first ad campaign to promote products.</p>
-          <button onClick={() => setCreateOpen(true)} className="mt-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white" style={{ backgroundColor: "var(--primary)" }}>
+          <button type="button" onClick={() => openDrawer(null)} style={{ backgroundColor: "var(--primary)", touchAction: "manipulation" }}
+            className="mt-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white">
             + New campaign
           </button>
         </div>
@@ -295,9 +315,9 @@ export const AdStudioPanel = () => {
                       {c.status === "active" && (
                         <ActBtn onClick={() => runLifecycle(c, "pause")} disabled={busy} color="#92400E">Pause</ActBtn>
                       )}
-                      <ActBtn onClick={() => setInsightsFor(c)} color="var(--primary)">Insights</ActBtn>
+                      <ActBtn onClick={() => openInsights(c)} color="var(--primary)">Insights</ActBtn>
                       {c.status !== "archived" && (
-                        <ActBtn onClick={() => setEditing(c)} color="var(--foreground)">Edit</ActBtn>
+                        <ActBtn onClick={() => openDrawer(c)} color="var(--foreground)">Edit</ActBtn>
                       )}
                       {c.status !== "archived" && (
                         <ActBtn onClick={() => runLifecycle(c, "stop")} disabled={busy} color="var(--error)">Archive</ActBtn>
@@ -310,9 +330,9 @@ export const AdStudioPanel = () => {
           </div>
           {pagination.hasMore && (
             <div className="flex justify-center pt-1">
-              <button onClick={() => load(pagination.offset + PAGE_SIZE, true)} disabled={loadingMore}
-                className="rounded-xl px-6 py-2.5 text-sm font-bold transition-opacity hover:opacity-70 disabled:opacity-40"
-                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }}>
+              <button type="button" onClick={() => load(pagination.offset + PAGE_SIZE, true)} disabled={loadingMore}
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)", touchAction: "manipulation" }}
+                className="rounded-xl px-6 py-2.5 text-sm font-bold transition-opacity hover:opacity-70 disabled:opacity-40">
                 {loadingMore ? "Loading…" : "Load more"}
               </button>
             </div>
@@ -320,23 +340,17 @@ export const AdStudioPanel = () => {
         </>
       )}
 
-      {/* Create / edit drawer */}
-      <AnimatePresence>
-        {(createOpen || editing) && (
-          <CampaignDrawer
-            campaign={editing}
-            onClose={() => { setCreateOpen(false); setEditing(null); }}
-            onSaved={() => { setCreateOpen(false); setEditing(null); load(0); loadSummary(); }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Create / edit drawer — permanently mounted (Sheet's contract), see openDrawer/closeDrawer above */}
+      <CampaignDrawer
+        open={drawerOpen}
+        sessionKey={drawerSession}
+        campaign={editing}
+        onClose={closeDrawer}
+        onSaved={() => { closeDrawer(); load(0); loadSummary(); }}
+      />
 
       {/* Insights drawer */}
-      <AnimatePresence>
-        {insightsFor && (
-          <InsightsDrawer campaign={insightsFor} onClose={() => setInsightsFor(null)} />
-        )}
-      </AnimatePresence>
+      <InsightsDrawer campaign={insightsFor} open={insightsOpen} onClose={() => setInsightsOpen(false)} />
     </div>
   );
 };
@@ -344,9 +358,8 @@ export const AdStudioPanel = () => {
 const ActBtn = ({ children, onClick, disabled, color }: {
   children: React.ReactNode; onClick: () => void; disabled?: boolean; color: string;
 }) => (
-  <button onClick={onClick} disabled={disabled}
-    className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-70 disabled:opacity-40"
-    style={{ backgroundColor: tintBg(color), color }}>
+  <button type="button" onClick={onClick} disabled={disabled} style={{ backgroundColor: tintBg(color), color, touchAction: "manipulation" }}
+    className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-70 disabled:opacity-40">
     {children}
   </button>
 );
