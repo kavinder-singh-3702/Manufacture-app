@@ -129,12 +129,14 @@ export const CampaignDrawer = ({ campaign, onClose, onSaved }: { campaign?: AdCa
             // `title` tooltip mouse users never see). Clicking always runs the
             // check; goNext() surfaces the real error banner on failure.
             <button type="button" onClick={wizard.goNext}
-              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80">
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80"
+              style={{ backgroundColor: "var(--primary)" }}>
               Continue
             </button>
           ) : (
             <button type="submit" disabled={wizard.saving}
-              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-60">
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-60"
+              style={{ backgroundColor: "var(--primary)" }}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key={wizard.saving ? "saving" : "idle"}
