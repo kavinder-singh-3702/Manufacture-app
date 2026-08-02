@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -124,34 +124,49 @@ export const ProfileScreen = () => {
   const handleUploadAvatar = async () => {
     try {
       setAvatarError(null);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*"],
-        copyToCacheDirectory: true,
+
+      // Use PHPicker on iOS (full library) instead of the Files-app
+      // DocumentPicker that landed users on "Recents". Same skip-permission-
+      // on-iOS pattern as the company logo picker; Android still asks.
+      if (Platform.OS === "android") {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setAvatarError("Please allow photo library access to upload a photo.");
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+        allowsEditing: true,
+        aspect: [1, 1],
       });
+
       if (result.canceled) return;
-      const file = result.assets?.[0];
-      if (!file) {
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
         setAvatarError("Unable to read that file. Please try another image.");
         return;
       }
-      if (file.size && file.size > 5 * 1024 * 1024) {
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
         setAvatarError("Please choose an image smaller than 5 MB.");
         return;
       }
-      if (file.mimeType && !file.mimeType.startsWith("image/")) {
+
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      if (!mimeType.startsWith("image/")) {
         setAvatarError("Please choose an image file (JPG or PNG).");
         return;
       }
-      const fileUri = file.uri;
-      if (!fileUri) {
-        setAvatarError("We couldn't read that file path. Please pick another image.");
-        return;
-      }
+
       setAvatarUploading(true);
       const response = await userService.uploadUserFile({
-        fileName: file.name ?? "avatar.jpg",
-        mimeType: file.mimeType ?? "image/jpeg",
-        uri: fileUri,
+        fileName: asset.fileName ?? "avatar.jpg",
+        mimeType,
+        uri: asset.uri,
         purpose: "avatar",
       });
       const uploadedUrl = response.file?.url ?? undefined;
