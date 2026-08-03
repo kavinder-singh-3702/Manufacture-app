@@ -1,8 +1,15 @@
 import { apiClient } from "./apiClient";
 
+// Mirrors web-frontend/src/services/notification.ts exactly — there's no
+// shared package between the two frontends, so this file and the web one are
+// kept as literal structural mirrors of the same backend contract
+// (backend/src/services/notification.service.js `formatNotification` /
+// admin batch-summary shape). Change both together.
+
 export type NotificationPriority = "low" | "normal" | "high" | "critical";
 export type NotificationStatus = "read" | "unread";
 export type NotificationChannel = "in_app" | "email" | "sms" | "push" | "webhook";
+export type NotificationAudience = "user" | "company" | "broadcast";
 
 export type NotificationActionType = "none" | "route" | "url" | "chat" | "call";
 
@@ -28,6 +35,7 @@ export type NotificationDelivery = {
 
 export type Notification = {
   id: string;
+  batchId: string;
   title: string;
   body: string;
   eventKey: string;
@@ -111,7 +119,7 @@ export type NotificationPreferences = {
 };
 
 export type AdminDispatchPayload = {
-  audience?: "user" | "company" | "broadcast";
+  audience?: NotificationAudience;
   userId?: string;
   userIds?: string[];
   companyId?: string;
@@ -128,14 +136,61 @@ export type AdminDispatchPayload = {
   scheduledAt?: string;
   expiresAt?: string;
   metadata?: Record<string, unknown>;
+  deliveryPolicy?: Partial<{
+    respectQuietHours: boolean;
+    allowPush: boolean;
+    allowInApp: boolean;
+    allowEmail: boolean;
+    maxRetries: number;
+    allowCriticalOverride: boolean;
+  }>;
 };
 
 export type AdminDispatchResponse = {
   success: boolean;
+  batchId?: string;
   notificationId?: string;
   notification?: Notification;
   notificationIds?: string[];
   count?: number;
+  skipped?: number;
+  audience?: NotificationAudience;
+};
+
+export type Pagination = { total: number; limit: number; offset: number; hasMore: boolean };
+
+// One row per dispatch (a broadcast/company/multi-user send fans out to many
+// per-recipient docs sharing a batchId — admin screens operate on the batch,
+// not the raw recipient rows).
+export type AdminNotificationBatch = {
+  batchId: string;
+  title: string;
+  body: string;
+  eventKey: string;
+  topic: string;
+  priority: NotificationPriority;
+  audience: NotificationAudience;
+  channels: NotificationChannel[];
+  createdAt: string;
+  scheduledAt: string | null;
+  createdBy: string | null;
+  createdByName: string | null;
+  recipientCount: number;
+  readCount: number;
+  cancelledCount: number;
+  completedCount: number;
+  deliveryRollup: Record<string, Partial<Record<NotificationDelivery["status"], number>>>;
+};
+
+export type AdminBatchListResponse = {
+  notifications: AdminNotificationBatch[];
+  pagination: Pagination;
+};
+
+export type AdminBatchDetailResponse = {
+  batch: AdminNotificationBatch;
+  recipients: Notification[];
+  pagination: Pagination;
 };
 
 class NotificationService {
@@ -197,31 +252,36 @@ class NotificationService {
     return apiClient.post<AdminDispatchResponse>("/notifications/dispatch", payload);
   }
 
+  // Batch-aggregated admin history — a broadcast/company/multi-user dispatch
+  // fans out to one Notification doc per recipient sharing a batchId, and
+  // these three methods operate on the batch as a whole rather than the raw
+  // recipient rows (backend/src/services/notification.service.js
+  // listAdminNotifications/getAdminBatch/cancelAdminBatch/resendAdminBatch).
   async listAdminNotifications(params?: {
     userId?: string;
     topic?: string;
     priority?: NotificationPriority;
     eventKey?: string;
+    audience?: NotificationAudience;
     status?: string;
+    mine?: boolean;
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<NotificationListResponse> {
-    return apiClient.get<NotificationListResponse>("/notifications/admin", { params });
+  }): Promise<AdminBatchListResponse> {
+    return apiClient.get<AdminBatchListResponse>("/notifications/admin", { params });
   }
 
-  async getAdminNotification(notificationId: string): Promise<Notification> {
-    const response = await apiClient.get<{ notification: Notification }>(`/notifications/admin/${notificationId}`);
-    return response.notification;
+  async getAdminBatch(batchId: string, params?: { limit?: number; offset?: number }): Promise<AdminBatchDetailResponse> {
+    return apiClient.get<AdminBatchDetailResponse>(`/notifications/admin/batches/${batchId}`, { params });
   }
 
-  async cancelAdminNotification(notificationId: string): Promise<Notification> {
-    const response = await apiClient.patch<{ notification: Notification }>(`/notifications/admin/${notificationId}/cancel`);
-    return response.notification;
+  async cancelAdminBatch(batchId: string): Promise<AdminBatchDetailResponse> {
+    return apiClient.patch<AdminBatchDetailResponse>(`/notifications/admin/batches/${batchId}/cancel`);
   }
 
-  async resendAdminNotification(notificationId: string): Promise<AdminDispatchResponse> {
-    return apiClient.post<AdminDispatchResponse>(`/notifications/admin/${notificationId}/resend`);
+  async resendAdminBatch(batchId: string): Promise<AdminDispatchResponse> {
+    return apiClient.post<AdminDispatchResponse>(`/notifications/admin/batches/${batchId}/resend`);
   }
 }
 

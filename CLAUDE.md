@@ -1,6 +1,7 @@
 # Working conventions
 
 - **Build once, at the end.** When making a series of related changes (e.g. a multi-phase feature), don't run `npm run build` after every file or every phase — run `npx tsc --noEmit` for quick type feedback while iterating, and save the full `npm run build` (and any test suites) for a single pass after all the changes are in, right before wrapping up. This saves time and tokens compared to rebuilding repeatedly.
+- **Push and deploy once, at the end.** For a multi-file/multi-phase task spanning `backend/`, `web-frontend/`, and/or `app-frontend/`, don't `git commit`/`push` or deploy the backend after each phase — do the full verification pass (tsc, tests, build) first, then commit, push, and deploy in one final pass. The backend never auto-deploys and always needs the explicit `rsync` + systemd restart from `BACKEND-DEPLOYMENT.md` after pushing; whether web-frontend redeploys itself on push depends on whether Vercel's git integration is connected for this repo — see "Frontend Hosting (Vercel)" in `BACKEND-DEPLOYMENT.md`, don't assume either way.
 
 # Deployment topology
 

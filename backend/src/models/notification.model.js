@@ -87,6 +87,19 @@ const notificationSchema = new Schema(
     user: { type: Schema.Types.ObjectId, ref: "User" },
     company: { type: Schema.Types.ObjectId, ref: "Company" },
     actor: { type: Schema.Types.ObjectId, ref: "User" }, // Who triggered the notification.
+    // Shared id across every per-recipient doc produced by one dispatch call
+    // (company/broadcast fan-out, or a multi-userIds dispatch). Lets the admin
+    // history collapse N recipient rows into one logical "batch" instead of
+    // showing a broadcast as hundreds of identical history entries.
+    batchId: { type: String, trim: true },
+    // Snapshot of how the audience was resolved at dispatch time, so history
+    // can show "Broadcast — 214 recipients" without re-resolving membership
+    // against data that may have since changed.
+    audienceSnapshot: {
+      audience: { type: String, enum: AUDIENCE_OPTIONS },
+      company: { type: Schema.Types.ObjectId, ref: "Company" },
+      requestedCount: Number,
+    },
     templateKey: { type: String, trim: true },
     eventKey: { type: String, required: true, trim: true }, // Namespaced event id e.g. company.verification.approved.
     topic: { type: String, trim: true }, // Used for grouping/filters such as "billing" or "security".
@@ -139,5 +152,7 @@ notificationSchema.index({ "deliveries.channel": 1, status: 1 });
 notificationSchema.index({ archivedAt: 1, createdAt: -1 });
 notificationSchema.index({ readAt: 1, createdAt: -1 });
 notificationSchema.index({ "deliveries.nextRetryAt": 1, status: 1 });
+notificationSchema.index({ batchId: 1, createdAt: -1 });
+notificationSchema.index({ createdBy: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

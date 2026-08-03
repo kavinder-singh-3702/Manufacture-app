@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Notification = require('../models/notification.model');
 const User = require('../models/user.model');
@@ -9,37 +10,24 @@ const {
   NOTIFICATION_DELIVERY_STATUSES,
   NOTIFICATION_AUDIENCE,
   PRIORITY_DEFAULT_CHANNELS,
-  NOTIFICATION_ACTION_TYPES
+  NOTIFICATION_ACTION_TYPES,
+  DEFAULT_DELIVERY_POLICY,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_DELIVERY_ERROR_CODES,
 } = require('../constants/notification');
+const { toPlainObject } = require('../utils/plainObject');
+const { computeLifecycleStatus } = require('../modules/notifications/services/notificationLifecycle.service');
+const { resolveAudienceUserIds } = require('../modules/notifications/services/notificationAudience.service');
+const { resolveChannelDecision } = require('../modules/notifications/services/notificationDeliveryPolicy.service');
 const { emitToUser, emitToUsers } = require('../socket');
 
 const CHANNEL_OPTIONS = Object.values(NOTIFICATION_CHANNELS);
 const PRIORITY_OPTIONS = Object.values(NOTIFICATION_PRIORITIES);
+const AUDIENCE_OPTIONS = Object.values(NOTIFICATION_AUDIENCE);
 
-const DEFAULT_DELIVERY_POLICY = {
-  respectQuietHours: true,
-  allowPush: true,
-  allowInApp: true,
-  allowEmail: true,
-  maxRetries: 4,
-  allowCriticalOverride: true,
-};
-
-const DEFAULT_NOTIFICATION_PREFERENCES = {
-  masterEnabled: true,
-  inAppEnabled: true,
-  pushEnabled: true,
-  emailEnabled: false,
-  smsEnabled: false,
-  quietHours: {
-    enabled: false,
-    start: '22:00',
-    end: '08:00',
-    timezone: 'UTC',
-  },
-  topicOverrides: {},
-  priorityOverrides: {},
-};
+// insertMany chunk size — keeps a single write (and the in-memory doc array)
+// bounded regardless of how large a broadcast's resolved audience is.
+const INSERT_CHUNK_SIZE = 500;
 
 const isValidObjectId = (id) => {
   if (!id) return false;
@@ -50,12 +38,10 @@ const isValidObjectId = (id) => {
   }
 };
 
-const toPlainObject = (value) => {
-  if (!value) return {};
-  if (value instanceof Map) return Object.fromEntries(value.entries());
-  if (typeof value.toObject === 'function') return value.toObject();
-  if (typeof value === 'object') return value;
-  return {};
+const chunkArray = (arr, size) => {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
 };
 
 const normalizeChannels = ({ channels, priority = NOTIFICATION_PRIORITIES.NORMAL }) => {
@@ -107,84 +93,24 @@ const normalizeNotificationPreferences = (prefs = {}) => {
   };
 };
 
-const computeLifecycleStatus = (deliveries = [], scheduledAt) => {
-  if (!deliveries.length) return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-
-  if (scheduledAt && new Date(scheduledAt) > new Date()) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.QUEUED;
-  }
-
-  const statuses = deliveries.map((item) => item.status);
-  if (statuses.every((status) => status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED)) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
-  }
-  if (
-    statuses.every(
-      (status) =>
-        status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ||
-        status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED
-    )
-  ) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-  }
-  const hasQueuedOrSending = statuses.some((status) =>
-    status === NOTIFICATION_DELIVERY_STATUSES.QUEUED || status === NOTIFICATION_DELIVERY_STATUSES.SENDING
-  );
-  const hasDelivered = statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED);
-  const hasFailed = statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.FAILED);
-
-  if (hasQueuedOrSending) return NOTIFICATION_LIFECYCLE_STATUSES.DISPATCHING;
-  if (hasDelivered && hasFailed) return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
-  if (hasDelivered) return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-  if (hasFailed) return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
-  return NOTIFICATION_LIFECYCLE_STATUSES.QUEUED;
-};
-
-const buildDeliveries = ({ channels, scheduledAt, deliveryPolicy }) => {
+// Every channel starts queued. In-app delivery for notifications that are due
+// immediately is resolved synchronously by `applyImmediateDelivery` right
+// after this (still respecting user preferences — see B3); anything else
+// (push, email, or a future-dated in-app row) is picked up by the periodic
+// dispatcher (notificationDispatcher.service.js), which already runs the same
+// policy check.
+const buildDeliveries = ({ channels }) => {
   const now = new Date();
-  const runNow = !scheduledAt || new Date(scheduledAt) <= now;
-
-  return channels.map((channel) => {
-    if (channel === NOTIFICATION_CHANNELS.IN_APP) {
-      if (deliveryPolicy.allowInApp === false) {
-        return {
-          channel,
-          status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-          requestedAt: now,
-          sentAt: now,
-          deliveredAt: now,
-          meta: { reason: 'in_app_disabled' },
-        };
-      }
-
-      if (runNow) {
-        return {
-          channel,
-          status: NOTIFICATION_DELIVERY_STATUSES.DELIVERED,
-          requestedAt: now,
-          sentAt: now,
-          deliveredAt: now,
-          attemptCount: 1,
-        };
-      }
-
-      return {
-        channel,
-        status: NOTIFICATION_DELIVERY_STATUSES.QUEUED,
-        requestedAt: now,
-      };
-    }
-
-    return {
-      channel,
-      status: NOTIFICATION_DELIVERY_STATUSES.QUEUED,
-      requestedAt: now,
-    };
-  });
+  return channels.map((channel) => ({
+    channel,
+    status: NOTIFICATION_DELIVERY_STATUSES.QUEUED,
+    requestedAt: now,
+  }));
 };
 
 const formatNotification = (notification) => ({
   id: String(notification._id),
+  batchId: notification.batchId || String(notification._id),
   title: notification.title,
   body: notification.body,
   eventKey: notification.eventKey,
@@ -233,6 +159,8 @@ const emitNotificationsBulk = (userIds, notifications) => {
 const buildNotificationData = ({
   audience = NOTIFICATION_AUDIENCE.USER,
   userId,
+  batchId,
+  audienceSnapshot,
   title,
   body,
   eventKey,
@@ -257,15 +185,13 @@ const buildNotificationData = ({
   const normalizedPriority = normalizePriority(priority);
   const normalizedDeliveryPolicy = normalizeDeliveryPolicy(deliveryPolicy);
   const resolvedChannels = normalizeChannels({ channels, priority: normalizedPriority });
-  const deliveries = buildDeliveries({
-    channels: resolvedChannels,
-    scheduledAt,
-    deliveryPolicy: normalizedDeliveryPolicy,
-  });
+  const deliveries = buildDeliveries({ channels: resolvedChannels });
 
   const notificationData = {
     audience,
     user: userId,
+    batchId,
+    audienceSnapshot,
     eventKey,
     topic,
     title,
@@ -273,14 +199,8 @@ const buildNotificationData = ({
     data,
     channels: resolvedChannels,
     priority: normalizedPriority,
-    status: computeLifecycleStatus(deliveries, scheduledAt),
+    status: computeLifecycleStatus(deliveries, { scheduledAt }),
     deliveries,
-    sentAt: deliveries.some((d) => d.channel === NOTIFICATION_CHANNELS.IN_APP && d.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED)
-      ? new Date()
-      : undefined,
-    deliveredAt: deliveries.some((d) => d.channel === NOTIFICATION_CHANNELS.IN_APP && d.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED)
-      ? new Date()
-      : undefined,
     templateKey,
     deduplicationKey,
     scheduledAt,
@@ -305,159 +225,67 @@ const buildNotificationData = ({
   return notificationData;
 };
 
-const createNotification = async ({
-  userId,
-  title,
-  body,
-  eventKey,
-  topic = 'system',
-  priority = NOTIFICATION_PRIORITIES.NORMAL,
-  actorId,
-  companyId,
-  data = {},
-  channels,
-  templateKey,
-  deduplicationKey,
-  scheduledAt,
-  expiresAt,
-  recipients,
-  metadata,
-  createdBy,
-  action,
-  isSilent,
-  requiresAck,
-  deliveryPolicy,
-}) => {
-  try {
-    const notificationData = buildNotificationData({
-      audience: NOTIFICATION_AUDIENCE.USER,
-      userId,
-      title,
-      body,
-      eventKey,
-      topic,
-      priority,
-      actorId,
-      companyId,
-      data,
-      channels,
-      templateKey,
-      deduplicationKey,
-      scheduledAt,
-      expiresAt,
-      recipients,
-      metadata,
-      createdBy,
-      action,
-      isSilent,
-      requiresAck,
-      deliveryPolicy,
-    });
+// Resolves the in-app delivery for every notification that's due right now
+// (not scheduled for the future), consulting the same preference/policy
+// engine the periodic dispatcher uses for push/email. Previously in-app was
+// unconditionally marked `delivered` at build time — this is what actually
+// makes the "In-app" toggle on both preference screens do something (B3).
+const applyImmediateDelivery = (notificationsData, usersById) => {
+  const now = new Date();
 
-    const notification = await Notification.create(notificationData);
+  return notificationsData.map((data) => {
+    const dueNow = !data.scheduledAt || new Date(data.scheduledAt) <= now;
+    const inAppIndex = data.deliveries.findIndex((item) => item.channel === NOTIFICATION_CHANNELS.IN_APP);
 
-    const inAppDelivery = notification.deliveries.find((item) => item.channel === NOTIFICATION_CHANNELS.IN_APP);
-    if (inAppDelivery?.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED && userId) {
-      emitNotification(userId, notification);
+    if (!dueNow || inAppIndex === -1 || !data.user) {
+      return data;
     }
 
+    const user = usersById.get(String(data.user));
+    const allowed = user ? resolveChannelDecision({ user, notification: data, channel: NOTIFICATION_CHANNELS.IN_APP }) : false;
+
+    const deliveries = [...data.deliveries];
+    deliveries[inAppIndex] = allowed
+      ? {
+          ...deliveries[inAppIndex],
+          status: NOTIFICATION_DELIVERY_STATUSES.DELIVERED,
+          sentAt: now,
+          deliveredAt: now,
+          attemptCount: 1,
+        }
+      : {
+          ...deliveries[inAppIndex],
+          status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+          failureAt: now,
+          errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.IN_APP_DISABLED,
+          errorMessage: 'In-app delivery disabled by preferences or policy.',
+        };
+
     return {
-      success: true,
-      notificationId: notification._id.toString(),
-      notification,
+      ...data,
+      deliveries,
+      status: computeLifecycleStatus(deliveries, { scheduledAt: data.scheduledAt }),
+      sentAt: allowed ? now : data.sentAt,
+      deliveredAt: allowed ? now : data.deliveredAt,
     };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
+  });
 };
 
-const createNotificationsForUsers = async ({
-  userIds,
-  title,
-  body,
-  eventKey,
-  topic = 'system',
-  priority = NOTIFICATION_PRIORITIES.NORMAL,
-  actorId,
-  companyId,
-  data = {},
-  channels,
-  templateKey,
-  deduplicationKey,
-  scheduledAt,
-  expiresAt,
-  recipients,
-  metadata,
-  createdBy,
-  action,
-  isSilent,
-  requiresAck,
-  deliveryPolicy,
-}) => {
-  const uniqueUserIds = [...new Set((userIds || []).filter(Boolean))];
-  if (!uniqueUserIds.length) {
-    return { success: false, error: 'No recipients provided' };
-  }
-
-  const notificationsData = uniqueUserIds.map((id) =>
-    buildNotificationData({
-      audience: NOTIFICATION_AUDIENCE.USER,
-      userId: id,
-      title,
-      body,
-      eventKey,
-      topic,
-      priority,
-      actorId,
-      companyId,
-      data,
-      channels,
-      templateKey,
-      deduplicationKey: deduplicationKey ? `${deduplicationKey}:${id}` : undefined,
-      scheduledAt,
-      expiresAt,
-      recipients,
-      metadata,
-      createdBy,
-      action,
-      isSilent,
-      requiresAck,
-      deliveryPolicy,
-    })
-  );
-
-  try {
-    const notifications = await Notification.insertMany(notificationsData, { ordered: false });
-
-    const immediate = notifications.filter((item) =>
-      item.deliveries.some(
-        (delivery) =>
-          delivery.channel === NOTIFICATION_CHANNELS.IN_APP &&
-          delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
-      )
-    );
-
-    emitNotificationsBulk(
-      immediate.map((item) => String(item.user)),
-      immediate
-    );
-
-    return {
-      success: true,
-      notificationIds: notifications.map((notification) => notification._id.toString()),
-      count: notifications.length,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-};
-
+/**
+ * Single entry point for creating notifications, for every audience type.
+ *
+ * Resolves `audience` (user / company / broadcast) into a concrete recipient
+ * list via notificationAudience.service, fans out one Notification doc per
+ * recipient (so per-user read/archive/ack state and the existing dispatcher
+ * keep working unmodified), and tags every doc in the fan-out with a shared
+ * `batchId` so the admin history can show one row per dispatch instead of one
+ * per recipient.
+ *
+ * Replaces the old three-way split (createNotification /
+ * createNotificationsForUsers / dispatchNotification) that duplicated this
+ * parameter list four times and had no way to resolve `company`/`broadcast`
+ * audiences at all (B1, B2, B6).
+ */
 const dispatchNotification = async ({
   audience = NOTIFICATION_AUDIENCE.USER,
   userId,
@@ -483,126 +311,117 @@ const dispatchNotification = async ({
   requiresAck,
   deliveryPolicy,
 }) => {
-  const targets = [...new Set([userId, ...userIds].filter(Boolean))];
+  const normalizedAudience = AUDIENCE_OPTIONS.includes(audience) ? audience : NOTIFICATION_AUDIENCE.USER;
 
-  if (audience === NOTIFICATION_AUDIENCE.USER) {
-    if (targets.length === 1) {
-      return createNotification({
-        userId: targets[0],
-        title,
-        body,
-        eventKey,
-        topic,
-        priority,
-        actorId,
-        companyId,
-        data,
-        channels,
-        templateKey,
-        deduplicationKey,
-        scheduledAt,
-        expiresAt,
-        recipients,
-        metadata,
-        createdBy,
-        action,
-        isSilent,
-        requiresAck,
-        deliveryPolicy,
-      });
+  const { userIds: resolvedUserIds, audienceSnapshot } = await resolveAudienceUserIds({
+    audience: normalizedAudience,
+    userId,
+    userIds,
+    companyId,
+  });
+
+  if (!resolvedUserIds.length) {
+    return { success: false, error: 'No recipients matched the requested audience.' };
+  }
+
+  const batchId = crypto.randomUUID();
+  const suffixDedupKey = resolvedUserIds.length > 1;
+
+  const notificationsData = resolvedUserIds.map((id) =>
+    buildNotificationData({
+      audience: normalizedAudience,
+      userId: id,
+      batchId,
+      audienceSnapshot,
+      title,
+      body,
+      eventKey,
+      topic,
+      priority,
+      actorId,
+      companyId,
+      data,
+      channels,
+      templateKey,
+      deduplicationKey: deduplicationKey && suffixDedupKey ? `${deduplicationKey}:${id}` : deduplicationKey,
+      scheduledAt,
+      expiresAt,
+      recipients,
+      metadata,
+      createdBy,
+      action,
+      isSilent,
+      requiresAck,
+      deliveryPolicy,
+    })
+  );
+
+  const needsUserLookup = notificationsData.some((item) =>
+    item.deliveries.some((delivery) => delivery.channel === NOTIFICATION_CHANNELS.IN_APP)
+  );
+  const usersById = new Map();
+  if (needsUserLookup) {
+    const users = await User.find({ _id: { $in: resolvedUserIds } }).select('preferences').lean();
+    users.forEach((user) => usersById.set(String(user._id), user));
+  }
+
+  const preparedData = applyImmediateDelivery(notificationsData, usersById);
+
+  const insertedDocs = [];
+  const errors = [];
+  for (const chunk of chunkArray(preparedData, INSERT_CHUNK_SIZE)) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const inserted = await Notification.insertMany(chunk, { ordered: false });
+      insertedDocs.push(...inserted);
+    } catch (error) {
+      // With ordered:false, Mongoose still inserts every document that
+      // didn't collide (e.g. on the sparse-unique deduplicationKey index) and
+      // attaches the successful ones to `error.insertedDocs` — previously
+      // this branch just returned `success: false` and discarded them (B9).
+      const partial = Array.isArray(error?.insertedDocs) ? error.insertedDocs : [];
+      insertedDocs.push(...partial);
+      errors.push(error.message);
     }
-
-    return createNotificationsForUsers({
-      userIds: targets,
-      title,
-      body,
-      eventKey,
-      topic,
-      priority,
-      actorId,
-      companyId,
-      data,
-      channels,
-      templateKey,
-      deduplicationKey,
-      scheduledAt,
-      expiresAt,
-      recipients,
-      metadata,
-      createdBy,
-      action,
-      isSilent,
-      requiresAck,
-      deliveryPolicy,
-    });
   }
 
-  if (targets.length) {
-    return createNotificationsForUsers({
-      userIds: targets,
-      title,
-      body,
-      eventKey,
-      topic,
-      priority,
-      actorId,
-      companyId,
-      data,
-      channels,
-      templateKey,
-      deduplicationKey,
-      scheduledAt,
-      expiresAt,
-      recipients,
-      metadata,
-      createdBy,
-      action,
-      isSilent,
-      requiresAck,
-      deliveryPolicy,
-    });
+  if (!insertedDocs.length) {
+    return { success: false, error: errors[0] || 'Failed to dispatch notification' };
   }
 
-  try {
-    const notificationData = buildNotificationData({
-      audience,
-      userId: undefined,
-      title,
-      body,
-      eventKey,
-      topic,
-      priority,
-      actorId,
-      companyId,
-      data,
-      channels,
-      templateKey,
-      deduplicationKey,
-      scheduledAt,
-      expiresAt,
-      recipients,
-      metadata,
-      createdBy,
-      action,
-      isSilent,
-      requiresAck,
-      deliveryPolicy,
-    });
+  const delivered = insertedDocs.filter((doc) =>
+    doc.deliveries.some(
+      (delivery) =>
+        delivery.channel === NOTIFICATION_CHANNELS.IN_APP &&
+        delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
+    )
+  );
+  emitNotificationsBulk(
+    delivered.map((item) => String(item.user)),
+    delivered
+  );
 
-    const notification = await Notification.create(notificationData);
-
-    return {
-      success: true,
-      notificationId: notification._id.toString(),
-      notification,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
+  return {
+    success: true,
+    batchId,
+    notificationId: insertedDocs.length === 1 ? String(insertedDocs[0]._id) : undefined,
+    notification: insertedDocs.length === 1 ? insertedDocs[0] : undefined,
+    notificationIds: insertedDocs.map((item) => String(item._id)),
+    count: insertedDocs.length,
+    skipped: resolvedUserIds.length - insertedDocs.length,
+    audience: normalizedAudience,
+    audienceSnapshot,
+  };
 };
+
+// Thin wrappers kept for the existing call sites (quotes, feedback,
+// businessSetup, admin document requests) — all fan-out now goes through
+// dispatchNotification, so these no longer duplicate the parameter list.
+const createNotification = async ({ userId, ...rest }) =>
+  dispatchNotification({ audience: NOTIFICATION_AUDIENCE.USER, userId, ...rest });
+
+const createNotificationsForUsers = async ({ userIds, ...rest }) =>
+  dispatchNotification({ audience: NOTIFICATION_AUDIENCE.USER, userIds, ...rest });
 
 const createDocumentRequestNotification = async ({
   userId,
@@ -643,8 +462,26 @@ const createDocumentRequestNotification = async ({
   });
 };
 
+// A notification whose in-app delivery was cancelled (most commonly: the
+// recipient turned off the "In-app" preference toggle — see B3/
+// applyImmediateDelivery above) was never actually shown to that user, so it
+// must not appear in their notification center or count toward their unread
+// badge. Without this, disabling "in-app" only changed a delivery-record
+// field nobody looked at — the notification still showed up regardless,
+// which is exactly the "toggle does nothing" bug this whole pass fixes.
+const excludeHiddenInAppFilter = {
+  deliveries: {
+    $not: {
+      $elemMatch: {
+        channel: NOTIFICATION_CHANNELS.IN_APP,
+        status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+      },
+    },
+  },
+};
+
 const buildUserFilter = ({ userId, status, topic, priority, from, to, search, archived }) => {
-  const filter = { user: userId };
+  const filter = { user: userId, ...excludeHiddenInAppFilter };
 
   if (archived === true || archived === 'true') {
     filter.archivedAt = { $ne: null };
@@ -775,13 +612,23 @@ const acknowledgeNotification = async (notificationId, userId) => {
 };
 
 const getUnreadCount = async (userId) => {
-  return Notification.countDocuments({ user: userId, readAt: null, archivedAt: null });
+  return Notification.countDocuments({
+    user: userId,
+    readAt: null,
+    archivedAt: null,
+    ...excludeHiddenInAppFilter,
+  });
 };
 
 const registerUserDevice = async (userId, payload) => {
   const now = new Date();
 
-  const update = {
+  // Fields that should be cleared (not just left unset) on every successful
+  // re-registration go through $unset — an earlier version put them in the
+  // same $set as `undefined`, which Mongo silently drops, so a device that
+  // failed once stayed flagged with a stale lastErrorAt/lastErrorMessage
+  // forever even after registering successfully again (B8).
+  const setFields = {
     user: userId,
     platform: payload.platform,
     pushProvider: payload.pushProvider || 'expo',
@@ -795,13 +642,11 @@ const registerUserDevice = async (userId, payload) => {
     metadata: payload.metadata,
     isActive: true,
     lastSeenAt: now,
-    lastErrorAt: undefined,
-    lastErrorMessage: undefined,
   };
 
   const device = await UserDevice.findOneAndUpdate(
     { pushToken: payload.pushToken },
-    { $set: update },
+    { $set: setFields, $unset: { lastErrorAt: '', lastErrorMessage: '' } },
     { upsert: true, new: true }
   ).lean();
 
@@ -859,34 +704,168 @@ const updateUserNotificationPreferences = async (userId, patch) => {
   return normalizeNotificationPreferences(user.preferences?.notifications);
 };
 
+// ── Admin batch surface ─────────────────────────────────────────────────
+//
+// One dispatch call fans out to N per-recipient Notification docs sharing a
+// `batchId`. Everything below aggregates that fan-out back into one logical
+// row per dispatch for the admin studios, instead of the raw N-row list the
+// old implementation returned (B6). Rows written before this migration have
+// no `batchId`, so every match falls back to the doc's own `_id` as its
+// group key — a legacy row simply becomes a batch of one.
+
+const batchGroupKeyExpr = { $ifNull: ['$batchId', { $toString: '$_id' }] };
+
+const buildBatchMatch = (filters = {}) => {
+  const match = {};
+
+  if (filters.mine === true || filters.mine === 'true') {
+    if (isValidObjectId(filters.adminId)) match.createdBy = new mongoose.Types.ObjectId(filters.adminId);
+  }
+  if (filters.userId && isValidObjectId(filters.userId)) match.user = new mongoose.Types.ObjectId(filters.userId);
+  if (filters.topic) match.topic = filters.topic;
+  if (filters.priority && PRIORITY_OPTIONS.includes(filters.priority)) match.priority = filters.priority;
+  if (filters.eventKey) match.eventKey = filters.eventKey;
+  if (filters.audience && AUDIENCE_OPTIONS.includes(filters.audience)) match.audience = filters.audience;
+  if (filters.status) match.status = filters.status;
+
+  if (filters.from || filters.to) {
+    match.createdAt = {};
+    if (filters.from) match.createdAt.$gte = new Date(filters.from);
+    if (filters.to) match.createdAt.$lte = new Date(filters.to);
+  }
+
+  if (filters.search) {
+    const regex = new RegExp(String(filters.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    match.$or = [{ title: regex }, { body: regex }, { eventKey: regex }, { topic: regex }];
+  }
+
+  return match;
+};
+
+const batchFilterFor = (batchId) => (isValidObjectId(batchId) ? { $or: [{ batchId }, { _id: batchId }] } : { batchId });
+
+// Per-channel delivery status counts for each batch, computed via a separate
+// $unwind pipeline so we never have to pull every recipient's full deliveries
+// array into Node for large broadcasts.
+const fetchDeliveryRollups = async (match, groupKeys) => {
+  if (!groupKeys.length) return new Map();
+
+  const rows = await Notification.aggregate([
+    { $match: match },
+    { $addFields: { groupKey: batchGroupKeyExpr } },
+    { $match: { groupKey: { $in: groupKeys } } },
+    { $unwind: '$deliveries' },
+    {
+      $group: {
+        _id: { groupKey: '$groupKey', channel: '$deliveries.channel', status: '$deliveries.status' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const rollups = new Map();
+  rows.forEach((row) => {
+    const { groupKey, channel, status } = row._id;
+    if (!rollups.has(groupKey)) rollups.set(groupKey, {});
+    const byChannel = rollups.get(groupKey);
+    if (!byChannel[channel]) byChannel[channel] = {};
+    byChannel[channel][status] = row.count;
+  });
+  return rollups;
+};
+
+const formatBatchSummary = (row, { creator, deliveryRollup } = {}) => ({
+  batchId: row.batchId,
+  title: row.title,
+  body: row.body,
+  eventKey: row.eventKey,
+  topic: row.topic,
+  priority: row.priority,
+  audience: row.audience,
+  channels: Array.isArray(row.channels) ? row.channels : [],
+  createdAt: row.createdAt,
+  scheduledAt: row.scheduledAt || null,
+  createdBy: row.createdBy ? String(row.createdBy) : null,
+  createdByName: creator?.displayName || creator?.email || null,
+  recipientCount: row.recipientCount,
+  readCount: row.readCount,
+  cancelledCount: row.cancelledCount,
+  completedCount: row.completedCount,
+  deliveryRollup: deliveryRollup || {},
+});
+
+const runBatchAggregation = async (match, { limit, offset } = {}) => {
+  const groupStage = {
+    $group: {
+      _id: '$groupKey',
+      batchId: { $first: '$groupKey' },
+      title: { $first: '$title' },
+      body: { $first: '$body' },
+      eventKey: { $first: '$eventKey' },
+      topic: { $first: '$topic' },
+      priority: { $first: '$priority' },
+      audience: { $first: '$audience' },
+      channels: { $first: '$channels' },
+      createdAt: { $max: '$createdAt' },
+      scheduledAt: { $first: '$scheduledAt' },
+      createdBy: { $first: '$createdBy' },
+      recipientCount: { $sum: 1 },
+      readCount: { $sum: { $cond: [{ $ne: ['$readAt', null] }, 1, 0] } },
+      cancelledCount: {
+        $sum: { $cond: [{ $eq: ['$status', NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED] }, 1, 0] },
+      },
+      completedCount: {
+        $sum: { $cond: [{ $eq: ['$status', NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED] }, 1, 0] },
+      },
+    },
+  };
+
+  const basePipeline = [{ $match: match }, { $addFields: { groupKey: batchGroupKeyExpr } }, groupStage];
+
+  const [items, totalRows] = await Promise.all([
+    Notification.aggregate([
+      ...basePipeline,
+      { $sort: { createdAt: -1 } },
+      { $skip: offset },
+      { $limit: limit },
+    ]),
+    Notification.aggregate([...basePipeline, { $count: 'total' }]),
+  ]);
+
+  return { items, total: totalRows[0]?.total || 0 };
+};
+
+const attachRollupsAndCreators = async (items, match) => {
+  if (!items.length) return items;
+
+  const groupKeys = items.map((item) => item.batchId);
+  const creatorIds = [...new Set(items.map((item) => item.createdBy).filter(Boolean).map(String))];
+
+  const [rollups, creators] = await Promise.all([
+    fetchDeliveryRollups(match, groupKeys),
+    creatorIds.length ? User.find({ _id: { $in: creatorIds } }).select('displayName email').lean() : [],
+  ]);
+
+  const creatorById = new Map(creators.map((creator) => [String(creator._id), creator]));
+
+  return items.map((item) =>
+    formatBatchSummary(item, {
+      creator: item.createdBy ? creatorById.get(String(item.createdBy)) : null,
+      deliveryRollup: rollups.get(item.batchId) || {},
+    })
+  );
+};
+
 const listAdminNotifications = async (adminId, filters = {}) => {
   const limit = Math.min(Math.max(parseInt(filters.limit, 10) || 20, 1), 100);
   const offset = Math.max(parseInt(filters.offset, 10) || 0, 0);
 
-  const query = { createdBy: adminId };
-
-  if (filters.userId && isValidObjectId(filters.userId)) query.user = filters.userId;
-  if (filters.topic) query.topic = filters.topic;
-  if (filters.priority && PRIORITY_OPTIONS.includes(filters.priority)) query.priority = filters.priority;
-  if (filters.eventKey) query.eventKey = filters.eventKey;
-  if (filters.status) query.status = filters.status;
-
-  if (filters.search) {
-    const regex = new RegExp(String(filters.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    query.$or = [{ title: regex }, { body: regex }, { eventKey: regex }, { topic: regex }];
-  }
-
-  const [items, total] = await Promise.all([
-    Notification.find(query)
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .lean(),
-    Notification.countDocuments(query),
-  ]);
+  const match = buildBatchMatch({ ...filters, adminId });
+  const { items, total } = await runBatchAggregation(match, { limit, offset });
+  const notifications = await attachRollupsAndCreators(items, match);
 
   return {
-    notifications: items.map((item) => formatNotification(item)),
+    notifications,
     pagination: {
       total,
       limit,
@@ -896,72 +875,105 @@ const listAdminNotifications = async (adminId, filters = {}) => {
   };
 };
 
-const getAdminNotificationById = async (notificationId, adminId) => {
-  const notification = await Notification.findOne({ _id: notificationId, createdBy: adminId }).lean();
-  if (!notification) return null;
-  return formatNotification(notification);
+const getAdminBatch = async (batchId, { limit = 50, offset = 0 } = {}) => {
+  const filter = batchFilterFor(batchId);
+  const { items } = await runBatchAggregation(
+    { ...filter },
+    { limit: 1, offset: 0 }
+  );
+  if (!items.length) return null;
+
+  const [batch] = await attachRollupsAndCreators(items, filter);
+
+  const boundedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const boundedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+  const [recipients, total] = await Promise.all([
+    Notification.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(boundedOffset)
+      .limit(boundedLimit)
+      .lean(),
+    Notification.countDocuments(filter),
+  ]);
+
+  return {
+    batch,
+    recipients: recipients.map((item) => formatNotification(item)),
+    pagination: {
+      total,
+      limit: boundedLimit,
+      offset: boundedOffset,
+      hasMore: boundedOffset + recipients.length < total,
+    },
+  };
 };
 
-const cancelAdminNotification = async (notificationId, adminId) => {
-  // Any admin can cancel any admin-dispatched notification — routes
-  // already restrict this endpoint to authorizeRoles('admin'), so the
-  // per-creator restriction was a false floor that silently 404'd when
-  // one admin tried to cancel another admin's dispatch.
-  const notification = await Notification.findOne({ _id: notificationId });
-  if (!notification) return null;
+// Any admin can act on any admin-dispatched batch — the routes already
+// restrict these endpoints to authorizeRoles('admin'), so scoping reads to
+// `createdBy: adminId` (as the old getAdminNotificationById did) was a false
+// floor that let one admin cancel/resend a batch it couldn't even list (B5).
+// `mine` on listAdminNotifications is the opt-in filter for "just my sends".
+const cancelAdminBatch = async (batchId) => {
+  const filter = batchFilterFor(batchId);
+  const existing = await Notification.countDocuments(filter);
+  if (!existing) return null;
 
-  notification.status = NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
-  notification.deliveries = notification.deliveries.map((delivery) => ({
-    ...delivery.toObject(),
-    status: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED
-      ? delivery.status
-      : NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-    failureAt: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.failureAt : new Date(),
-    errorCode: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.errorCode : 'cancelled_by_admin',
-    errorMessage: delivery.status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ? delivery.errorMessage : 'Cancelled by admin',
-  }));
+  const now = new Date();
+  await Notification.updateMany(
+    filter,
+    {
+      $set: { status: NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED },
+    }
+  );
+  await Notification.updateMany(
+    filter,
+    {
+      $set: {
+        'deliveries.$[undelivered].status': NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
+        'deliveries.$[undelivered].failureAt': now,
+        'deliveries.$[undelivered].errorCode': NOTIFICATION_DELIVERY_ERROR_CODES.CANCELLED_BY_ADMIN,
+        'deliveries.$[undelivered].errorMessage': 'Cancelled by admin',
+      },
+    },
+    { arrayFilters: [{ 'undelivered.status': { $ne: NOTIFICATION_DELIVERY_STATUSES.DELIVERED } }] }
+  );
 
-  await notification.save();
-  return formatNotification(notification.toObject());
+  return getAdminBatch(batchId, { limit: 1, offset: 0 });
 };
 
-const resendAdminNotification = async (notificationId, adminId) => {
-  // Same reason as cancelAdminNotification: any admin should be able to
-  // resend any admin-dispatched notification.
-  const original = await Notification.findOne({ _id: notificationId }).lean();
-  if (!original) return null;
+const resendAdminBatch = async (batchId, adminId) => {
+  const filter = batchFilterFor(batchId);
+  const originals = await Notification.find(filter).lean();
+  if (!originals.length) return null;
 
-  const result = await dispatchNotification({
-    audience: original.audience,
-    userId: original.user ? String(original.user) : undefined,
-    userIds: original.user ? [String(original.user)] : undefined,
-    companyId: original.company ? String(original.company) : undefined,
-    title: original.title,
-    body: original.body,
-    eventKey: original.eventKey,
-    topic: original.topic,
-    priority: original.priority,
+  const sample = originals[0];
+  // Resend targets the exact original recipient list rather than
+  // re-resolving a broadcast/company audience, so a resend can't silently
+  // pick up people who joined after the original dispatch.
+  const userIds = [...new Set(originals.map((item) => item.user).filter(Boolean).map(String))];
+
+  return dispatchNotification({
+    audience: NOTIFICATION_AUDIENCE.USER,
+    userIds,
+    title: sample.title,
+    body: sample.body,
+    eventKey: sample.eventKey,
+    topic: sample.topic,
+    priority: sample.priority,
     actorId: adminId,
-    data: toPlainObject(original.data),
-    channels: Array.isArray(original.channels) ? original.channels : undefined,
-    templateKey: original.templateKey,
-    deduplicationKey: undefined,
-    scheduledAt: undefined,
-    expiresAt: original.expiresAt,
-    recipients: original.recipients,
-    metadata: toPlainObject(original.metadata),
+    data: toPlainObject(sample.data),
+    channels: Array.isArray(sample.channels) ? sample.channels : undefined,
+    templateKey: sample.templateKey,
+    expiresAt: sample.expiresAt,
+    recipients: sample.recipients,
+    metadata: toPlainObject(sample.metadata),
     createdBy: adminId,
-    action: normalizeAction(original.action),
-    isSilent: original.isSilent,
-    requiresAck: original.requiresAck,
-    deliveryPolicy: toPlainObject(original.deliveryPolicy),
+    action: normalizeAction(sample.action),
+    isSilent: sample.isSilent,
+    requiresAck: sample.requiresAck,
+    deliveryPolicy: toPlainObject(sample.deliveryPolicy),
   });
-
-  if (!result.success) {
-    return { success: false, error: result.error };
-  }
-
-  return { success: true, notification: formatNotification(result.notification) };
 };
 
 module.exports = {
@@ -981,8 +993,8 @@ module.exports = {
   getUserNotificationPreferences,
   updateUserNotificationPreferences,
   listAdminNotifications,
-  getAdminNotificationById,
-  cancelAdminNotification,
-  resendAdminNotification,
+  getAdminBatch,
+  cancelAdminBatch,
+  resendAdminBatch,
   formatNotification,
 };

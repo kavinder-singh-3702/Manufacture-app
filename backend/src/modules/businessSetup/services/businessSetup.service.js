@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const createError = require('http-errors');
 const BusinessSetupRequest = require('../../../models/businessSetupRequest.model');
 const ServiceRequest = require('../../../models/serviceRequest.model');
-const User = require('../../../models/user.model');
 const { isAdminRole } = require('../../../utils/roles');
+const { findAdminUserIds } = require('../../notifications/services/notificationAudience.service');
 const {
   BUSINESS_SETUP_STATUSES,
   BUSINESS_SETUP_PRIORITIES
@@ -310,17 +310,6 @@ const ensureReferenceCode = async () => {
     if (!exists) return code;
   }
   return `BSR-${Date.now().toString(36).toUpperCase()}`;
-};
-
-const findAdminUserIds = async () => {
-  const admins = await User.find({
-    role: { $in: ['admin', 'super-admin'] },
-    $or: [{ status: 'active' }, { status: { $exists: false } }]
-  })
-    .select('_id')
-    .lean();
-
-  return admins.map((item) => item._id.toString());
 };
 
 const notifyAdminsOnNewRequest = async (request) => {

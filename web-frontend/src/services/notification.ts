@@ -1,10 +1,15 @@
 import { httpClient, QueryParams } from "../lib/http-client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+// Mirrors backend/src/services/notification.service.js `formatNotification` /
+// the admin batch-summary shape exactly — app-frontend/src/services/
+// notification.service.ts is kept as a literal structural mirror of this
+// file (there's no shared package in this repo), so change both together.
 
 export type NotificationPriority = "low" | "normal" | "high" | "critical";
 export type NotificationChannel = "in_app" | "email" | "sms" | "push" | "webhook";
 export type NotificationActionType = "none" | "route" | "url" | "chat" | "call";
+export type NotificationAudience = "user" | "company" | "broadcast";
 
 export type NotificationAction = {
   type: NotificationActionType;
@@ -15,41 +20,38 @@ export type NotificationAction = {
   phone?: string;
 };
 
+export type NotificationDeliveryStatus = "queued" | "sending" | "sent" | "delivered" | "failed" | "cancelled";
+
 export type NotificationDelivery = {
   channel: NotificationChannel;
-  status?: string;
-  error?: string;
+  status: NotificationDeliveryStatus;
+  requestedAt?: string;
   sentAt?: string;
+  deliveredAt?: string;
+  failureAt?: string;
+  errorCode?: string;
+  errorMessage?: string;
 };
 
-export type AdminNotification = {
+export type Notification = {
   id: string;
+  batchId: string;
   title: string;
   body: string;
   eventKey: string;
   topic: string;
   priority: NotificationPriority;
+  data?: Record<string, unknown>;
+  action?: NotificationAction;
   channels?: NotificationChannel[];
   deliveries?: NotificationDelivery[];
-  lifecycleStatus?: string | null;
-  status: "read" | "unread";
-  createdAt: string;
-};
-
-export type AdminNotificationListResponse = {
-  notifications: AdminNotification[];
-  pagination: { total: number; limit: number; offset: number; hasMore: boolean };
-};
-
-// ── End-user inbox ──────────────────────────────────────────────────────────
-
-export type Notification = AdminNotification & {
-  readAt: string | null;
-  archivedAt?: string | null;
   requiresAck?: boolean;
   ackAt?: string | null;
-  action?: NotificationAction;
-  data?: Record<string, unknown>;
+  lifecycleStatus?: string | null;
+  status: "read" | "unread";
+  readAt: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
 };
 
 export type NotificationListParams = {
@@ -62,14 +64,51 @@ export type NotificationListParams = {
   offset?: number;
 };
 
+export type Pagination = { total: number; limit: number; offset: number; hasMore: boolean };
+
 export type NotificationListResponse = {
   notifications: Notification[];
-  pagination: { total: number; limit: number; offset: number; hasMore: boolean };
+  pagination: Pagination;
+};
+
+// One row per dispatch (a broadcast/company/multi-user send fans out to many
+// per-recipient docs sharing a batchId — the admin UI operates on the batch,
+// not the raw recipient rows).
+export type AdminNotificationBatch = {
+  batchId: string;
+  title: string;
+  body: string;
+  eventKey: string;
+  topic: string;
+  priority: NotificationPriority;
+  audience: NotificationAudience;
+  channels: NotificationChannel[];
+  createdAt: string;
+  scheduledAt: string | null;
+  createdBy: string | null;
+  createdByName: string | null;
+  recipientCount: number;
+  readCount: number;
+  cancelledCount: number;
+  completedCount: number;
+  deliveryRollup: Record<string, Partial<Record<NotificationDeliveryStatus, number>>>;
+};
+
+export type AdminBatchListResponse = {
+  notifications: AdminNotificationBatch[];
+  pagination: Pagination;
+};
+
+export type AdminBatchDetailResponse = {
+  batch: AdminNotificationBatch;
+  recipients: Notification[];
+  pagination: Pagination;
 };
 
 export type AdminDispatchPayload = {
-  audience?: "user" | "company" | "broadcast";
+  audience?: NotificationAudience;
   userId?: string;
+  userIds?: string[];
   companyId?: string;
   title: string;
   body: string;
@@ -77,14 +116,31 @@ export type AdminDispatchPayload = {
   topic?: string;
   priority?: NotificationPriority;
   channels?: NotificationChannel[];
+  data?: Record<string, unknown>;
+  action?: NotificationAction;
+  isSilent?: boolean;
+  requiresAck?: boolean;
   scheduledAt?: string;
+  expiresAt?: string;
+  metadata?: Record<string, unknown>;
+  deliveryPolicy?: Partial<{
+    respectQuietHours: boolean;
+    allowPush: boolean;
+    allowInApp: boolean;
+    allowEmail: boolean;
+    maxRetries: number;
+    allowCriticalOverride: boolean;
+  }>;
 };
 
 export type AdminDispatchResponse = {
   success: boolean;
+  batchId?: string;
   notificationId?: string;
   notificationIds?: string[];
   count?: number;
+  skipped?: number;
+  audience?: NotificationAudience;
 };
 
 export type NotificationQuietHours = {
@@ -123,15 +179,25 @@ const toQuery = (params?: Record<string, unknown>): QueryParams | undefined => {
 const dispatch = (payload: AdminDispatchPayload) =>
   httpClient.post<AdminDispatchResponse>("/notifications/dispatch", payload);
 
-const listAdmin = (params?: { topic?: string; priority?: NotificationPriority; search?: string; limit?: number; offset?: number }) =>
-  httpClient.get<AdminNotificationListResponse>("/notifications/admin", { params: toQuery(params as Record<string, unknown>) });
+const listAdmin = (params?: {
+  topic?: string;
+  priority?: NotificationPriority;
+  audience?: NotificationAudience;
+  status?: string;
+  mine?: boolean;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}) => httpClient.get<AdminBatchListResponse>("/notifications/admin", { params: toQuery(params as Record<string, unknown>) });
 
-const cancelAdmin = (notificationId: string) =>
-  httpClient.patch<{ notification: AdminNotification }>(`/notifications/admin/${notificationId}/cancel`)
-    .then((r) => r.notification);
+const getAdminBatch = (batchId: string, params?: { limit?: number; offset?: number }) =>
+  httpClient.get<AdminBatchDetailResponse>(`/notifications/admin/batches/${batchId}`, { params: toQuery(params as Record<string, unknown>) });
 
-const resendAdmin = (notificationId: string) =>
-  httpClient.post<AdminDispatchResponse>(`/notifications/admin/${notificationId}/resend`);
+const cancelAdminBatch = (batchId: string) =>
+  httpClient.patch<AdminBatchDetailResponse>(`/notifications/admin/batches/${batchId}/cancel`);
+
+const resendAdminBatch = (batchId: string) =>
+  httpClient.post<AdminDispatchResponse>(`/notifications/admin/batches/${batchId}/resend`);
 
 // End-user inbox — same endpoints the mobile app's notification.service.ts uses.
 
@@ -169,8 +235,9 @@ const updatePreferences = (payload: Partial<NotificationPreferences>) =>
 export const notificationService = {
   dispatch,
   listAdmin,
-  cancelAdmin,
-  resendAdmin,
+  getAdminBatch,
+  cancelAdminBatch,
+  resendAdminBatch,
   list,
   getUnreadCount,
   markAsRead,

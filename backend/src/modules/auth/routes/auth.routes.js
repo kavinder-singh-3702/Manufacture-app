@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const { createAdmin } = require('../controllers/admin.controller');
 const { beginSignup, verifyOtp, saveContact, finalizeSignup } = require('../controllers/signup.controller');
-const { loginUser, logoutUser, updatePhoneController } = require('../controllers/session.controller');
+const { loginUser, logoutUser, getRealtimeTokenController, updatePhoneController } = require('../controllers/session.controller');
 const { appleSignInController } = require('../controllers/appleSignIn.controller');
 const {
   requestPasswordResetController,
@@ -49,6 +49,7 @@ router.post(
   resetPasswordController
 );
 router.post('/profile/phone', authenticate, updatePhoneController);
+router.get('/realtime-token', authenticate, getRealtimeTokenController);
 
 // Public — returns the canonical support-admin user id used by the
 // frontend SupportFab to start support conversations. Sourced from

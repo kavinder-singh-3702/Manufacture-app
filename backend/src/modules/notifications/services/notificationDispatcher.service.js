@@ -7,8 +7,11 @@ const { formatNotification } = require('../../../services/notification.service')
 const {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_DELIVERY_STATUSES,
-  NOTIFICATION_LIFECYCLE_STATUSES
+  NOTIFICATION_LIFECYCLE_STATUSES,
+  NOTIFICATION_DELIVERY_ERROR_CODES
 } = require('../../../constants/notification');
+const { toPlainObject } = require('../../../utils/plainObject');
+const { computeLifecycleStatus } = require('./notificationLifecycle.service');
 const { sendEmail } = require('../../../services/email.service');
 const { sendPushMessages, isExpoToken } = require('./push.providers/expo.provider');
 const { resolveChannelDecision } = require('./notificationDeliveryPolicy.service');
@@ -26,12 +29,11 @@ const backoffDelays = [
 
 const nowDate = () => new Date();
 
-const toPlainData = (value) => {
-  if (!value) return {};
-  if (value instanceof Map) return Object.fromEntries(value.entries());
-  if (typeof value.toObject === 'function') return value.toObject();
-  return typeof value === 'object' ? value : {};
-};
+// toPlainData/computeLifecycle used to be defined here, near-identically to
+// the copies in notification.service.js — now both import the single shared
+// implementations (B4).
+const toPlainData = toPlainObject;
+const computeLifecycle = (deliveries = []) => computeLifecycleStatus(deliveries);
 
 const shouldUseRetryWindow = (channel) =>
   channel === NOTIFICATION_CHANNELS.PUSH || channel === NOTIFICATION_CHANNELS.EMAIL;
@@ -41,35 +43,6 @@ const normalizeEmail = (value) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized || !normalized.includes('@')) return null;
   return normalized;
-};
-
-const computeLifecycle = (deliveries = []) => {
-  const statuses = deliveries.map((d) => d.status);
-  if (!statuses.length) return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-  if (statuses.every((status) => status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED)) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.CANCELLED;
-  }
-  if (
-    statuses.every(
-      (status) =>
-        status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED ||
-        status === NOTIFICATION_DELIVERY_STATUSES.CANCELLED
-    )
-  ) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-  }
-  if (statuses.every((status) => status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED)) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.COMPLETED;
-  }
-  if (statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.FAILED)) {
-    if (statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.DELIVERED || status === NOTIFICATION_DELIVERY_STATUSES.QUEUED)) {
-      return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
-    }
-  }
-  if (statuses.some((status) => status === NOTIFICATION_DELIVERY_STATUSES.QUEUED || status === NOTIFICATION_DELIVERY_STATUSES.SENDING)) {
-    return NOTIFICATION_LIFECYCLE_STATUSES.DISPATCHING;
-  }
-  return NOTIFICATION_LIFECYCLE_STATUSES.PARTIALLY_SENT;
 };
 
 const setDeliveryState = ({ notification, channel, status, errorCode, errorMessage, providerMessageId, nextRetryAt }) => {
@@ -147,7 +120,7 @@ const processPushNotification = async (notification) => {
       notification,
       channel: NOTIFICATION_CHANNELS.PUSH,
       status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-      errorCode: 'push_disabled',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.PUSH_DISABLED,
       errorMessage: 'Push delivery disabled by preferences or policy.'
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -169,7 +142,7 @@ const processPushNotification = async (notification) => {
     scheduleRetry({
       notification,
       channel: NOTIFICATION_CHANNELS.PUSH,
-      errorCode: 'missing_device_token',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.MISSING_DEVICE_TOKEN,
       errorMessage: 'No active push token found for user.'
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -200,10 +173,14 @@ const processPushNotification = async (notification) => {
     const result = await sendPushMessages(messages);
     const successTicket = result.results.find((item) => item.status === 'ok');
 
-    result.results
+    // `.forEach(async …)` doesn't wait for its callbacks — the loop returned
+    // immediately while these updates were still in flight, racing against
+    // `notification.save()` below and, worse, against the *next* dispatch
+    // cycle's read of UserDevice for the same user (B8). Await them all.
+    const deadTokenUpdates = result.results
       .filter((item) => item.status === 'error' && item.details?.error === 'DeviceNotRegistered')
-      .forEach(async (item) => {
-        await UserDevice.updateOne(
+      .map((item) =>
+        UserDevice.updateOne(
           { pushToken: item.token },
           {
             $set: {
@@ -212,8 +189,9 @@ const processPushNotification = async (notification) => {
               lastErrorMessage: item.message || 'DeviceNotRegistered'
             }
           }
-        );
-      });
+        )
+      );
+    if (deadTokenUpdates.length) await Promise.all(deadTokenUpdates);
 
     if (result.successCount > 0) {
       setDeliveryState({
@@ -228,7 +206,7 @@ const processPushNotification = async (notification) => {
       scheduleRetry({
         notification,
         channel: NOTIFICATION_CHANNELS.PUSH,
-        errorCode: 'push_send_failed',
+        errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.PUSH_SEND_FAILED,
         errorMessage: result.results[0]?.message || 'Push provider failed to deliver.'
       });
     }
@@ -236,7 +214,7 @@ const processPushNotification = async (notification) => {
     scheduleRetry({
       notification,
       channel: NOTIFICATION_CHANNELS.PUSH,
-      errorCode: 'push_exception',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.PUSH_EXCEPTION,
       errorMessage: error?.message || 'Unhandled push dispatch error'
     });
   }
@@ -258,7 +236,7 @@ const processInAppNotification = async (notification) => {
       notification,
       channel: NOTIFICATION_CHANNELS.IN_APP,
       status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-      errorCode: 'in_app_disabled',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.IN_APP_DISABLED,
       errorMessage: 'In-app delivery disabled by preferences or policy.',
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -311,7 +289,7 @@ const processEmailNotification = async (notification) => {
       notification,
       channel: NOTIFICATION_CHANNELS.EMAIL,
       status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-      errorCode: 'recipient_user_not_found',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.RECIPIENT_USER_NOT_FOUND,
       errorMessage: 'Email delivery cancelled because target user no longer exists.'
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -324,7 +302,7 @@ const processEmailNotification = async (notification) => {
       notification,
       channel: NOTIFICATION_CHANNELS.EMAIL,
       status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-      errorCode: 'email_disabled',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.EMAIL_DISABLED,
       errorMessage: 'Email delivery disabled by preferences or policy.'
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -338,7 +316,7 @@ const processEmailNotification = async (notification) => {
       notification,
       channel: NOTIFICATION_CHANNELS.EMAIL,
       status: NOTIFICATION_DELIVERY_STATUSES.CANCELLED,
-      errorCode: 'missing_email_recipient',
+      errorCode: NOTIFICATION_DELIVERY_ERROR_CODES.MISSING_EMAIL_RECIPIENT,
       errorMessage: 'Email delivery cancelled because no recipient email is available.'
     });
     notification.status = computeLifecycle(notification.deliveries);
@@ -365,7 +343,7 @@ const processEmailNotification = async (notification) => {
     scheduleRetry({
       notification,
       channel: NOTIFICATION_CHANNELS.EMAIL,
-      errorCode: result.errorCode || 'email_send_failed',
+      errorCode: result.errorCode || NOTIFICATION_DELIVERY_ERROR_CODES.EMAIL_SEND_FAILED,
       errorMessage: result.errorMessage || 'Email provider failed to deliver.'
     });
   }
@@ -490,7 +468,7 @@ const runDispatchCycle = async () => {
     } else {
       await cancelQueuedChannel(
         NOTIFICATION_CHANNELS.PUSH,
-        'push_globally_disabled',
+        NOTIFICATION_DELIVERY_ERROR_CODES.PUSH_GLOBALLY_DISABLED,
         'Push dispatch disabled by server configuration.'
       );
     }
@@ -500,7 +478,7 @@ const runDispatchCycle = async () => {
     } else {
       await cancelQueuedChannel(
         NOTIFICATION_CHANNELS.EMAIL,
-        'email_globally_disabled',
+        NOTIFICATION_DELIVERY_ERROR_CODES.EMAIL_GLOBALLY_DISABLED,
         'Email dispatch disabled by server configuration.'
       );
     }

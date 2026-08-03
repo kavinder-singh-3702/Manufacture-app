@@ -74,7 +74,12 @@ export const registerPushToken = async () => {
           : undefined,
     deviceModel: Device.modelName || undefined,
     osVersion: Device.osVersion || undefined,
-    locale: Device.osName || undefined,
+    // Was `Device.osName` — that's the OS name ("iOS"/"Android"), not a
+    // locale, so every device reported its platform in the locale field
+    // instead of e.g. "en-IN" (A6). `Intl` is already relied on two lines
+    // below for timezone, so it's available here without a new native
+    // dependency (unlike expo-localization, which would need a rebuild).
+    locale: Intl.DateTimeFormat().resolvedOptions().locale || undefined,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 

@@ -6,9 +6,9 @@ const buildPayload = (user) => ({
   role: user.role
 });
 
-const signToken = (user) => {
+const signToken = (user, options = {}) => {
   return jwt.sign(buildPayload(user), config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn
+    expiresIn: options.expiresIn || config.jwtExpiresIn
   });
 };
 

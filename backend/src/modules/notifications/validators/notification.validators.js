@@ -28,9 +28,28 @@ const notificationIdParamValidation = [
 const dispatchNotificationValidation = [
   body('audience').optional().isIn(Object.values(NOTIFICATION_AUDIENCE)),
   body('userId').optional().custom(isObjectId).withMessage('Invalid userId'),
-  body('userIds').optional().isArray({ min: 1 }),
+  // `min: 1` previously rejected an explicit `userIds: []`, which is exactly
+  // what a broadcast/company dispatch sends when it wants the audience
+  // resolved server-side rather than narrowed to specific users (B7).
+  body('userIds').optional().isArray(),
   body('userIds.*').optional().custom(isObjectId).withMessage('Invalid userId'),
   body('companyId').optional().custom(isObjectId).withMessage('Invalid companyId'),
+  // Audience-conditional requirements: a 'user' dispatch needs an explicit
+  // target; 'company' needs a companyId to resolve membership against.
+  // 'broadcast' intentionally requires neither — that's what makes it
+  // "everyone" instead of a narrowed list.
+  body().custom((value, { req }) => {
+    const audience = req.body.audience || NOTIFICATION_AUDIENCE.USER;
+    const hasUserIds = Array.isArray(req.body.userIds) && req.body.userIds.length > 0;
+
+    if (audience === NOTIFICATION_AUDIENCE.USER && !req.body.userId && !hasUserIds) {
+      throw new Error('Provide userId or userIds for a user-audience dispatch.');
+    }
+    if (audience === NOTIFICATION_AUDIENCE.COMPANY && !req.body.companyId) {
+      throw new Error('companyId is required for a company-audience dispatch.');
+    }
+    return true;
+  }),
   body('title').isString().trim().isLength({ min: 1, max: 200 }),
   body('body').isString().trim().isLength({ min: 1, max: 2000 }),
   body('eventKey').isString().trim().isLength({ min: 1, max: 200 }),
@@ -58,6 +77,10 @@ const dispatchNotificationValidation = [
   body('deliveryPolicy.respectQuietHours').optional().isBoolean(),
   body('deliveryPolicy.allowPush').optional().isBoolean(),
   body('deliveryPolicy.allowInApp').optional().isBoolean(),
+  // Was missing entirely — allowEmail existed on the model/service default
+  // policy but had no validator, so a client sending it got no schema
+  // enforcement at all (B7).
+  body('deliveryPolicy.allowEmail').optional().isBoolean(),
   body('deliveryPolicy.maxRetries').optional().isInt({ min: 0, max: 10 }),
   body('deliveryPolicy.allowCriticalOverride').optional().isBoolean(),
 ];
@@ -99,9 +122,27 @@ const adminListNotificationsQueryValidation = [
   query('topic').optional().isString().trim().isLength({ min: 1, max: 100 }),
   query('priority').optional().isIn(Object.values(NOTIFICATION_PRIORITIES)),
   query('eventKey').optional().isString().trim().isLength({ min: 1, max: 200 }),
+  query('audience').optional().isIn(Object.values(NOTIFICATION_AUDIENCE)),
   query('status').optional().isString().trim().isLength({ min: 1, max: 40 }),
   query('search').optional().isString().trim().isLength({ min: 1, max: 120 }),
+  // 'mine=true' scopes the batch list to the requesting admin's own sends —
+  // previously this was the *only* behavior (hardcoded createdBy filter),
+  // which meant an admin couldn't see or read another admin's dispatch even
+  // though cancel/resend deliberately allowed it (B5).
+  query('mine').optional().isIn(['true', 'false']),
+  query('from').optional().isISO8601(),
+  query('to').optional().isISO8601(),
   query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('offset').optional().isInt({ min: 0 }),
+];
+
+const batchIdParamValidation = [
+  param('batchId').isString().trim().isLength({ min: 1, max: 200 }),
+];
+
+const batchDetailQueryValidation = [
+  ...batchIdParamValidation,
+  query('limit').optional().isInt({ min: 1, max: 200 }),
   query('offset').optional().isInt({ min: 0 }),
 ];
 
@@ -113,4 +154,6 @@ module.exports = {
   pushTokenParamValidation,
   notificationPreferencesValidation,
   adminListNotificationsQueryValidation,
+  batchIdParamValidation,
+  batchDetailQueryValidation,
 };

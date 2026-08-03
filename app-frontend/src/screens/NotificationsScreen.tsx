@@ -17,14 +17,11 @@ import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../hooks/useTheme";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 import { useNotifications } from "../providers/NotificationsProvider";
-import {
-  notificationService,
-  Notification,
-  NotificationPriority,
-} from "../services/notification.service";
+import { Notification, NotificationPriority } from "../services/notification.service";
 import { handleNotificationAction } from "../services/notificationNavigation.service";
 
 type ViewMode = "unread" | "all" | "archived";
+const SEARCH_DEBOUNCE_MS = 300;
 
 const topicIcon = (topic?: string) => {
   if (!topic) return "notifications-outline";
@@ -44,8 +41,11 @@ export const NotificationsScreen = () => {
     notifications,
     unreadCount,
     loading,
+    loadingMore,
     error,
     hasMore,
+    total,
+    setFilters,
     refresh,
     loadMore,
     markAsRead,
@@ -57,9 +57,8 @@ export const NotificationsScreen = () => {
 
   const [viewMode, setViewMode] = useState<ViewMode>("unread");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<NotificationPriority | "all">("all");
-  const [archived, setArchived] = useState<Notification[]>([]);
-  const [archivedLoading, setArchivedLoading] = useState(false);
 
   const priorityPalette = useMemo<Record<NotificationPriority, { dot: string; text: string; bg: string }>>(
     () => ({
@@ -87,47 +86,31 @@ export const NotificationsScreen = () => {
     [colors]
   );
 
-  const loadArchived = useCallback(async () => {
-    setArchivedLoading(true);
-    try {
-      const response = await notificationService.getNotifications({
-        archived: true,
-        limit: 80,
-        offset: 0,
-      });
-      setArchived(response.notifications || []);
-    } catch {
-      setArchived([]);
-    } finally {
-      setArchivedLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (viewMode === "archived") {
-      loadArchived();
-    }
-  }, [loadArchived, viewMode]);
+    const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [search]);
 
-  const filtered = useMemo(() => {
-    const source = viewMode === "archived" ? archived : notifications;
-
-    return source.filter((item) => {
-      if (viewMode === "unread" && item.status !== "unread") return false;
-      if (priorityFilter !== "all" && item.priority !== priorityFilter) return false;
-      if (!search.trim()) return true;
-
-      const haystack = `${item.title} ${item.body} ${item.eventKey} ${item.topic}`.toLowerCase();
-      return haystack.includes(search.trim().toLowerCase());
+  // Filters (view mode / priority / search / archived) are pushed to the API
+  // via the provider instead of applied client-side over one loaded page —
+  // previously "Unread" filtered the 20 loaded items, Load-more fetched pages
+  // the filter then hid, and archived used a completely separate uncapped
+  // fetch with its own client-side filtering (A2).
+  useEffect(() => {
+    setFilters({
+      status: viewMode === "unread" ? "unread" : undefined,
+      archived: viewMode === "archived",
+      priority: priorityFilter === "all" ? undefined : priorityFilter,
+      search: debouncedSearch || undefined,
     });
-  }, [archived, notifications, priorityFilter, search, viewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, priorityFilter, debouncedSearch]);
+
+  const filtered = notifications;
 
   const onRefresh = useCallback(async () => {
     await refresh();
-    if (viewMode === "archived") {
-      await loadArchived();
-    }
-  }, [loadArchived, refresh, viewMode]);
+  }, [refresh]);
 
   const runAction = useCallback(
     async (item: Notification) => {
@@ -144,7 +127,7 @@ export const NotificationsScreen = () => {
     [navigation]
   );
 
-  const activeLoading = loading || archivedLoading;
+  const activeLoading = loading;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
@@ -259,9 +242,9 @@ export const NotificationsScreen = () => {
             <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Unread</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>{unreadCount}</Text>
           </View>
-          <View style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.lg }]}> 
-            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Visible</Text>
-            <Text style={[styles.summaryValue, { color: colors.text }]}>{filtered.length}</Text>
+          <View style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.surface, borderRadius: radius.lg }]}>
+            <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Matching</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>{total}</Text>
           </View>
         </View>
 
@@ -363,13 +346,13 @@ export const NotificationsScreen = () => {
           );
         })}
 
-        {activeLoading ? (
+        {activeLoading || loadingMore ? (
           <View style={{ paddingVertical: spacing.lg, alignItems: "center" }}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : null}
 
-        {!activeLoading && viewMode !== "archived" && hasMore ? (
+        {!activeLoading && !loadingMore && hasMore ? (
           <TouchableOpacity
             style={[
               styles.loadMoreBtn,

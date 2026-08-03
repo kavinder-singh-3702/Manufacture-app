@@ -13,9 +13,9 @@ const {
   updateNotificationPreferencesController,
   dispatchNotificationController,
   adminListNotificationsController,
-  adminGetNotificationController,
-  adminCancelNotificationController,
-  adminResendNotificationController
+  adminGetBatchController,
+  adminCancelBatchController,
+  adminResendBatchController
 } = require('../controllers/notification.controller');
 const { authenticate, authorizeRoles } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
@@ -26,7 +26,9 @@ const {
   deviceRegistrationValidation,
   pushTokenParamValidation,
   notificationPreferencesValidation,
-  adminListNotificationsQueryValidation
+  adminListNotificationsQueryValidation,
+  batchIdParamValidation,
+  batchDetailQueryValidation
 } = require('../validators/notification.validators');
 
 const router = Router();
@@ -46,9 +48,9 @@ router.patch('/:notificationId/unarchive', validate(notificationIdParamValidatio
 router.post('/:notificationId/ack', validate(notificationIdParamValidation), acknowledgeNotificationController);
 
 router.get('/admin', authorizeRoles('admin'), validate(adminListNotificationsQueryValidation), adminListNotificationsController);
-router.get('/admin/:notificationId', authorizeRoles('admin'), validate(notificationIdParamValidation), adminGetNotificationController);
-router.patch('/admin/:notificationId/cancel', authorizeRoles('admin'), validate(notificationIdParamValidation), adminCancelNotificationController);
-router.post('/admin/:notificationId/resend', authorizeRoles('admin'), validate(notificationIdParamValidation), adminResendNotificationController);
+router.get('/admin/batches/:batchId', authorizeRoles('admin'), validate(batchDetailQueryValidation), adminGetBatchController);
+router.patch('/admin/batches/:batchId/cancel', authorizeRoles('admin'), validate(batchIdParamValidation), adminCancelBatchController);
+router.post('/admin/batches/:batchId/resend', authorizeRoles('admin'), validate(batchIdParamValidation), adminResendBatchController);
 
 router.post(
   '/dispatch',

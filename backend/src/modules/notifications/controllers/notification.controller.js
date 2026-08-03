@@ -13,11 +13,10 @@ const {
   getUserNotificationPreferences,
   updateUserNotificationPreferences,
   listAdminNotifications,
-  getAdminNotificationById,
-  cancelAdminNotification,
-  resendAdminNotification,
+  getAdminBatch,
+  cancelAdminBatch,
+  resendAdminBatch,
 } = require('../../../services/notification.service');
-const { NOTIFICATION_AUDIENCE } = require('../../../constants/notification');
 
 const listNotifications = async (req, res, next) => {
   try {
@@ -142,23 +141,17 @@ const updateNotificationPreferencesController = async (req, res, next) => {
 
 const dispatchNotificationController = async (req, res, next) => {
   try {
-    const audience = req.body.audience || NOTIFICATION_AUDIENCE.USER;
-    const userIds = Array.isArray(req.body.userIds) ? req.body.userIds : [];
-    const userId = req.body.userId;
-    const targets = [userId, ...userIds].filter(Boolean);
-
-    if (audience === NOTIFICATION_AUDIENCE.USER && !targets.length) {
-      throw createError(400, 'Provide at least one userId to dispatch notifications.');
-    }
-
-    if (audience !== NOTIFICATION_AUDIENCE.USER && !targets.length) {
-      throw createError(400, 'Provide userIds to fan out company or broadcast notifications.');
-    }
-
+    // Audience -> recipient resolution (including company/broadcast) now
+    // happens entirely inside dispatchNotification via
+    // notificationAudience.service — this controller no longer needs to
+    // pre-validate that a userId/userIds list was provided for those
+    // audiences (that check was actively wrong: it rejected the exact
+    // 'broadcast' requests both admin studios send, since neither passes an
+    // explicit userIds list for "everyone").
     const result = await dispatchNotification({
-      audience,
-      userId,
-      userIds,
+      audience: req.body.audience,
+      userId: req.body.userId,
+      userIds: req.body.userIds,
       companyId: req.body.companyId,
       title: req.body.title,
       body: req.body.body,
@@ -191,6 +184,10 @@ const dispatchNotificationController = async (req, res, next) => {
   }
 };
 
+// Batch listing/detail/cancel/resend — one dispatch (whatever its audience
+// fanned out to) is one logical row. Any admin can act on any admin's batch;
+// routes already gate these behind authorizeRoles('admin'), and
+// `?mine=true` is the opt-in filter for "just what I sent" (B5).
 const adminListNotificationsController = async (req, res, next) => {
   try {
     const result = await listAdminNotifications(req.user.id, req.query);
@@ -200,35 +197,35 @@ const adminListNotificationsController = async (req, res, next) => {
   }
 };
 
-const adminGetNotificationController = async (req, res, next) => {
+const adminGetBatchController = async (req, res, next) => {
   try {
-    const notification = await getAdminNotificationById(req.params.notificationId, req.user.id);
-    if (!notification) {
-      return next(createError(404, 'Notification not found'));
-    }
-    return res.json({ notification });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-const adminCancelNotificationController = async (req, res, next) => {
-  try {
-    const notification = await cancelAdminNotification(req.params.notificationId, req.user.id);
-    if (!notification) {
-      return next(createError(404, 'Notification not found'));
-    }
-    return res.json({ notification });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-const adminResendNotificationController = async (req, res, next) => {
-  try {
-    const result = await resendAdminNotification(req.params.notificationId, req.user.id);
+    const result = await getAdminBatch(req.params.batchId, req.query);
     if (!result) {
-      return next(createError(404, 'Notification not found'));
+      return next(createError(404, 'Notification batch not found'));
+    }
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const adminCancelBatchController = async (req, res, next) => {
+  try {
+    const result = await cancelAdminBatch(req.params.batchId);
+    if (!result) {
+      return next(createError(404, 'Notification batch not found'));
+    }
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const adminResendBatchController = async (req, res, next) => {
+  try {
+    const result = await resendAdminBatch(req.params.batchId, req.user.id);
+    if (!result) {
+      return next(createError(404, 'Notification batch not found'));
     }
     if (!result.success) {
       return next(createError(400, result.error || 'Unable to resend notification'));
@@ -253,7 +250,7 @@ module.exports = {
   updateNotificationPreferencesController,
   dispatchNotificationController,
   adminListNotificationsController,
-  adminGetNotificationController,
-  adminCancelNotificationController,
-  adminResendNotificationController,
+  adminGetBatchController,
+  adminCancelBatchController,
+  adminResendBatchController,
 };

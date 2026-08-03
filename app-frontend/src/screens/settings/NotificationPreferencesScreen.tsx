@@ -30,22 +30,34 @@ const toLocalState = (preferences: NotificationPreferences) => ({
   },
 });
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
 export const NotificationPreferencesScreen = () => {
   const { colors, spacing, radius } = useTheme();
   const { contentPadding, isXCompact, clamp } = useResponsiveLayout();
   const navigation = useNavigation<Nav>();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  // Free-text fields (quiet-hours start/end, timezone) get a local draft
+  // committed on blur — unlike the toggles, persisting on every keystroke
+  // would send incomplete values ("2", "22", "22:") to the API mid-type.
+  const [startDraft, setStartDraft] = useState("");
+  const [endDraft, setEndDraft] = useState("");
+  const [timezoneDraft, setTimezoneDraft] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await notificationService.getPreferences();
-      setPrefs(toLocalState(response));
+      const local = toLocalState(response);
+      setPrefs(local);
+      setStartDraft(local.quietHours.start);
+      setEndDraft(local.quietHours.end);
+      setTimezoneDraft(local.quietHours.timezone);
     } catch (err: any) {
       setError(err?.message || "Failed to load notification preferences");
     } finally {
@@ -57,19 +69,60 @@ export const NotificationPreferencesScreen = () => {
     load();
   }, [load]);
 
-  const save = useCallback(async () => {
-    if (!prefs) return;
-    setSaving(true);
-    setError(null);
+  // Autosaves on every toggle/blur instead of requiring a manual "Save" tap
+  // — matches web-frontend's NotificationPreferencesCard.tsx, and means a
+  // toggle actually takes effect if the admin navigates away without
+  // remembering to tap Save (A5).
+  const persist = useCallback(async (patch: Partial<NotificationPreferences>, optimistic: NotificationPreferences) => {
+    const previous = prefs;
+    setPrefs(optimistic);
+    setSaveStatus("saving");
     try {
-      const updated = await notificationService.updatePreferences(prefs);
-      setPrefs(toLocalState(updated));
+      const updated = await notificationService.updatePreferences(patch);
+      const local = toLocalState(updated);
+      setPrefs(local);
+      setStartDraft(local.quietHours.start);
+      setEndDraft(local.quietHours.end);
+      setTimezoneDraft(local.quietHours.timezone);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 1800);
     } catch (err: any) {
+      setPrefs(previous);
       setError(err?.message || "Failed to save preferences");
-    } finally {
-      setSaving(false);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   }, [prefs]);
+
+  const toggleField = useCallback(
+    (key: "masterEnabled" | "inAppEnabled" | "pushEnabled" | "emailEnabled" | "smsEnabled") => {
+      if (!prefs) return;
+      const next = { ...prefs, [key]: !prefs[key] };
+      void persist({ [key]: next[key] }, next);
+    },
+    [prefs, persist]
+  );
+
+  const toggleQuietHours = useCallback(() => {
+    if (!prefs) return;
+    const next = { ...prefs, quietHours: { ...prefs.quietHours, enabled: !prefs.quietHours.enabled } };
+    void persist({ quietHours: next.quietHours }, next);
+  }, [prefs, persist]);
+
+  const commitQuietTime = useCallback(
+    (which: "start" | "end", value: string) => {
+      if (!prefs || value === prefs.quietHours[which]) return;
+      const next = { ...prefs, quietHours: { ...prefs.quietHours, [which]: value } };
+      void persist({ quietHours: next.quietHours }, next);
+    },
+    [prefs, persist]
+  );
+
+  const commitTimezone = useCallback(() => {
+    if (!prefs || timezoneDraft === prefs.quietHours.timezone) return;
+    const next = { ...prefs, quietHours: { ...prefs.quietHours, timezone: timezoneDraft } };
+    void persist({ quietHours: next.quietHours }, next);
+  }, [prefs, timezoneDraft, persist]);
 
   const styles = useMemo(() => createStyles(colors, spacing, radius), [colors, spacing, radius]);
 
@@ -109,9 +162,9 @@ export const NotificationPreferencesScreen = () => {
           </Text>
           <Text style={styles.subtitle}>Control channels, quiet hours, and priority behavior</Text>
         </View>
-        <TouchableOpacity style={styles.saveBtn} disabled={saving} onPress={save}>
-          <Text style={styles.saveText}>{saving ? "Saving..." : "Save"}</Text>
-        </TouchableOpacity>
+        {saveStatus === "saving" && <Text style={styles.saveStatusText}>Saving…</Text>}
+        {saveStatus === "saved" && <Text style={[styles.saveStatusText, { color: colors.success }]}>✓ Saved</Text>}
+        {saveStatus === "error" && <Text style={[styles.saveStatusText, { color: colors.error }]}>Failed to save</Text>}
       </View>
 
       <ScrollView
@@ -133,7 +186,7 @@ export const NotificationPreferencesScreen = () => {
           <SwitchRow
             label="Enable notifications"
             value={prefs.masterEnabled}
-            onValueChange={(value) => setPrefs((prev) => (prev ? { ...prev, masterEnabled: value } : prev))}
+            onValueChange={() => toggleField("masterEnabled")}
             styles={styles}
           />
         </SectionCard>
@@ -142,25 +195,29 @@ export const NotificationPreferencesScreen = () => {
           <SwitchRow
             label="In-app"
             value={prefs.inAppEnabled}
-            onValueChange={(value) => setPrefs((prev) => (prev ? { ...prev, inAppEnabled: value } : prev))}
+            disabled={!prefs.masterEnabled}
+            onValueChange={() => toggleField("inAppEnabled")}
             styles={styles}
           />
           <SwitchRow
             label="Push"
             value={prefs.pushEnabled}
-            onValueChange={(value) => setPrefs((prev) => (prev ? { ...prev, pushEnabled: value } : prev))}
+            disabled={!prefs.masterEnabled}
+            onValueChange={() => toggleField("pushEnabled")}
             styles={styles}
           />
           <SwitchRow
             label="Email"
             value={prefs.emailEnabled}
-            onValueChange={(value) => setPrefs((prev) => (prev ? { ...prev, emailEnabled: value } : prev))}
+            disabled={!prefs.masterEnabled}
+            onValueChange={() => toggleField("emailEnabled")}
             styles={styles}
           />
           <SwitchRow
             label="SMS"
             value={prefs.smsEnabled}
-            onValueChange={(value) => setPrefs((prev) => (prev ? { ...prev, smsEnabled: value } : prev))}
+            disabled={!prefs.masterEnabled}
+            onValueChange={() => toggleField("smsEnabled")}
             styles={styles}
           />
         </SectionCard>
@@ -169,19 +226,8 @@ export const NotificationPreferencesScreen = () => {
           <SwitchRow
             label="Enable quiet hours"
             value={prefs.quietHours.enabled}
-            onValueChange={(value) =>
-              setPrefs((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      quietHours: {
-                        ...prev.quietHours,
-                        enabled: value,
-                      },
-                    }
-                  : prev
-              )
-            }
+            disabled={!prefs.masterEnabled}
+            onValueChange={toggleQuietHours}
             styles={styles}
           />
 
@@ -189,20 +235,9 @@ export const NotificationPreferencesScreen = () => {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Start</Text>
               <TextInput
-                value={prefs.quietHours.start}
-                onChangeText={(value) =>
-                  setPrefs((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          quietHours: {
-                            ...prev.quietHours,
-                            start: value,
-                          },
-                        }
-                      : prev
-                  )
-                }
+                value={startDraft}
+                onChangeText={setStartDraft}
+                onBlur={() => commitQuietTime("start", startDraft)}
                 style={styles.input}
                 placeholder="22:00"
                 placeholderTextColor={colors.textMuted}
@@ -211,20 +246,9 @@ export const NotificationPreferencesScreen = () => {
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>End</Text>
               <TextInput
-                value={prefs.quietHours.end}
-                onChangeText={(value) =>
-                  setPrefs((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          quietHours: {
-                            ...prev.quietHours,
-                            end: value,
-                          },
-                        }
-                      : prev
-                  )
-                }
+                value={endDraft}
+                onChangeText={setEndDraft}
+                onBlur={() => commitQuietTime("end", endDraft)}
                 style={styles.input}
                 placeholder="08:00"
                 placeholderTextColor={colors.textMuted}
@@ -234,20 +258,9 @@ export const NotificationPreferencesScreen = () => {
 
           <Text style={styles.inputLabel}>Timezone</Text>
           <TextInput
-            value={prefs.quietHours.timezone}
-            onChangeText={(value) =>
-              setPrefs((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      quietHours: {
-                        ...prev.quietHours,
-                        timezone: value,
-                      },
-                    }
-                  : prev
-              )
-            }
+            value={timezoneDraft}
+            onChangeText={setTimezoneDraft}
+            onBlur={commitTimezone}
             style={styles.input}
             placeholder="Asia/Kolkata"
             placeholderTextColor={colors.textMuted}
@@ -271,20 +284,23 @@ const SwitchRow = ({
   label,
   value,
   onValueChange,
+  disabled,
   styles,
 }: {
   label: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  disabled?: boolean;
   styles: Styles;
 }) => {
   const { colors } = useTheme();
   return (
-    <View style={styles.switchRow}>
+    <View style={[styles.switchRow, disabled ? { opacity: 0.5 } : null]}>
       <Text style={styles.switchLabel}>{label}</Text>
       <Switch
         value={Boolean(value)}
         onValueChange={onValueChange}
+        disabled={disabled}
         trackColor={{ false: colors.border, true: colors.primary + "88" }}
         thumbColor={value ? colors.primary : colors.textMuted}
       />
@@ -332,18 +348,7 @@ const createStyles = (
     },
     title: { color: colors.text, fontSize: 17, fontWeight: "900" },
     subtitle: { color: colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: 2 },
-    saveBtn: {
-      minHeight: 36,
-      minWidth: 70,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 12,
-    },
-    saveText: { color: colors.text, fontSize: 12, fontWeight: "800" },
+    saveStatusText: { color: colors.textMuted, fontSize: 12, fontWeight: "800" },
     errorCard: {
       borderWidth: 1,
       borderColor: colors.error + "55",

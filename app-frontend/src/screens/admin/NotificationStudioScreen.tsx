@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -18,8 +19,9 @@ import { useThemeMode } from "../../hooks/useThemeMode";
 import { RootStackParamList } from "../../navigation/types";
 import {
   notificationService,
-  Notification,
+  AdminNotificationBatch,
   NotificationPriority,
+  NotificationChannel,
 } from "../../services/notification.service";
 import { adminService, AdminUser } from "../../services/admin.service";
 import { isAdminRole } from "../../constants/roles";
@@ -32,6 +34,7 @@ type ComposerState = {
   eventKey: string;
   topic: string;
   priority: NotificationPriority;
+  channels: NotificationChannel[];
   userIds: string[];
   broadcast: boolean;
   scheduledAt: string;
@@ -43,12 +46,24 @@ const defaultComposer: ComposerState = {
   eventKey: "system.admin.broadcast",
   topic: "system",
   priority: "normal",
+  channels: ["in_app", "push"],
   userIds: [],
   broadcast: false,
   scheduledAt: "",
 };
 
 const priorityOptions: NotificationPriority[] = ["low", "normal", "high", "critical"];
+// Channel selection is now explicit (A4) instead of hardcoded from priority
+// (composer.priority === "low"/"normal" ? ["in_app"] : ["in_app", "push"]),
+// matching the web studio's composer.
+const channelOptions: NotificationChannel[] = ["in_app", "push", "email", "sms"];
+const channelLabels: Record<NotificationChannel, string> = {
+  in_app: "In-app",
+  push: "Push",
+  email: "Email",
+  sms: "SMS",
+  webhook: "Webhook",
+};
 
 const NEU_LIGHT = "#EDF1F7";
 const NEU_DARK = "#1A1F2B";
@@ -70,7 +85,8 @@ export const NotificationStudioScreen = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<Notification[]>([]);
+  const [items, setItems] = useState<AdminNotificationBatch[]>([]);
+  const [actionId, setActionId] = useState<string | null>(null);
   // Recipient picker state — replaces the old comma-separated text input
   // so admins can search and tap real users instead of pasting ObjectIds.
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -134,6 +150,13 @@ export const NotificationStudioScreen = () => {
     });
   }, []);
 
+  const toggleChannel = useCallback((channel: NotificationChannel) => {
+    setComposer((prev) => {
+      const exists = prev.channels.includes(channel);
+      return { ...prev, channels: exists ? prev.channels.filter((c) => c !== channel) : [...prev.channels, channel] };
+    });
+  }, []);
+
   const dispatchNow = useCallback(async () => {
     if (!composer.title.trim() || !composer.body.trim() || !composer.eventKey.trim()) {
       setError("Title, message, and event key are required.");
@@ -145,10 +168,18 @@ export const NotificationStudioScreen = () => {
       return;
     }
 
+    if (!composer.channels.length) {
+      setError("Select at least one delivery channel.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
-      await notificationService.dispatch({
+      // 'broadcast' now actually dispatches — it previously 400'd on the
+      // backend regardless of what the client sent, because audience ->
+      // recipient resolution didn't exist there yet (A1).
+      const res = await notificationService.dispatch({
         audience: composer.broadcast ? "broadcast" : "user",
         userIds: composer.broadcast ? undefined : composer.userIds,
         title: composer.title.trim(),
@@ -156,11 +187,13 @@ export const NotificationStudioScreen = () => {
         eventKey: composer.eventKey.trim(),
         topic: composer.topic.trim() || "system",
         priority: composer.priority,
-        channels: composer.priority === "low" || composer.priority === "normal" ? ["in_app"] : ["in_app", "push"],
+        channels: composer.channels,
         scheduledAt: composer.scheduledAt.trim() || undefined,
       });
       setComposer(defaultComposer);
       setUserSearch("");
+      setError(null);
+      Alert.alert("Dispatched", `Sent to ${res.count ?? 1} recipient${(res.count ?? 1) !== 1 ? "s" : ""}.`);
       await load();
     } catch (err: any) {
       setError(err?.message || "Failed to dispatch notification");
@@ -169,25 +202,31 @@ export const NotificationStudioScreen = () => {
     }
   }, [composer, load]);
 
-  const cancelNotification = useCallback(
-    async (id: string) => {
+  const cancelBatch = useCallback(
+    async (batchId: string) => {
+      setActionId(batchId);
       try {
-        await notificationService.cancelAdminNotification(id);
+        await notificationService.cancelAdminBatch(batchId);
         await load();
       } catch (err: any) {
         setError(err?.message || "Failed to cancel notification");
+      } finally {
+        setActionId(null);
       }
     },
     [load]
   );
 
-  const resendNotification = useCallback(
-    async (id: string) => {
+  const resendBatch = useCallback(
+    async (batchId: string) => {
+      setActionId(batchId);
       try {
-        await notificationService.resendAdminNotification(id);
+        await notificationService.resendAdminBatch(batchId);
         await load();
       } catch (err: any) {
         setError(err?.message || "Failed to resend notification");
+      } finally {
+        setActionId(null);
       }
     },
     [load]
@@ -264,6 +303,30 @@ export const NotificationStudioScreen = () => {
                   onPress={() => setComposer((prev) => ({ ...prev, priority }))}
                 >
                   <Text style={[styles.priorityChipText, { color: active ? colors.primary : colors.textMuted }]}>{priority}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={styles.recipientLabel}>Channels</Text>
+          <View style={styles.priorityRow}>
+            {channelOptions.map((channel) => {
+              const active = composer.channels.includes(channel);
+              return (
+                <TouchableOpacity
+                  key={channel}
+                  style={[
+                    styles.priorityChip,
+                    {
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? colors.primary + "1A" : colors.surfaceElevated,
+                    },
+                  ]}
+                  onPress={() => toggleChannel(channel)}
+                >
+                  <Text style={[styles.priorityChipText, { color: active ? colors.primary : colors.textMuted }]}>
+                    {channelLabels[channel]}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -410,29 +473,49 @@ export const NotificationStudioScreen = () => {
               <Text style={styles.emptyStateText}>No dispatched notifications yet.</Text>
             </View>
           ) : (
-            items.map((item) => (
-              <View key={item.id} style={styles.historyCard}>
-                <Text style={styles.historyTitle}>{item.title}</Text>
-                <Text style={styles.historyBody} numberOfLines={2}>
-                  {item.body}
-                </Text>
-                <Text style={styles.historyMeta}>
-                  {item.priority.toUpperCase()} • {item.topic || "system"}
-                </Text>
-                <Text style={styles.historyMeta}>
-                  Status: {(item.lifecycleStatus || "queued").replace("-", " ")}
-                </Text>
-                <Text style={styles.historyMeta}>{new Date(item.createdAt).toLocaleString("en-IN")}</Text>
-                <View style={styles.historyActions}>
-                  <TouchableOpacity style={styles.smallBtn} onPress={() => resendNotification(item.id)}>
-                    <Text style={styles.smallBtnText}>Resend</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.smallBtn} onPress={() => cancelNotification(item.id)}>
-                    <Text style={styles.smallBtnText}>Cancel</Text>
-                  </TouchableOpacity>
+            // One row per dispatch batch (recipientCount/readCount —
+            // backend/src/services/notification.service.js
+            // listAdminNotifications), not one row per recipient — a
+            // broadcast to hundreds of users used to render as hundreds of
+            // near-identical history rows.
+            items.map((item) => {
+              const settled = item.cancelledCount + item.completedCount >= item.recipientCount;
+              const fullyCancelled = item.cancelledCount >= item.recipientCount;
+              return (
+                <View key={item.batchId} style={[styles.historyCard, fullyCancelled ? { opacity: 0.6 } : null]}>
+                  <Text style={styles.historyTitle}>{item.title}</Text>
+                  <Text style={styles.historyBody} numberOfLines={2}>
+                    {item.body}
+                  </Text>
+                  <Text style={styles.historyMeta}>
+                    {item.priority.toUpperCase()} • {item.topic || "system"} • {item.audience}
+                  </Text>
+                  <Text style={styles.historyMeta}>
+                    {item.recipientCount} recipient{item.recipientCount !== 1 ? "s" : ""} • {item.readCount} read
+                    {fullyCancelled ? " • cancelled" : ""}
+                  </Text>
+                  <Text style={styles.historyMeta}>{new Date(item.createdAt).toLocaleString("en-IN")}</Text>
+                  <View style={styles.historyActions}>
+                    <TouchableOpacity
+                      style={styles.smallBtn}
+                      disabled={actionId === item.batchId}
+                      onPress={() => resendBatch(item.batchId)}
+                    >
+                      <Text style={styles.smallBtnText}>Resend</Text>
+                    </TouchableOpacity>
+                    {!settled && (
+                      <TouchableOpacity
+                        style={styles.smallBtn}
+                        disabled={actionId === item.batchId}
+                        onPress={() => cancelBatch(item.batchId)}
+                      >
+                        <Text style={styles.smallBtnText}>Cancel</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>

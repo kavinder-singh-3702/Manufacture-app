@@ -1,35 +1,13 @@
-const { NOTIFICATION_PRIORITIES } = require('../../../constants/notification');
-
-const DEFAULT_NOTIFICATION_PREFS = {
-  masterEnabled: true,
-  inAppEnabled: true,
-  pushEnabled: true,
-  emailEnabled: false,
-  smsEnabled: false,
-  quietHours: {
-    enabled: false,
-    start: '22:00',
-    end: '08:00',
-    timezone: 'UTC'
-  },
-  topicOverrides: {},
-  priorityOverrides: {}
-};
-
-const toPlainObject = (value) => {
-  if (!value) return {};
-  if (value instanceof Map) return Object.fromEntries(value.entries());
-  if (typeof value.toObject === 'function') return value.toObject();
-  return typeof value === 'object' ? value : {};
-};
+const { NOTIFICATION_PRIORITIES, DEFAULT_NOTIFICATION_PREFERENCES } = require('../../../constants/notification');
+const { toPlainObject } = require('../../../utils/plainObject');
 
 const normalizePrefs = (user = {}) => {
   const notificationPrefs = toPlainObject(user.preferences?.notifications);
   return {
-    ...DEFAULT_NOTIFICATION_PREFS,
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
     ...notificationPrefs,
     quietHours: {
-      ...DEFAULT_NOTIFICATION_PREFS.quietHours,
+      ...DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
       ...toPlainObject(notificationPrefs.quietHours)
     },
     topicOverrides: toPlainObject(notificationPrefs.topicOverrides),

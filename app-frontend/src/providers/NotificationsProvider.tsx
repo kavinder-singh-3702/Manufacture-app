@@ -1,6 +1,6 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { notificationService, Notification } from "../services/notification.service";
+import { notificationService, Notification, NotificationListParams } from "../services/notification.service";
 import { getChatSocket } from "../services/chatSocket";
 import { emitNotificationRefresh, subscribeNotificationRefresh } from "../services/notificationEvents";
 
@@ -8,8 +8,12 @@ type NotificationsContextType = {
   notifications: Notification[];
   unreadCount: number;
   loading: boolean;
+  loadingMore: boolean;
   error: string | null;
   hasMore: boolean;
+  total: number;
+  filters: NotificationListParams;
+  setFilters: (filters: NotificationListParams) => void;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
@@ -28,8 +32,12 @@ export const useNotifications = () => {
       notifications: [],
       unreadCount: 0,
       loading: false,
+      loadingMore: false,
       error: null,
       hasMore: false,
+      total: 0,
+      filters: {} as NotificationListParams,
+      setFilters: () => {},
       refresh: async () => {},
       loadMore: async () => {},
       markAsRead: async () => {},
@@ -62,9 +70,20 @@ export const NotificationsProvider = ({ children }: Props) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [filters, setFilters] = useState<NotificationListParams>({});
+
+  // Held in a ref, not state: `offset` was previously a state dependency of
+  // `loadNotifications`, which meant `refresh`/`loadMore` got a new identity
+  // every single page load. That churn cascaded into the
+  // subscribeNotificationRefresh effect below (deps: [isAuthenticated,
+  // refresh]) tearing down and resubscribing on every `loadMore` call, and
+  // `setOffset(PAGE_SIZE)` on reset assumed a full page came back rather than
+  // using the actual response length (A3).
+  const offsetRef = useRef(0);
 
   const { user } = useAuth();
   const isAuthenticated = Boolean(user?.id);
@@ -83,40 +102,45 @@ export const NotificationsProvider = ({ children }: Props) => {
   }, [isAuthenticated]);
 
   const loadNotifications = useCallback(
-    async (resetOffset = true) => {
+    async (resetOffset: boolean) => {
       if (!isAuthenticated) {
         setNotifications([]);
         setHasMore(false);
         return;
       }
 
-      setLoading(true);
-      setError(null);
+      if (resetOffset) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
+      }
 
       try {
-        const currentOffset = resetOffset ? 0 : offset;
+        const currentOffset = resetOffset ? 0 : offsetRef.current;
+        // `archived` used to be hardcoded `false` here — filters (status,
+        // priority, search, archived) now come from the screen via
+        // `setFilters` instead of being applied client-side over one loaded
+        // page (A2).
         const response = await notificationService.getNotifications({
+          ...filters,
           limit: PAGE_SIZE,
           offset: currentOffset,
-          archived: false,
         });
+        const items = response.notifications || [];
 
-        if (resetOffset) {
-          setNotifications(response.notifications || []);
-          setOffset(PAGE_SIZE);
-        } else {
-          setNotifications((previous) => mergeUnique(previous, response.notifications || []));
-          setOffset(currentOffset + PAGE_SIZE);
-        }
-
+        setNotifications((previous) => (resetOffset ? items : mergeUnique(previous, items)));
+        offsetRef.current = currentOffset + items.length;
+        setTotal(response.pagination?.total ?? 0);
         setHasMore(Boolean(response.pagination?.hasMore));
       } catch (err: any) {
         setError(err?.message || "Failed to load notifications");
       } finally {
         setLoading(false);
+        setLoadingMore(false);
       }
     },
-    [isAuthenticated, offset]
+    [isAuthenticated, filters]
   );
 
   const refresh = useCallback(async () => {
@@ -124,9 +148,9 @@ export const NotificationsProvider = ({ children }: Props) => {
   }, [loadNotifications, loadUnreadCount]);
 
   const loadMore = useCallback(async () => {
-    if (loading || !hasMore) return;
+    if (loading || loadingMore || !hasMore) return;
     await loadNotifications(false);
-  }, [loading, hasMore, loadNotifications]);
+  }, [loading, loadingMore, hasMore, loadNotifications]);
 
   const updateLocalItem = useCallback((id: string, updater: (item: Notification) => Notification) => {
     setNotifications((previous) => previous.map((item) => (item.id === id ? updater(item) : item)));
@@ -206,10 +230,13 @@ export const NotificationsProvider = ({ children }: Props) => {
       setNotifications([]);
       setUnreadCount(0);
       setHasMore(false);
-      setOffset(0);
+      offsetRef.current = 0;
       setError(null);
     }
-  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Refetches on `filters` too, now that the screen pushes status/priority/
+    // search/archived server-side instead of filtering one loaded page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, filters]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -257,8 +284,12 @@ export const NotificationsProvider = ({ children }: Props) => {
       notifications,
       unreadCount,
       loading,
+      loadingMore,
       error,
       hasMore,
+      total,
+      filters,
+      setFilters,
       refresh,
       loadMore,
       markAsRead,
@@ -271,8 +302,11 @@ export const NotificationsProvider = ({ children }: Props) => {
       notifications,
       unreadCount,
       loading,
+      loadingMore,
       error,
       hasMore,
+      total,
+      filters,
       refresh,
       loadMore,
       markAsRead,

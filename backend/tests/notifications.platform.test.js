@@ -28,6 +28,7 @@ jest.mock('../src/services/email.service', () => ({
 }));
 
 const User = require('../src/models/user.model');
+const Company = require('../src/models/company.model');
 const Notification = require('../src/models/notification.model');
 const UserDevice = require('../src/models/userDevice.model');
 const { sendEmail } = require('../src/services/email.service');
@@ -43,8 +44,9 @@ const {
   getUserNotificationPreferences,
   updateUserNotificationPreferences,
   listAdminNotifications,
-  cancelAdminNotification,
-  resendAdminNotification,
+  getAdminBatch,
+  cancelAdminBatch,
+  resendAdminBatch,
 } = require('../src/services/notification.service');
 const { runDispatchCycle } = require('../src/modules/notifications/services/notificationDispatcher.service');
 
@@ -319,8 +321,9 @@ describe('Notification platform service', () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  test('admin listing, cancel and resend are available', async () => {
+  test('admin listing, cancel and resend are available, and a second admin can act on the first admin\'s dispatch', async () => {
     const admin = await createUser('8105', 'admin');
+    const secondAdmin = await createUser('8105b', 'admin');
     const user = await createUser('8106', 'user');
 
     const sent = await dispatchNotification({
@@ -336,21 +339,199 @@ describe('Notification platform service', () => {
     });
 
     expect(sent.success).toBe(true);
+    expect(sent.batchId).toBeTruthy();
 
-    const list = await listAdminNotifications(String(admin._id), { limit: 10, offset: 0 });
+    // A second admin (not the creator) can list and act on the dispatch —
+    // regression test for B5, where list/get were scoped to `createdBy`
+    // while cancel/resend deliberately allowed any admin, so an admin could
+    // cancel a batch it 404'd on trying to read.
+    const list = await listAdminNotifications(String(secondAdmin._id), { limit: 10, offset: 0 });
     expect(list.notifications.length).toBeGreaterThan(0);
 
-    const first = list.notifications[0];
+    const first = list.notifications.find((item) => item.batchId === sent.batchId);
+    expect(first).toBeTruthy();
+    expect(first.recipientCount).toBe(1);
 
-    const cancelled = await cancelAdminNotification(first.id, String(admin._id));
-    expect(cancelled.lifecycleStatus).toBe('cancelled');
+    const batchDetail = await getAdminBatch(sent.batchId, { limit: 10, offset: 0 });
+    expect(batchDetail.recipients).toHaveLength(1);
 
-    const raw = await Notification.findById(first.id).lean();
+    const cancelled = await cancelAdminBatch(sent.batchId);
+    expect(cancelled.batch.cancelledCount).toBe(1);
+
+    const raw = await Notification.findById(sent.notificationId).lean();
     expect(raw.status).toBe('cancelled');
 
-    const resent = await resendAdminNotification(first.id, String(admin._id));
+    const resent = await resendAdminBatch(sent.batchId, String(secondAdmin._id));
     expect(resent.success).toBe(true);
-    expect(resent.notification.id).toBeTruthy();
-    expect(resent.notification.id).not.toBe(first.id);
+    expect(resent.batchId).not.toBe(sent.batchId);
+    expect(resent.notificationIds[0]).not.toBe(sent.notificationId);
+  });
+
+  test('broadcast fans out to active non-admin users only, sharing one batchId', async () => {
+    const admin = await createUser('8120', 'admin');
+    const targetA = await createUser('8121', 'user');
+    const targetB = await createUser('8122', 'user');
+    await createUser('8123', 'admin'); // must NOT receive the broadcast
+    const inactiveUser = await createUser('8124', 'user');
+    await User.updateOne({ _id: inactiveUser._id }, { status: 'suspended' });
+
+    const result = await dispatchNotification({
+      audience: 'broadcast',
+      title: 'Platform update',
+      body: 'New features are live',
+      eventKey: 'system.broadcast',
+      topic: 'system',
+      priority: 'normal',
+      channels: ['in_app'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(2);
+
+    const recipients = await Notification.find({ batchId: result.batchId }).lean();
+    expect(recipients).toHaveLength(2);
+    const recipientIds = recipients.map((item) => String(item.user)).sort();
+    expect(recipientIds).toEqual([String(targetA._id), String(targetB._id)].sort());
+    recipients.forEach((item) => expect(item.batchId).toBe(result.batchId));
+  });
+
+  test('company audience resolves the owner plus members', async () => {
+    const admin = await createUser('8130', 'admin');
+    const owner = await createUser('8131', 'user');
+    const member = await createUser('8132', 'user');
+    const outsider = await createUser('8133', 'user');
+
+    const company = await Company.create({
+      displayName: 'Acme Manufacturing',
+      owner: owner._id,
+      createdBy: owner._id
+    });
+    await User.updateOne({ _id: member._id }, { $push: { companies: company._id } });
+    void outsider;
+
+    const result = await dispatchNotification({
+      audience: 'company',
+      companyId: String(company._id),
+      title: 'Company update',
+      body: 'Your company profile was verified',
+      eventKey: 'company.verification.approved',
+      topic: 'compliance',
+      priority: 'normal',
+      channels: ['in_app'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(2);
+
+    const recipients = await Notification.find({ batchId: result.batchId }).lean();
+    const recipientIds = recipients.map((item) => String(item.user)).sort();
+    expect(recipientIds).toEqual([String(owner._id), String(member._id)].sort());
+  });
+
+  test('in-app delivery on the immediate path is cancelled when the recipient disabled in-app notifications', async () => {
+    const admin = await createUser('8140', 'admin');
+    const user = await createUser('8141', 'user');
+    await updateUserNotificationPreferences(String(user._id), { inAppEnabled: false });
+
+    const result = await dispatchNotification({
+      userId: String(user._id),
+      title: 'Quote update',
+      body: 'Your quote was accepted',
+      eventKey: 'quote.accepted',
+      topic: 'quotes',
+      priority: 'normal',
+      channels: ['in_app'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    expect(result.success).toBe(true);
+
+    // No dispatch cycle needed — this is the immediate (non-scheduled) path,
+    // which previously ignored preferences entirely and always marked in-app
+    // as delivered regardless of the user's settings (B3).
+    const raw = await Notification.findById(result.notificationId).lean();
+    const inApp = raw.deliveries.find((item) => item.channel === 'in_app');
+    expect(inApp.status).toBe('cancelled');
+    expect(inApp.errorCode).toBe('in_app_disabled');
+
+    const unread = await getUnreadCount(String(user._id));
+    expect(unread).toBe(0);
+
+    // A hidden (in-app-cancelled) notification also must not surface in the
+    // inbox listing itself, not just the unread badge.
+    const list = await getUserNotifications(String(user._id), {});
+    expect(list.notifications.find((item) => item.id === result.notificationId)).toBeUndefined();
+  });
+
+  test('admin batch listing aggregates a fan-out into one row with delivery rollups', async () => {
+    const admin = await createUser('8150', 'admin');
+    const recipientA = await createUser('8151', 'user');
+    const recipientB = await createUser('8152', 'user');
+
+    const result = await dispatchNotification({
+      audience: 'user',
+      userIds: [String(recipientA._id), String(recipientB._id)],
+      title: 'Maintenance window',
+      body: 'Scheduled maintenance tonight',
+      eventKey: 'system.maintenance',
+      topic: 'system',
+      priority: 'normal',
+      channels: ['in_app'],
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(2);
+
+    const list = await listAdminNotifications(String(admin._id), { limit: 10, offset: 0 });
+    const row = list.notifications.find((item) => item.batchId === result.batchId);
+
+    expect(row).toBeTruthy();
+    expect(row.recipientCount).toBe(2);
+    expect(row.deliveryRollup.in_app.delivered).toBe(2);
+  });
+
+  test('insertMany partial failures (deduplicationKey collisions) still report the successful rows', async () => {
+    const admin = await createUser('8160', 'admin');
+    const recipientA = await createUser('8161', 'user');
+    const recipientB = await createUser('8162', 'user');
+
+    // Pre-seed a notification whose deduplicationKey will collide with one of
+    // the two recipients created by the dispatch below (fan-out suffixes the
+    // key with `:${userId}`), forcing insertMany to fail on exactly one doc.
+    await Notification.create({
+      user: recipientA._id,
+      eventKey: 'seed.collision',
+      title: 'Seed',
+      body: 'Seed',
+      deduplicationKey: `dup-key:${recipientA._id}`
+    });
+
+    const result = await dispatchNotification({
+      audience: 'user',
+      userIds: [String(recipientA._id), String(recipientB._id)],
+      title: 'Dedup test',
+      body: 'One of these should collide',
+      eventKey: 'system.dedup_test',
+      priority: 'normal',
+      channels: ['in_app'],
+      deduplicationKey: 'dup-key',
+      actorId: String(admin._id),
+      createdBy: String(admin._id)
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(1);
+    expect(result.skipped).toBe(1);
+
+    const recipients = await Notification.find({ batchId: result.batchId }).lean();
+    expect(recipients).toHaveLength(1);
+    expect(String(recipients[0].user)).toBe(String(recipientB._id));
   });
 });

@@ -2,6 +2,7 @@ const createError = require('http-errors');
 const Feedback = require('../../../models/feedback.model');
 const User = require('../../../models/user.model');
 const { createNotificationsForUsers } = require('../../../services/notification.service');
+const { findAdminUserIds } = require('../../notifications/services/notificationAudience.service');
 const {
   NOTIFICATION_PRIORITIES,
   NOTIFICATION_CHANNELS,
@@ -52,16 +53,6 @@ const shapeFeedback = (doc) => {
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
   };
-};
-
-const findAdminUserIds = async () => {
-  const admins = await User.find({
-    role: { $in: ['admin', 'super-admin'] },
-    $or: [{ status: 'active' }, { status: { $exists: false } }],
-  })
-    .select('_id')
-    .lean();
-  return admins.map((item) => item._id.toString());
 };
 
 const truncate = (value, max = 80) => {

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { BUSINESS_ACCOUNT_TYPES } = require("../constants/business");
+const { DEFAULT_NOTIFICATION_PREFERENCES } = require("../constants/notification");
 
 const { Schema } = mongoose;
 
@@ -52,21 +53,21 @@ const NOTIFICATION_CHANNEL_OVERRIDE_SCHEMA = new Schema(
 
 const QUIET_HOURS_SCHEMA = new Schema(
   {
-    enabled: { type: Boolean, default: false },
-    start: { type: String, trim: true, default: "22:00" },
-    end: { type: String, trim: true, default: "08:00" },
-    timezone: { type: String, trim: true, default: "UTC" },
+    enabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.quietHours.enabled },
+    start: { type: String, trim: true, default: DEFAULT_NOTIFICATION_PREFERENCES.quietHours.start },
+    end: { type: String, trim: true, default: DEFAULT_NOTIFICATION_PREFERENCES.quietHours.end },
+    timezone: { type: String, trim: true, default: DEFAULT_NOTIFICATION_PREFERENCES.quietHours.timezone },
   },
   { _id: false }
 );
 
 const NOTIFICATION_PREFS_SCHEMA = new Schema(
   {
-    masterEnabled: { type: Boolean, default: true },
-    inAppEnabled: { type: Boolean, default: true },
-    pushEnabled: { type: Boolean, default: true },
-    emailEnabled: { type: Boolean, default: false },
-    smsEnabled: { type: Boolean, default: false },
+    masterEnabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.masterEnabled },
+    inAppEnabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.inAppEnabled },
+    pushEnabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.pushEnabled },
+    emailEnabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.emailEnabled },
+    smsEnabled: { type: Boolean, default: DEFAULT_NOTIFICATION_PREFERENCES.smsEnabled },
     quietHours: { type: QUIET_HOURS_SCHEMA, default: () => ({}) },
     topicOverrides: {
       type: Map,

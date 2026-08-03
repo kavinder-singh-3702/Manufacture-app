@@ -34,7 +34,7 @@ import {
   normalizeProfileForm,
   ProfileFormState,
 } from "./user-dashboard/helpers";
-import { notificationService } from "@/src/services/notification";
+import { useNotifications } from "@/src/providers/NotificationsProvider";
 
 export { useDashboardContext } from "./user-dashboard/context";
 
@@ -109,25 +109,13 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
     }
   }, [user, reloadCompanies]);
 
-  // Real unread count for the topbar bell badge — this used to be hardcoded to
-  // 0 via countUnread([]). Refetched on navigation so mark-all-read on the
-  // notifications page is reflected the moment the user leaves that page.
-  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    notificationService
-      .getUnreadCount()
-      .then((count) => {
-        if (active) setNotificationUnreadCount(count);
-      })
-      .catch(() => {
-        // Non-fatal — the badge just won't update this navigation.
-      });
-    return () => {
-      active = false;
-    };
-  }, [user, pathname]);
+  // Real unread count for the topbar bell badge, from the shared
+  // NotificationsProvider (app/providers.tsx) — the single source of truth
+  // for unread state, kept live over the realtime socket connection so
+  // mark-all-read on the notifications page (or a notification arriving from
+  // another tab/device) updates the badge immediately instead of only on the
+  // next navigation.
+  const { unreadCount: notificationUnreadCount } = useNotifications();
 
   if (initializing) {
     return (
