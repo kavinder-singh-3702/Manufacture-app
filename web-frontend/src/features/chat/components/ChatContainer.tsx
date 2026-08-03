@@ -104,7 +104,11 @@ export const ChatContainer = ({ currentUserId, initialConversationId, initialPro
         className={`w-full flex-shrink-0 flex-col lg:flex lg:w-72 xl:w-80 ${showThreadOnMobile ? "hidden" : "flex"}`}
         style={{ borderRight: "1px solid var(--border)", backgroundColor: "var(--surface)" }}
       >
-        <ConversationList activeId={activeConv?.id ?? null} onSelect={handleSelect} />
+        <ConversationList
+          activeId={activeConv?.id ?? null}
+          onSelect={handleSelect}
+          onBack={() => router.push("/dashboard")}
+        />
       </div>
 
       {/* Thread pane */}

@@ -7,14 +7,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BrandWordmark } from "@/src/components/BrandLogo";
 import { useAuth } from "@/src/hooks/useAuth";
 import { SearchBar, buildSearchHref, PRODUCT_SEARCH_ROUTES } from "@/src/features/search";
-import { INDUSTRY_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
+import { PRODUCT_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
 
 // Used to be a hand-maintained 16-entry duplicate of the categories list
 // (independently drifted from src/features/product/utils/categories.ts, the
 // same drift bug that list had) — now the single canonical source, so this
 // mega-menu can never again silently omit an industry that exists everywhere
-// else in the app.
-const CATEGORIES = INDUSTRY_CATEGORIES;
+// else in the app. Full PRODUCT_CATEGORIES (27), not just the 20 real
+// industries — app parity with the mobile home's category grid, which has
+// always included the 7 legacy catch-all buckets too.
+const CATEGORIES = PRODUCT_CATEGORIES;
 
 const navLinks = [
   { href: "/products", label: "Products", hasDropdown: true },
@@ -46,7 +48,9 @@ const CategoryDropdown = ({ onClose }: { onClose: () => void }) => (
         </Link>
       </div>
     </div>
-    <div className="grid grid-cols-4 gap-1 p-3">
+    {/* max-h + scroll — 27 categories at grid-cols-4 is 7 rows, taller than
+        some laptop viewports fit below the topbar. */}
+    <div className="grid max-h-[60vh] grid-cols-4 gap-1 overflow-y-auto p-3">
       {CATEGORIES.map((cat) => (
         <Link key={cat.id} href={getCategoryHref(cat.id)} onClick={onClose}
           className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all hover:bg-[var(--primary-light)]">

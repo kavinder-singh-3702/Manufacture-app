@@ -272,7 +272,7 @@ export const VoucherForm = ({ typeKey }: Props) => {
 
       await tallyService.postVoucher(voucher._id);
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard/accounting"), 1500);
+      setTimeout(() => router.push("/dashboard/accounting/quick-entry"), 1500);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to save voucher.");
     } finally {

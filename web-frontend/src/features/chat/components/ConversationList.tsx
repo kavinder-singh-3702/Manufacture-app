@@ -25,15 +25,25 @@ const fmtConvTime = (d?: string) => {
 export const ConversationList = ({
   activeId,
   onSelect,
+  onBack,
 }: {
   activeId: string | null;
   onSelect: (conversation: ChatConversation) => void;
+  /** Exits the chat shell entirely (back to the dashboard) — only meaningful
+   * in the mobile full-bleed layout, where this list is its own screen with
+   * no other way out. Mirrors MessageThread's own `onBack` button. */
+  onBack?: () => void;
 }) => {
   const { conversations, loading, loadingMore, hasMore, loadMore, isTyping } = useChat();
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-shrink-0 p-4" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="flex flex-shrink-0 items-center gap-3 p-4" style={{ borderBottom: "1px solid var(--border)" }}>
+        {onBack && (
+          <button onClick={onBack} aria-label="Back to dashboard" className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70 lg:hidden" style={{ backgroundColor: "var(--background)" }}>
+            <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M15 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        )}
         <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Chat</h2>
       </div>
 

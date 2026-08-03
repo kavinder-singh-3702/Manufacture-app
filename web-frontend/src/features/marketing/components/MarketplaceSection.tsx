@@ -8,7 +8,8 @@ import type { Product } from "@/src/types/product";
 import { ProductCarousel } from "@/src/features/product/components/pdp";
 import { ProductListRow } from "@/src/features/product/components/listing";
 import { InhouseProductsShowcase } from "@/src/features/inhouse";
-import { INDUSTRY_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
+import { getCategoryHref } from "@/src/features/product/utils/categories";
+import { useCategoryStats } from "@/src/features/product/useCategoryStats";
 import { Section } from "@/src/components/ui/Surface";
 import { fadeUp } from "@/src/components/ui/motion";
 
@@ -27,6 +28,7 @@ const ProductSkeleton = () => (
 export const MarketplaceSection = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { categories } = useCategoryStats("marketplace");
 
   const loadFeatured = useCallback(async () => {
     try {
@@ -41,17 +43,18 @@ export const MarketplaceSection = () => {
   return (
     <div className="space-y-16">
       {/* ── Browse by Industry ─────────────────────────────────────────────── */}
-      {/* INDUSTRY_CATEGORIES (20 real industries) rather than the full
-          PRODUCT_CATEGORIES (27) — the latter includes 7 legacy catch-all
-          buckets ("Other", "Components & Parts", …) that aren't industries
-          and don't belong under this heading. Icon + title only: the
-          per-card subcategory bullets (fetched separately per render) added
-          text noise without much scan value at this tile size and forced an
-          extra network round-trip just to populate three truncated lines;
-          dropping them also means the grid no longer waits on that fetch. */}
+      {/* Full PRODUCT_CATEGORIES (27: 20 real industries + 7 legacy
+          catch-all buckets) — app parity with the mobile home screen
+          (DashboardScreenContent.tsx's CATEGORY_CATALOG), which has always
+          shown all 27. This used to filter down to INDUSTRY_CATEGORIES (20)
+          and drop live counts to avoid a second fetch; useCategoryStats
+          already seeds every tile at count 0 so the grid still renders
+          instantly, with badges appearing once stats land — no extra
+          round-trip cost beyond what the dashboard's own category grid
+          already pays. */}
       <Section title="Browse by industry" reveal>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {INDUSTRY_CATEGORIES.map((cat, i) => (
+          {categories.map((cat, i) => (
             <motion.div key={cat.id}
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -61,8 +64,16 @@ export const MarketplaceSection = () => {
               <Link href={getCategoryHref(cat.id)}
                 className="flex flex-col items-center gap-3 rounded-2xl px-3 py-6 text-center transition-shadow hover:shadow-lg"
                 style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-2xl" style={{ backgroundColor: cat.bg }}>
+                <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-2xl" style={{ backgroundColor: cat.bg }}>
                   {cat.icon}
+                  {cat.count > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                      style={{ backgroundColor: "var(--accent)" }}
+                    >
+                      {cat.count > 99 ? "99+" : cat.count}
+                    </span>
+                  )}
                 </span>
                 <span className="text-[13px] font-bold leading-snug" style={{ color: "var(--foreground)" }}>
                   {cat.title}

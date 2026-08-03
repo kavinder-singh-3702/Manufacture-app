@@ -1,11 +1,10 @@
-import { Metadata } from "next";
-import { AccountingDashboard } from "@/src/features/accounting/components/AccountingDashboard";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "ARVANN — Accounting",
-  description: "GST-ready financial overview for Indian manufacturers.",
-};
-
-export default function AccountingPage() {
-  return <AccountingDashboard />;
+// `/dashboard/accounting` is the link target used everywhere (sidebar nav,
+// mobile tab rail, the dashboard's Accounting quick action) — rather than
+// update every one of those call sites, this bare index route just forwards
+// to the tab that should open by default. Quick Entry, not the KPI overview:
+// most visits here are to record a voucher, not to read a snapshot.
+export default function AccountingIndexPage() {
+  redirect("/dashboard/accounting/quick-entry");
 }
