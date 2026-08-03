@@ -3,7 +3,13 @@
 import { useAuth } from "@/src/hooks/useAuth";
 import { ChatContainer } from "./ChatContainer";
 
-export const ChatPage = () => {
+export const ChatPage = ({
+  initialConversationId,
+  initialProductId,
+}: {
+  initialConversationId?: string | null;
+  initialProductId?: string | null;
+}) => {
   const { user } = useAuth();
 
   if (!user) {
@@ -16,5 +22,11 @@ export const ChatPage = () => {
     );
   }
 
-  return <ChatContainer currentUserId={user.id} />;
+  return (
+    <ChatContainer
+      currentUserId={user.id}
+      initialConversationId={initialConversationId}
+      initialProductId={initialProductId}
+    />
+  );
 };

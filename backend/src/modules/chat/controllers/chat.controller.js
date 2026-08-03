@@ -2,6 +2,7 @@ const createError = require('http-errors');
 const {
   getOrCreateConversation,
   listConversations,
+  getUnreadCount,
   getMessages,
   sendMessage,
   markConversationRead,
@@ -12,11 +13,19 @@ const { isAdminRole } = require('../../../utils/roles');
 
 const listConversationsController = async (req, res, next) => {
   try {
-    console.log('[Chat] listConversations called with user:', req.user);
-    const conversations = await listConversations(req.user.id);
-    return res.json({ conversations });
+    const { limit, offset } = req.query;
+    const result = await listConversations(req.user.id, { limit, offset });
+    return res.json(result);
   } catch (error) {
-    console.error('[Chat] listConversations error:', error.message);
+    return next(error);
+  }
+};
+
+const getUnreadCountController = async (req, res, next) => {
+  try {
+    const count = await getUnreadCount(req.user.id);
+    return res.json({ count });
+  } catch (error) {
     return next(error);
   }
 };
@@ -66,7 +75,9 @@ const getMessagesController = async (req, res, next) => {
     const { limit, offset } = req.query;
     const result = await getMessages(conversationId, {
       limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined
+      offset: offset ? parseInt(offset, 10) : undefined,
+      viewerId: req.user.id,
+      viewerRole: req.user.role
     });
     return res.json(result);
   } catch (error) {
@@ -83,6 +94,7 @@ const sendMessageController = async (req, res, next) => {
     const message = await sendMessage(conversationId, req.user.id, {
       content,
       senderRole,
+      callerRole: req.user.role,
       contextRef,
     });
     return res.status(201).json({ message });
@@ -124,6 +136,7 @@ const sendImageController = async (req, res, next) => {
       // ChatConversation.lastMessage and looked like a placeholder).
       content: (typeof caption === 'string' && caption.trim()) || 'Sent a photo',
       senderRole,
+      callerRole: req.user.role,
       attachments: [
         {
           url: uploaded.url,
@@ -173,6 +186,7 @@ const createCallLogController = async (req, res, next) => {
 
 module.exports = {
   listConversationsController,
+  getUnreadCountController,
   createConversationController,
   getMessagesController,
   sendMessageController,

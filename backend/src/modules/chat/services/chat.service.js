@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const createError = require('http-errors');
 const ChatConversation = require('../../../models/chatConversation.model');
 const ChatMessage = require('../../../models/chatMessage.model');
 const CallLog = require('../../../models/callLog.model');
@@ -14,6 +15,33 @@ const ensureObjectId = (value) => {
     throw new Error(`Invalid ObjectId: ${value}`);
   }
   return new mongoose.Types.ObjectId(value);
+};
+
+/**
+ * Authorization gate for every read/write on a conversation. Previously
+ * `getMessages`/`sendMessage` took only a `conversationId` with no viewer
+ * identity at all — any authenticated user who knew (or guessed) another
+ * pair's ObjectId could read or inject messages into their thread (IDOR).
+ *
+ * Rule: the caller must be a participant OR hold an admin/support role.
+ * Admins need the bypass because (a) they reply through this same
+ * user-facing route, and (b) legacy "stub admin" conversations exist where
+ * the real admin was never added to `participants` (see the
+ * `markConversationRead` fallback below) — an admin-only strict-participant
+ * check would lock admins out of exactly the threads they need to answer.
+ */
+const assertConversationAccess = async (conversationId, userId, { role } = {}) => {
+  const conversation = await ChatConversation.findById(conversationId);
+  if (!conversation) {
+    throw createError(404, 'Conversation not found');
+  }
+
+  const isParticipant = conversation.participants.some((p) => String(p.user) === String(userId));
+  if (!isParticipant && !isAdminRole(role)) {
+    throw createError(403, 'You do not have access to this conversation');
+  }
+
+  return conversation;
 };
 
 const parseNumber = (value, fallback) => {
@@ -105,6 +133,81 @@ const getConversationSummaryForUser = async (conversationId, userId) => {
   };
 };
 
+/**
+ * Batched replacement for calling `getConversationSummaryForUser` once per
+ * participant (X10) — that pattern re-fetched the SAME conversation and ran
+ * a separate `User.findById` + `countDocuments` for every participant, even
+ * though every conversation here has exactly two sides (the schema requires
+ * `participants.length >= 2` and nothing in this codebase handles group
+ * chat). One `User.find` covers both participants; the unread counts for
+ * both sides come out of a single aggregate grouped by `sender` — for a
+ * two-party thread, "unread count for viewer A" is just "messages sent by
+ * B after A's lastReadAt", so grouping by sender cleanly separates the two
+ * viewers' counts in one pass.
+ */
+const buildParticipantSummaries = async (conversation) => {
+  const participants = conversation.participants || [];
+  const participantIds = participants.map((p) => String(p.user));
+
+  const [users, unreadRows] = await Promise.all([
+    User.find({ _id: { $in: participantIds } })
+      .select('_id firstName lastName email phone role displayName')
+      .lean(),
+    (async () => {
+      const orClauses = participants
+        .map((viewer) => {
+          const other = participants.find((p) => String(p.user) !== String(viewer.user));
+          if (!other) return null;
+          const clause = { sender: other.user };
+          if (viewer.lastReadAt) clause.createdAt = { $gt: viewer.lastReadAt };
+          return clause;
+        })
+        .filter(Boolean);
+
+      if (!orClauses.length) return [];
+
+      return ChatMessage.aggregate([
+        { $match: { conversation: conversation._id, $or: orClauses } },
+        { $group: { _id: '$sender', count: { $sum: 1 } } }
+      ]);
+    })()
+  ]);
+
+  const userMap = new Map(users.map((u) => [String(u._id), u]));
+  const unreadBySender = new Map(unreadRows.map((row) => [String(row._id), row.count]));
+
+  const summaries = new Map();
+  participants.forEach((viewer) => {
+    const viewerIdString = String(viewer.user);
+    const other = participants.find((p) => String(p.user) !== viewerIdString);
+    const otherUser = other ? userMap.get(String(other.user)) : null;
+
+    summaries.set(viewerIdString, {
+      id: String(conversation._id),
+      lastMessage: conversation.lastMessage,
+      lastMessageAt: conversation.lastMessageAt,
+      unreadCount: other ? (unreadBySender.get(String(other.user)) || 0) : 0,
+      otherParticipant: otherUser
+        ? {
+            id: String(otherUser._id),
+            name:
+              otherUser.displayName ||
+              `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
+              otherUser.email,
+            email: otherUser.email,
+            phone: otherUser.phone,
+            role: otherUser.role
+          }
+        : null,
+      participantIds,
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt
+    });
+  });
+
+  return summaries;
+};
+
 const getOrCreateConversation = async (userId, participantId) => {
   const userObjId = ensureObjectId(userId);
   const participantObjId = ensureObjectId(participantId);
@@ -147,75 +250,139 @@ const getOrCreateConversation = async (userId, participantId) => {
   }
 };
 
-const listConversations = async (userId) => {
-  const conversations = await ChatConversation.find({
-    'participants.user': ensureObjectId(userId)
-  })
-    .sort({ updatedAt: -1 })
-    .lean();
+// Single aggregate for every conversation's unread count instead of one
+// `countDocuments` round trip per conversation (X9) — each conversation
+// contributes its own `{conversation, sender, createdAt}` clause to one
+// `$or`, since the unread threshold (the viewer's `lastReadAt`) and the
+// "other participant" differ per conversation and can't collapse into a
+// single flat filter.
+const buildUnreadCountMap = async (conversations, viewerId) => {
+  const viewerIdString = String(viewerId);
+  const orClauses = [];
+
+  conversations.forEach((conv) => {
+    const other = conv.participants.find((p) => String(p.user) !== viewerIdString);
+    const self = conv.participants.find((p) => String(p.user) === viewerIdString);
+    if (!other) return;
+
+    const clause = { conversation: conv._id, sender: other.user };
+    if (self?.lastReadAt) {
+      clause.createdAt = { $gt: self.lastReadAt };
+    }
+    orClauses.push(clause);
+  });
+
+  if (!orClauses.length) return new Map();
+
+  const rows = await ChatMessage.aggregate([
+    { $match: { $or: orClauses } },
+    { $group: { _id: '$conversation', count: { $sum: 1 } } }
+  ]);
+
+  return new Map(rows.map((row) => [String(row._id), row.count]));
+};
+
+const listConversations = async (userId, { limit = 30, offset = 0 } = {}) => {
+  const safeLimit = clamp(parseNumber(limit, 30), 1, 100);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+  const filter = { 'participants.user': ensureObjectId(userId) };
+
+  const [conversations, total] = await Promise.all([
+    ChatConversation.find(filter)
+      .sort({ updatedAt: -1 })
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .lean(),
+    ChatConversation.countDocuments(filter)
+  ]);
 
   const userIds = new Set();
   conversations.forEach((conv) => conv.participants.forEach((p) => userIds.add(String(p.user))));
-  const users = await User.find({ _id: { $in: Array.from(userIds) } })
-    .select('_id firstName lastName email phone role displayName')
-    .lean();
+  const [users, unreadByConversation] = await Promise.all([
+    User.find({ _id: { $in: Array.from(userIds) } })
+      .select('_id firstName lastName email phone role displayName')
+      .lean(),
+    buildUnreadCountMap(conversations, userId)
+  ]);
   const userMap = users.reduce((acc, u) => {
     acc[String(u._id)] = u;
     return acc;
   }, {});
 
-  const enriched = await Promise.all(
-    conversations.map(async (conv) => {
-      const other = conv.participants.find((p) => String(p.user) !== String(userId));
-      const self = conv.participants.find((p) => String(p.user) === String(userId));
-      const otherUser = other ? userMap[String(other.user)] : null;
+  const enriched = conversations.map((conv) => {
+    const other = conv.participants.find((p) => String(p.user) !== String(userId));
+    const otherUser = other ? userMap[String(other.user)] : null;
 
-      // unreadQuery: counterpart's messages after this viewer's lastReadAt.
-      // sender = other.user already excludes the viewer's own replies — no
-      // senderRole filter needed. See getConversationSummaryForUser for the
-      // explanation of why the earlier "stub-admin defense" filter was a
-      // mistake on the user side (admin-side queries DO need it).
-      const unreadQuery = { conversation: conv._id };
-      if (self?.lastReadAt) {
-        unreadQuery.createdAt = { $gt: self.lastReadAt };
-      }
-      if (other) {
-        unreadQuery.sender = other.user;
-      }
-      const unreadCount = await ChatMessage.countDocuments(unreadQuery);
+    return {
+      id: String(conv._id),
+      lastMessage: conv.lastMessage,
+      lastMessageAt: conv.lastMessageAt,
+      unreadCount: unreadByConversation.get(String(conv._id)) || 0,
+      otherParticipant: otherUser
+        ? {
+            id: String(otherUser._id),
+            name:
+              otherUser.displayName ||
+              `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
+              otherUser.email,
+            email: otherUser.email,
+            phone: otherUser.phone,
+            role: otherUser.role
+          }
+        : null,
+      participantIds: conv.participants.map((p) => String(p.user)),
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt
+    };
+  });
 
-      return {
-        id: String(conv._id),
-        lastMessage: conv.lastMessage,
-        lastMessageAt: conv.lastMessageAt,
-        unreadCount,
-        otherParticipant: otherUser
-          ? {
-              id: String(otherUser._id),
-              name:
-                otherUser.displayName ||
-                `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() ||
-                otherUser.email,
-              email: otherUser.email,
-              phone: otherUser.phone,
-              role: otherUser.role
-            }
-          : null,
-        participantIds: conv.participants.map((p) => String(p.user)),
-        createdAt: conv.createdAt,
-        updatedAt: conv.updatedAt
-      };
-    })
-  );
-
-  return enriched;
+  return {
+    conversations: enriched,
+    pagination: {
+      total,
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + conversations.length < total
+    }
+  };
 };
 
-const getMessages = async (conversationId, { limit = 50, offset = 0 } = {}) => {
+/**
+ * Total unread message count across every conversation a user is in —
+ * mirrors `notification.service.js`'s `getUnreadCount` for the same reason:
+ * `listConversations` is now paginated (default 30), so a badge that summed
+ * `unreadCount` across a `listConversations()` call would silently
+ * undercount for any user with more conversations than fit on one page.
+ * This scans all of the user's conversations (not just one page) and reuses
+ * the same batched aggregate as the list endpoint.
+ */
+const getUnreadCount = async (userId) => {
+  const conversations = await ChatConversation.find({ 'participants.user': ensureObjectId(userId) })
+    .select('participants')
+    .lean();
+
+  const unreadByConversation = await buildUnreadCountMap(conversations, userId);
+
+  let total = 0;
+  unreadByConversation.forEach((count) => {
+    total += count;
+  });
+  return total;
+};
+
+const getMessages = async (conversationId, { limit = 50, offset = 0, viewerId, viewerRole } = {}) => {
+  await assertConversationAccess(conversationId, viewerId, { role: viewerRole });
+
+  // Previously unclamped — a client-supplied `limit` went straight to
+  // `.limit()` (X11). `clamp`/`parseNumber` are the same helpers
+  // `listConversationsAdmin` already uses for this.
+  const safeLimit = clamp(parseNumber(limit, 50), 1, 200);
+  const safeOffset = Math.max(parseNumber(offset, 0), 0);
+
   const messages = await ChatMessage.find({ conversation: conversationId })
     .sort({ createdAt: -1 })
-    .skip(offset)
-    .limit(limit)
+    .skip(safeOffset)
+    .limit(safeLimit)
     .lean();
 
   const total = await ChatMessage.countDocuments({ conversation: conversationId });
@@ -250,14 +417,20 @@ const getMessages = async (conversationId, { limit = 50, offset = 0 } = {}) => {
       .reverse(),
     pagination: {
       total,
-      limit,
-      offset,
-      hasMore: offset + messages.length < total
+      limit: safeLimit,
+      offset: safeOffset,
+      hasMore: safeOffset + messages.length < total
     }
   };
 };
 
-const sendMessage = async (conversationId, senderId, { content, senderRole = 'user', attachments, contextRef }) => {
+const sendMessage = async (conversationId, senderId, { content, senderRole = 'user', callerRole, attachments, contextRef }) => {
+  // IDOR fix (X3) — previously this created a message on ANY conversationId
+  // with no check that `senderId` actually belonged to it. `callerRole` lets
+  // an admin/support reply to a thread they weren't seeded as a participant
+  // on (see assertConversationAccess docs above).
+  await assertConversationAccess(conversationId, senderId, { role: callerRole });
+
   // Sanitise contextRef — only persist the small subset of fields the schema
   // defines so a malformed client payload doesn't pollute the document.
   const cleanContextRef =
@@ -281,11 +454,15 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
   });
   await message.save();
 
-  await ChatConversation.findByIdAndUpdate(conversationId, {
-    lastMessage: content,
-    lastMessageAt: message.createdAt,
-    updatedAt: new Date()
-  });
+  const updatedConversation = await ChatConversation.findByIdAndUpdate(
+    conversationId,
+    {
+      lastMessage: content,
+      lastMessageAt: message.createdAt,
+      updatedAt: new Date()
+    },
+    { new: true }
+  ).lean();
 
   const payload = {
     id: String(message._id),
@@ -314,18 +491,15 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
   };
 
   try {
-    const conversation = await ChatConversation.findById(conversationId).lean();
-    if (conversation) {
-      await Promise.all(
-        conversation.participants.map(async (participant) => {
-          const summary = await getConversationSummaryForUser(conversationId, participant.user);
-          emitToUser(String(participant.user), 'chat:message', {
-            conversationId: String(conversationId),
-            message: payload,
-            conversation: summary
-          });
-        })
-      );
+    if (updatedConversation) {
+      const summaries = await buildParticipantSummaries(updatedConversation);
+      updatedConversation.participants.forEach((participant) => {
+        emitToUser(String(participant.user), 'chat:message', {
+          conversationId: String(conversationId),
+          message: payload,
+          conversation: summaries.get(String(participant.user)) || null
+        });
+      });
     }
   } catch (error) {
     console.warn('[Chat] Failed to emit socket message', error.message);
@@ -335,6 +509,12 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
 };
 
 const markConversationRead = async (conversationId, userId, options = {}) => {
+  // Same access rule as getMessages/sendMessage — without it any
+  // authenticated user could mark an arbitrary conversation's messages read
+  // (polluting `readBy` and firing a `chat:read` event with a fabricated
+  // readerId at the real participants) just by guessing a conversationId.
+  await assertConversationAccess(conversationId, userId, { role: options.callerRole });
+
   // Primary path: caller is a participant — stamp their own participant row.
   const primary = await ChatConversation.updateOne(
     { _id: conversationId, 'participants.user': ensureObjectId(userId) },
@@ -370,16 +550,14 @@ const markConversationRead = async (conversationId, userId, options = {}) => {
     // which made the sender's UI never learn its messages had been read.
     const conversation = await ChatConversation.findById(conversationId).lean();
     if (conversation) {
-      await Promise.all(
-        conversation.participants.map(async (participant) => {
-          const summary = await getConversationSummaryForUser(conversationId, participant.user);
-          emitToUser(String(participant.user), 'chat:read', {
-            conversationId: String(conversationId),
-            conversation: summary,
-            readerId: String(userId)
-          });
-        })
-      );
+      const summaries = await buildParticipantSummaries(conversation);
+      conversation.participants.forEach((participant) => {
+        emitToUser(String(participant.user), 'chat:read', {
+          conversationId: String(conversationId),
+          conversation: summaries.get(String(participant.user)) || null,
+          readerId: String(userId)
+        });
+      });
     }
   } catch (error) {
     console.warn('[Chat] Failed to emit read event', error.message);
@@ -843,6 +1021,7 @@ module.exports = {
   getOrCreateConversation,
   getConversationSummaryForUser,
   listConversations,
+  getUnreadCount,
   listConversationsAdmin,
   getConversationAdminById,
   listCallLogsAdmin,

@@ -23,7 +23,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useAuth } from "../../hooks/useAuth";
 import { chatService } from "../../services/chat.service";
 import { productService, Product } from "../../services/product.service";
-import { getChatSocket, ChatMessageEvent, ChatReadEvent } from "../../services/chatSocket";
+import { getChatSocket, sendTyping, ChatMessageEvent, ChatReadEvent, ChatTypingEvent } from "../../services/chatSocket";
 import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
@@ -88,6 +88,10 @@ export const ChatScreen = () => {
   const [inputText, setInputText] = useState("");
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [otherIsTyping, setOtherIsTyping] = useState(false);
+  const typingClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -96,6 +100,16 @@ export const ChatScreen = () => {
   const navigation = useNavigation<ChatScreenNavProp>();
   const route = useRoute<ChatScreenRouteProp>();
   const flatListRef = useRef<FlatList>(null);
+
+  const inputRef = useRef<TextInput>(null);
+
+  // Was destructured AFTER `effectiveProductId` referenced `productId` below
+  // — a temporal-dead-zone violation (`const productId` hoists but stays
+  // uninitialized until this line runs), so ChatScreen threw
+  // `ReferenceError: Cannot access 'productId' before initialization` on
+  // every single render (X1). Moved above the block that reads it.
+  const { conversationId, recipientName, recipientPhone, productId } = route.params;
+  const currentUserId = useMemo(() => user?.id || "user-guest", [user]);
 
   // Seller-chat context card: when route.params.productId is present (added in
   // step 4 of the unify effort), fetch a thin product summary and render
@@ -127,10 +141,6 @@ export const ChatScreen = () => {
       cancelled = true;
     };
   }, [effectiveProductId]);
-  const inputRef = useRef<TextInput>(null);
-
-  const { conversationId, recipientName, recipientPhone, productId } = route.params;
-  const currentUserId = useMemo(() => user?.id || "user-guest", [user]);
 
   useEffect(() => {
     if (recipientPhone) setUserPhone(recipientPhone);
@@ -225,15 +235,28 @@ export const ChatScreen = () => {
         prev.map((m) => (m.isMe && !m.read ? { ...m, read: true } : m))
       );
     };
+    const handleTyping = (payload: ChatTypingEvent) => {
+      if (payload.conversationId !== conversationId || payload.userId === currentUserId) return;
+      setOtherIsTyping(payload.isTyping);
+      if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+      if (payload.isTyping) {
+        // Backstop in case a "stopped typing" event is dropped (e.g. the
+        // counterpart's app is killed mid-type) — the indicator clears
+        // itself after a few seconds of silence either way.
+        typingClearTimerRef.current = setTimeout(() => setOtherIsTyping(false), 4000);
+      }
+    };
     (async () => {
       try {
         const s = await getChatSocket();
         if (!isMounted) return;
         s.on("chat:message", handleMessage);
         s.on("chat:read", handleRead);
+        s.on("chat:typing", handleTyping);
         cleanup = () => {
           s.off("chat:message", handleMessage);
           s.off("chat:read", handleRead);
+          s.off("chat:typing", handleTyping);
         };
       } catch (e: any) {
         console.warn("Chat socket failed", e?.message);
@@ -259,22 +282,53 @@ export const ChatScreen = () => {
   } | undefined => {
     if (!contextProduct) return undefined;
     const candidateRefId = String(contextProduct._id);
-    const lastContextRefId = [...messages]
-      .reverse()
-      .find((m) => m.id && !m.id.startsWith("opt-"))?.id; // placeholder lookup
-    // The MessageItem doesn't surface contextRef directly; check the last
-    // remote message's id won't help. Instead we infer staleness from whether
-    // we just opened with productId (route param) — we always stamp the first
-    // message, server-side de-dups by tracking the latest contextRef in the
-    // thread. Cheap and correct.
-    void lastContextRefId;
+    // We always stamp every outbound message when a contextProduct is
+    // active — server-side de-dup tracks the latest contextRef in the
+    // thread, so restamping the same product on each message is harmless
+    // and switching products (buyer messages from a different listing)
+    // restamps correctly.
     return {
       type: "product",
       refId: candidateRefId,
       label: contextProduct.name,
       imageUrl: contextProduct.images?.[0]?.url,
     };
-  }, [contextProduct, messages]);
+  }, [contextProduct]);
+
+  // Emits "typing" at most once per keystroke burst (the socket layer itself
+  // also rate-limits, see backend/src/socket/index.js) and auto-emits
+  // "stopped" after a pause, so the counterpart's indicator doesn't linger
+  // if this device never explicitly sends a stop signal.
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputText(value);
+      if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+
+      if (value.trim()) {
+        if (!isTypingRef.current) {
+          isTypingRef.current = true;
+          sendTyping(conversationId, true);
+        }
+        typingStopTimerRef.current = setTimeout(() => {
+          isTypingRef.current = false;
+          sendTyping(conversationId, false);
+        }, 2500);
+      } else if (isTypingRef.current) {
+        isTypingRef.current = false;
+        sendTyping(conversationId, false);
+      }
+    },
+    [conversationId]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+      if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+      if (isTypingRef.current) sendTyping(conversationId, false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
@@ -282,6 +336,11 @@ export const ChatScreen = () => {
     const oid = `opt-${Date.now()}`;
     setMessages((prev) => [{ id: oid, text, createdAt: new Date(), senderId: currentUserId, senderName: "User", isMe: true }, ...prev]);
     setInputText("");
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      sendTyping(conversationId, false);
+    }
     try {
       setSending(true);
       const res = await chatService.sendMessage(conversationId, text, {
@@ -513,8 +572,10 @@ export const ChatScreen = () => {
         </View>
         <View style={styles.headerInfo}>
           <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>{recipientName}</Text>
-          <Text style={[styles.headerStatus, { color: colors.textMuted }]}>
-            {productId ? "Seller" : "Support Team"}
+          <Text style={[styles.headerStatus, { color: otherIsTyping ? colors.primary : colors.textMuted }]}>
+            {/* Unlike the presence dot this replaced, this IS backed by a real
+                socket signal (chat:typing) — only shown while actually true. */}
+            {otherIsTyping ? "typing…" : productId ? "Seller" : "Support Team"}
           </Text>
         </View>
         <TouchableOpacity onPress={handleCallUser} style={styles.headerActionBtn}>
@@ -590,7 +651,7 @@ export const ChatScreen = () => {
           ref={inputRef}
           style={[styles.textInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
           value={inputText}
-          onChangeText={setInputText}
+          onChangeText={handleInputChange}
           placeholder="Type something..."
           placeholderTextColor={colors.textMuted}
           multiline

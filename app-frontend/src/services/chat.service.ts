@@ -4,7 +4,8 @@ import type {
   ChatMessage,
   GetConversationsResponse,
   GetMessagesResponse,
-  SendMessageResponse
+  SendMessageResponse,
+  UnreadCountResponse
 } from "../types/chat";
 
 /**
@@ -75,8 +76,20 @@ const resolveSupportAdminId = async (): Promise<string> => {
 };
 
 class ChatService {
-  async listConversations(): Promise<GetConversationsResponse> {
-    return httpClient.get<GetConversationsResponse>("/chat/conversations");
+  async listConversations(params?: { limit?: number; offset?: number }): Promise<GetConversationsResponse> {
+    return httpClient.get<GetConversationsResponse>("/chat/conversations", { params });
+  }
+
+  /**
+   * Total unread count across every conversation, not just one page —
+   * `listConversations` is now paginated (backend default 30), so summing
+   * `unreadCount` off a single page would silently undercount a user with
+   * more conversations than fit on it. Mirrors notification.service.ts's
+   * `getUnreadCount`.
+   */
+  async getUnreadCount(): Promise<number> {
+    const response = await httpClient.get<UnreadCountResponse>("/chat/unread-count");
+    return response.count;
   }
 
   /**

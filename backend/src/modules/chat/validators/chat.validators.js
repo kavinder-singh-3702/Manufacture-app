@@ -1,4 +1,4 @@
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
 const createConversationValidation = [body('participantId').isMongoId().withMessage('participantId is required')];
 
@@ -6,9 +6,12 @@ const conversationIdParamValidation = [param('conversationId').isMongoId().withM
 
 const sendMessageValidation = [body('content').trim().notEmpty().withMessage('Message content is required')];
 
+// Was declared with body() and never wired to any route (X11) — the messages
+// list and conversations list are both GET requests, so their limit/offset
+// arrive as query params, not a body.
 const paginateValidation = [
-  body('limit').optional().isInt({ min: 1, max: 200 }),
-  body('offset').optional().isInt({ min: 0 })
+  query('limit').optional().isInt({ min: 1, max: 200 }),
+  query('offset').optional().isInt({ min: 0 })
 ];
 
 const callLogValidation = [

@@ -87,7 +87,7 @@ describe('User-side unread counting (admin replies must show as unread)', () => 
       senderRole: 'admin',
     });
 
-    const userListing = await listConversations(user._id.toString());
+    const { conversations: userListing } = await listConversations(user._id.toString());
     expect(userListing).toHaveLength(1);
     // The user's Support FAB badge must show admin's replies as unread —
     // that's the entire point of the badge.
@@ -132,7 +132,7 @@ describe('User-side unread counting (admin replies must show as unread)', () => 
       senderRole: 'user',
     });
 
-    const aListing = await listConversations(userA._id.toString());
+    const { conversations: aListing } = await listConversations(userA._id.toString());
     expect(aListing).toHaveLength(1);
     // B's user-role messages should still count for A.
     expect(aListing[0].unreadCount).toBe(2);
@@ -149,7 +149,7 @@ describe('User-side unread counting (admin replies must show as unread)', () => 
     });
     await markConversationRead(conv._id.toString(), userA._id.toString(), { callerRole: 'user' });
 
-    const aListing = await listConversations(userA._id.toString());
+    const { conversations: aListing } = await listConversations(userA._id.toString());
     expect(aListing[0].unreadCount).toBe(0);
   });
 });

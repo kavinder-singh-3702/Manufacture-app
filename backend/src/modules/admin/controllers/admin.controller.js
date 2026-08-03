@@ -871,8 +871,10 @@ const getAdminConversationController = async (req, res, next) => {
 
 /**
  * GET /api/admin/conversations/:conversationId/messages
- * Reuses chat.service.getMessages, which doesn't enforce participation —
- * suitable for admin moderation since admins may not be conversation participants.
+ * Reuses chat.service.getMessages. Its own participant-or-admin access check
+ * lets this through regardless of whether the admin is a conversation
+ * participant, as long as `viewerRole` is passed — admin moderation
+ * shouldn't require being seeded into every thread's participants array.
  */
 const getAdminConversationMessagesController = async (req, res, next) => {
   try {
@@ -880,7 +882,12 @@ const getAdminConversationMessagesController = async (req, res, next) => {
     const { conversationId } = req.params;
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-    const result = await getConversationMessages(conversationId, { limit, offset });
+    const result = await getConversationMessages(conversationId, {
+      limit,
+      offset,
+      viewerId: req.user.id,
+      viewerRole: req.user.role
+    });
     return res.json(result);
   } catch (error) {
     return next(error);

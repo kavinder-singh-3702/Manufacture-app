@@ -9,6 +9,7 @@ export const adminNavItems = [
   { id: "orders",             label: "Orders pipeline",      href: "/admin/orders" },
   { id: "products",           label: "In-house products",    href: "/admin/products" },
   { id: "ops",                label: "Ops console",          href: "/admin/ops" },
+  { id: "chat",               label: "Chat",                 href: "/admin/chat" },
   { id: "product-inquiries",  label: "Product inquiries",    href: "/admin/product-inquiries" },
   { id: "notifications",      label: "Notification studio",  href: "/admin/notifications" },
   { id: "ad-studio",          label: "Ad studio",            href: "/admin/ad-studio" },

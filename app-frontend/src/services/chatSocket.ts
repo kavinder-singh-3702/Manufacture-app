@@ -15,12 +15,21 @@ export type ChatReadEvent = {
   readerId?: string;
 };
 
+export type ChatTypingEvent = {
+  conversationId: string;
+  userId: string;
+  isTyping: boolean;
+};
+
 type ServerToClientEvents = {
   "chat:message": (payload: ChatMessageEvent) => void;
   "chat:read": (payload: ChatReadEvent) => void;
+  "chat:typing": (payload: ChatTypingEvent) => void;
 };
 
-type ClientToServerEvents = Record<string, never>;
+type ClientToServerEvents = {
+  "chat:typing": (payload: { conversationId: string; isTyping: boolean }) => void;
+};
 
 let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 let connecting: Promise<Socket<ServerToClientEvents, ClientToServerEvents>> | null = null;
@@ -51,6 +60,13 @@ export const getChatSocket = async () => {
     return await connecting;
   } finally {
     connecting = null;
+  }
+};
+
+/** Emits the ephemeral typing signal — no persistence, best-effort only. */
+export const sendTyping = (conversationId: string, isTyping: boolean) => {
+  if (socket?.connected) {
+    socket.emit("chat:typing", { conversationId, isTyping });
   }
 };
 

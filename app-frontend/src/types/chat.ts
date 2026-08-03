@@ -93,6 +93,11 @@ export type GetMessagesResponse = {
 
 export type GetConversationsResponse = {
   conversations: ChatConversation[];
+  pagination?: { total: number; limit: number; offset: number; hasMore: boolean };
+};
+
+export type UnreadCountResponse = {
+  count: number;
 };
 
 export type GetUsersForChatResponse = {

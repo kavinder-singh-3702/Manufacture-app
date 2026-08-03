@@ -44,9 +44,18 @@ export const UnreadMessagesProvider = ({ children }: Props) => {
       return;
     }
     try {
-      const response = await chatService.listConversations();
-      const total = response.conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      const support = response.conversations.reduce((sum, conv) => {
+      // totalUnread uses the dedicated total endpoint, not a sum over
+      // listConversations() — that endpoint is now paginated (backend
+      // default 30), so summing one page would silently undercount a user
+      // with more conversations than fit on it. supportUnread still reads
+      // off the list (there's normally exactly one admin/support thread,
+      // and a generous limit here keeps it correct without a second
+      // dedicated endpoint just for this narrower badge).
+      const [total, listResponse] = await Promise.all([
+        chatService.getUnreadCount(),
+        chatService.listConversations({ limit: 100 }),
+      ]);
+      const support = listResponse.conversations.reduce((sum, conv) => {
         const role = conv.otherParticipant?.role;
         if (role === "admin" || role === "super-admin") {
           return sum + (conv.unreadCount || 0);

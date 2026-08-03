@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { chatService } from "@/src/services/chat";
+import { startChatAndBuildHref } from "@/src/features/chat";
 import { ApiError } from "@/src/lib/api-error";
 import type { CreateProductInput, Product } from "@/src/types/product";
 import { useToast } from "@/src/components/ui/Toast";
@@ -192,9 +192,13 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
     if (!sellerId) { setChatError("Seller contact not available."); return; }
     try {
       setChatLoading(true); setChatError(null);
-      await chatService.startConversation(sellerId);
+      // Previously discarded the conversationId and pushed a bare
+      // /dashboard/chat, so it landed on whichever thread happened to load
+      // first rather than this seller's (X5). productId lets the backend
+      // enforce contactPreferences.allowChat and pins the product card.
+      const href = await startChatAndBuildHref(sellerId, product._id);
       toast.success("Chat started", "Opening your conversation with the seller.");
-      router.push("/dashboard/chat");
+      router.push(href);
     } catch (err) {
       const msg = err instanceof ApiError || err instanceof Error ? err.message : "Couldn't start chat";
       setChatError(msg);

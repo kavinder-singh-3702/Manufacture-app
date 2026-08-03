@@ -3,6 +3,7 @@ const { authenticate } = require('../../../middleware/authMiddleware');
 const validate = require('../../../middleware/validate');
 const {
   listConversationsController,
+  getUnreadCountController,
   createConversationController,
   getMessagesController,
   sendMessageController,
@@ -14,6 +15,7 @@ const {
   createConversationValidation,
   conversationIdParamValidation,
   sendMessageValidation,
+  paginateValidation,
   callLogValidation
 } = require('../validators/chat.validators');
 
@@ -21,9 +23,14 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/conversations', listConversationsController);
+router.get('/conversations', validate(paginateValidation), listConversationsController);
+router.get('/unread-count', getUnreadCountController);
 router.post('/conversations', validate(createConversationValidation), createConversationController);
-router.get('/conversations/:conversationId/messages', validate(conversationIdParamValidation), getMessagesController);
+router.get(
+  '/conversations/:conversationId/messages',
+  validate([...conversationIdParamValidation, ...paginateValidation]),
+  getMessagesController
+);
 router.post(
   '/conversations/:conversationId/messages',
   validate([...conversationIdParamValidation, ...sendMessageValidation]),

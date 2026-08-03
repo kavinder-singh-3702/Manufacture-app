@@ -25,7 +25,10 @@ export const AdminChatScreen = () => {
   const loadConversations = useCallback(async () => {
     try {
       setError(null);
-      const response = await chatService.listConversations();
+      // /chat/conversations now defaults to a 30-item page server-side; this
+      // screen has no pagination UI, so request a generously large page
+      // rather than silently dropping older conversations off the bottom.
+      const response = await chatService.listConversations({ limit: 100 });
       setConversations(response.conversations);
     } catch (err: any) {
       console.error("Failed to load conversations", err);

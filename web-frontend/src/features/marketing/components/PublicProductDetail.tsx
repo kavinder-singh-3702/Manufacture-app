@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { productService } from "@/src/services/product";
-import { chatService } from "@/src/services/chat";
+import { startChatAndBuildHref } from "@/src/features/chat";
 import { ApiError } from "@/src/lib/api-error";
 import type { Product } from "@/src/types/product";
 import { formatCurrency, getCategoryMeta, getCategoryHref, getBuyerStock, STOCK_STATUS_COLORS } from "@/src/features/product/utils/categories";
@@ -116,9 +116,12 @@ export const PublicProductDetail = ({
     if (!sellerId) { toast.error("Chat unavailable", "Seller contact details not available."); return; }
     try {
       setChatLoading(true);
-      await chatService.startConversation(sellerId);
+      // Previously discarded the conversationId and pushed a bare
+      // /dashboard/chat, landing on whichever thread happened to load first
+      // rather than this seller's (X5).
+      const href = await startChatAndBuildHref(sellerId, product?._id);
       toast.info("Opening chat", "Navigating to your conversation…");
-      router.push("/dashboard/chat");
+      router.push(href);
     } catch (err) {
       toast.error("Chat failed", err instanceof Error ? err.message : "Couldn't start conversation");
     } finally { setChatLoading(false); }
