@@ -315,7 +315,7 @@ export const ServicesOverviewScreen = () => {
             {Object.values(SERVICE_META).map((service, index) => {
               // All four services in v1 are live. Future-proofing: as the
               // `ServiceType` union grows, any new entry not in
-              // AVAILABLE_SERVICE_TYPES auto-renders as Coming Soon.
+              // AVAILABLE_SERVICE_TYPES auto-renders as an "Unavailable" chip.
               const available = isServiceAvailable(service.type);
               return (
                 <FadeInView key={service.type} delay={250 + index * 100} duration={450}>

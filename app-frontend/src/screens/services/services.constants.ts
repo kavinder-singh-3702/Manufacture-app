@@ -11,9 +11,11 @@ export type ServiceMeta = {
 
 /**
  * Whitelist of service types that are live for v1. Anything in `ServiceType`
- * but NOT in this set renders with a "Coming Soon" chip and a disabled tap.
+ * but NOT in this set renders with an "Unavailable" chip and a disabled tap.
  * Future-proofing: when we add a new service type to the union, the cards
- * surface the Coming Soon state until the type is whitelisted here.
+ * surface the disabled state until the type is whitelisted here. Label was
+ * changed from "Coming Soon" to avoid Apple App Store rejection over
+ * unfinished-feature language.
  */
 export const AVAILABLE_SERVICE_TYPES: Set<ServiceType> = new Set([
   "advertisement",

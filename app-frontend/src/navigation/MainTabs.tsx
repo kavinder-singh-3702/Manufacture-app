@@ -143,35 +143,87 @@ const getTabIconXml = (route: RouteName, color: string) => {
   return fn ? fn(color) : "";
 };
 
-const PlaceholderScreen = ({ title, icon }: { title: string; icon: string }) => {
+// Profile tab is a hub screen: tapping the tab in the footer already
+// intercepts and navigates to Company/Personal Profile via
+// handleNavigateToRoute. This backing screen exists so the tab has a
+// real, functional render if the modal is dismissed or the intercept is
+// bypassed — no "Coming Soon" / "Under Development" placeholder text
+// (Apple rejects apps that surface those to the reviewer).
+const ProfileTabScreen = () => {
   const { colors } = useTheme();
+  const { user, requestLogin } = useAuth();
+  const stackNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isAuthed = Boolean(user && user.role !== AppRole.GUEST);
+  const displayName = user?.displayName || user?.email?.split("@")[0] || "there";
+  const initial = (displayName[0] || "?").toUpperCase();
 
   return (
-    <View style={[placeholderStyles.container, { backgroundColor: colors.background }]}> 
+    <View style={[profileHubStyles.container, { backgroundColor: colors.background }]}>
       <LinearGradient colors={[colors.surfaceOverlayPrimary, "transparent"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <View style={placeholderStyles.content}>
-        <Text style={placeholderStyles.icon}>{icon}</Text>
-        <Text style={[placeholderStyles.title, { color: colors.text }]}>{title}</Text>
-        <Text style={[placeholderStyles.subtitle, { color: colors.textMuted }]}>Coming Soon</Text>
-        <View style={[placeholderStyles.badge, { backgroundColor: colors.primary + "20", borderColor: colors.primary }]}> 
-          <Text style={[placeholderStyles.badgeText, { color: colors.primary }]}>Under Development</Text>
+      <View style={profileHubStyles.content}>
+        <View style={[profileHubStyles.avatar, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "55" }]}>
+          <Text style={[profileHubStyles.avatarText, { color: colors.primary }]}>{initial}</Text>
         </View>
+        <Text style={[profileHubStyles.title, { color: colors.text }]}>
+          {isAuthed ? `Hi, ${displayName}` : "Welcome"}
+        </Text>
+        <Text style={[profileHubStyles.subtitle, { color: colors.textMuted }]}>
+          {isAuthed ? "Manage your account, company, and preferences" : "Sign in to manage your account and workspace"}
+        </Text>
+
+        {isAuthed ? (
+          <View style={profileHubStyles.actions}>
+            <TouchableOpacity
+              style={[profileHubStyles.primaryBtn, { backgroundColor: colors.primary }]}
+              onPress={() => stackNav.navigate("Profile")}
+              activeOpacity={0.9}
+            >
+              <Text style={[profileHubStyles.primaryBtnText, { color: colors.textOnPrimary }]}>Open my profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[profileHubStyles.secondaryBtn, { borderColor: colors.border }]}
+              onPress={() => stackNav.navigate("Notifications")}
+              activeOpacity={0.9}
+            >
+              <Text style={[profileHubStyles.secondaryBtnText, { color: colors.text }]}>Notifications</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[profileHubStyles.secondaryBtn, { borderColor: colors.border }]}
+              onPress={() => stackNav.navigate("NotificationPreferences")}
+              activeOpacity={0.9}
+            >
+              <Text style={[profileHubStyles.secondaryBtnText, { color: colors.text }]}>Preferences</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={profileHubStyles.actions}>
+            <TouchableOpacity
+              style={[profileHubStyles.primaryBtn, { backgroundColor: colors.primary }]}
+              onPress={requestLogin}
+              activeOpacity={0.9}
+            >
+              <Text style={[profileHubStyles.primaryBtnText, { color: colors.textOnPrimary }]}>Sign in</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
 };
 
-const placeholderStyles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  content: { alignItems: "center", gap: 12 },
-  icon: { fontSize: 64, marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: "800" },
-  subtitle: { fontSize: 16, fontWeight: "600" },
-  badge: { marginTop: 16, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  badgeText: { fontSize: 12, fontWeight: "700" },
+const profileHubStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  content: { alignItems: "center", gap: 10, maxWidth: 360, width: "100%" },
+  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  avatarText: { fontSize: 32, fontWeight: "800" },
+  title: { fontSize: 24, fontWeight: "800" },
+  subtitle: { fontSize: 14, fontWeight: "600", textAlign: "center", lineHeight: 20 },
+  actions: { marginTop: 20, width: "100%", gap: 10 },
+  primaryBtn: { paddingVertical: 14, borderRadius: 32, alignItems: "center" },
+  primaryBtnText: { fontSize: 15, fontWeight: "800", letterSpacing: 0.3 },
+  secondaryBtn: { paddingVertical: 12, borderRadius: 32, alignItems: "center", borderWidth: 1 },
+  secondaryBtnText: { fontSize: 14, fontWeight: "700" },
 });
-
-const ProfileTabScreen = () => <PlaceholderScreen title="Profile" icon="👤" />;
 
 const screenRegistry: Record<RouteName, ComponentType> = {
   [routes.DASHBOARD]: DashboardScreen,

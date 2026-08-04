@@ -22,9 +22,9 @@ export const ServiceTypeCard = ({
   onStart?: () => void;
   accent?: ServiceAccent;
   /**
-   * When true: card shows a "Coming Soon" chip, dims the contents,
-   * and refuses taps on both the card and the CTA. Used for service
-   * types listed in ServiceType but not yet in AVAILABLE_SERVICE_TYPES.
+   * When true: card shows an "Unavailable" chip, dims the contents, and
+   * refuses taps on both the card and the CTA. Used for service types
+   * listed in ServiceType but not yet in AVAILABLE_SERVICE_TYPES.
    */
   comingSoon?: boolean;
 }) => {
@@ -86,7 +86,9 @@ export const ServiceTypeCard = ({
             ]}
           />
 
-          {/* Coming Soon corner chip — surfaces the disabled state */}
+          {/* Unavailable corner chip — surfaces the disabled state. Label
+              intentionally NOT "coming soon" — Apple App Store rejects
+              apps that surface unfinished / future-feature language. */}
           {comingSoon ? (
             <View
               style={[
@@ -100,8 +102,8 @@ export const ServiceTypeCard = ({
                 },
               ]}
             >
-              <Ionicons name="time-outline" size={fs(11)} color="#FFFFFF" />
-              <Text style={[styles.comingSoonText, { fontSize: fs(10) }]}>Coming soon</Text>
+              <Ionicons name="lock-closed-outline" size={fs(11)} color="#FFFFFF" />
+              <Text style={[styles.comingSoonText, { fontSize: fs(10) }]}>Unavailable</Text>
             </View>
           ) : null}
 
@@ -156,7 +158,7 @@ export const ServiceTypeCard = ({
             </Text>
           </View>
 
-          {/* CTA — frosted white pill (disabled for Coming Soon services) */}
+          {/* CTA — frosted white pill (disabled for unavailable services) */}
           {onStart && !comingSoon ? (
             <TouchableOpacity
               onPress={onStart}
