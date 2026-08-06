@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionBanner, PHONE_CAPTURE_TONE } from "@/src/components/ui/ActionBanner";
+import { isAdminRole } from "@/src/lib/roles";
 import { useDashboardContext } from "../context";
 
 /**
@@ -11,7 +12,7 @@ import { useDashboardContext } from "../context";
  */
 export const PhoneCaptureBanner = () => {
   const { user } = useDashboardContext();
-  const isAdmin = user.role === "admin" || user.role === "super-admin";
+  const isAdmin = isAdminRole(user.role);
 
   if (user.phone || isAdmin) return null;
 

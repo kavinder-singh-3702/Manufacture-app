@@ -8,6 +8,7 @@ import { BrandWordmark } from "@/src/components/BrandLogo";
 import { useAuth } from "@/src/hooks/useAuth";
 import { SearchBar, buildSearchHref, PRODUCT_SEARCH_ROUTES } from "@/src/features/search";
 import { PRODUCT_CATEGORIES, getCategoryHref } from "@/src/features/product/utils/categories";
+import { homePathFor } from "@/src/lib/roles";
 
 // Used to be a hand-maintained 16-entry duplicate of the categories list
 // (independently drifted from src/features/product/utils/categories.ts, the
@@ -89,6 +90,7 @@ export const TopBar = () => {
   const { user, initializing } = useAuth();
   const isAuthed = !initializing && !!user;
   const accountLabel = user?.displayName ?? user?.firstName ?? user?.email ?? "Account";
+  const workspaceHref = homePathFor(user);
 
   // Reachable from every page — IndiaMART's search bar isn't confined to the
   // marketplace page body. Hands off to /products, which reads `?q=` reactively
@@ -218,7 +220,7 @@ export const TopBar = () => {
             tablet visitors aren't dropped straight to the hamburger. */}
         <div className="hidden items-center gap-3 md:flex">
           {isAuthed ? (
-            <Link href="/dashboard"
+            <Link href={workspaceHref}
               className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{ color: "var(--foreground)", border: "1px solid var(--border)", backgroundColor: "var(--surface)" }}>
               <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
@@ -319,14 +321,14 @@ export const TopBar = () => {
             </nav>
             <div className="mt-4 grid gap-2">
               {isAuthed ? (
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}
+                <Link href={workspaceHref} onClick={() => setMobileOpen(false)}
                   className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-semibold"
                   style={{ border: "1px solid var(--border)", color: "var(--primary)", backgroundColor: "var(--primary-light)" }}>
                   <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
                     style={{ backgroundColor: "var(--primary)" }}>
                     {accountLabel.charAt(0).toUpperCase()}
                   </span>
-                  {accountLabel} · Dashboard
+                  {accountLabel} · {workspaceHref === "/admin" ? "Admin" : "Dashboard"}
                 </Link>
               ) : (
                 <>

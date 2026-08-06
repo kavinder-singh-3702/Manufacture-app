@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/src/hooks/useAuth";
+import { isAdminRole } from "@/src/lib/roles";
 import { companyVerificationService } from "@/src/services/companyVerification";
 import type { CompanyVerificationRequest } from "@/src/types/company";
 import { adminService, AdminOverview as AdminOverviewData, AdminAuditEvent } from "@/src/services/admin";
@@ -36,7 +37,7 @@ export const AdminFrame = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isAdmin = user?.role === "admin" || user?.role === "super-admin";
+  const isAdmin = isAdminRole(user?.role);
 
   useEffect(() => {
     if (!initializing && user && !isAdmin) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
+import { isAdminRole } from "@/src/lib/roles";
 import { adService, AdFeedCard } from "@/src/services/ad";
 import { canShowByCap, canShowPopupNow, isDismissed, recordDismiss, recordImpression, setPopupLastShownAt } from "../adFrequency";
 import { buildAdView } from "../adView";
@@ -30,7 +31,7 @@ export const AdPopupHost = () => {
   const router = useRouter();
   const { user } = useAuth();
 
-  const isAdmin = user?.role === "admin" || user?.role === "super-admin";
+  const isAdmin = isAdminRole(user?.role);
   const excludedRoute = EXCLUDED_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
   const eligible = !isAdmin && !excludedRoute;
 

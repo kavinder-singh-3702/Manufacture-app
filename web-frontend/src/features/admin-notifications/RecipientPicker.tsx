@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { adminService, AdminUser, AdminCompany } from "@/src/services/admin";
+import { isAdminRole } from "@/src/lib/roles";
 
 const SEARCH_DEBOUNCE_MS = 220;
-
-// Mirrors app-frontend/src/constants/roles.ts `isAdminRole` — web-frontend
-// has no equivalent shared roles module, so this stays a tiny local copy
-// rather than pulling in a whole constants file for one predicate.
-const isAdminRole = (role?: string | null) => role === "admin" || role === "super-admin";
 
 /**
  * Searchable recipient picker for the composer's "Single user" / "Company"

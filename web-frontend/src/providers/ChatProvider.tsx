@@ -2,6 +2,7 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { isAdminRole } from "../lib/roles";
 import { getSocket } from "../lib/realtime";
 import { chatService } from "../services/chat";
 import type { ChatConversation, ChatMessage } from "../types/chat";
@@ -85,8 +86,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const supportUnread = useMemo(
     () =>
       conversations.reduce((sum, conv) => {
-        const role = conv.otherParticipant?.role;
-        return role === "admin" || role === "super-admin" ? sum + (conv.unreadCount || 0) : sum;
+        return isAdminRole(conv.otherParticipant?.role) ? sum + (conv.unreadCount || 0) : sum;
       }, 0),
     [conversations]
   );

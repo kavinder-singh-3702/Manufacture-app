@@ -5,6 +5,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { companyVerificationService } from "../../services/companyVerification";
 import { CompanyVerificationRequest } from "../../types/company";
 import { ApiError } from "../../lib/api-error";
+import { isAdminRole } from "../../lib/roles";
 import { PageHeader } from "../../components/ui/Surface";
 
 type FilterValue = "all" | "pending" | "approved" | "rejected";
@@ -49,7 +50,10 @@ export const VerificationRequestsPanel = () => {
   const [reviewNotes, setReviewNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
 
-  const canModerate = user?.role === "admin";
+  // Was strictly "admin" — the backend grants every ADMIN_PERMISSIONS entry
+  // (including verification moderation) to super-admin too, so that account
+  // type was silently locked out of this screen's actions.
+  const canModerate = isAdminRole(user?.role);
 
   const loadRequests = useCallback(async () => {
     if (!canModerate) return;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
+import { homePathFor, isPathAllowedForRole } from "../../../lib/roles";
 import { useAuthFlow } from "../flow/useAuthFlow";
 import { AuthBackButton } from "./AuthBackButton";
 
@@ -62,11 +63,15 @@ export const LoginCard = () => {
           ? await login({ email: trimmedIdentifier, password: trimmedPassword, remember: true })
           : await login({ phone: trimmedIdentifier, password: trimmedPassword, remember: true });
       // Return the user to where they were gated (e.g. a product they wanted to
-      // contact a seller about), falling back to the role-based home.
+      // contact a seller about), falling back to the role-based home. A stale
+      // `?next=/admin` on a normal-user login must NOT be honoured — that would
+      // walk them straight into AdminFrame's "you need an admin account" wall.
       const next = typeof window !== "undefined"
         ? safeNext(new URLSearchParams(window.location.search).get("next"))
         : null;
-      router.push(next ?? (authenticatedUser.role === "admin" ? "/admin" : "/dashboard"));
+      const destination = next && isPathAllowedForRole(next, authenticatedUser) ? next : homePathFor(authenticatedUser);
+      router.refresh();
+      router.replace(destination);
     } catch (err) {
       const message = err instanceof ApiError || err instanceof Error ? err.message : "Unable to sign in.";
       setError(message);

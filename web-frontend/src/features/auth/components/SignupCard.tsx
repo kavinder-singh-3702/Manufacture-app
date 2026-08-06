@@ -8,6 +8,7 @@ import { PRODUCT_CATEGORIES } from "../../product/utils/categories";
 import { authService } from "../../../services/auth";
 import { useAuth } from "../../../hooks/useAuth";
 import { ApiError } from "../../../lib/api-error";
+import { homePathFor, isPathAllowedForRole } from "../../../lib/roles";
 import { useAuthFlow } from "../flow/useAuthFlow";
 import { Field, fieldInputClass, fieldInputStyle } from "@/src/components/ui/FormField";
 
@@ -214,13 +215,17 @@ export const SignupCard = () => {
         dateOfBirth: business.dateOfBirth || undefined,
       });
       setUser(res.user);
-      // Return to a gated origin if one was supplied (internal paths only).
+      // Return to a gated origin if one was supplied (internal paths only,
+      // and only if this account is actually allowed there).
       const rawNext = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
-      const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
+      const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") && isPathAllowedForRole(rawNext, res.user) ? rawNext : null;
       // Trader/manufacturer accounts land on verification next, matching the
       // app's ~100ms auto-redirect to CompanyVerification after signup.
-      const destination = res.user.role === "admin" ? "/admin" : requiresCompany ? "/dashboard/verification" : "/dashboard";
-      router.push(next ?? destination);
+      // (Self-signup never produces an admin account, but the admin check
+      // still takes precedence for consistency with the other auth flows.)
+      const destination = homePathFor(res.user) === "/admin" ? "/admin" : requiresCompany ? "/dashboard/verification" : "/dashboard";
+      router.refresh();
+      router.replace(next ?? destination);
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Could not complete signup");
     } finally {

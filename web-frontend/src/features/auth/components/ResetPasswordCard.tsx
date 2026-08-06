@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ApiError } from "../../../lib/api-error";
 import { authService } from "../../../services/auth";
 import { useAuth } from "../../../hooks/useAuth";
+import { homePathFor } from "../../../lib/roles";
 
 const CODE_LENGTH = 6;
 
@@ -172,7 +173,8 @@ export const ResetPasswordCard = () => {
         : await authService.resetPassword({ email: email.trim(), code: joinedCode, password: trimmedPassword });
       setUser(response.user);
       setStatus("Password updated. Redirecting to your workspace…");
-      router.push(response.user.role === "admin" ? "/admin" : "/dashboard");
+      router.refresh();
+      router.replace(homePathFor(response.user));
     } catch (err) {
       const status = err instanceof ApiError ? err.status : null;
       if (status === 410) {

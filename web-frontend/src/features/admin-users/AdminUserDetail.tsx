@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminService, AdminUserOverview } from "@/src/services/admin";
 import { ApiError } from "@/src/lib/api-error";
+import { isAdminRole } from "@/src/lib/roles";
 
 type UserStatus = "active" | "inactive" | "suspended";
 
@@ -145,7 +146,7 @@ export const AdminUserDetail = ({ userId }: { userId: string }) => {
             <p>Joined {formatDateTime(user.createdAt)}</p>
             {user.lastLoginAt && <p className="mt-0.5">Last login {formatDateTime(user.lastLoginAt)}</p>}
           </div>
-          {user.role !== "admin" && user.role !== "super-admin" && (
+          {!isAdminRole(user.role) && (
             <div className="flex flex-wrap justify-end gap-1.5">
               {(Object.keys(USER_STATUS_META) as UserStatus[])
                 .filter((s) => s !== user.status)

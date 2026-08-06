@@ -117,6 +117,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setUser(null);
       setActiveAuthView("login");
+      // Hard navigation, not router.push/replace: this tears down every
+      // provider's in-memory state (Notifications/Chat/Cart all key off
+      // `isAuthenticated` and were only ever rebuilding, not resetting) and
+      // drops the App Router client cache, so the next sign-in never renders
+      // a stale sliver of the previous account's data. useLogout's caller
+      // handles the confirm dialog and toast before this ever runs.
+      if (typeof window !== "undefined") {
+        window.location.replace("/signin");
+      }
     }
   }, []);
 

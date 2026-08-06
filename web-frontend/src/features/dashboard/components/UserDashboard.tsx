@@ -35,6 +35,7 @@ import {
   ProfileFormState,
 } from "./user-dashboard/helpers";
 import { useNotifications } from "@/src/providers/NotificationsProvider";
+import { isAdminRole } from "@/src/lib/roles";
 
 export { useDashboardContext } from "./user-dashboard/context";
 
@@ -102,6 +103,17 @@ export const DashboardFrame = ({ children }: { children: ReactNode }) => {
       router.replace("/signin");
     }
   }, [initializing, user, router, pathname]);
+
+  // Symmetric with AdminFrame's non-admin guard: an admin/super-admin who
+  // lands on the dashboard root (a stale bookmark, a pre-role-fix redirect
+  // cached in browser history, etc.) is bounced to their real workspace.
+  // Root-only — an admin deliberately browsing /dashboard/products or
+  // /dashboard/chat is left alone.
+  useEffect(() => {
+    if (!initializing && isAdminRole(user?.role) && pathname === "/dashboard") {
+      router.replace("/admin");
+    }
+  }, [initializing, user, pathname, router]);
 
   useEffect(() => {
     if (user) {
