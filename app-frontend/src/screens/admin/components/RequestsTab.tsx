@@ -72,6 +72,14 @@ const statusType = (status?: string): StatusType => {
   return "neutral";
 };
 
+// Mirrors the web admin console's TERMINAL_STATUSES (web-frontend's opsMeta.ts)
+// — used so a stale SLA due date on an already-closed request doesn't render
+// as "overdue".
+const TERMINAL_STATUSES = new Set(["completed", "cancelled", "launched", "closed", "rejected"]);
+
+const isSlaBreached = (item: AdminOpsRequest): boolean =>
+  Boolean(item.slaDueAt) && !TERMINAL_STATUSES.has(item.status) && new Date(item.slaDueAt as string).getTime() < Date.now();
+
 const formatRelativeAge = (iso: string): string => {
   if (!iso) return "";
   const ms = Date.now() - new Date(iso).getTime();
@@ -118,6 +126,7 @@ export const RequestsTab = () => {
   const {
     requests,
     total,
+    counts,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
@@ -158,6 +167,10 @@ export const RequestsTab = () => {
     const subtitle = assignee
       ? `${KIND_LABELS[item.kind]} • ${ownerName}\n👤 ${assignee}`
       : `${KIND_LABELS[item.kind]} • ${ownerName}`;
+    const breached = isSlaBreached(item);
+    const meta = breached
+      ? `⚠️ SLA overdue • ${item.priority || "normal"} priority`
+      : `${formatRelativeAge(item.updatedAt)} • ${item.priority || "normal"} priority`;
 
     return (
       <View style={{ marginHorizontal: spacing.lg, marginBottom: spacing.sm }}>
@@ -169,7 +182,7 @@ export const RequestsTab = () => {
             label: toStatusLabel(item.status),
             type: statusType(item.status),
           }}
-          meta={`${formatRelativeAge(item.updatedAt)} • ${item.priority || "normal"} priority`}
+          meta={meta}
           onPress={() => handleRowPress(item)}
         />
       </View>
@@ -367,6 +380,7 @@ export const RequestsTab = () => {
       <RequestsFilterSheet
         visible={sheetVisible}
         initial={sheetFilters}
+        counts={counts}
         onClose={() => setSheetVisible(false)}
         onApply={setSheetFilters}
       />

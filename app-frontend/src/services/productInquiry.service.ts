@@ -48,10 +48,21 @@ export type InquiryListParams = {
 export type AdminInquiryListParams = InquiryListParams & {
   productId?: string;
   buyerId?: string;
+  search?: string;
+  sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc";
+};
+
+export type InquiryStatusCounts = {
+  all: number;
+  pending: number;
+  seen: number;
+  responded: number;
+  closed: number;
 };
 
 export type InquiryListResponse = {
   inquiries: ProductInquiry[];
+  counts?: InquiryStatusCounts;
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
 };
 

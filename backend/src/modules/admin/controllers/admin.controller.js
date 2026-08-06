@@ -134,14 +134,15 @@ const listAllCompaniesController = async (req, res, next) => {
 const listAllUsersController = async (req, res, next) => {
   try {
     assertAdminPermission(req.user, ADMIN_PERMISSIONS.READ_USERS);
-    const { status, search, limit, offset, sort, companyId } = req.query;
+    const { status, search, limit, offset, sort, companyId, role } = req.query;
     const result = await listAllUsers({
       status,
       search,
       limit,
       offset,
       sort,
-      companyId
+      companyId,
+      role
     });
     return res.json(result);
   } catch (error) {

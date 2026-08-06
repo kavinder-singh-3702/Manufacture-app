@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,9 +27,12 @@ import {
   productInquiryService,
   ProductInquiry,
   InquiryStatus,
+  InquiryStatusCounts,
   UpdateInquiryStatusPayload,
 } from "../../services/productInquiry.service";
 import { RootStackParamList } from "../../navigation/types";
+import { AdminSearchBar } from "../../components/admin";
+import { useToast } from "../../components/ui/Toast";
 
 const STATUS_LABELS: Record<InquiryStatus, string> = {
   pending: "Pending",
@@ -104,6 +107,11 @@ export const AdminProductInquiriesScreen = () => {
   const [pagination, setPagination] = useState({ total: 0, limit: PAGE_SIZE, offset: 0, hasMore: false });
 
   const [filterStatus, setFilterStatus] = useState<InquiryStatus | "all">("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [counts, setCounts] = useState<InquiryStatusCounts | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toast = useToast();
 
   // Detail / status update sheet
   const [selectedInquiry, setSelectedInquiry] = useState<ProductInquiry | null>(null);
@@ -112,14 +120,22 @@ export const AdminProductInquiriesScreen = () => {
   const [adminNotes, setAdminNotes] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchInput]);
+
   const loadInquiries = useCallback(async (offset = 0, append = false) => {
     if (append) { setLoadingMore(true); } else { setLoading(true); setError(null); }
     try {
       const params: any = { limit: PAGE_SIZE, offset };
       if (filterStatus !== "all") params.status = filterStatus;
+      if (search) params.search = search;
       const res = await productInquiryService.adminList(params);
       setInquiries((prev) => append ? [...prev, ...res.inquiries] : res.inquiries);
       setPagination(res.pagination);
+      if (res.counts) setCounts(res.counts);
     } catch (err: any) {
       setError(err?.message || "Failed to load inquiries");
     } finally {
@@ -127,7 +143,7 @@ export const AdminProductInquiriesScreen = () => {
       setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [filterStatus]);
+  }, [filterStatus, search]);
 
   useFocusEffect(
     useCallback(() => {
@@ -167,11 +183,13 @@ export const AdminProductInquiriesScreen = () => {
       setInquiries((prev) => prev.map((item) => item._id === updated._id ? updated : item));
       closeDetail();
     } catch (err: any) {
-      // silently keep modal open on error
+      // Surface the failure instead of silently leaving the modal open with
+      // no feedback — the admin previously had no way to tell a save failed.
+      toast.error("Update failed", err?.message || "Could not update this inquiry. Try again.");
     } finally {
       setUpdating(false);
     }
-  }, [selectedInquiry, newStatus, adminNotes, closeDetail]);
+  }, [selectedInquiry, newStatus, adminNotes, closeDetail, toast]);
 
   const renderInquiryCard = useCallback(({ item }: { item: ProductInquiry }) => {
     const sc = statusColor(item.status, COLORS);
@@ -278,6 +296,7 @@ export const AdminProductInquiriesScreen = () => {
           >
             <Text style={[styles.filterChipText, active && { color: COLORS.accent }]}>
               {s === "all" ? "All" : STATUS_LABELS[s]}
+              {counts ? ` (${counts[s]})` : ""}
             </Text>
           </TouchableOpacity>
         );
@@ -322,6 +341,11 @@ export const AdminProductInquiriesScreen = () => {
             {pagination.total} {pagination.total === 1 ? "request" : "requests"} total
           </Text>
         </View>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchBarWrap}>
+        <AdminSearchBar value={searchInput} onChangeText={setSearchInput} placeholder="Search product, buyer, email or phone…" />
       </View>
 
       {/* Filter chips */}
@@ -537,6 +561,7 @@ const createStyles = (COLORS: ReturnType<typeof useInquiriesPalette>) =>
     headerTitle: { fontSize: 22, fontWeight: "800", color: COLORS.text },
     headerSubtitle: { fontSize: 13, fontWeight: "500", color: COLORS.textMuted, marginTop: 1 },
 
+    searchBarWrap: { paddingHorizontal: 16 },
     filterBar: { borderBottomWidth: 1, paddingVertical: 4 },
     filterChips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
     filterChip: {

@@ -263,6 +263,8 @@ export type AdminOpsRequest = {
   assignedTo?: AdminServiceRequestActor | null;
   createdAt: string;
   updatedAt: string;
+  slaDueAt?: string;
+  lastActionAt?: string;
   serviceType?: string;
   referenceCode?: string;
   preview?: {
@@ -275,6 +277,20 @@ export type AdminOpsRequest = {
     startTimeline?: string;
     source?: string;
   };
+};
+
+// Bucket/kind-independent summary counts for the ops queue — powers the
+// filter-sheet's per-option counts. Mirrors the web admin console's
+// AdminOpsCounts (web-frontend/src/services/admin.ts).
+export type AdminOpsCounts = {
+  total: number;
+  service: number;
+  business_setup: number;
+  open: number;
+  closed: number;
+  rejected: number;
+  urgent: number;
+  unassigned: number;
 };
 
 export type AdminInhouseProduct = Product;
@@ -445,6 +461,7 @@ class AdminService {
     offset?: number;
     sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc" | "updatedAt:asc";
     companyId?: string;
+    role?: "super-admin" | "admin" | "user";
   }): Promise<{ users: AdminUser[]; pagination: Pagination }> {
     const response = await apiClient.get<{
       users: AdminUser[];
@@ -616,12 +633,13 @@ class AdminService {
     priority?: string;
     serviceType?: string;
     companyId?: string;
-    assignedTo?: string;
+    /** A specific admin's user id, or the literal "unassigned" to find requests with no assignee. */
+    assignedTo?: string | "unassigned";
     createdBy?: string;
     from?: string;
     to?: string;
-  }): Promise<{ requests: AdminOpsRequest[]; pagination: Pagination }> {
-    return apiClient.get<{ requests: AdminOpsRequest[]; pagination: Pagination }>("/admin/ops-requests", { params });
+  }): Promise<{ requests: AdminOpsRequest[]; counts?: AdminOpsCounts; pagination: Pagination }> {
+    return apiClient.get<{ requests: AdminOpsRequest[]; counts?: AdminOpsCounts; pagination: Pagination }>("/admin/ops-requests", { params });
   }
 
   async getServiceRequestById(serviceRequestId: string): Promise<AdminServiceRequest> {

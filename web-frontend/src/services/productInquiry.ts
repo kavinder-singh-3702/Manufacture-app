@@ -27,8 +27,17 @@ export type ProductInquiry = {
   updatedAt: string;
 };
 
+export type InquiryStatusCounts = {
+  all: number;
+  pending: number;
+  seen: number;
+  responded: number;
+  closed: number;
+};
+
 export type InquiryListResponse = {
   inquiries: ProductInquiry[];
+  counts: InquiryStatusCounts;
   pagination: { total: number; limit: number; offset: number; hasMore: boolean };
 };
 
@@ -55,11 +64,22 @@ const toQuery = (params?: Record<string, unknown>): QueryParams | undefined => {
 const create = (data: ProductInquiryInput) =>
   httpClient.post<{ success: boolean; message?: string }>("/product-inquiries", data);
 
-const adminList = (params?: { status?: InquiryStatus; productId?: string; buyerId?: string; limit?: number; offset?: number }) =>
+const adminList = (params?: {
+  status?: InquiryStatus;
+  productId?: string;
+  buyerId?: string;
+  search?: string;
+  sort?: "createdAt:desc" | "createdAt:asc" | "updatedAt:desc";
+  limit?: number;
+  offset?: number;
+}) =>
   httpClient.get<InquiryListResponse>("/admin/product-inquiries", { params: toQuery(params as Record<string, unknown>) });
+
+const adminGet = (inquiryId: string) =>
+  httpClient.get<{ inquiry: ProductInquiry }>(`/admin/product-inquiries/${inquiryId}`).then((r) => r.inquiry);
 
 const adminUpdateStatus = (inquiryId: string, payload: UpdateInquiryStatusPayload) =>
   httpClient.patch<{ inquiry: ProductInquiry }>(`/admin/product-inquiries/${inquiryId}/status`, payload)
     .then((r) => r.inquiry);
 
-export const productInquiryService = { create, adminList, adminUpdateStatus };
+export const productInquiryService = { create, adminList, adminGet, adminUpdateStatus };

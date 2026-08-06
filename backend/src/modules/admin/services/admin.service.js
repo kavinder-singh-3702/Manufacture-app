@@ -350,11 +350,15 @@ const listAllCompanies = async ({ status, search, limit = 50, offset = 0, sort }
 /**
  * List all users (admin/super-admin)
  */
-const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, companyId } = {}) => {
+const listAllUsers = async ({ status, search, limit = 50, offset = 0, sort, companyId, role } = {}) => {
   const safeLimit = clamp(parseNumber(limit, 50), 1, 100);
   const safeOffset = Math.max(parseNumber(offset, 0), 0);
 
   const filter = {};
+
+  if (role) {
+    filter.role = role;
+  }
 
   // Map admin's "active"/"inactive" filter to the combined logic (status + recency).
   // - "active": status=active AND logged in within 30 days

@@ -5,12 +5,15 @@ export const adminNavItems = [
   { id: "overview",           label: "Overview",             href: "/admin" },
   { id: "verification",       label: "Verification queue",   href: "/admin/verification-requests" },
   { id: "users",              label: "Users",                href: "/admin/users" },
-  { id: "companies",          label: "Companies",            href: "/admin/companies" },
   { id: "orders",             label: "Orders pipeline",      href: "/admin/orders" },
-  { id: "products",           label: "In-house products",    href: "/admin/products" },
+  // Ops console and Product inquiries moved up (right after the primary bottom-rail
+  // tabs) so they land in the first row of the mobile "More" grid instead of the
+  // third — they're daily-triage queues, not occasional-use settings pages.
   { id: "ops",                label: "Ops console",          href: "/admin/ops" },
-  { id: "chat",               label: "Chat",                 href: "/admin/chat" },
   { id: "product-inquiries",  label: "Product inquiries",    href: "/admin/product-inquiries" },
+  { id: "companies",          label: "Companies",            href: "/admin/companies" },
+  { id: "products",           label: "In-house products",    href: "/admin/products" },
+  { id: "chat",               label: "Chat",                 href: "/admin/chat" },
   { id: "notifications",      label: "Notification studio",  href: "/admin/notifications" },
   { id: "ad-studio",          label: "Ad studio",            href: "/admin/ad-studio" },
 ] as const;

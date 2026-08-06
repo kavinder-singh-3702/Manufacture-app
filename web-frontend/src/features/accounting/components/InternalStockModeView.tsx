@@ -107,7 +107,7 @@ export const InternalStockModeView = () => {
                   </p>
                 </div>
                 <Link
-                  href="/dashboard/internal-inventory"
+                  href={`/dashboard/internal-inventory?action=add-stock&itemId=${item._id}`}
                   className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold"
                   style={{ backgroundColor: "var(--warning)", color: "#fff" }}
                 >

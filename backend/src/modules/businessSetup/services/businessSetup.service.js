@@ -244,7 +244,9 @@ const buildAdminBusinessQuery = (filters = {}) => {
   if (filters.createdBy && toObjectId(filters.createdBy)) {
     query.createdBy = toObjectId(filters.createdBy);
   }
-  if (filters.assignedTo && toObjectId(filters.assignedTo)) {
+  if (filters.assignedTo === 'unassigned') {
+    query.assignedTo = { $exists: false };
+  } else if (filters.assignedTo && toObjectId(filters.assignedTo)) {
     query.assignedTo = toObjectId(filters.assignedTo);
   }
   if (filters.source && ['authenticated', 'guest'].includes(filters.source)) {
@@ -801,7 +803,9 @@ const buildServiceOpsQuery = (filters = {}) => {
   if (filters.createdBy && toObjectId(filters.createdBy)) {
     query.createdBy = toObjectId(filters.createdBy);
   }
-  if (filters.assignedTo && toObjectId(filters.assignedTo)) {
+  if (filters.assignedTo === 'unassigned') {
+    query.assignedTo = { $exists: false };
+  } else if (filters.assignedTo && toObjectId(filters.assignedTo)) {
     query.assignedTo = toObjectId(filters.assignedTo);
   }
   if (filters.from || filters.to) {
@@ -855,6 +859,8 @@ const normalizeOpsItem = (item) => {
       assignedTo: shapeUserSummary(item.assignedTo),
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
+      slaDueAt: item.slaDueAt,
+      lastActionAt: item.lastActionAt,
       serviceType: item.serviceType,
       preview: {
         serviceType: item.serviceType,
@@ -874,6 +880,8 @@ const normalizeOpsItem = (item) => {
     assignedTo: shapeUserSummary(item.assignedTo),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    slaDueAt: item.slaDueAt,
+    lastActionAt: item.lastActionAt,
     referenceCode: item.referenceCode,
     preview: {
       businessType: item.businessType,
@@ -883,6 +891,44 @@ const normalizeOpsItem = (item) => {
       startTimeline: item.startTimeline,
       source: item.source
     }
+  };
+};
+
+// Bucket/kind-independent counts for the admin ops queue's summary tiles.
+// Respects every other active filter (search, priority, serviceType, company,
+// assignee, date range) but ignores `kind`/`statusBucket` so switching either
+// of those from the tiles doesn't require a second round trip.
+const buildOpsCounts = async (filters = {}) => {
+  const countFilters = { ...filters, kind: undefined, statusBucket: undefined };
+  const serviceQuery = buildServiceOpsQuery(countFilters);
+  const businessQuery = buildBusinessOpsQuery(countFilters);
+
+  const [
+    serviceTotal, serviceOpen, serviceClosed, serviceUrgent, serviceUnassigned,
+    businessTotal, businessOpen, businessClosed, businessRejected, businessUrgent, businessUnassigned
+  ] = await Promise.all([
+    ServiceRequest.countDocuments(serviceQuery),
+    ServiceRequest.countDocuments({ ...serviceQuery, status: { $in: SERVICE_STATUS_BY_BUCKET.open } }),
+    ServiceRequest.countDocuments({ ...serviceQuery, status: { $in: SERVICE_STATUS_BY_BUCKET.closed } }),
+    ServiceRequest.countDocuments({ ...serviceQuery, priority: 'urgent' }),
+    ServiceRequest.countDocuments({ ...serviceQuery, assignedTo: { $exists: false } }),
+    BusinessSetupRequest.countDocuments(businessQuery),
+    BusinessSetupRequest.countDocuments({ ...businessQuery, status: { $in: BUSINESS_STATUS_BY_BUCKET.open } }),
+    BusinessSetupRequest.countDocuments({ ...businessQuery, status: { $in: BUSINESS_STATUS_BY_BUCKET.closed } }),
+    BusinessSetupRequest.countDocuments({ ...businessQuery, status: { $in: BUSINESS_STATUS_BY_BUCKET.rejected } }),
+    BusinessSetupRequest.countDocuments({ ...businessQuery, priority: 'urgent' }),
+    BusinessSetupRequest.countDocuments({ ...businessQuery, assignedTo: { $exists: false } })
+  ]);
+
+  return {
+    total: serviceTotal + businessTotal,
+    service: serviceTotal,
+    business_setup: businessTotal,
+    open: serviceOpen + businessOpen,
+    closed: serviceClosed + businessClosed,
+    rejected: businessRejected,
+    urgent: serviceUrgent + businessUrgent,
+    unassigned: serviceUnassigned + businessUnassigned
   };
 };
 
@@ -921,12 +967,12 @@ const listOpsRequestsAdmin = async (filters = {}) => {
   const serviceQuery = shouldIncludeService ? buildServiceOpsQuery(filters) : null;
   const businessQuery = shouldIncludeBusiness ? buildBusinessOpsQuery(filters) : null;
 
-  const [serviceRows, serviceTotal, businessRows, businessTotal] = await Promise.all([
+  const [serviceRows, serviceTotal, businessRows, businessTotal, counts] = await Promise.all([
     shouldIncludeService
       ? ServiceRequest.find(serviceQuery)
           .sort(resolveAdminSort(sort))
           .limit(fetchWindow)
-          .select('title description status priority company createdBy assignedTo updatedAt createdAt serviceType')
+          .select('title description status priority company createdBy assignedTo updatedAt createdAt serviceType slaDueAt lastActionAt')
           .populate('company', 'displayName status type complianceStatus')
           .populate('createdBy', 'displayName email role')
           .populate('assignedTo', 'displayName email role')
@@ -938,14 +984,15 @@ const listOpsRequestsAdmin = async (filters = {}) => {
           .sort(resolveAdminSort(sort))
           .limit(fetchWindow)
           .select(
-            'referenceCode title businessType workModel location budgetRange startTimeline source status priority company createdBy assignedTo updatedAt createdAt'
+            'referenceCode title businessType workModel location budgetRange startTimeline source status priority company createdBy assignedTo updatedAt createdAt slaDueAt lastActionAt'
           )
           .populate('company', 'displayName status type complianceStatus')
           .populate('createdBy', 'displayName email role')
           .populate('assignedTo', 'displayName email role')
           .lean()
       : Promise.resolve([]),
-    shouldIncludeBusiness ? BusinessSetupRequest.countDocuments(businessQuery) : Promise.resolve(0)
+    shouldIncludeBusiness ? BusinessSetupRequest.countDocuments(businessQuery) : Promise.resolve(0),
+    buildOpsCounts(filters)
   ]);
 
   const normalized = [
@@ -960,6 +1007,7 @@ const listOpsRequestsAdmin = async (filters = {}) => {
 
   return {
     requests: pageItems,
+    counts,
     pagination: {
       total,
       limit,

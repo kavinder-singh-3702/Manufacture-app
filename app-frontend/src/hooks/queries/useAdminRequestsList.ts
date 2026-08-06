@@ -54,10 +54,13 @@ export const useAdminRequestsList = (filters: AdminRequestsListFilters) => {
 
   const requests = query.data?.pages.flatMap((page) => page.requests) ?? [];
   const total = query.data?.pages[0]?.pagination.total ?? 0;
+  // Bucket/kind-independent summary — same on every page, so the first page is enough.
+  const counts = query.data?.pages[0]?.counts;
 
   return {
     requests,
     total,
+    counts,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isFetchingNextPage: query.isFetchingNextPage,

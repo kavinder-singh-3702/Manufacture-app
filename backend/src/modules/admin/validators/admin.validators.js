@@ -15,6 +15,7 @@ const listEntitiesValidation = [
   query('status').optional().isString().trim().isLength({ min: 1, max: 80 }),
   query('search').optional().isString().trim().isLength({ min: 1, max: 120 }),
   query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
+  query('role').optional().isIn(['super-admin', 'admin', 'user']).withMessage('Invalid role'),
   query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
   query('offset').optional().isInt({ min: 0 }).toInt(),
   query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc'])
@@ -172,7 +173,8 @@ const listAdminOpsRequestsValidation = [
   query('priority').optional().isString().trim().isLength({ min: 1, max: 80 }),
   query('companyId').optional().custom(isObjectId).withMessage('companyId must be a valid ObjectId'),
   query('createdBy').optional().custom(isObjectId).withMessage('createdBy must be a valid ObjectId'),
-  query('assignedTo').optional().custom(isObjectId).withMessage('assignedTo must be a valid ObjectId'),
+  query('assignedTo').optional().custom((value) => value === 'unassigned' || isObjectId(value))
+    .withMessage('assignedTo must be a valid ObjectId or "unassigned"'),
   query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
   query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc', 'updatedAt:asc', 'priority:desc']),
   query('from').optional().isISO8601(),

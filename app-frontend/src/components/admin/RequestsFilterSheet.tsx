@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "../../hooks/useTheme";
+import { AdminOpsCounts } from "../../services/admin.service";
 import {
   KIND_LABELS,
   PRIORITY_LABELS,
@@ -29,8 +30,25 @@ import {
 type Props = {
   visible: boolean;
   initial: RequestsFilters;
+  /** Bucket/kind-independent summary counts (GET /admin/ops-requests `counts`).
+   * When present, appended to the Kind and Status chip labels so the admin can
+   * see how many requests each option contains before switching to it. */
+  counts?: AdminOpsCounts;
   onClose: () => void;
   onApply: (next: RequestsFilters) => void;
+};
+
+const KIND_COUNT_KEY: Partial<Record<RequestsKindFilter, keyof AdminOpsCounts>> = {
+  all: "total",
+  service: "service",
+  business_setup: "business_setup",
+};
+
+const STATUS_COUNT_KEY: Partial<Record<RequestsStatusBucket, keyof AdminOpsCounts>> = {
+  all: "total",
+  open: "open",
+  closed: "closed",
+  rejected: "rejected",
 };
 
 const KIND_OPTIONS: RequestsKindFilter[] = ["all", "service", "business_setup"];
@@ -50,7 +68,7 @@ const SORT_OPTIONS: RequestsSort[] = [
  * Local pending state stays inside the sheet so the admin can revise and tap
  * Apply once; Cancel discards.
  */
-export const RequestsFilterSheet = ({ visible, initial, onClose, onApply }: Props) => {
+export const RequestsFilterSheet = ({ visible, initial, counts, onClose, onApply }: Props) => {
   const { colors, spacing, radius } = useTheme();
   const [pending, setPending] = useState<RequestsFilters>(initial);
 
@@ -85,13 +103,16 @@ export const RequestsFilterSheet = ({ visible, initial, onClose, onApply }: Prop
     options: readonly T[],
     selected: T,
     onChange: (next: T) => void,
-    labels: Readonly<Record<T, string>>
+    labels: Readonly<Record<T, string>>,
+    countKeys?: Partial<Record<T, keyof AdminOpsCounts>>
   ) => (
     <View style={{ gap: spacing.xs }}>
       <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{title}</Text>
       <View style={[styles.chipRow, { gap: spacing.xs }]}>
         {options.map((opt) => {
           const isActive = selected === opt;
+          const countKey = countKeys?.[opt];
+          const count = counts && countKey ? counts[countKey] : undefined;
           return (
             <TouchableOpacity
               key={opt}
@@ -112,7 +133,7 @@ export const RequestsFilterSheet = ({ visible, initial, onClose, onApply }: Prop
                   { color: isActive ? colors.primary : colors.text },
                 ]}
               >
-                {labels[opt]}
+                {labels[opt]}{count !== undefined ? ` (${count})` : ""}
               </Text>
             </TouchableOpacity>
           );
@@ -165,7 +186,8 @@ export const RequestsFilterSheet = ({ visible, initial, onClose, onApply }: Prop
               KIND_OPTIONS,
               pending.kind,
               (next) => setPending((p) => ({ ...p, kind: next })),
-              KIND_LABELS
+              KIND_LABELS,
+              KIND_COUNT_KEY
             )}
 
             {renderChipRow<RequestsStatusBucket>(
@@ -173,7 +195,8 @@ export const RequestsFilterSheet = ({ visible, initial, onClose, onApply }: Prop
               STATUS_OPTIONS,
               pending.statusBucket,
               (next) => setPending((p) => ({ ...p, statusBucket: next })),
-              STATUS_BUCKET_LABELS
+              STATUS_BUCKET_LABELS,
+              STATUS_COUNT_KEY
             )}
 
             {renderChipRow<RequestsPriority>(

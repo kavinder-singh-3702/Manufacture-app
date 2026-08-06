@@ -1,53 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { productInquiryService, ProductInquiry, InquiryStatus } from "@/src/services/productInquiry";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { productInquiryService, type InquiryStatus, type InquiryStatusCounts, type ProductInquiry } from "@/src/services/productInquiry";
 import { ApiError } from "@/src/lib/api-error";
 import { PageHeader } from "@/src/components/ui/Surface";
+import { useToast } from "@/src/components/ui/Toast";
+import { relativeAge, statusBg, statusTone, STATUS_LABELS } from "./inquiryMeta";
+import { InquiryDetailSheet } from "./InquiryDetailSheet";
 
 const PAGE_SIZE = 25;
 
-const relativeDate = (iso: string) => {
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (d < 1) return "today";
-  if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-};
-
-const STATUS_STYLE: Record<InquiryStatus, { label: string; color: string; bg: string }> = {
-  pending:   { label: "Pending",   color: "#92400E", bg: "#FEF3C7" },
-  seen:      { label: "Seen",      color: "#1E40AF", bg: "#DBEAFE" },
-  responded: { label: "Responded", color: "#166534", bg: "#DCFCE7" },
-  closed:    { label: "Closed",    color: "#6B7280", bg: "#F3F4F6" },
-};
-
-const STATUS_CHIPS: { key: InquiryStatus | "all"; label: string }[] = [
-  { key: "all",       label: "All" },
-  { key: "pending",   label: "Pending" },
-  { key: "seen",      label: "Seen" },
+const STATUS_TILES: { key: InquiryStatus | "all"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "seen", label: "Seen" },
   { key: "responded", label: "Responded" },
-  { key: "closed",    label: "Closed" },
+  { key: "closed", label: "Closed" },
 ];
 
-const NEXT_STATUS: Record<InquiryStatus, InquiryStatus | null> = {
-  pending:   "seen",
-  seen:      "responded",
-  responded: "closed",
-  closed:    null,
-};
+const buyerName = (inq: ProductInquiry) => inq.buyer?.displayName ?? inq.buyerSnapshot?.name ?? inq.buyerSnapshot?.email ?? "Guest";
+const productName = (inq: ProductInquiry) => inq.product?.name ?? inq.productSnapshot?.name ?? "Unknown product";
 
 export const AdminInquiriesPanel = () => {
+  const toast = useToast();
   const [inquiries, setInquiries] = useState<ProductInquiry[]>([]);
+  const [counts, setCounts] = useState<InquiryStatusCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pagination, setPagination] = useState({ total: 0, hasMore: false, offset: 0 });
   const [error, setError] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState<InquiryStatus | "all">("all");
-  const [actionTarget, setActionTarget] = useState<ProductInquiry | null>(null);
-  const [actionNote, setActionNote] = useState("");
-  const [actionStatus, setActionStatus] = useState<InquiryStatus>("seen");
-  const [actionSaving, setActionSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [activeInquiry, setActiveInquiry] = useState<ProductInquiry | null>(null);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (offset = 0, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
@@ -55,10 +48,12 @@ export const AdminInquiriesPanel = () => {
     try {
       const res = await productInquiryService.adminList({
         status: statusFilter === "all" ? undefined : statusFilter,
+        search: search || undefined,
         limit: PAGE_SIZE,
         offset,
       });
-      setInquiries((prev) => append ? [...prev, ...(res.inquiries ?? [])] : (res.inquiries ?? []));
+      setInquiries((prev) => (append ? [...prev, ...(res.inquiries ?? [])] : (res.inquiries ?? [])));
+      setCounts(res.counts ?? null);
       setPagination({ total: res.pagination?.total ?? 0, hasMore: res.pagination?.hasMore ?? false, offset });
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Failed to load inquiries");
@@ -66,73 +61,136 @@ export const AdminInquiriesPanel = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, search]);
 
   useEffect(() => { load(0); }, [load]);
+  useEffect(() => { setSelected(new Set()); }, [statusFilter, search]);
 
-  const openAction = (inq: ProductInquiry, nextStatus: InquiryStatus) => {
-    setActionTarget(inq);
-    setActionStatus(nextStatus);
-    setActionNote(inq.adminNotes ?? "");
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchInput]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !pagination.hasMore || loading || loadingMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) load(pagination.offset + PAGE_SIZE, true);
+    }, { rootMargin: "200px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [pagination.hasMore, pagination.offset, loading, loadingMore, load]);
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const submitAction = async () => {
-    if (!actionTarget) return;
-    setActionSaving(true);
-    try {
-      await productInquiryService.adminUpdateStatus(actionTarget._id, {
-        status: actionStatus,
-        adminNotes: actionNote.trim() || undefined,
-      });
-      setActionTarget(null);
-      load(0);
-    } catch (err) {
-      setError(err instanceof ApiError || err instanceof Error ? err.message : "Action failed");
-    } finally {
-      setActionSaving(false);
+  const handleSaved = (updated: ProductInquiry) => {
+    setInquiries((prev) => prev.map((i) => (i._id === updated._id ? updated : i)));
+    setActiveInquiry(null);
+    load(0);
+  };
+
+  const bulkUpdate = async (status: InquiryStatus) => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setBulkSaving(true);
+    let ok = 0, failed = 0;
+    for (const id of ids) {
+      try {
+        await productInquiryService.adminUpdateStatus(id, { status });
+        ok += 1;
+      } catch {
+        failed += 1;
+      }
     }
+    setBulkSaving(false);
+    setSelected(new Set());
+    if (ok) toast.success(`Marked ${ok} as ${STATUS_LABELS[status].toLowerCase()}`, failed ? `${failed} failed to update` : undefined);
+    else toast.error("Bulk update failed", "None of the selected inquiries could be updated");
+    load(0);
   };
-
-  const buyerName = (inq: ProductInquiry) =>
-    inq.buyer?.displayName ?? inq.buyerSnapshot?.name ?? inq.buyerSnapshot?.email ?? "Guest";
-
-  const productName = (inq: ProductInquiry) =>
-    inq.product?.name ?? inq.productSnapshot?.name ?? "Unknown product";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         title={
           <>
             Product Inquiries
-            {!loading && (
+            {!loading && counts && (
               <span className="ml-2.5 rounded-full px-2.5 py-0.5 text-sm font-semibold align-middle"
                 style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)" }}>
-                {pagination.total.toLocaleString("en-IN")}
+                {counts.all.toLocaleString("en-IN")}
               </span>
             )}
           </>
         }
       />
 
-      {/* Status filter */}
-      <div className="flex flex-wrap gap-1.5">
-        {STATUS_CHIPS.map((chip) => (
-          <button key={chip.key} onClick={() => setStatusFilter(chip.key)}
-            className="rounded-full px-3.5 py-1.5 text-xs font-bold transition-all"
-            style={{
-              backgroundColor: statusFilter === chip.key ? "var(--primary)" : "var(--surface)",
-              color: statusFilter === chip.key ? "#fff" : "var(--foreground)",
-              border: "1px solid var(--border)",
-            }}>
-            {chip.label}
-          </button>
-        ))}
+      {/* Search */}
+      <div className="relative">
+        <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="8" stroke="var(--medium-gray)" strokeWidth="1.8" />
+          <path d="M21 21l-4.35-4.35" stroke="var(--medium-gray)" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+        <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by product, buyer name, email or phone…"
+          className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none"
+          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
       </div>
+
+      {/* Status tiles — double as filters */}
+      <div className="grid grid-cols-5 gap-1.5">
+        {STATUS_TILES.map((tile) => {
+          const active = statusFilter === tile.key;
+          const value = counts ? counts[tile.key] : 0;
+          const tone = tile.key === "all" ? "var(--primary)" : statusTone(tile.key);
+          return (
+            <button key={tile.key} type="button" onClick={() => setStatusFilter(tile.key)}
+              className="rounded-xl px-1.5 py-2.5 text-center transition-all"
+              style={{
+                border: active ? `1px solid ${tone}` : "1px solid var(--border)",
+                backgroundColor: active ? `color-mix(in srgb, ${tone} 12%, transparent)` : "var(--card)",
+              }}>
+              <p className="text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: active ? tone : "var(--medium-gray)" }}>{tile.label}</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums" style={{ color: active ? tone : "var(--foreground)" }}>
+                {counts ? value.toLocaleString("en-IN") : "—"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bulk action bar (desktop-only selection UI) */}
+      {selected.size > 0 && (
+        <div className="hidden items-center gap-2 rounded-xl px-4 py-2.5 sm:flex" style={{ backgroundColor: "var(--primary-light)", border: "1px solid rgba(20,141,178,0.2)" }}>
+          <span className="text-xs font-bold" style={{ color: "var(--primary)" }}>{selected.size} selected</span>
+          <div className="ml-auto flex gap-1.5">
+            {(["seen", "responded", "closed"] as InquiryStatus[]).map((s) => (
+              <button key={s} type="button" disabled={bulkSaving} onClick={() => bulkUpdate(s)}
+                className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: statusTone(s) }}>
+                Mark {STATUS_LABELS[s]}
+              </button>
+            ))}
+            <button type="button" onClick={() => setSelected(new Set())}
+              className="rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-70"
+              style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center justify-between rounded-xl px-4 py-3 text-sm"
-          style={{ backgroundColor: "#FEF2F2", border: "1px solid #FCA5A5", color: "#991B1B" }}>
+          style={{ backgroundColor: "var(--danger-bg)", border: "1px solid var(--danger-strong)", color: "var(--danger-strong)" }}>
           <span>{error}</span>
           <button onClick={() => load(0)} className="text-xs font-bold underline ml-4">Retry</button>
         </div>
@@ -141,12 +199,11 @@ export const AdminInquiriesPanel = () => {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl" style={{ backgroundColor: "var(--border)" }} />
+            <div key={i} className="h-24 animate-pulse rounded-xl" style={{ backgroundColor: "var(--border)" }} />
           ))}
         </div>
       ) : !inquiries.length ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl py-16 text-center"
-          style={{ border: "1px dashed var(--border)" }}>
+        <div className="flex flex-col items-center gap-3 rounded-2xl py-16 text-center" style={{ border: "1px dashed var(--border)" }}>
           <span className="text-4xl">📩</span>
           <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>No inquiries found</p>
           <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
@@ -156,107 +213,61 @@ export const AdminInquiriesPanel = () => {
       ) : (
         <div className="space-y-2">
           {inquiries.map((inq, i) => {
-            const sStyle = STATUS_STYLE[inq.status];
-            const nextStatus = NEXT_STATUS[inq.status];
-            const price = inq.product?.price ?? (inq.productSnapshot?.amount ? { amount: inq.productSnapshot.amount, currency: inq.productSnapshot.currency ?? "INR" } : null);
+            const img = inq.product?.images?.[0]?.url;
+            const isSelected = selected.has(inq._id);
             return (
-              <motion.div key={inq._id}
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
-                className="rounded-xl px-4 py-3.5" style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{productName(inq)}</p>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: sStyle.bg, color: sStyle.color }}>
-                        {sStyle.label}
-                      </span>
-                    </div>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--medium-gray)" }}>
-                      From {buyerName(inq)}
-                      {inq.buyer?.email && ` (${inq.buyer.email})`}
-                      {inq.quantity && ` · Qty: ${inq.quantity}`}
-                      {price && ` · ₹${price.amount.toLocaleString("en-IN")}`}
-                      {" · "}{relativeDate(inq.createdAt)}
-                    </p>
-                    {inq.message && (
-                      <p className="mt-1.5 text-xs line-clamp-2 rounded-lg px-3 py-1.5"
-                        style={{ backgroundColor: "var(--background)", color: "var(--foreground)", border: "1px solid var(--border)" }}>
-                        &quot;{inq.message}&quot;
-                      </p>
-                    )}
-                    {inq.adminNotes && (
-                      <p className="mt-1 text-xs italic" style={{ color: "var(--medium-gray)" }}>
-                        Note: {inq.adminNotes}
-                      </p>
-                    )}
-                  </div>
-                  {nextStatus && (
-                    <button onClick={() => openAction(inq, nextStatus)}
-                      className="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-opacity hover:opacity-70 flex-shrink-0"
-                      style={{ backgroundColor: "var(--primary-light)", color: "var(--primary)", border: "1px solid rgba(20,141,178,0.2)" }}>
-                      Mark {STATUS_STYLE[nextStatus].label}
-                    </button>
+              <motion.button key={inq._id} type="button" onClick={() => setActiveInquiry(inq)}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.3) }}
+                className="flex w-full items-start gap-3 rounded-xl px-3.5 py-3 text-left transition-colors hover:bg-[var(--background)]"
+                style={{ border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                <button type="button" onClick={(e) => toggleSelect(inq._id, e)}
+                  className="mt-1 hidden h-4 w-4 flex-shrink-0 items-center justify-center rounded sm:flex"
+                  style={{ border: `1.5px solid ${isSelected ? "var(--primary)" : "var(--border)"}`, backgroundColor: isSelected ? "var(--primary)" : "transparent" }}
+                  aria-label={isSelected ? "Deselect" : "Select"}>
+                  {isSelected && <span className="text-[10px] font-bold text-white">✓</span>}
+                </button>
+
+                <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+                  {img ? <Image src={img} alt="" fill sizes="44px" className="object-cover" /> : (
+                    <span className="flex h-full w-full items-center justify-center text-lg">📦</span>
                   )}
                 </div>
-              </motion.div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>{productName(inq)}</p>
+                    {inq.variant?.title && <span className="text-xs font-semibold" style={{ color: "var(--primary)" }}>{inq.variant.title}</span>}
+                    <span className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: statusBg(inq.status), color: statusTone(inq.status) }}>
+                      {STATUS_LABELS[inq.status]}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs" style={{ color: "var(--medium-gray)" }}>
+                    {buyerName(inq)}{inq.buyer?.email && ` · ${inq.buyer.email}`}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px]" style={{ color: "var(--medium-gray)" }}>
+                    {inq.quantity ? <span>Qty: {inq.quantity}</span> : null}
+                    {inq.location ? <span className="truncate">📍 {inq.location}</span> : null}
+                    <span>{relativeAge(inq.createdAt)}</span>
+                  </p>
+                  {inq.message && (
+                    <p className="mt-1 truncate text-xs" style={{ color: "var(--foreground)" }}>&quot;{inq.message}&quot;</p>
+                  )}
+                </div>
+              </motion.button>
             );
           })}
         </div>
       )}
 
       {pagination.hasMore && (
-        <div className="flex justify-center">
-          <button onClick={() => load(pagination.offset + PAGE_SIZE, true)} disabled={loadingMore}
-            className="rounded-xl px-6 py-2.5 text-sm font-bold transition-opacity hover:opacity-70 disabled:opacity-40"
-            style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--foreground)" }}>
-            {loadingMore ? "Loading…" : "Load more"}
-          </button>
+        <div ref={sentinelRef} className="flex justify-center py-2">
+          {loadingMore && (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
+          )}
         </div>
       )}
 
-      {/* Status update modal */}
-      <AnimatePresence>
-        {actionTarget && (
-          <>
-            <motion.div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setActionTarget(null)} />
-            <motion.div
-              className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl p-6 shadow-2xl"
-              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-              <p className="text-base font-bold" style={{ color: "var(--foreground)" }}>
-                Mark as {STATUS_STYLE[actionStatus].label}
-              </p>
-              <p className="mt-0.5 text-sm truncate" style={{ color: "var(--medium-gray)" }}>
-                {productName(actionTarget)} · {buyerName(actionTarget)}
-              </p>
-              <div className="mt-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--medium-gray)" }}>
-                  Admin note (optional)
-                </label>
-                <textarea value={actionNote} onChange={(e) => setActionNote(e.target.value)} rows={2}
-                  placeholder="Internal note for this inquiry…"
-                  className="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none"
-                  style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-              </div>
-              <div className="mt-4 flex gap-3">
-                <button onClick={() => setActionTarget(null)}
-                  className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
-                  style={{ border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                  Cancel
-                </button>
-                <button onClick={submitAction} disabled={actionSaving}
-                  className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                  style={{ backgroundColor: "var(--primary)" }}>
-                  {actionSaving ? "Saving…" : "Confirm"}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <InquiryDetailSheet inquiry={activeInquiry} onClose={() => setActiveInquiry(null)} onSaved={handleSaved} />
     </div>
   );
 };

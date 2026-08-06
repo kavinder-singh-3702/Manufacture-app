@@ -45,6 +45,8 @@ export type AdminUser = {
   createdAt: string;
 };
 
+export type AdminUserRole = "super-admin" | "admin" | "user";
+
 // ── Companies ─────────────────────────────────────────────────────────────────
 
 export type AdminCompany = {
@@ -84,6 +86,8 @@ export type AdminOpsRequest = {
   assignedTo?: AdminOpsRequestActor | null;
   createdAt: string;
   updatedAt: string;
+  slaDueAt?: string;
+  lastActionAt?: string;
   serviceType?: string;
   referenceCode?: string;
   preview?: {
@@ -96,6 +100,94 @@ export type AdminOpsRequest = {
     startTimeline?: string;
     source?: string;
   };
+};
+
+export type AdminOpsCounts = {
+  total: number;
+  service: number;
+  business_setup: number;
+  open: number;
+  closed: number;
+  rejected: number;
+  urgent: number;
+  unassigned: number;
+};
+
+export type AdminOpsRequestTimelineEntry = {
+  type: "status" | "assignment" | "note";
+  at: string;
+  entry: Record<string, unknown>;
+};
+
+// Full admin-detail shapes, returned only by the per-id endpoints
+// (GET /admin/service-requests/:id, GET /admin/business-setup-requests/:id).
+// The list endpoint (`listOpsRequests`) only ever returns `AdminOpsRequest`.
+export type AdminServiceRequest = {
+  id: string;
+  serviceType: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: string;
+  company?: { id: string; displayName?: string; status?: string; type?: string; complianceStatus?: string } | null;
+  createdBy?: AdminOpsRequestActor | null;
+  assignedTo?: AdminOpsRequestActor | null;
+  lastUpdatedBy?: AdminOpsRequestActor | null;
+  slaDueAt?: string;
+  firstResponseAt?: string;
+  resolvedAt?: string;
+  lastActionAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  contact?: { phone?: string; email?: string; name?: string; preferredChannel?: string; [k: string]: unknown } | null;
+  location?: { line1?: string; line2?: string; city?: string; state?: string; country?: string; postalCode?: string; [k: string]: unknown } | null;
+  schedule?: { startDate?: string; endDate?: string; isFlexible?: boolean; notes?: string; [k: string]: unknown } | null;
+  budget?: { estimatedCost?: number; currency?: string; notes?: string } | null;
+  notes?: string;
+  machineRepairDetails?: Record<string, unknown> | null;
+  workerDetails?: Record<string, unknown> | null;
+  transportDetails?: Record<string, unknown> | null;
+  advertisementDetails?: Record<string, unknown> | null;
+  timeline?: AdminOpsRequestTimelineEntry[];
+  statusHistory?: Array<Record<string, unknown>>;
+  assignmentHistory?: Array<Record<string, unknown>>;
+  internalNotes?: Array<Record<string, unknown>>;
+  allowedTransitions?: Array<{ status: string; isPrimary: boolean }>;
+};
+
+export type AdminBusinessSetupRequest = {
+  id: string;
+  referenceCode: string;
+  title: string;
+  businessType: string;
+  workModel: string;
+  location: string;
+  budgetRange: string;
+  startTimeline: string;
+  supportAreas?: string[];
+  founderExperience?: string;
+  teamSize?: number;
+  preferredContactChannel?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  source: "authenticated" | "guest";
+  status: string;
+  priority: string;
+  company?: { id: string; displayName?: string; status?: string; type?: string; complianceStatus?: string } | null;
+  createdBy?: AdminOpsRequestActor | null;
+  assignedTo?: AdminOpsRequestActor | null;
+  lastUpdatedBy?: AdminOpsRequestActor | null;
+  slaDueAt?: string;
+  lastActionAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  timeline?: AdminOpsRequestTimelineEntry[];
+  statusHistory?: Array<Record<string, unknown>>;
+  assignmentHistory?: Array<Record<string, unknown>>;
+  internalNotes?: Array<Record<string, unknown>>;
+  allowedTransitions?: Array<{ status: string; isPrimary: boolean }>;
 };
 
 // ── Audit Events ──────────────────────────────────────────────────────────────
@@ -167,7 +259,7 @@ const getStats = () =>
 const getOverview = () =>
   httpClient.get<{ overview: AdminOverview }>("/admin/overview").then((r) => r.overview);
 
-const listUsers = (params?: { status?: string; search?: string; limit?: number; offset?: number; sort?: string }) =>
+const listUsers = (params?: { status?: string; search?: string; role?: AdminUserRole; limit?: number; offset?: number; sort?: string }) =>
   httpClient.get<{ users: AdminUser[]; pagination: Pagination }>("/admin/users", { params: toQuery(params as Record<string, unknown>) });
 
 const getUserOverview = (userId: string, params?: { limit?: number }) =>
@@ -215,30 +307,50 @@ const listOpsRequests = (params?: {
   statusBucket?: "all" | "open" | "closed" | "rejected";
   status?: string;
   priority?: string;
+  serviceType?: string;
+  companyId?: string;
+  assignedTo?: string;
+  createdBy?: string;
+  from?: string;
+  to?: string;
   search?: string;
   limit?: number;
   offset?: number;
   sort?: string;
 }) =>
-  httpClient.get<{ requests: AdminOpsRequest[]; pagination: Pagination }>(
+  httpClient.get<{ requests: AdminOpsRequest[]; counts: AdminOpsCounts; pagination: Pagination }>(
     "/admin/ops-requests",
     { params: toQuery(params as Record<string, unknown>) }
   );
 
+const getServiceRequestById = (id: string) =>
+  httpClient.get<{ request: AdminServiceRequest }>(`/admin/service-requests/${id}`).then((r) => r.request);
+
+const getBusinessSetupRequestById = (id: string) =>
+  httpClient.get<{ request: AdminBusinessSetupRequest }>(`/admin/business-setup-requests/${id}`).then((r) => r.request);
+
 // Company-scoped admins must echo the request's company as `contextCompanyId`
 // (ensureAdminContextScope on the backend). Super-admins may omit it; when present
-// it is validated to match, so passing it is always safe.
-const updateServiceRequestWorkflow = (
-  id: string,
-  payload: { status?: string; priority?: string; note?: string; reason: string; contextCompanyId?: string }
-) =>
-  httpClient.patch<{ request: AdminOpsRequest }>(`/admin/service-requests/${id}/workflow`, payload);
+// it is validated to match, so passing it is always safe. Callers should only
+// include it when the request actually has a company — see AdminRequestActions'
+// history: sending `undefined` where a company is required is fine, but a
+// company-less request must NOT get a stray contextCompanyId either way.
+type OpsWorkflowPayload = {
+  status?: string;
+  priority?: string;
+  assignedTo?: string | null;
+  slaDueAt?: string | null;
+  note?: string;
+  reason: string;
+  contextCompanyId?: string;
+  expectedUpdatedAt?: string;
+};
 
-const updateBusinessSetupRequestWorkflow = (
-  id: string,
-  payload: { status?: string; priority?: string; note?: string; reason: string; contextCompanyId?: string }
-) =>
-  httpClient.patch<{ request: AdminOpsRequest }>(`/admin/business-setup-requests/${id}/workflow`, payload);
+const updateServiceRequestWorkflow = (id: string, payload: OpsWorkflowPayload) =>
+  httpClient.patch<{ request: AdminServiceRequest }>(`/admin/service-requests/${id}/workflow`, payload);
+
+const updateBusinessSetupRequestWorkflow = (id: string, payload: OpsWorkflowPayload) =>
+  httpClient.patch<{ request: AdminBusinessSetupRequest }>(`/admin/business-setup-requests/${id}/workflow`, payload);
 
 const listAuditEvents = (params?: { userId?: string; companyId?: string; action?: string; limit?: number; offset?: number }) =>
   httpClient.get<{ events: AdminAuditEvent[]; pagination: Pagination }>(
@@ -293,6 +405,8 @@ export const adminService = {
   requestCompanyDocuments,
   setUserStatus,
   listOpsRequests,
+  getServiceRequestById,
+  getBusinessSetupRequestById,
   updateServiceRequestWorkflow,
   updateBusinessSetupRequestWorkflow,
   listAuditEvents,

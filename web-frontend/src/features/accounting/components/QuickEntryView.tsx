@@ -20,7 +20,16 @@ const QUICK_ENTRIES = [
 export const QuickEntryView = () => (
   <AccountingGuard>
     <div className="space-y-6">
-      <PageHeader title="Quick Entry" />
+      <PageHeader
+        title="Quick Entry"
+        actions={
+          <Link href="/dashboard/internal-inventory?action=add-stock"
+            className="rounded-xl px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+            style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
+            + Add stock
+          </Link>
+        }
+      />
 
       <ReportSection title="Create a voucher" subtitle="Choose a voucher type to get started">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -23,6 +23,8 @@ const listAdminInquiriesValidation = [
   query('status').optional().isIn(PRODUCT_INQUIRY_STATUSES).withMessage('Invalid status'),
   query('productId').optional().isMongoId().withMessage('productId must be a valid ObjectId'),
   query('buyerId').optional().isMongoId().withMessage('buyerId must be a valid ObjectId'),
+  query('search').optional().isString().trim().isLength({ min: 1, max: 150 }),
+  query('sort').optional().isIn(['createdAt:desc', 'createdAt:asc', 'updatedAt:desc']),
   query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
   query('offset').optional().isInt({ min: 0 }).toInt(),
 ];

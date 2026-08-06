@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   internalInventoryService,
@@ -40,6 +41,8 @@ const STATUS_STYLE: Record<InternalInventoryStatus, { label: string; color: stri
 export const InternalInventoryContainer = () => {
   const { activeCompany } = useDashboardContext();
   const hasCompany = Boolean(activeCompany);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [dashboard, setDashboard] = useState<InternalInventoryDashboard | null>(null);
   const [items, setItems] = useState<InternalInventoryItem[]>([]);
@@ -53,10 +56,33 @@ export const InternalInventoryContainer = () => {
   const [searchInput, setSearchInput] = useState("");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
 
-  const [adjustItem, setAdjustItem] = useState<InternalInventoryItem | null>(null);
+  // "picker" = opened via a deep link with no specific item yet (e.g. Quick
+  // Entry's "+ Add stock" button) — AdjustItemPicker resolves it to a real item.
+  const [adjustItem, setAdjustItem] = useState<InternalInventoryItem | null | "picker">(null);
   const [formItem, setFormItem] = useState<InternalInventoryItem | null | "new">(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deepLinkHandled = useRef(false);
+
+  // Deep link from Quick Entry / the low-stock queue: ?action=add-stock[&itemId=…].
+  // Runs once company context is ready; cleans the URL immediately so a refresh
+  // doesn't reopen the drawer.
+  useEffect(() => {
+    if (deepLinkHandled.current || !hasCompany) return;
+    if (searchParams.get("action") !== "add-stock") return;
+    deepLinkHandled.current = true;
+
+    const itemId = searchParams.get("itemId");
+    router.replace("/dashboard/internal-inventory");
+
+    if (itemId) {
+      internalInventoryService.getItem(itemId)
+        .then((item) => setAdjustItem(item))
+        .catch(() => setAdjustItem("picker"));
+    } else {
+      setAdjustItem("picker");
+    }
+  }, [searchParams, hasCompany, router]);
 
   const fetchAll = useCallback(async (offset = 0, append = false) => {
     if (!hasCompany) { setLoading(false); return; }
@@ -287,15 +313,20 @@ export const InternalInventoryContainer = () => {
         </>
       )}
 
-      {/* Adjust stock drawer */}
+      {/* Adjust stock drawer (or item picker, when opened via a deep link with no item) */}
       <AnimatePresence>
-        {adjustItem && (
+        {adjustItem === "picker" ? (
+          <AdjustItemPicker
+            onSelect={(item) => setAdjustItem(item)}
+            onClose={() => setAdjustItem(null)}
+          />
+        ) : adjustItem ? (
           <AdjustDrawer
             item={adjustItem}
             onClose={() => setAdjustItem(null)}
             onSuccess={() => { setAdjustItem(null); refresh(); }}
           />
-        )}
+        ) : null}
       </AnimatePresence>
 
       {/* Add / Edit item drawer */}
@@ -309,6 +340,90 @@ export const InternalInventoryContainer = () => {
         )}
       </AnimatePresence>
     </div>
+  );
+};
+
+// ── Adjust Item Picker (deep-link entry point with no item pre-selected) ───────
+
+const AdjustItemPicker = ({
+  onSelect, onClose,
+}: { onSelect: (item: InternalInventoryItem) => void; onClose: () => void }) => {
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<InternalInventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearch(searchInput.trim()), 250);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchInput]);
+
+  const fetchResults = useCallback(async (cancelledRef: { current: boolean }) => {
+    setLoading(true);
+    try {
+      const res = await internalInventoryService.listItems({ search: search || undefined, limit: 20, sort: "nameAsc" });
+      if (!cancelledRef.current) setResults(res.items ?? []);
+    } finally {
+      if (!cancelledRef.current) setLoading(false);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    const cancelledRef = { current: false };
+    fetchResults(cancelledRef);
+    return () => { cancelledRef.current = true; };
+  }, [fetchResults]);
+
+  return (
+    <Drawer onClose={onClose}>
+      <DrawerHeader title="Add stock" subtitle="Choose an item to stock in" onClose={onClose} />
+      <div className="flex flex-col gap-3 p-5">
+        <div className="relative">
+          <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="8" stroke="var(--medium-gray)" strokeWidth="1.8" />
+            <path d="M21 21l-4.35-4.35" stroke="var(--medium-gray)" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} autoFocus
+            placeholder="Search by name, SKU or category…"
+            className="w-full rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none"
+            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl" style={{ backgroundColor: "var(--border)" }} />
+            ))}
+          </div>
+        ) : results.length ? (
+          <div className="space-y-2">
+            {results.map((item) => (
+              <button key={item._id} type="button" onClick={() => onSelect(item)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-left transition-opacity hover:opacity-80"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold" style={{ color: "var(--foreground)" }}>{item.name}</p>
+                  <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+                    {item.sku ? `${item.sku} · ` : ""}{item.onHandQty} {item.unit} on hand
+                  </p>
+                </div>
+                <span className="flex-shrink-0 text-xs font-bold" style={{ color: "var(--primary)" }}>Select →</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 rounded-2xl py-10 text-center" style={{ border: "1px dashed var(--border)" }}>
+            <span className="text-3xl">📦</span>
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>No items match</p>
+            <p className="max-w-[220px] text-xs" style={{ color: "var(--medium-gray)" }}>
+              Try a different search, or add a new item first.
+            </p>
+          </div>
+        )}
+      </div>
+    </Drawer>
   );
 };
 

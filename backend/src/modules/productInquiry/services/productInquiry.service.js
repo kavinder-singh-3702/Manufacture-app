@@ -9,6 +9,14 @@ const { PRODUCT_INQUIRY_STATUSES } = require('../../../constants/productInquiry'
 const isValidObjectId = (value) =>
   mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === String(value);
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const SORT_OPTIONS = {
+  'createdAt:desc': { createdAt: -1 },
+  'createdAt:asc': { createdAt: 1 },
+  'updatedAt:desc': { updatedAt: -1 },
+};
+
 const toObjectId = (value, fieldLabel = 'id') => {
   if (!value) return undefined;
   if (value instanceof mongoose.Types.ObjectId) return value;
@@ -90,24 +98,54 @@ const listUserInquiries = async (userId, filters = {}) => {
 const listAdminInquiries = async (filters = {}) => {
   const limit = Math.min(Math.max(Number(filters.limit) || 20, 1), 100);
   const offset = Math.max(Number(filters.offset) || 0, 0);
+  const sort = SORT_OPTIONS[filters.sort] || SORT_OPTIONS['createdAt:desc'];
 
   const query = {};
-  if (filters.status && PRODUCT_INQUIRY_STATUSES.includes(filters.status)) {
-    query.status = filters.status;
-  }
   if (filters.productId && isValidObjectId(filters.productId)) {
     query.product = new mongoose.Types.ObjectId(filters.productId);
   }
   if (filters.buyerId && isValidObjectId(filters.buyerId)) {
     query.buyer = new mongoose.Types.ObjectId(filters.buyerId);
   }
+  if (filters.search && String(filters.search).trim()) {
+    const regex = new RegExp(escapeRegex(String(filters.search).trim()), 'i');
+    query.$or = [
+      { 'productSnapshot.name': regex },
+      { 'buyerSnapshot.name': regex },
+      { 'buyerSnapshot.email': regex },
+      { 'buyerSnapshot.phone': regex },
+      { message: regex },
+      { location: regex },
+    ];
+  }
 
-  const [inquiries, total] = await Promise.all([
-    applyPopulation(ProductInquiry.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit)).lean(),
-    ProductInquiry.countDocuments(query),
+  // Status counts are computed off the query *without* the status filter itself,
+  // so the returned counts always reflect all buckets regardless of which one is
+  // currently selected (the UI uses these to drive the filter tiles).
+  const countsQuery = { ...query };
+  delete countsQuery.status;
+
+  const statusQuery = { ...countsQuery };
+  if (filters.status && PRODUCT_INQUIRY_STATUSES.includes(filters.status)) {
+    statusQuery.status = filters.status;
+  }
+
+  const [inquiries, total, statusCounts] = await Promise.all([
+    applyPopulation(ProductInquiry.find(statusQuery).sort(sort).skip(offset).limit(limit)).lean(),
+    ProductInquiry.countDocuments(statusQuery),
+    ProductInquiry.aggregate([
+      { $match: countsQuery },
+      { $group: { _id: '$status', n: { $sum: 1 } } },
+    ]),
   ]);
 
-  return { inquiries, pagination: { total, limit, offset, hasMore: offset + limit < total } };
+  const counts = { all: 0, pending: 0, seen: 0, responded: 0, closed: 0 };
+  statusCounts.forEach((row) => {
+    if (PRODUCT_INQUIRY_STATUSES.includes(row._id)) counts[row._id] = row.n;
+    counts.all += row.n;
+  });
+
+  return { inquiries, counts, pagination: { total, limit, offset, hasMore: offset + limit < total } };
 };
 
 const getAdminInquiry = async (inquiryId) => {
