@@ -14,7 +14,7 @@ ARVANN's first shippable release. End-to-end auth (email + Apple Sign-In), profi
 - **Variant form sheet** now renders the form fields. Sheet had `maxHeight: 88%` with no fixed height — inner ScrollView's `flex: 1` collapsed to zero. Switched to explicit `height: 85%`.
 - **"Create first variant" button** now reacts. Moved empty state out of FlatList's `ListEmptyComponent` (which can intercept taps on iOS) and rendered it as a normal ScrollView child.
 - **Logo / avatar upload** ("Base64 content is required" error) fixed. Frontend was sending multipart FormData; backend validator expected JSON with base64 `content` field. Frontend now reads the file as base64 via `expo-file-system/legacy` and POSTs JSON.
-- **Profile phone field locked.** OTP-verified phone change attempted, reverted to display-only after a deploy mismatch. To change phone, contact support or use the dedicated `AddMobileNumberScreen` social-signup gate.
+- **Profile phone field locked.** OTP-verified phone change attempted, reverted to display-only after a deploy mismatch. To change phone, call ARVANN on +91 93064 07553 or use the dedicated `AddMobileNumberScreen` social-signup gate.
 - **Verification screen gate** for normal accounts. Opens a popup ("Only trader or manufacturer companies can request verification") instead of an empty form.
 
 ## Build artifacts

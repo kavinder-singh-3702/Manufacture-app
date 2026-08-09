@@ -6,6 +6,9 @@ type FormFieldProps = {
   value: string;
   onChangeText: (value: string) => void;
   helperText?: string;
+  /** Read-only fields still render (so the value is visible) but are dimmed
+   *  and not focusable — use `helperText` to say how to change the value. */
+  editable?: boolean;
   multiline?: boolean;
   numberOfLines?: number;
   keyboardType?:
@@ -22,6 +25,7 @@ export const FormField = ({
   value,
   onChangeText,
   helperText,
+  editable = true,
   multiline,
   numberOfLines,
   keyboardType,
@@ -31,9 +35,17 @@ export const FormField = ({
     <View style={styles.formField}>
       <Text style={[styles.formLabel, { color: colors.muted }]}>{label}</Text>
       <TextInput
-        style={[styles.formInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
+        style={[
+          styles.formInput,
+          {
+            color: editable ? colors.text : colors.textMuted,
+            borderColor: colors.border,
+            backgroundColor: editable ? colors.surface : colors.background,
+          },
+        ]}
         value={value}
         onChangeText={onChangeText}
+        editable={editable}
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}

@@ -5,14 +5,18 @@ import { MarketingShell, MarketingHero } from "./MarketingShell";
 import { useToast } from "@/src/components/ui/Toast";
 import { contactService } from "@/src/services/contact";
 import { ApiError } from "@/src/lib/api-error";
-
-// Documented support address (BACKEND-DEPLOYMENT.md) — was
-// "support@manufacture.run", a leftover from the repo's internal codename,
-// not a mailbox ARVANN owns.
-const SUPPORT_EMAIL = "arvann100@gmail.com";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_MAILTO,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+} from "@/src/lib/contact";
 
 const DETAILS: { icon: string; label: string; value: string; href?: string }[] = [
-  { icon: "✉️", label: "Email", value: SUPPORT_EMAIL, href: `mailto:${SUPPORT_EMAIL}` },
+  // Phone first — a "Contact us" page whose only reachable channel was email
+  // is what this page used to be.
+  { icon: "📞", label: "Phone", value: SUPPORT_PHONE_DISPLAY, href: SUPPORT_PHONE_TEL },
+  { icon: "✉️", label: "Email", value: SUPPORT_EMAIL, href: SUPPORT_EMAIL_MAILTO },
   { icon: "🕑", label: "Response time", value: "Within 24 hours" },
   { icon: "🌏", label: "Coverage", value: "India · 14 countries verified" },
 ];

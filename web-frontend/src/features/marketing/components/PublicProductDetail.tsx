@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/src/hooks/useAuth";
 import { useToast } from "@/src/components/ui/Toast";
 import { useRouter } from "next/navigation";
+import { SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL, SUPPORT_WHATSAPP_URL } from "@/src/lib/contact";
 
 // ── Auth gate toast ────────────────────────────────────────────────────────────
 const AuthToast = ({ action, returnTo, onDismiss }: { action: string; returnTo: string; onDismiss: () => void }) => {
@@ -382,10 +383,30 @@ export const PublicProductDetail = ({
           <div className="space-y-4 lg:sticky lg:top-20">
             {isInhouseCatalog ? (
               // ARVANN's own catalog isn't a third-party seller — no seller
-              // card, phone reveal or profile link for a synthetic company.
-              <div className="rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }}>
-                📦 Sold directly by ARVANN
+              // card, masked phone reveal or profile link for a synthetic
+              // company. Instead this rail carries ARVANN's own number, shown
+              // unmasked and without an auth gate: it's our business contact,
+              // not seller PII, and it needs to be in the HTML for guests and
+              // crawlers (it backs the Organization `telephone` in the JSON-LD).
+              // Before this, in-house PDPs had no phone path at all.
+              <div className="space-y-3 rounded-2xl p-4"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
+                <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
+                  📦 Sold directly by ARVANN
+                </p>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--medium-gray)" }}>
+                  Talk to our team about pricing, bulk quantities, and delivery.
+                </p>
+                <a href={SUPPORT_PHONE_TEL}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "var(--primary)" }}>
+                  📞 {SUPPORT_PHONE_DISPLAY}
+                </a>
+                <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: "#25D366" }}>
+                  💬 WhatsApp us
+                </a>
               </div>
             ) : product.company?.displayName && (
               <SellerCard

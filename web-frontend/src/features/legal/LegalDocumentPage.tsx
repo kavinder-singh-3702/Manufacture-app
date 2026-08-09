@@ -3,6 +3,12 @@ import { LegalDocumentContent } from "./legal-content";
 import { LegalLinks } from "./LegalLinks";
 import { SiteFooter } from "@/src/features/marketing/components/SiteFooter";
 import { BrandWordmark } from "@/src/components/BrandLogo";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_MAILTO,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+} from "@/src/lib/contact";
 
 type LegalDocumentPageProps = {
   document: LegalDocumentContent;
@@ -103,11 +109,18 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
                 Contact
               </p>
               <a
-                href="mailto:arvann100@gmail.com"
+                href={SUPPORT_PHONE_TEL}
                 className="mt-3 inline-block text-base font-bold underline underline-offset-4 transition-opacity hover:opacity-70"
                 style={{ color: "var(--primary)" }}
               >
-                arvann100@gmail.com
+                {SUPPORT_PHONE_DISPLAY}
+              </a>
+              <a
+                href={SUPPORT_EMAIL_MAILTO}
+                className="mt-1 block text-base font-bold underline underline-offset-4 transition-opacity hover:opacity-70"
+                style={{ color: "var(--primary)" }}
+              >
+                {SUPPORT_EMAIL}
               </a>
               <p className="mt-2 text-sm leading-6" style={{ color: "var(--medium-gray)" }}>
                 For privacy requests, legal questions, verification support, or account-closure assistance.
@@ -185,9 +198,13 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
                 Need help with verification or legal review?
               </p>
               <p className="text-sm" style={{ color: "var(--medium-gray)" }}>
-                Contact ARVANN at{" "}
-                <a href="mailto:arvann100@gmail.com" className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
-                  arvann100@gmail.com
+                Contact ARVANN on{" "}
+                <a href={SUPPORT_PHONE_TEL} className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+                  {SUPPORT_PHONE_DISPLAY}
+                </a>{" "}
+                or at{" "}
+                <a href={SUPPORT_EMAIL_MAILTO} className="font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+                  {SUPPORT_EMAIL}
                 </a>
               </p>
             </div>

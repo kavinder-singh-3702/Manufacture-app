@@ -48,6 +48,13 @@ const EMAIL_STYLES = Object.freeze({
 });
 
 const getAppName = () => toSafeString(config.appName) || 'ARVANN';
+const getSupportPhone = () => toSafeString(config.supportPhoneDisplay);
+// "Need help? …" footers used to name a support team with no way to reach it.
+// Falls back to the bare sentence if SUPPORT_PHONE_DISPLAY is ever blanked out.
+const supportHint = (lead = 'Need help?') => {
+  const phone = getSupportPhone();
+  return phone ? `${lead} Call us on ${phone}.` : `${lead} Contact our support team.`;
+};
 
 const buildHtmlList = (items) => {
   const safeItems = items
@@ -131,7 +138,7 @@ const buildEmailLayout = ({
   bodyHtml,
   ctaLabel,
   ctaHref,
-  footerHint = 'Need help? Contact our support team.'
+  footerHint = supportHint()
 }) => {
   const appName = getAppName();
   const safeTitle = toSafeString(title);
@@ -295,7 +302,7 @@ To complete the verification process, please submit the following documents:
 
 ${safeCustomMessage ? `Message from Admin:\n${safeCustomMessage}\n` : ''}Please log in to your account and navigate to Company Settings > Verification to upload your documents.
 
-Need help? Contact our support team.
+${supportHint()}
 
 Regards,
 ${appName} Team
@@ -459,7 +466,7 @@ Hi ${safeName},
 
 Your startup assistance request (${safeReferenceCode}) is now: ${safeStatus}.
 ${safeNote ? `\nAdditional note from our team: ${safeNote}\n` : ''}
-If you need help, reply to this email or contact support.
+${supportHint('If you need help, reply to this email.')}
 
 Regards,
 ${appName} Team
@@ -484,7 +491,7 @@ ${appName} Team
         contentHtml: `<p style="margin: 0; font-size: 16px; font-weight: 700; color: ${EMAIL_STYLES.primaryDark}; text-transform: capitalize;">${escapeHtml(safeStatus)}</p>`
       })}
       ${notePanel}
-      <p style="margin: 14px 0 0;">If you need help, reply to this email or contact support.</p>
+      <p style="margin: 14px 0 0;">${escapeHtml(supportHint('If you need help, reply to this email.'))}</p>
     `,
     ctaLabel: `Open ${appName}`,
     ctaHref: config.appUrl

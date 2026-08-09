@@ -21,6 +21,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../components/ui/Toast";
 import { CartItem } from "../../providers/CartProvider";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { SUPPORT_PHONE_DISPLAY } from "../../constants/brand";
 import { RootStackParamList } from "../../navigation/types";
 import {
   canCallProduct,
@@ -430,7 +431,8 @@ export const CartScreen = () => {
       return `${shortlistItemCount} shortlisted item${shortlistItemCount === 1 ? "" : "s"} still need seller confirmation.`;
     }
     if (!messageOptions.length && !callOptions.length) {
-      return "No seller contact options available for shortlisted items.";
+      // Previously a dead end — no seller channel and nothing to fall back on.
+      return `No seller contact options available for shortlisted items. Call ARVANN on ${SUPPORT_PHONE_DISPLAY} and we'll help.`;
     }
     if (!messageOptions.length) {
       return "Messaging is unavailable for current shortlisted sellers.";

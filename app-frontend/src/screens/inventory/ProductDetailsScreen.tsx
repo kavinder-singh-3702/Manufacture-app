@@ -24,6 +24,8 @@ import { ProductVariant, productVariantService } from "../../services/productVar
 import { quoteService } from "../../services/quote.service";
 import { useToast } from "../../components/ui/Toast";
 import { callProductSeller, startProductConversation } from "../product/utils/productContact";
+import { callArvann, openArvannWhatsApp } from "../../utils/arvannContact";
+import { SUPPORT_PHONE_DISPLAY, WHATSAPP_GREEN } from "../../constants/brand";
 import { QuoteRequestFormSubmit, QuoteRequestSheet } from "../quotes/components/QuoteRequestSheet";
 import { ProductInquirySheet, InquiryFormSubmit } from "../product/components/ProductInquirySheet";
 import { productInquiryService } from "../../services/productInquiry.service";
@@ -766,14 +768,32 @@ export const ProductDetailsScreen = () => {
                     </Text>
                   </TouchableOpacity>
 
+                  {/* ARVANN's own catalog — dial ARVANN, not the synthetic
+                      in-house "seller" company. Using the constant (rather than
+                      product.company.contact.phone) keeps this working even
+                      against a server that hasn't been backfilled yet. */}
                   <TouchableOpacity
-                    onPress={() => callProductSeller({ product, toastError })}
+                    onPress={() => callArvann(toastError)}
                     style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: colors.border }]}
                   >
                     <Ionicons name="call-outline" size={18} color={colors.primary} />
                     <Text style={[styles.bottomSecondaryText, { color: colors.primary }]}>Call</Text>
                   </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      openArvannWhatsApp(toastError, `Hi ARVANN, I'm interested in "${product?.name ?? "a product"}".`)
+                    }
+                    style={[styles.bottomSecondaryBtn, { borderRadius: radius.md, borderColor: WHATSAPP_GREEN }]}
+                  >
+                    <Ionicons name="logo-whatsapp" size={18} color={WHATSAPP_GREEN} />
+                    <Text style={[styles.bottomSecondaryText, { color: WHATSAPP_GREEN }]}>WhatsApp</Text>
+                  </TouchableOpacity>
                 </View>
+
+                <Text style={[styles.arvannContactHint, { color: colors.textSecondary }]}>
+                  Sold directly by ARVANN · {SUPPORT_PHONE_DISPLAY}
+                </Text>
               </View>
             ) : /* === RAZORPAY CHECKOUT DISABLED — replaced by Contact to Purchase for admin products ===
             checkoutEligible ? (
@@ -1165,6 +1185,11 @@ const styles = StyleSheet.create({
   bottomSecondaryText: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  arvannContactHint: {
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
   },
   bottomPrimaryBtn: {
     flex: 1,

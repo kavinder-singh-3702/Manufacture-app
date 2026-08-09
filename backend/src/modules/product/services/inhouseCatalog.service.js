@@ -1,6 +1,7 @@
 const createError = require('http-errors');
 const Company = require('../../../models/company.model');
 const User = require('../../../models/user.model');
+const config = require('../../../config/env');
 const {
   INHOUSE_COMPANY_SLUG,
   buildInhouseCompanyMetadata
@@ -47,9 +48,17 @@ const getOrCreateInhouseCatalogCompany = async ({ actorUserId } = {}) => {
         updatedBy: ownerId,
         categories: []
       },
+      // `contact.phone` belongs in $set, not $setOnInsert: this company already
+      // exists in every deployed environment, so $setOnInsert would never fire
+      // and ARVANN-owned products would keep shipping with no Call target.
+      // Keeping it in $set also makes the value self-healing if SUPPORT_PHONE
+      // ever changes. (Existing installs still need the one-off
+      // scripts/backfillInhouseCatalogContact.js — this only runs when an admin
+      // creates or edits an in-house product.)
       $set: {
         status: 'active',
-        metadata
+        metadata,
+        'contact.phone': config.supportPhone
       }
     },
     {

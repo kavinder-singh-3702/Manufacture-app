@@ -22,6 +22,7 @@ import { ProfileAccountCard } from "./components/ProfileAccountCard";
 import { ProfileProfessionalCard } from "./components/ProfileProfessionalCard";
 import { ProfilePreferencesCard } from "./components/ProfilePreferencesCard";
 import { EditorType } from "./types";
+import { SUPPORT_PHONE_DISPLAY } from "../../constants/brand";
 
 export const ProfileScreen = () => {
   const { spacing, colors } = useTheme();
@@ -364,6 +365,17 @@ export const ProfileScreen = () => {
         <FormField label="First name" value={identityForm.firstName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, firstName: v }))} />
         <FormField label="Last name" value={identityForm.lastName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, lastName: v }))} />
         <FormField label="Display name" value={identityForm.displayName} onChangeText={(v) => setIdentityForm((p) => ({ ...p, displayName: v }))} />
+        {/* Phone is read-only here (handleSaveIdentity never sends it). It used
+            to be simply absent, telling the user nothing about why they can't
+            change it or who to ask. */}
+        <FormField
+          label="Phone"
+          value={identityForm.phone}
+          onChangeText={() => {}}
+          editable={false}
+          keyboardType="phone-pad"
+          helperText={`To change your registered phone number, call ARVANN on ${SUPPORT_PHONE_DISPLAY}.`}
+        />
         <FormField label="Address line 1" value={identityForm.line1} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line1: v }))} />
         <FormField label="Address line 2" value={identityForm.line2} onChangeText={(v) => setIdentityForm((p) => ({ ...p, line2: v }))} />
         <FormField label="City" value={identityForm.city} onChangeText={(v) => setIdentityForm((p) => ({ ...p, city: v }))} />

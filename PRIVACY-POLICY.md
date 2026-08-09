@@ -3,10 +3,11 @@
 **Effective Date:** [YYYY-MM-DD — set to your App Store submission date]
 **Last Updated:** [YYYY-MM-DD]
 
-> **Placeholders to fill in before publishing:**
-> - `[OWNER_NAME]` — your friend's full legal name (individual proprietor of ARVANN)
-> - `[CONTACT_EMAIL]` — the email address you want to receive privacy queries
+> **Placeholders still to fill in before publishing:**
+> - `[OWNER_NAME]` — the full legal name of the individual proprietor of ARVANN
 > - `[BUSINESS_ADDRESS]` — the address to list as the data controller (an Indian address is required by Apple for apps from Indian developers)
+>
+> Contact email and phone are now filled in (arvann100@gmail.com / +91 93064 07553).
 
 ---
 
@@ -134,7 +135,7 @@ We do **not** use Google Analytics, Firebase Analytics, Mixpanel, Amplitude, Seg
 - Uploaded media is stored in S3 with access controls appropriate to the file type.
 - We periodically review our code for common security issues.
 
-No system is completely secure. If you discover a vulnerability, please email **[CONTACT_EMAIL]** — we will investigate promptly.
+No system is completely secure. If you discover a vulnerability, please email **arvann100@gmail.com** — we will investigate promptly.
 
 ---
 
@@ -147,7 +148,7 @@ Depending on where you live, you may have the right to:
 - **Object** to specific uses of your data
 - **Export** a copy of your data
 
-To exercise any of these rights, email us at **[CONTACT_EMAIL]** from the address associated with your ARVANN account. We will respond within 30 days.
+To exercise any of these rights, email us at **arvann100@gmail.com** from the address associated with your ARVANN account. We will respond within 30 days.
 
 You can also:
 - Change your notification preferences from the in-app "Notification Settings" screen
@@ -158,7 +159,7 @@ You can also:
 
 ## 9. Children
 
-ARVANN is intended for use by adults transacting in an industrial marketplace. It is not directed at children under 13, and we do not knowingly collect personal information from anyone under 13. If you believe a child has provided us information, contact **[CONTACT_EMAIL]** and we will delete it.
+ARVANN is intended for use by adults transacting in an industrial marketplace. It is not directed at children under 13, and we do not knowingly collect personal information from anyone under 13. If you believe a child has provided us information, contact **arvann100@gmail.com** and we will delete it.
 
 ---
 
@@ -178,8 +179,11 @@ We may update this Privacy Policy from time to time. When we do, we will change 
 
 For any question about this Privacy Policy or your data:
 
-**Email:** [CONTACT_EMAIL]
+**Phone:** +91 93064 07553
+**Email:** arvann100@gmail.com
 **Postal:** [OWNER_NAME], [BUSINESS_ADDRESS]
+
+**Grievance contact:** +91 93064 07553 · arvann100@gmail.com. We acknowledge grievances within 24 hours and aim to resolve them within 15 days.
 
 ---
 ---
@@ -286,7 +290,7 @@ Whatever you pick, **the URL must load without login** and must resolve reliably
 
 # What to do next (checklist)
 
-- [ ] Fill in the three placeholders (`OWNER_NAME`, `CONTACT_EMAIL`, `BUSINESS_ADDRESS`) in this document.
+- [ ] Fill in the two remaining placeholders (`OWNER_NAME`, `BUSINESS_ADDRESS`) in this document. Contact email and phone are already filled in.
 - [ ] **Have a lawyer review it if you plan to have any real revenue or user data** — this is a solid draft based on what ARVANN does, but a lawyer familiar with Indian IT rules (SPDI Rules, DPDPA 2023) should read it before you go live.
 - [ ] Host it at a stable URL (Option A / B / C above).
 - [ ] In App Store Connect → App Information → paste the URL under "Privacy Policy URL".

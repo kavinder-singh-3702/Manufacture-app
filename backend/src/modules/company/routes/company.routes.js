@@ -24,8 +24,10 @@ const router = Router();
 // Unauthenticated — powers the public /sellers/:id profile page. Must be
 // registered before router.use(authenticate) below. Field-whitelisted at the
 // controller/service layer (getPublicCompanyController -> getPublicCompany ->
-// buildPublicCompanyResponse) — never returns documents, GST/PAN/CIN,
-// contact info, owner, or metadata.
+// buildPublicCompanyResponse) — never returns documents, GST/PAN/CIN, owner,
+// or metadata. Contact details (email/phone/website/supportEmail/supportPhone)
+// ARE returned, deliberately — see the rationale on `stripContact` in
+// company.util.js. This comment used to claim otherwise.
 router.get('/:companyId/public', validate(companyIdParamValidation), getPublicCompanyController);
 
 router.use(authenticate);

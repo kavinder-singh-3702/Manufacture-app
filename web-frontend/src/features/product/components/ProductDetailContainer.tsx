@@ -207,7 +207,9 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   };
 
   const handleCall = () => {
-    if (isGuest) { setShowAuthToast(true); return; }
+    // ARVANN's own catalog dials ARVANN's number — our business contact, so it
+    // is not auth-gated the way a third-party seller's number is.
+    if (isGuest && product?.createdByRole !== "admin") { setShowAuthToast(true); return; }
     const phone = product?.company?.contact?.phone;
     if (!phone) { setChatError("Seller phone number not available."); return; }
     window.open(`tel:${phone.replace(/[^\d+]/g, "")}`, "_self");
@@ -294,6 +296,9 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
   const sellerPhone = product.company?.contact?.phone;
   const allowChat = product.contactPreferences?.allowChat !== false && !isOwnProduct;
   const allowCall = product.contactPreferences?.allowCall !== false && !!sellerPhone && !isOwnProduct;
+  // ARVANN's own first-party catalog — the "seller" is a synthetic company and
+  // its contact.phone is ARVANN's own support number, so the CTA says so.
+  const isInhouseCatalog = product.createdByRole === "admin";
 
   return (
     <div className="space-y-6">
@@ -472,8 +477,8 @@ export const ProductDetailContainer = ({ productId }: { productId: string }) => 
                 {allowCall && (
                   <ContactButton
                     icon="📞"
-                    label="Call seller"
-                    sublabel={isGuest ? "Sign in to call" : sellerPhone}
+                    label={isInhouseCatalog ? "Call ARVANN" : "Call seller"}
+                    sublabel={isGuest && !isInhouseCatalog ? "Sign in to call" : sellerPhone}
                     onClick={handleCall}
                     variant="orange"
                   />

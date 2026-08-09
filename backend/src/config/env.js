@@ -98,6 +98,15 @@ const config = {
   // SUPPORT_EMAIL unset (as it is in every .env this repo ships), contact
   // form leads were being silently sent into the void. See BACKEND-DEPLOYMENT.md.
   supportEmail: process.env.SUPPORT_EMAIL || 'arvann100@gmail.com',
+  // ARVANN's own contact number — the single source of truth for the phone the
+  // backend hands out: it seeds `contact.phone` on the in-house catalog company
+  // (so every ARVANN-owned product has a working Call target) and appears in
+  // support email footers. `supportPhone` is the dialable E.164 form used in
+  // data and `tel:` links; `supportPhoneDisplay` is the human-readable form.
+  // Never a third-party seller's number — those always come from their own
+  // company record.
+  supportPhone: process.env.SUPPORT_PHONE || '+919306407553',
+  supportPhoneDisplay: process.env.SUPPORT_PHONE_DISPLAY || '+91 93064 07553',
   appName: process.env.APP_NAME || 'ARVANN',
   appUrl: process.env.APP_URL || 'http://localhost:3000',
   notificationsEmailEnabled: process.env.NOTIFICATIONS_EMAIL_ENABLED !== 'false',

@@ -4,14 +4,29 @@ import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { MarketingShell, MarketingHero } from "./MarketingShell";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_MAILTO,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+} from "@/src/lib/contact";
 
 const CHANNELS = [
+  {
+    // The 📞 used to sit on a "Concierge onboarding" card whose href was
+    // /contact — a phone icon that couldn't place a call. Now it dials.
+    icon: "📞",
+    title: "Call us",
+    body: "Talk to the ARVANN team about products, onboarding, or an order.",
+    actionLabel: SUPPORT_PHONE_DISPLAY,
+    href: SUPPORT_PHONE_TEL,
+  },
   {
     icon: "✉️",
     title: "Email support",
     body: "Reach our team for any account, verification, or order question.",
-    actionLabel: "arvann100@gmail.com",
-    href: "mailto:arvann100@gmail.com",
+    actionLabel: SUPPORT_EMAIL,
+    href: SUPPORT_EMAIL_MAILTO,
   },
   {
     icon: "💬",
@@ -21,7 +36,7 @@ const CHANNELS = [
     href: "/dashboard/chat",
   },
   {
-    icon: "📞",
+    icon: "🚀",
     title: "Concierge onboarding",
     body: "Get a guided walkthrough and we'll set your workspace up within 48 hours.",
     actionLabel: "Request a session",
@@ -93,7 +108,7 @@ export const SupportPage = () => (
 
     <div className="mx-auto w-full max-w-[1100px] space-y-16 px-6 pb-20 lg:px-10">
       {/* Channels */}
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {CHANNELS.map((c) => (
           <div key={c.title} className="flex flex-col rounded-2xl p-6"
             style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)", boxShadow: "var(--shadow-sm)" }}>
@@ -101,7 +116,9 @@ export const SupportPage = () => (
               style={{ backgroundColor: "var(--primary-light)" }}>{c.icon}</div>
             <h3 className="mt-4 text-lg font-bold" style={{ color: "var(--foreground)" }}>{c.title}</h3>
             <p className="mt-1.5 flex-1 text-sm leading-relaxed" style={{ color: "var(--medium-gray)" }}>{c.body}</p>
-            {c.href.startsWith("mailto:") ? (
+            {/* Only in-app routes go through next/link — mailto:/tel: are not
+                routes and must stay plain anchors. */}
+            {!c.href.startsWith("/") ? (
               <a href={c.href} className="mt-4 text-sm font-bold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
                 {c.actionLabel} →
               </a>
@@ -133,12 +150,17 @@ export const SupportPage = () => (
           Our team responds within 24 hours. Send us the details and we&apos;ll get you sorted.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
-          <Link href="/contact"
+          <a href={SUPPORT_PHONE_TEL}
             className="rounded-2xl px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5"
             style={{ backgroundColor: "var(--primary)", boxShadow: "var(--shadow-primary)" }}>
+            📞 Call {SUPPORT_PHONE_DISPLAY}
+          </a>
+          <Link href="/contact"
+            className="rounded-2xl px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
             Contact us →
           </Link>
-          <a href="mailto:arvann100@gmail.com"
+          <a href={SUPPORT_EMAIL_MAILTO}
             className="rounded-2xl px-6 py-3 text-sm font-semibold transition-opacity hover:opacity-70"
             style={{ border: "1px solid var(--border)", color: "var(--foreground)", backgroundColor: "var(--surface)" }}>
             Email support

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL } from "@/src/lib/contact";
 
 // Pre-footer CTA block — the page renders its own <SiteFooter /> below this.
 // Dropped the invented "2h onboarding response" / "14 countries verified"
@@ -36,10 +37,10 @@ export const FooterCTA = () => (
           with the CTAs above it for attention; the support contact is still
           reachable, just quieter. */}
       <a
-        href="mailto:arvann100@gmail.com"
+        href={SUPPORT_PHONE_TEL}
         className="mt-5 inline-block text-xs text-white/50 transition-opacity hover:opacity-80"
       >
-        Need a hand? arvann100@gmail.com
+        Need a hand? Call {SUPPORT_PHONE_DISPLAY}
       </a>
     </div>
   </section>

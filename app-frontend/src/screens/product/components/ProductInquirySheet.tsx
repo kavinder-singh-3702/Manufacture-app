@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../../hooks/useTheme";
+import { useToast } from "../../../components/ui/Toast";
+import { callArvann } from "../../../utils/arvannContact";
+import { SUPPORT_PHONE_DISPLAY } from "../../../constants/brand";
 
 export type InquiryFormSubmit = {
   quantity?: number;
@@ -44,6 +47,7 @@ export const ProductInquirySheet = ({
   onSubmit,
 }: Props) => {
   const { colors, spacing, radius } = useTheme();
+  const { error: toastError } = useToast();
   const styles = useMemo(() => createStyles(colors, spacing, radius), [colors, spacing, radius]);
 
   const [quantity, setQuantity] = useState("");
@@ -117,6 +121,18 @@ export const ProductInquirySheet = ({
                 All fields are optional. Admin will contact you directly.
               </Text>
             </View>
+
+            {/* This sheet used to be one-directional — it took the buyer's
+                number and gave none back. Now they can reach us first. */}
+            <TouchableOpacity
+              onPress={() => callArvann(toastError)}
+              style={[styles.infoStrip, { borderColor: colors.border }]}
+            >
+              <Ionicons name="call-outline" size={14} color={colors.primary} />
+              <Text style={[styles.infoText, { color: colors.text }]}>
+                Or call us now on <Text style={{ color: colors.primary, fontWeight: "900" }}>{SUPPORT_PHONE_DISPLAY}</Text>
+              </Text>
+            </TouchableOpacity>
 
             <ScrollView
               style={styles.scroll}

@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { BrandWordmark } from "@/src/components/BrandLogo";
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_EMAIL_MAILTO,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+} from "@/src/lib/contact";
 
 const FOOTER_LINKS = {
   Marketplace: [
@@ -25,17 +31,26 @@ const FOOTER_LINKS = {
   ],
 } as const;
 
-// Support email is the one documented in BACKEND-DEPLOYMENT.md — this used to
-// read "support@manufacture.run", a leftover from the repo's internal name,
-// not a real ARVANN address. LinkedIn/X icons that used to link to
-// linkedin.com/x.com's generic homepages (not an ARVANN profile) were removed
-// rather than left as dead-end links — add them back once real handles exist.
-const SUPPORT_EMAIL = "arvann100@gmail.com";
-
+// Contact details come from `src/lib/contact.ts` — see the rationale there.
+// LinkedIn/X icons that used to link to linkedin.com/x.com's generic
+// homepages (not an ARVANN profile) were removed rather than left as dead-end
+// links — add them back once real handles exist.
 const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
   {
+    label: `Call ARVANN on ${SUPPORT_PHONE_DISPLAY}`,
+    href: SUPPORT_PHONE_TEL,
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"
+          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     label: "Email",
-    href: `mailto:${SUPPORT_EMAIL}`,
+    href: SUPPORT_EMAIL_MAILTO,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -68,6 +83,14 @@ export const SiteFooter = ({ className = "" }: { className?: string }) => (
             <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: "var(--success)" }}>✓</span>
             <span className="text-xs font-semibold" style={{ color: "var(--medium-gray)" }}>Platform live · India</span>
           </div>
+          {/* Contact — rendered as visible text, not just an icon link, so the
+              number is in the page for both readers and crawlers. */}
+          <a href={SUPPORT_PHONE_TEL}
+            className="flex items-center gap-2 text-sm font-bold transition-opacity hover:opacity-70"
+            style={{ color: "var(--primary)" }}>
+            <span aria-hidden>📞</span>
+            {SUPPORT_PHONE_DISPLAY}
+          </a>
           {/* Socials */}
           <div className="flex items-center gap-2 pt-1">
             {SOCIALS.map((s) => (
@@ -121,7 +144,10 @@ export const SiteFooter = ({ className = "" }: { className?: string }) => (
           <Link href="/terms-and-conditions" className="text-xs transition-opacity hover:opacity-70" style={{ color: "var(--medium-gray)" }}>
             Terms
           </Link>
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+          <a href={SUPPORT_PHONE_TEL} className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
+            {SUPPORT_PHONE_DISPLAY}
+          </a>
+          <a href={SUPPORT_EMAIL_MAILTO} className="text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--primary)" }}>
             {SUPPORT_EMAIL}
           </a>
         </div>

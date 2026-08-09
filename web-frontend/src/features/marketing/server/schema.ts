@@ -1,6 +1,7 @@
 import type { Product } from "@/src/types/product";
 import type { Company } from "@/src/types/company";
 import { SITE_URL } from "@/src/lib/site";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/src/lib/contact";
 
 // ── Detail-page schema (Product, Organization/seller) ───────────────────────
 
@@ -30,11 +31,22 @@ export const buildProductJsonLd = (product: Product, canonicalUrl: string) => ({
     availability: schemaAvailability(product.stockStatus),
     url: canonicalUrl,
     ...(product.company?.displayName
-      ? { seller: { "@type": "Organization", name: product.company.displayName } }
+      ? {
+        seller: {
+          "@type": "Organization",
+          name: product.company.displayName,
+          // Only ARVANN's own catalog gets a `telephone` here — a third-party
+          // seller's number stays behind the auth-gated reveal on the page, so
+          // emitting it in markup would leak what the UI deliberately masks.
+          ...(product.createdByRole === "admin" ? { telephone: SUPPORT_PHONE } : {}),
+        },
+      }
       : {}),
   },
 });
 
+// `telephone` mirrors what the seller profile already renders visually — the
+// number is not newly exposed here, it just becomes machine-readable.
 export const buildCompanyJsonLd = (company: Company, canonicalUrl: string) => ({
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -42,6 +54,7 @@ export const buildCompanyJsonLd = (company: Company, canonicalUrl: string) => ({
   ...(company.legalName ? { legalName: company.legalName } : {}),
   ...(company.description ? { description: company.description } : {}),
   ...(company.logoUrl ? { logo: company.logoUrl } : {}),
+  ...(company.contact?.phone ? { telephone: company.contact.phone } : {}),
   url: canonicalUrl,
 });
 
@@ -53,6 +66,11 @@ export const buildCompanyJsonLd = (company: Company, canonicalUrl: string) => ({
  * icons to those platforms' generic homepages, not an ARVANN profile, and a
  * `sameAs` entry pointing at a non-ARVANN URL is worse than none. Add it back
  * once real handles exist.
+ *
+ * `telephone`/`contactPoint` are ARVANN's own business contact — this is the
+ * number Google can attach to the knowledge panel. Google requires that a
+ * `telephone` in markup also be visible on the page, which SiteFooter (rendered
+ * on every marketing route) satisfies.
  */
 export const buildOrganizationJsonLd = () => ({
   "@context": "https://schema.org",
@@ -60,6 +78,18 @@ export const buildOrganizationJsonLd = () => ({
   name: "ARVANN",
   url: SITE_URL,
   logo: `${SITE_URL}/arvann-logo.png`,
+  telephone: SUPPORT_PHONE,
+  email: SUPPORT_EMAIL,
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      contactType: "customer service",
+      telephone: SUPPORT_PHONE,
+      email: SUPPORT_EMAIL,
+      areaServed: "IN",
+      availableLanguage: ["en", "hi"],
+    },
+  ],
 });
 
 /**

@@ -25,6 +25,8 @@ import { serviceRequestService, ServiceRequest, ServiceStatus } from "../../serv
 import type { RootStackParamList } from "../../navigation/types";
 import { SERVICE_META, isServiceAvailable } from "./services.constants";
 import { SERVICE_ACCENT_MAP, BUSINESS_ACCENT, neu, NEU_BG_LIGHT, NEU_BG_DARK } from "./services.palette";
+import { callArvann, openArvannWhatsApp } from "../../utils/arvannContact";
+import { SUPPORT_PHONE_DISPLAY, WHATSAPP_GREEN } from "../../constants/brand";
 import {
   RecentRequestRow,
   SectionHeader,
@@ -154,7 +156,8 @@ export const ServicesOverviewScreen = () => {
         recipientName: "Support Team",
       });
     } catch {
-      toastError("Support unavailable", "Unable to open support chat right now.");
+      // Always leave the user a way through — chat failing used to be a dead end.
+      toastError("Support unavailable", `Chat isn't reachable right now. Call us on ${SUPPORT_PHONE_DISPLAY}.`);
     } finally {
       setSupportLoading(false);
     }
@@ -476,6 +479,44 @@ export const ServicesOverviewScreen = () => {
           </View>
         </View>
 
+        {/* Talk to us — this screen is the app's `Help` route, and until now
+            its only support channel was in-app chat, with no phone anywhere. */}
+        <View style={{ paddingHorizontal: contentPadding }}>
+          <SectionHeader title="Talk to us" subtitle="Reach the ARVANN team directly" />
+          <View
+            style={[
+              styles.contactCard,
+              {
+                marginTop: spacing.sm,
+                padding: sp(14),
+                borderRadius: radius.lg,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => callArvann(toastError)}
+              style={[styles.contactBtn, { paddingVertical: sp(11), borderRadius: radius.md, backgroundColor: colors.primary }]}
+            >
+              <Ionicons name="call" size={fs(16)} color={colors.textOnPrimary} />
+              <Text style={[styles.contactBtnText, { fontSize: fs(13), color: colors.textOnPrimary }]}>
+                {SUPPORT_PHONE_DISPLAY}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => openArvannWhatsApp(toastError)}
+              style={[styles.contactBtn, { paddingVertical: sp(11), borderRadius: radius.md, backgroundColor: WHATSAPP_GREEN }]}
+            >
+              <Ionicons name="logo-whatsapp" size={fs(16)} color="#FFFFFF" />
+              <Text style={[styles.contactBtnText, { fontSize: fs(13), color: "#FFFFFF" }]}>WhatsApp</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Recent Requests — edge-to-edge, gradient rows */}
         <View>
           <View style={{ paddingHorizontal: contentPadding }}>
@@ -502,6 +543,21 @@ export const ServicesOverviewScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  contactCard: {
+    flexDirection: "row",
+    gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  contactBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  contactBtnText: {
+    fontWeight: "800",
+  },
   scroll: { flex: 1 },
 
   heroHeader: { gap: 4, paddingHorizontal: 4 },

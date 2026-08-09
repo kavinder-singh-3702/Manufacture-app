@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY } from "@/src/lib/contact";
+
 export type LegalSection = {
   title: string;
   paragraphs: string[];
@@ -101,7 +103,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
       title: "8. Your Choices and Requests",
       paragraphs: [
         "You may update portions of your profile and company information from within the service where those controls are available.",
-        "If you need help accessing, correcting, or requesting deletion of account information, or if you need support related to verification documents or account closure, contact us at arvann100@gmail.com."
+        `If you need help accessing, correcting, or requesting deletion of account information, or if you need support related to verification documents or account closure, contact us at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY}.`
       ]
     },
     {
@@ -115,7 +117,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
       title: "10. Children and Business Use",
       paragraphs: [
         "ARVANN is designed for business and professional use in manufacturing, sourcing, operations, and trade workflows. It is not intended for children.",
-        "If you believe personal information was submitted inappropriately, contact us at arvann100@gmail.com so we can review the request."
+        `If you believe personal information was submitted inappropriately, contact us at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY} so we can review the request.`
       ]
     },
     {
@@ -128,7 +130,8 @@ export const privacyPolicyContent: LegalDocumentContent = {
     {
       title: "12. Contact",
       paragraphs: [
-        "If you have questions about this Privacy Policy, privacy requests, verification data handling, or account closure, contact ARVANN at arvann100@gmail.com."
+        `If you have questions about this Privacy Policy, privacy requests, verification data handling, or account closure, contact ARVANN at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY}.`,
+        `Grievance contact: ${SUPPORT_PHONE_DISPLAY} · ${SUPPORT_EMAIL}. We acknowledge grievances within 24 hours and aim to resolve them within 15 days.`
       ]
     }
   ]
@@ -212,7 +215,7 @@ export const termsAndConditionsContent: LegalDocumentContent = {
       title: "8. Suspension, Restriction, and Termination",
       paragraphs: [
         "ARVANN may suspend, restrict, review, or terminate access to accounts, companies, content, or workflows where we believe there is misuse, inaccurate verification, fraud risk, policy violation, legal exposure, or operational necessity.",
-        "You may stop using the service at any time. If you want help with account closure or deletion-related requests, contact arvann100@gmail.com."
+        `You may stop using the service at any time. If you want help with account closure or deletion-related requests, contact ${SUPPORT_EMAIL} or call ${SUPPORT_PHONE_DISPLAY}.`
       ]
     },
     {
@@ -246,7 +249,8 @@ export const termsAndConditionsContent: LegalDocumentContent = {
     {
       title: "13. Contact",
       paragraphs: [
-        "Questions about these Terms & Conditions, verification rules, or account restrictions may be sent to ARVANN at arvann100@gmail.com."
+        `Questions about these Terms & Conditions, verification rules, or account restrictions may be sent to ARVANN at ${SUPPORT_EMAIL} or raised on ${SUPPORT_PHONE_DISPLAY}.`,
+        `Grievance contact: ${SUPPORT_PHONE_DISPLAY} · ${SUPPORT_EMAIL}. We acknowledge grievances within 24 hours and aim to resolve them within 15 days.`
       ]
     }
   ]
