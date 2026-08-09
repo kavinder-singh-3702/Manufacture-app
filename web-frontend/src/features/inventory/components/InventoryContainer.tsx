@@ -117,11 +117,13 @@ export const InventoryContainer = () => {
 
       if (!stats || filter === "all") {
         const [inStock, lowStock, outStock] = await Promise.all([
-          productService.list({ scope: "company", status: "in_stock" as any, limit: 1 }, signal),
-          productService.list({ scope: "company", status: "low_stock" as any, limit: 1 }, signal),
-          productService.list({ scope: "company", status: "out_of_stock" as any, limit: 1 }, signal),
+          // `status` on ListProductsParams is a plain string — these stock
+          // filters are backend-side and need no cast.
+          productService.list({ scope: "company", status: "in_stock", limit: 1 }, signal),
+          productService.list({ scope: "company", status: "low_stock", limit: 1 }, signal),
+          productService.list({ scope: "company", status: "out_of_stock", limit: 1 }, signal),
         ]);
-        const total = filter === "all" ? (res.pagination?.total ?? res.products?.length ?? 0) : (allRes as any)?.pagination?.total ?? 0;
+        const total = filter === "all" ? (res.pagination?.total ?? res.products?.length ?? 0) : allRes?.pagination?.total ?? 0;
         setStats({
           all: total || (res.pagination?.total ?? res.products?.length ?? 0),
           in_stock: inStock.pagination?.total ?? 0,

@@ -143,7 +143,7 @@ export const AnimatedInput = forwardRef<TextInput, AnimatedInputProps>(
             style={[
               styles.input,
               { color: colors.text },
-              icon && iconPosition === "left" && { paddingLeft: 0 },
+              icon && iconPosition === "left" ? { paddingLeft: 0 } : null,
             ]}
             placeholderTextColor={colors.textMuted}
             onFocus={handleFocus}
@@ -366,7 +366,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             transform: [{ scale: scaleAnim }],
             backgroundColor: colors.surface,
             borderColor: isFocused ? colors.primary : colors.border,
-            borderRadius: radius.full,
+            borderRadius: radius.pill,
           },
           containerStyle,
         ]}

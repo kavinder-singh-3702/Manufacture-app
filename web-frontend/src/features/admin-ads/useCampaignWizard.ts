@@ -481,7 +481,6 @@ export function useCampaignWizard({ campaign, onSaved }: UseCampaignWizardOption
     if (isEdit || !isDirty) return;
     const t = setTimeout(() => writeCampaignDraft(draftSnapshot()), 600);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, isDirty, draftSnapshot]);
 
   // ── Submit ────────────────────────────────────────────────────────────────

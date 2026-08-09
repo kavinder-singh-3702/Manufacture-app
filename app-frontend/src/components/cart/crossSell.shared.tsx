@@ -42,7 +42,7 @@ export type CrossSellView = {
 export const buildCrossSellView = (card: AdFeedCard): CrossSellView => {
   const isExternal = card.adSource === "external";
   const product = card.product;
-  const productImage = product?.images?.[0]?.url || card.external?.advertiserLogoUrl;
+  const productImage = product?.images?.[0]?.url || card.external?.advertiserLogoUrl || undefined;
   const productName = card.title || product?.name || card.external?.advertiserName || "Featured product";
   const companyName = card.subtitle || product?.company?.displayName || card.external?.advertiserName || "";
   const categoryLabel = isExternal ? "" : titleCase(product?.subCategory || product?.category);

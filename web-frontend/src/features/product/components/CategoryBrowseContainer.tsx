@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { productService } from "@/src/services/product";
 import { ApiError, isAbortError } from "@/src/lib/api-error";
 import type { Product, ProductSort } from "@/src/types/product";
-import { getCategoryMeta, formatCurrency } from "../utils/categories";
+import { getCategoryMeta } from "../utils/categories";
 import { ProductCard } from "./ProductCard";
 
 const PAGE_SIZE = 24;

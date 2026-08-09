@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { CartItem, CartVariantSnapshot } from "../types/cart";
@@ -56,11 +57,33 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
-  useEffect(() => {
-    setItems(loadFromStorage());
-    setHydrated(true);
+  // Authoritative copy of the cart, readable synchronously. `items` state lags
+  // by a render, which made `addToCart` report the wrong outcome: two adds
+  // dispatched in the same tick both read the pre-add array, so both returned
+  // "added" and the caller toasted success even when the second hit the cap.
+  // Stored items were always correct — only the reported result lied.
+  //
+  // The ref is written *only* from effects and event handlers, never during
+  // render, so it stays within what `react-hooks/refs` permits.
+  const itemsRef = useRef<CartItem[]>(items);
+
+  // Single write path: keep the ref and state in lockstep. Every mutator goes
+  // through here, so there is one place where "the cart changed" is expressed.
+  const commit = useCallback((next: CartItem[]) => {
+    itemsRef.current = next;
+    setItems(next);
   }, []);
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch).
+  // react-hooks/set-state-in-effect is suppressed deliberately: localStorage
+  // does not exist during SSR, so a lazy `useState` initializer would either
+  // throw on the server or produce markup that disagrees with the client.
+  // Syncing from an external store is exactly what effects are for.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    commit(loadFromStorage());
+    setHydrated(true);
+  }, [commit]);
 
   // Persist whenever items change (after hydration)
   useEffect(() => {
@@ -69,54 +92,39 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = useCallback((product: Product, quantity = 1, variant?: CartVariantSnapshot): AddToCartResult => {
     const lineKey = getCartLineKey(product._id, variant?.id);
-    // Decide the outcome from current state so the caller gets a synchronous
-    // result (the setItems updater runs later, during render).
-    const existing = items.find((i) => i.lineKey === lineKey);
+    const prev = itemsRef.current;
+    const existing = prev.find((i) => i.lineKey === lineKey);
     const result: AddToCartResult = existing
       ? "updated"
-      : items.length >= MAX_CART_ITEMS
+      : prev.length >= MAX_CART_ITEMS
         ? "limit"
         : "added";
 
     if (result === "limit") return result;
 
-    setItems((prev) => {
-      const current = prev.find((i) => i.lineKey === lineKey);
-      if (current) {
-        return prev.map((i) =>
-          i.lineKey === lineKey ? { ...i, quantity: i.quantity + quantity } : i
-        );
-      }
-      if (prev.length >= MAX_CART_ITEMS) return prev;
-      const newItem: CartItem = {
-        lineKey,
-        product,
-        variant,
-        quantity,
-        addedAt: new Date().toISOString(),
-      };
-      return [...prev, newItem];
-    });
+    commit(
+      existing
+        ? prev.map((i) => (i.lineKey === lineKey ? { ...i, quantity: i.quantity + quantity } : i))
+        : [...prev, { lineKey, product, variant, quantity, addedAt: new Date().toISOString() }]
+    );
     return result;
-  }, [items]);
+  }, [commit]);
 
   const removeFromCart = useCallback((lineKey: string) =>
-    setItems((prev) => prev.filter((i) => i.lineKey !== lineKey)), []);
+    commit(itemsRef.current.filter((i) => i.lineKey !== lineKey)), [commit]);
 
   const removeManyFromCart = useCallback((lineKeys: string[]) =>
-    setItems((prev) => prev.filter((i) => !lineKeys.includes(i.lineKey))), []);
+    commit(itemsRef.current.filter((i) => !lineKeys.includes(i.lineKey))), [commit]);
 
   const updateQuantity = useCallback((lineKey: string, quantity: number) => {
-    if (quantity <= 0) {
-      setItems((prev) => prev.filter((i) => i.lineKey !== lineKey));
-    } else {
-      setItems((prev) =>
-        prev.map((i) => (i.lineKey === lineKey ? { ...i, quantity } : i))
-      );
-    }
-  }, []);
+    commit(
+      quantity <= 0
+        ? itemsRef.current.filter((i) => i.lineKey !== lineKey)
+        : itemsRef.current.map((i) => (i.lineKey === lineKey ? { ...i, quantity } : i))
+    );
+  }, [commit]);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => commit([]), [commit]);
 
   const isInCart = useCallback(
     (productId: string, variantId?: string) =>

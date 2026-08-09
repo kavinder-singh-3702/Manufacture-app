@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,7 +31,24 @@ export const CheckoutContainer = () => {
   const { openCheckout } = useRazorpay();
 
   const [step, setStep] = useState<CheckoutStep>("address");
-  const [address, setAddress] = useState<CheckoutAddressInput>(emptyAddress);
+  // Seeded once, lazily, from the signed-in user's saved address. This used to
+  // be a `useEffect` keyed on `[user]`, which re-ran and overwrote the form
+  // whenever the context handed back a new `user` object identity — silently
+  // discarding whatever the buyer had typed mid-checkout. `user` is available
+  // synchronously from the dashboard context at first render, so there is no
+  // reason for it to be an effect at all.
+  const [address, setAddress] = useState<CheckoutAddressInput>(() =>
+    user.address
+      ? {
+          line1: user.address.line1 ?? "",
+          line2: user.address.line2 ?? "",
+          city: user.address.city ?? "",
+          state: user.address.state ?? "",
+          postalCode: user.address.postalCode ?? "",
+          country: user.address.country ?? "India",
+        }
+      : emptyAddress()
+  );
   const [addressErrors, setAddressErrors] = useState<Partial<Record<keyof CheckoutAddressInput, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -41,19 +58,6 @@ export const CheckoutContainer = () => {
   const [pendingIntent, setPendingIntent] = useState<CheckoutIntentResponse | null>(null);
   const [priceNotice, setPriceNotice] = useState<{ from: number; to: number } | null>(null);
 
-  // Pre-fill address from user if available
-  useEffect(() => {
-    if (user.address) {
-      setAddress({
-        line1: user.address.line1 ?? "",
-        line2: user.address.line2 ?? "",
-        city: user.address.city ?? "",
-        state: user.address.state ?? "",
-        postalCode: user.address.postalCode ?? "",
-        country: user.address.country ?? "India",
-      });
-    }
-  }, [user]);
 
   const eligibleValue = useMemo(
     () => eligibleItems.reduce((s, i) => s + (i.variant?.price?.amount ?? i.product.price.amount) * i.quantity, 0),

@@ -154,7 +154,7 @@ export const RecentRequestRow = ({
             }}
           >
             <Text style={[{ fontSize: fs(11), fontWeight: "800", color: colors.error, letterSpacing: 0.4, textTransform: "uppercase" }]}>
-              {request.status === "rejected" ? "Rejection reason" : "Cancellation reason"}
+              Cancellation reason
             </Text>
             <Text style={[{ fontSize: fs(12), fontWeight: "600", color: colors.text, marginTop: 2, lineHeight: fs(17) }]}>
               {reason}

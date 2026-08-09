@@ -244,7 +244,9 @@ export const UserManagementScreen = () => {
               const verb = isCurrentlyInactive ? "Activate" : "Deactivate";
               return {
                 label: `${verb} user`,
-                icon: (isCurrentlyInactive ? "checkmark-circle-outline" : "ban-outline") as const,
+                // `as const` has to sit on each literal — it cannot be applied
+                // to a conditional expression (TS1355).
+                icon: isCurrentlyInactive ? ("checkmark-circle-outline" as const) : ("ban-outline" as const),
                 destructive: !isCurrentlyInactive,
                 onPress: () => {
                   Alert.alert(

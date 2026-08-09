@@ -193,6 +193,10 @@ export type CreateVariantInput = {
 
 export type ProductInquiryInput = {
   productId: string;
+  /** Optional variant the buyer is asking about — accepted by the backend
+   *  (productInquiry.validators.js) but previously undeclared here, which is
+   *  why the caller had to cast the payload to `any` and lost all checking. */
+  variantId?: string;
   quantity?: number;
   deliveryLocation?: string;
   message?: string;

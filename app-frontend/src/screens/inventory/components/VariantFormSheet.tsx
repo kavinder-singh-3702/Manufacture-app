@@ -89,7 +89,9 @@ export const VariantFormSheet = ({
       title: title.trim() || undefined,
       sku: sku.trim() || undefined,
       barcode: barcode.trim() || undefined,
-      options: Object.keys(optionsPayload).length ? optionsPayload : undefined,
+      // `options` is required on the upsert input, and the `!hasOptions` guard
+      // above already returned — so this is always non-empty here.
+      options: optionsPayload,
       unit: unit.trim() || undefined,
       status,
       price:

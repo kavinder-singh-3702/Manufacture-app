@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../../hooks/useTheme";
 import { AdminRequestDetail } from "../../../hooks/queries/useAdminRequestDetail";
+import { AdminServiceRequestTimelineEntry } from "../../../services/admin.service";
 import { toStatusLabel } from "../../../constants/requestStatusTransitions";
 
 type Props = {
@@ -20,8 +21,14 @@ const formatDate = (value?: string): string => {
   });
 };
 
+// Takes the exported entry type directly. The previous
+// `AdminRequestDetail["timeline"] extends Array<infer T> ? T : never` collapsed
+// to `never` — `timeline` is optional, so the checked type is
+// `Entry[] | undefined`, and a conditional type only distributes over a naked
+// type parameter, never a concrete union. Every field access below was
+// therefore an error, papered over by an `as any` at the call site.
 const describeEntry = (
-  entry: AdminRequestDetail["timeline"] extends Array<infer T> ? T : never
+  entry: AdminServiceRequestTimelineEntry
 ): { title: string; detail?: string } => {
   if (!entry) return { title: "—" };
   if (entry.type === "status") {
@@ -71,7 +78,7 @@ export const AdminRequestTimeline = ({ detail }: Props) => {
     <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Timeline</Text>
       {events.map((entry, index) => {
-        const { title, detail: line } = describeEntry(entry as any);
+        const { title, detail: line } = describeEntry(entry);
         return (
           <View
             key={`${entry.at || index}-${index}`}

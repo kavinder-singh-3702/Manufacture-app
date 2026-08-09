@@ -88,6 +88,13 @@ export const FilteredProductsScreen = () => {
     [navigation]
   );
 
+  const handleEditItem = useCallback(
+    (productId: string) => {
+      navigation.navigate("EditProduct", { productId });
+    },
+    [navigation]
+  );
+
   const statusColor = filter === "low_stock" ? "#F59E0B" : "#F45E6C";
 
   const renderItem = useCallback(

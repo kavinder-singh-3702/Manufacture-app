@@ -14,6 +14,9 @@ export const ProductStep = ({ wizard }: { wizard: CampaignWizardApi }) => {
 
   const needsOwner = wizard.productSource === "user_listings" && !wizard.ownerUserId;
 
+  // The synchronous setLoading(true) below flips the spinner on the same commit
+  // the query changes, so the picker never renders stale results as if they
+  // were current — an external-store sync, which is what effects are for.
   useEffect(() => {
     // No setProducts([]) reset needed here: when `needsOwner` is true the
     // render below branches on it before ever reading `products`, and
@@ -22,6 +25,7 @@ export const ProductStep = ({ wizard }: { wizard: CampaignWizardApi }) => {
     if (wizard.adSource !== "internal" || needsOwner) return;
     let active = true;
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const t = setTimeout(() => {
       productService.list({

@@ -28,7 +28,6 @@ export const DashboardNotifications = () => {
     error,
     hasMore,
     pagination,
-    filters,
     setFilters,
     refresh,
     loadMore,

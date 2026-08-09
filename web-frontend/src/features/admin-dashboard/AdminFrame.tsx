@@ -138,7 +138,10 @@ export const AdminOverview = () => {
     setLoading(false);
   }, []);
 
+  // loadAll opens with a synchronous setLoading(true). Fetching admin data on
+  // mount is an external-system sync, not derived state.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll();
   }, [loadAll]);
 

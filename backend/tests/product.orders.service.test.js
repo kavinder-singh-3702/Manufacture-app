@@ -346,4 +346,70 @@ describe('Product orders payment service', () => {
     expect(refreshedAttempt.status).toBe('captured');
     expect(await PaymentWebhookEvent.countDocuments()).toBe(1);
   });
+
+  test('concurrent deliveries of the same webhook are deduped without throwing', async () => {
+    const buyer = await createUser('8111');
+    const admin = await createUser('8112', { role: 'admin' });
+    const inhouseCompany = await createCompany({ owner: admin, suffix: '8112', inhouse: true });
+    const product = await createProduct({
+      company: inhouseCompany,
+      user: admin,
+      suffix: '8112',
+      prepaidEnabled: true,
+      amount: 700
+    });
+
+    const checkout = await createCheckoutIntent({
+      buyerUserId: String(buyer._id),
+      payload: {
+        source: 'buy_now',
+        clientRequestId: 'client_webhook_concurrent',
+        lines: [{ productId: String(product._id), quantity: 1 }]
+      }
+    });
+
+    const order = await ProductOrder.findById(checkout.order.id);
+    const paymentAttempt = await PaymentAttempt.findOne({ order: order._id });
+
+    order.status = 'payment_authorized';
+    order.paymentStatus = 'authorized';
+    await order.save();
+
+    paymentAttempt.status = 'authorized';
+    paymentAttempt.providerPaymentId = 'pay_captured_8112';
+    await paymentAttempt.save();
+
+    const rawBody = JSON.stringify({
+      event: 'payment.captured',
+      created_at: Date.now(),
+      payload: {
+        payment: {
+          entity: {
+            id: 'pay_captured_8112',
+            status: 'captured',
+            order_id: paymentAttempt.providerOrderId,
+            amount: paymentAttempt.amount,
+            currency: paymentAttempt.currency
+          }
+        }
+      }
+    });
+
+    // Razorpay retries aggressively; two deliveries can overlap in flight.
+    // Exactly one must win, and neither may reject — a rejection surfaces as a
+    // 500 to Razorpay, which then retries the same event yet again.
+    const results = await Promise.all([
+      processRazorpayWebhook({ rawBody, signature: 'valid_signature' }),
+      processRazorpayWebhook({ rawBody, signature: 'valid_signature' })
+    ]);
+
+    expect(results.filter((result) => result.duplicate === false)).toHaveLength(1);
+    expect(results.filter((result) => result.duplicate === true)).toHaveLength(1);
+
+    const refreshedOrder = await ProductOrder.findById(order._id).lean();
+    expect(refreshedOrder.status).toBe('paid');
+    expect(refreshedOrder.paymentStatus).toBe('paid');
+    expect(refreshedOrder.totals.amountPaid).toBe(refreshedOrder.totals.total);
+    expect(await PaymentWebhookEvent.countDocuments()).toBe(1);
+  });
 });

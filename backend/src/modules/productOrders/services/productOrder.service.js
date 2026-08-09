@@ -25,6 +25,17 @@ const {
 
 const VALID_ADMIN_MUTATION_STATUSES = new Set(['processing', 'shipped', 'delivered', 'cancelled']);
 
+// Which order statuses each admin transition may be entered *from*. Cancelling
+// used to bypass the whitelist entirely (`… && nextStatus !== 'cancelled'`),
+// which let an admin cancel an already-delivered, already-refunded, or
+// already-cancelled order.
+const ADMIN_TRANSITION_SOURCES = Object.freeze({
+  processing: ['paid', 'processing', 'shipped'],
+  shipped: ['paid', 'processing', 'shipped'],
+  delivered: ['paid', 'processing', 'shipped'],
+  cancelled: ['paid', 'processing', 'shipped']
+});
+
 const normalizeString = (value, { max = 200 } = {}) => {
   if (value === undefined || value === null) return undefined;
   const normalized = String(value).trim();
@@ -602,7 +613,7 @@ const updateAdminOrderStatus = async ({ orderId, nextStatus }) => {
   if (order.paymentStatus !== 'paid') {
     throw createError(409, 'Only paid orders can enter admin fulfillment workflows');
   }
-  if (!['paid', 'processing', 'shipped'].includes(order.status) && nextStatus !== 'cancelled') {
+  if (!ADMIN_TRANSITION_SOURCES[nextStatus].includes(order.status)) {
     throw createError(409, 'Order cannot transition to the requested status');
   }
 
@@ -665,9 +676,30 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
   }
 
   const { payloadHash, providerEventId, dedupeKey, event } = buildWebhookIdentifiers(payload, rawBody);
-  const existingEvent = await PaymentWebhookEvent.findOne({ dedupeKey }).lean();
-  if (existingEvent) {
-    return { duplicate: true, event: existingEvent.event };
+
+  // Claim the event *before* applying it, so the unique index on `dedupeKey`
+  // is what enforces exactly-once rather than a read that another concurrent
+  // delivery can interleave with. Razorpay retries aggressively, and the old
+  // findOne-then-create ordering let two deliveries of the same event both
+  // pass the check, both apply payment state, and then have the loser throw
+  // E11000 -> 500 -> yet another retry.
+  let webhookEvent;
+  try {
+    webhookEvent = await PaymentWebhookEvent.create({
+      provider: PRODUCT_ORDER_PAYMENT_PROVIDER,
+      event,
+      eventId: providerEventId,
+      dedupeKey,
+      signature,
+      payloadHash,
+      rawBody,
+      payload
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return { duplicate: true, event };
+    }
+    throw error;
   }
 
   const providerPayment = payload?.payload?.payment?.entity || null;
@@ -700,19 +732,12 @@ const processRazorpayWebhook = async ({ rawBody, signature }) => {
     await Promise.all([order.save(), paymentAttempt.save()]);
   }
 
-  await PaymentWebhookEvent.create({
-    provider: PRODUCT_ORDER_PAYMENT_PROVIDER,
-    event,
-    eventId: providerEventId,
-    dedupeKey,
-    signature,
-    payloadHash,
-    rawBody,
-    payload,
-    order: order?._id,
-    paymentAttempt: paymentAttempt?._id,
-    processedAt: new Date()
-  });
+  // Backfill the resolved links now that we know them. The event row itself was
+  // already claimed above; this only annotates it.
+  webhookEvent.order = order?._id;
+  webhookEvent.paymentAttempt = paymentAttempt?._id;
+  webhookEvent.processedAt = new Date();
+  await webhookEvent.save();
 
   return {
     duplicate: false,

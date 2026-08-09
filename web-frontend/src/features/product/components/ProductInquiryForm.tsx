@@ -105,7 +105,7 @@ export const ProductInquiryForm = ({ product, selectedVariant, user, onSuccess, 
           contactName: form.contactName.trim() || undefined,
           contactPhone: form.contactPhone.trim() || undefined,
           contactEmail: form.contactEmail.trim() || undefined,
-        } as any);
+        });
       } else {
         // Guest — post to public endpoint
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/product-inquiries`, {
@@ -123,8 +123,8 @@ export const ProductInquiryForm = ({ product, selectedVariant, user, onSuccess, 
           }),
         });
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error((body as any).message || "Failed to send inquiry");
+          const body: { message?: string } = await res.json().catch(() => ({}));
+          throw new Error(body.message || "Failed to send inquiry");
         }
       }
 

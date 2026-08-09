@@ -9,7 +9,6 @@ import {
   InternalInventoryDashboard,
   InternalInventoryStatus,
   InternalInventoryMutationPayload,
-  InternalInventoryAdjustPayload,
   InternalStockMovementType,
 } from "@/src/services/internalInventory";
 import { ApiError } from "@/src/lib/api-error";

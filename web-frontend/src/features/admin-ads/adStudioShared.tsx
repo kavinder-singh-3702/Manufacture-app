@@ -190,8 +190,12 @@ export const UserPicker = ({ selectedIds, onToggle, onClose, title, single = fal
   const [loading, setLoading] = useState(false);
 
   // Debounced fetch — one request per pause in typing, not per keystroke.
+  // The synchronous setLoading(true) is the point: it flips the spinner on the
+  // same commit the query changes, so the list never shows stale results as if
+  // they were current. Subscribing to an external store is what effects are for.
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const t = setTimeout(() => {
       // Keep it minimal: show only the 3 most-recent users until the admin searches.
