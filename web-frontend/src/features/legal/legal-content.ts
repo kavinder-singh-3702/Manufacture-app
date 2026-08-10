@@ -19,116 +19,152 @@ export const privacyPolicyContent: LegalDocumentContent = {
   eyebrow: "Privacy Policy",
   title: "ARVANN Privacy Policy",
   summary:
-    "This Privacy Policy explains how ARVANN collects, uses, stores, and shares information when you use ARVANN, our B2B manufacturing workspace and marketplace services.",
-  effectiveDate: "April 5, 2026",
+    "This Privacy Policy explains what information we collect when you use the ARVANN mobile app or website, how we use it, who we share it with, and the choices you have.",
+  effectiveDate: "August 8, 2026",
   reviewerNote:
-    "This page is public and can be reviewed without signing in. It is intended to describe the current web and backend data practices reflected in the live product codebase.",
+    "This page is public and can be reviewed without signing in. It reflects the actual data practices in the live ARVANN product across mobile and web.",
   sections: [
     {
-      title: "1. Scope",
+      title: "1. Who we are",
       paragraphs: [
-        "This Privacy Policy applies to ARVANN web experiences operated by ARVANN, related backend APIs, and supporting account, verification, order, service, and communication workflows.",
-        "By using the service, you understand that your information may be processed in connection with account creation, business onboarding, verification, operations management, and transaction support."
+        "ARVANN (\"we\", \"us\", \"our\") is an industrial-marketplace mobile and web application that connects manufacturers, traders, and buyers.",
+        "This Privacy Policy explains what information we collect, how we use it, who we share it with, and the choices you have.",
+        "By using ARVANN, you agree to the practices described here. If you do not agree, please do not use the app or website."
       ]
     },
     {
-      title: "2. Information We Collect",
+      title: "2. What we collect",
       paragraphs: [
-        "We collect information that you provide directly during signup, login, profile completion, company onboarding, verification, file uploads, service requests, product orders, and support communications.",
-        "We also collect technical and operational information required to secure accounts, maintain sessions, review submissions, and operate the platform."
+        "We collect the minimum information needed to run the marketplace. We do not use third-party analytics, third-party advertising networks, or trackers."
       ],
       items: [
-        "Identity and account data such as full name, display name, email address, phone number, password hash, role, account type, and account status.",
-        "Authentication and security data such as OTP verification state, email verification timing, session information, session cookies for web access, JWT support for compatible clients, login timestamps, and security-related activity records.",
-        "Profile and contact data such as address, bio, avatar, social links, notification preferences, locale, timezone, and communication settings.",
-        "Company data such as company name, legal name, category, description, contact details, headquarters address, website, social links, business status, compliance status, and company settings.",
-        "Verification and compliance data such as GST certificate files, Aadhaar card files, uploaded document metadata, reviewer notes, decision history, and audit trail entries.",
-        "Uploaded content such as user files, company assets, and supporting documents stored through configured cloud storage services.",
-        "Service marketplace data such as request title, description, contact name, contact email, contact phone, location, schedule, status history, notes, and assignment history.",
-        "Order and payment support data such as shipping address, buyer snapshot details, order line items, totals, payment status, Razorpay-linked payment attempt records, provider order identifiers, and payment verification events.",
-        "Operational data such as notifications, activity logs, administrative review actions, and usage context needed to run the service safely."
+        "Account information — email address, mobile phone number, display name, optional first/last name, optional profile photo, password (stored only as a hash), and Apple user ID if you sign in with Apple.",
+        "Company / business information — company name, description, categories, contact details, address, and verification documents (GST certificate, Aadhaar card, or other identity or business documents) that you upload during the verification flow. Verification documents are stored securely, accessible only to our verification admins, and used only for compliance review.",
+        "Content you create — product listings (title, description, price, categories, images), messages sent through in-app chat, feedback you submit, and quotes, orders, or inquiries you send or receive.",
+        "Device and technical information — platform (iOS, Android, web), push-notification token, IP address recorded at login for security auditing, and basic device information used by the app to render correctly (screen size, OS version).",
+        "Activity information — login events (timestamp, IP address) for security, product views, favorites, cart contents, and ad interactions (impressions, clicks, dismissals) within ARVANN.",
+        "Payment information — when you complete a purchase, payment is processed by Razorpay (a PCI-DSS-compliant payment processor). Your card, UPI, or bank details are entered directly into Razorpay's secure interface and we never see or store them. We only receive the transaction status, an order reference, and the payment amount."
       ]
     },
     {
-      title: "3. How We Use Information",
+      title: "3. What we do NOT collect",
       paragraphs: [
-        "We use personal and business information to provide the service, create and secure accounts, verify business identity, facilitate platform operations, support service requests and orders, communicate with users, and improve reliability.",
-        "We may also use information to investigate abuse, enforce our policies, comply with legal obligations, respond to support requests, and maintain records required for operational or compliance purposes."
+        "We do not collect precise location data, contacts, calendar entries, or camera-recorded content. When you upload a product image or a verification document, you pick it from your device's photo library or camera — we only receive the file you explicitly select."
+      ]
+    },
+    {
+      title: "4. Advertising and third parties",
+      paragraphs: [
+        "Ads shown inside ARVANN are created only by our own admins and promote products already listed in the marketplace. We do not use third-party ad networks (Google AdMob, Meta Audience, and similar are not integrated) and do not share user data with any advertising partner.",
+        "Some ads may link out to external websites (for example, a partner store). When you tap through, we do not share your ARVANN account data with the destination. The external site's own privacy policy applies from the moment you leave ARVANN.",
+        "We do not use Google Analytics, Firebase Analytics, Mixpanel, Amplitude, Segment, Sentry, PostHog, Facebook SDK, AdMob, or any other analytics or advertising SDK.",
+        "We do not track you across other companies' apps or websites, and we do not participate in cross-app advertising identifiers (IDFA)."
+      ]
+    },
+    {
+      title: "5. How we use your information",
+      paragraphs: [
+        "We use the information described above only for the following purposes:"
       ],
       items: [
-        "To create accounts, sign users in, verify email or OTP-based identity, and maintain authenticated sessions.",
-        "To create and manage user profiles, company workspaces, and active company context.",
-        "To review submitted business verification documents and record approval or rejection decisions.",
-        "To process product-order and payment-related workflows and validate transaction events.",
-        "To send transactional messages such as OTP emails, password reset flows, verification notices, and platform notifications.",
-        "To protect the service against fraud, misuse, unauthorized access, and policy violations."
+        "To provide the service — create your account, show relevant products, deliver messages, complete orders.",
+        "To communicate with you — order updates, chat notifications, verification decisions, and other service-related messages via in-app notification, push, email, or (rarely) SMS.",
+        "To verify businesses — review GST, Aadhaar, or other documents you submit so that verified sellers can display a trust badge to buyers.",
+        "To improve the app — read feedback you submit through the in-app form.",
+        "For security and fraud prevention — detect suspicious logins, throttle abuse, and keep basic audit logs.",
+        "For legal compliance — comply with Indian law and respond to lawful requests from authorities.",
+        "We do NOT sell your personal information to any third party.",
+        "We do NOT use your data for behavioral advertising outside ARVANN.",
+        "We do NOT run any third-party tracking SDK."
       ]
     },
     {
-      title: "4. Cookies, Sessions, and Similar Technologies",
+      title: "6. Notifications",
       paragraphs: [
-        "ARVANN uses session cookies to keep web users signed in and to support secure authenticated requests. These cookies are used for account continuity, session management, and security controls.",
-        "We may also maintain related authentication state for compatible clients through issued tokens where supported by the relevant client flow."
-      ]
-    },
-    {
-      title: "5. How We Share Information",
-      paragraphs: [
-        "We do not publish your private account or verification data for general public viewing. We share information only as needed to operate the service, complete requested workflows, or comply with applicable law.",
-        "Depending on the workflow, information may be accessible to internal administrators, compliance reviewers, infrastructure providers, payment providers, email providers, and other parties acting under operational necessity."
+        "When you enable notifications, we may send you:"
       ],
       items: [
-        "With infrastructure and storage providers that host the application and store uploaded assets or verification files.",
-        "With transactional email or notification providers used to deliver OTP, password reset, and operational messages.",
-        "With payment service providers such as Razorpay for order-payment workflows and payment verification.",
-        "With authorized internal reviewers or administrators evaluating company verification requests, moderation actions, support issues, or account misuse.",
-        "With legal, regulatory, or law-enforcement authorities where disclosure is required by law, regulation, court order, or a good-faith safety obligation."
+        "In-app notifications shown inside the ARVANN app or website.",
+        "Push notifications delivered through Apple Push Notification service (iOS) or Firebase Cloud Messaging (Android).",
+        "Email notifications for important account or order events.",
+        "You can manage push preferences at any time from your device settings and from the Notification Settings screen inside the app. Some transactional messages (such as security alerts) may still be sent because they are essential to the service."
       ]
     },
     {
-      title: "6. Data Retention",
+      title: "7. Third parties who process data on our behalf",
       paragraphs: [
-        "We retain information for as long as reasonably necessary to provide the service, maintain account records, support compliance review, resolve disputes, process payments, investigate abuse, and satisfy legal or operational recordkeeping needs.",
-        "Retention periods may differ by data type. For example, account records, verification history, order records, payment verification events, and security logs may be retained longer than routine session state."
+        "We use a small number of trusted service providers to run ARVANN. Each receives only the minimum data needed for its function."
+      ],
+      items: [
+        "Amazon Web Services (AWS S3) — media you upload (product images, verification documents, ad banners, videos) is stored in Amazon S3. AWS acts as our storage provider and does not access the content of your files for its own purposes.",
+        "Apple — Sign in with Apple. If you choose Sign in with Apple, Apple returns a stable user identifier and (with your permission) your name and email address. We use this only to create or match your ARVANN account.",
+        "Apple Push Notification service (APNs) and Firebase Cloud Messaging (FCM) — when your device registers for push notifications, we obtain a push token that we send to APNs or FCM to deliver notifications. Push previews may include your first name and a snippet of a message; we do not include email addresses or payment details in push previews.",
+        "Razorpay — payments are processed by Razorpay Software Private Limited. When you pay, you interact directly with Razorpay's SDK; we do not see your card or UPI details.",
+        "Nodemailer / SMTP email delivery — used to send OTPs, password reset links, verification decision notices, and other operational messages."
       ]
     },
     {
-      title: "7. Security",
+      title: "8. Data retention",
       paragraphs: [
-        "We use reasonable technical and organizational measures to protect account, company, and transaction data, including authenticated access controls, password hashing, session handling, validation controls, and operational logging.",
-        "No system can guarantee absolute security, and you are responsible for maintaining the confidentiality of your login credentials and limiting unauthorized access to your devices and accounts."
+        "Retention periods differ by data type:"
+      ],
+      items: [
+        "Account data is retained as long as your account is active. If you delete your account (see Section 10), we delete your personal information within 30 days, except where retention is required by law (for example, tax records for orders) or for legitimate security purposes (for example, logs of abusive activity).",
+        "Uploaded verification documents (GST certificate, Aadhaar card, etc.) are retained as long as the company is active on the platform. They are accessible only to internal verification admins, are not visible to other users, and are deleted when the associated company is removed.",
+        "Chat messages are retained so both sides of a conversation can review their history; you can request deletion (see Section 10).",
+        "Payment records and related tax invoices are retained for the period required under Indian tax law."
       ]
     },
     {
-      title: "8. Your Choices and Requests",
+      title: "9. Security",
       paragraphs: [
-        "You may update portions of your profile and company information from within the service where those controls are available.",
-        `If you need help accessing, correcting, or requesting deletion of account information, or if you need support related to verification documents or account closure, contact us at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY}.`
+        "We use reasonable technical and organizational measures to protect account, company, and transaction data."
+      ],
+      items: [
+        "Passwords are hashed with a modern algorithm; we never store or transmit them in plain text.",
+        "Sessions are secured with JSON Web Tokens (JWT) and session cookies for web access.",
+        "All traffic between the app or website and our servers uses HTTPS.",
+        "Uploaded media is stored in S3 with access controls appropriate to the file type.",
+        "We periodically review our code for common security issues.",
+        `No system is completely secure. If you discover a vulnerability, please email ${SUPPORT_EMAIL} — we will investigate promptly.`
       ]
     },
     {
-      title: "9. Cross-Border Processing",
+      title: "10. Your rights and choices",
       paragraphs: [
-        "Our service providers, infrastructure, or support tools may process information in locations outside your immediate region. Where this occurs, we use the service to support legitimate platform operations, security, and compliance needs.",
-        "By using the service, you understand that your information may be stored or processed in jurisdictions where our providers operate, subject to applicable law."
+        "Depending on where you live, you may have the right to:"
+      ],
+      items: [
+        "Access the personal data we hold about you.",
+        "Correct inaccurate data (most fields are directly editable in the app and website).",
+        "Delete your account and associated personal data. On the mobile app, open Profile → Delete Account to delete your account from inside the app. You can also email arvann100@gmail.com to request deletion.",
+        "Object to specific uses of your data.",
+        "Export a copy of your data — email us to request an export.",
+        "To exercise any of these rights, email arvann100@gmail.com from the address associated with your ARVANN account. We will respond within 30 days.",
+        "You can also change notification preferences from the in-app Notification Settings screen, turn off push notifications from your iOS or Android system settings, and sign out or delete your account at any time."
       ]
     },
     {
-      title: "10. Children and Business Use",
+      title: "11. Children",
       paragraphs: [
-        "ARVANN is designed for business and professional use in manufacturing, sourcing, operations, and trade workflows. It is not intended for children.",
-        `If you believe personal information was submitted inappropriately, contact us at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY} so we can review the request.`
+        "ARVANN is intended for use by adults transacting in an industrial marketplace. It is not directed at children under 13, and we do not knowingly collect personal information from anyone under 13.",
+        `If you believe a child has provided us information, contact ${SUPPORT_EMAIL} or ${SUPPORT_PHONE_DISPLAY} and we will delete it.`
       ]
     },
     {
-      title: "11. Changes to This Policy",
+      title: "12. International users",
       paragraphs: [
-        "We may update this Privacy Policy from time to time as our products, legal obligations, or operational practices evolve.",
-        "When we make material updates, we may update the effective date and publish the revised version on this public page."
+        "ARVANN is operated from India. If you use the app or website from outside India, your data is transferred to and processed on servers in India (and, for storage, in AWS regions we operate). By using ARVANN you consent to this transfer."
       ]
     },
     {
-      title: "12. Contact",
+      title: "13. Changes to this policy",
+      paragraphs: [
+        "We may update this Privacy Policy from time to time. When we do, we will change the effective date at the top and, for material changes, we may notify you in the app or by email. Continued use of ARVANN after a change means you accept the updated policy."
+      ]
+    },
+    {
+      title: "14. Contact",
       paragraphs: [
         `If you have questions about this Privacy Policy, privacy requests, verification data handling, or account closure, contact ARVANN at ${SUPPORT_EMAIL} or on ${SUPPORT_PHONE_DISPLAY}.`,
         `Grievance contact: ${SUPPORT_PHONE_DISPLAY} · ${SUPPORT_EMAIL}. We acknowledge grievances within 24 hours and aim to resolve them within 15 days.`

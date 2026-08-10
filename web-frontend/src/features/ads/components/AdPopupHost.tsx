@@ -18,7 +18,24 @@ const FIRST_DELAY_MS = 20_000; // first check, 20s after mount
 const CHECK_EVERY_MS = 5 * 60_000; // re-check every 5 min; cadence gates the actual show
 const DEFAULT_COOLDOWN_MINUTES = 60;
 
-const EXCLUDED_PATH_PREFIXES = ["/admin", "/signin", "/signup", "/reset-password", "/forgot-password"];
+// Legal + auth routes never show promotional interstitials:
+//  - Apple App Store review visits /privacy-policy and /terms-conditions;
+//    a sponsored popup there is grounds for rejection under Guideline 5.1.1
+//    (privacy policy must be readable without obstruction).
+//  - Contact + support pages are for users who came to reach us, not to
+//    be sold to.
+//  - Auth / admin routes were already excluded.
+const EXCLUDED_PATH_PREFIXES = [
+  "/admin",
+  "/signin",
+  "/signup",
+  "/reset-password",
+  "/forgot-password",
+  "/privacy-policy",
+  "/terms-conditions",
+  "/contact",
+  "/support",
+];
 
 /**
  * Global, render-once host for the sponsored interstitial popup — shown to both
