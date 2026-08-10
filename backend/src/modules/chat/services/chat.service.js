@@ -216,8 +216,19 @@ const getOrCreateConversation = async (userId, participantId) => {
   // Apple Guideline 1.2 — a blocked pair must not be able to reach each
   // other. Checked symmetrically: neither the blocker nor the blocked
   // party can open (or reopen) a thread with the other.
-  const blocked = await isBlockedEitherDirection(userObjId, participantObjId);
-  if (blocked) {
+  //
+  // Support threads are exempt in BOTH directions. block.service already
+  // refuses to create a block against an admin, but a stale row can still
+  // exist (created before that guard, or against a user who was later
+  // promoted to admin) — and a user who cannot reach support has no route
+  // left to report anything at all.
+  const [selfDoc, otherDoc] = await Promise.all([
+    User.findById(userObjId).select('role').lean(),
+    User.findById(participantObjId).select('role').lean()
+  ]);
+  const involvesSupport = isAdminRole(selfDoc?.role) || isAdminRole(otherDoc?.role);
+
+  if (!involvesSupport && (await isBlockedEitherDirection(userObjId, participantObjId))) {
     throw createError(403, 'You can no longer message this user.');
   }
 
@@ -444,16 +455,29 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
   // Apple Guideline 1.2 — block enforcement on an ALREADY-OPEN thread.
   // getOrCreateConversation blocks new threads, but a pair who chatted
   // before a block was placed still holds a live conversationId, so the
-  // send path needs its own symmetric check. Admin/support replies are
-  // exempt: a user blocking another user must not sever support access.
+  // send path needs its own symmetric check.
+  //
+  // Support threads are exempt in BOTH directions. Exempting only the
+  // admin's replies (the earlier shape of this guard) still let a user
+  // block support and then find themselves unable to message anyone for
+  // help — the one thread that must never close.
   if (!isAdminRole(callerRole)) {
     const conversationForBlockCheck = await ChatConversation.findById(conversationId)
-      .select('participants.user')
+      .select('participants.user participants.role')
       .lean();
-    const counterpartyId = conversationForBlockCheck?.participants
-      ?.map((p) => p.user)
-      .find((id) => String(id) !== String(senderId));
-    if (counterpartyId && (await isBlockedEitherDirection(senderId, counterpartyId))) {
+    const counterparty = conversationForBlockCheck?.participants?.find(
+      (p) => String(p.user) !== String(senderId)
+    );
+    const counterpartyId = counterparty?.user;
+
+    // participants[].role is a snapshot taken at conversation creation, so
+    // re-read the live role rather than trusting it for an access decision.
+    const counterpartyDoc = counterpartyId
+      ? await User.findById(counterpartyId).select('role').lean()
+      : null;
+    const isSupportThread = isAdminRole(counterpartyDoc?.role);
+
+    if (!isSupportThread && counterpartyId && (await isBlockedEitherDirection(senderId, counterpartyId))) {
       throw createError(403, 'You can no longer message this user.');
     }
   }

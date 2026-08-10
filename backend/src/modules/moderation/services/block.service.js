@@ -10,8 +10,20 @@ const blockUser = async ({ blockerId, blockedUserId, reason }) => {
   if (blockerId.toString() === blockedUserId.toString()) {
     throw createError(400, 'You cannot block yourself.');
   }
-  const targetExists = await User.exists({ _id: blockedUserId });
-  if (!targetExists) throw createError(404, 'User not found');
+
+  const target = await User.findById(blockedUserId).select('role').lean();
+  if (!target) throw createError(404, 'User not found');
+
+  // Support and admin accounts can never be blocked. Blocking is there to
+  // protect users from other users; letting someone block the platform's
+  // own support team would cut off their only route to help — including
+  // the route they'd need to report the very abuse that prompted it.
+  if (target.role === 'admin' || target.role === 'super-admin') {
+    throw createError(
+      400,
+      'Support cannot be blocked. If you have a problem with our team, please email us instead.'
+    );
+  }
 
   try {
     const doc = await UserBlock.create({

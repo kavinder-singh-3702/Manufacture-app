@@ -118,6 +118,15 @@ export const ChatScreen = () => {
   const [moderationMenuOpen, setModerationMenuOpen] = useState(false);
   const [reportSheetOpen, setReportSheetOpen] = useState(false);
 
+  // Support threads carry no productId (seller chat always does — see the
+  // header subtitle below, which uses the same signal). Reporting or
+  // blocking our own support team makes no sense and, before the backend
+  // guard existed, blocking support could cut off a user's only route to
+  // help. The server refuses it regardless; this just keeps the option
+  // out of the menu so nobody tries.
+  const isSupportThread = !productId;
+  const canModerateCounterparty = !isSupportThread && Boolean(recipientId);
+
   // Seller-chat context card: when route.params.productId is present (added in
   // step 4 of the unify effort), fetch a thin product summary and render
   // ChatProductContextCard above the messages. Support chat passes no
@@ -620,15 +629,17 @@ export const ChatScreen = () => {
         <TouchableOpacity onPress={handleCallUser} style={styles.headerActionBtn}>
           <Ionicons name="call-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerActionBtn} onPress={() => setModerationMenuOpen((v) => !v)}>
-          <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
+        {canModerateCounterparty ? (
+          <TouchableOpacity style={styles.headerActionBtn} onPress={() => setModerationMenuOpen((v) => !v)}>
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Moderation menu (Apple Guideline 1.2). Anchored under the header's
           ⋯ button. Report is always available; Block needs a resolvable
           counterparty id from route params. */}
-      {moderationMenuOpen ? (
+      {moderationMenuOpen && canModerateCounterparty ? (
         <>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
