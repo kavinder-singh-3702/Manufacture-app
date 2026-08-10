@@ -16,17 +16,20 @@ export type PolicyBlock =
   | { kind: "bullet"; text: string }
   | { kind: "divider" };
 
-// Effective / Last Updated dates. Update these when the policy content
-// materially changes; also update the canonical PRIVACY-POLICY.md.
-// Kept in sync with the canonical web version at
+// Single effective date, kept in sync with the canonical web version at
 // web-frontend/src/features/legal/legal-content.ts (effectiveDate).
+// Bump this whenever the policy content materially changes — Section 13
+// promises we will, and CCPA requires a visible last-updated date for
+// any California users.
+//
+// Deliberately ONE date, not a separate "Effective" and "Last Updated":
+// on a first release they're identical, and showing the same value twice
+// reads like an unfilled template.
 export const PRIVACY_POLICY_EFFECTIVE_DATE = "August 8, 2026";
-export const PRIVACY_POLICY_LAST_UPDATED = "August 8, 2026";
 
 export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   { kind: "h1", text: "ARVANN — Privacy Policy" },
-  { kind: "meta", label: "Effective Date", value: PRIVACY_POLICY_EFFECTIVE_DATE },
-  { kind: "meta", label: "Last Updated", value: PRIVACY_POLICY_LAST_UPDATED },
+  { kind: "meta", label: "Effective", value: PRIVACY_POLICY_EFFECTIVE_DATE },
   { kind: "divider" },
 
   { kind: "h2", text: "1. Who we are" },
@@ -251,7 +254,7 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   {
     kind: "p",
     text:
-      "We may update this Privacy Policy from time to time. When we do, we will change the \"Last Updated\" date at the top and, for material changes, we may notify you in the app or by email. Continued use of ARVANN after a change means you accept the updated policy.",
+      "We may update this Privacy Policy from time to time. When we do, we will change the effective date at the top and, for material changes, we may notify you in the app or by email. Continued use of ARVANN after a change means you accept the updated policy.",
   },
   { kind: "divider" },
 
