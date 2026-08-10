@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { AmazonStyleProductCard } from "../../../components/product/AmazonStyleProductCard";
+import { QuickAdjustStockSheet } from "../../inventory/components/QuickAdjustStockSheet";
 import { startProductBoost } from "../../product/utils/productBoost";
 import { useToast } from "../../../components/ui/Toast";
 import { useAuth } from "../../../hooks/useAuth";
@@ -191,6 +192,15 @@ export const CompanyProductsSection = ({
     },
     [navigation]
   );
+
+  // Adjust-stock shortcut on each product card. Skips having to open the
+  // full Product Details screen — critical for the accounting workflow
+  // (users kept confusing this with Internal Inventory and ending up with
+  // 0-stock catalog products that Sales Invoice can't sell).
+  const [adjustStockProduct, setAdjustStockProduct] = useState<Product | null>(null);
+  const handleAdjustStock = useCallback((product: Product) => {
+    setAdjustStockProduct(product);
+  }, []);
 
   const handleViewVariants = useCallback(
     (product: Product) => {
@@ -393,6 +403,29 @@ export const CompanyProductsSection = ({
                 currentUserId={user?.id}
                 onBoostPress={isReadOnly ? (product) => startProductBoost(navigation, product) : undefined}
               />
+              {!isReadOnly ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => handleAdjustStock(item)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    marginTop: 6,
+                    paddingVertical: 10,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.surface,
+                  }}
+                >
+                  <Ionicons name="cube-outline" size={15} color={colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: colors.primary }}>
+                    Adjust Stock
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
               {isReadOnly && item.variantSummary?.totalVariants ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
@@ -433,6 +466,17 @@ export const CompanyProductsSection = ({
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <QuickAdjustStockSheet
+        visible={adjustStockProduct !== null}
+        product={adjustStockProduct}
+        onClose={() => setAdjustStockProduct(null)}
+        onSaved={() => {
+          setAdjustStockProduct(null);
+          // Refetch so the card's stock badge reflects the new value.
+          fetchProducts(0, false);
+        }}
+      />
     </View>
   );
 };
