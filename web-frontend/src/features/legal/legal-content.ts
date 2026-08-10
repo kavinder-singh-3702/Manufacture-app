@@ -29,7 +29,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
       paragraphs: [
         "ARVANN (\"we\", \"us\", \"our\") is an industrial-marketplace mobile and web application that connects manufacturers, traders, and buyers.",
         "This Privacy Policy explains what information we collect, how we use it, who we share it with, and the choices you have.",
-        "This policy is a notice describing how we handle your information — not a blanket consent to every processing activity. Different activities rest on different legal bases: providing the marketplace and completing your orders is necessary to perform our agreement with you; retaining tax and payment records is a legal obligation; security logging serves our legitimate interest in protecting the platform; and anything optional (such as marketing messages) is done only with your separate consent, which you can withdraw at any time.",
+        "This policy is a notice describing how we handle your information — not a blanket consent to every processing activity. Different activities rest on different legal bases: providing the marketplace and handling your enquiries is necessary to perform our agreement with you; retaining tax and accounting records is a legal obligation; security logging serves our legitimate interest in protecting the platform; and anything optional (such as marketing messages) is done only with your separate consent, which you can withdraw at any time.",
         "If you do not agree with how we handle information, please stop using ARVANN and contact us to close your account."
       ]
     },
@@ -44,7 +44,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
         "Content you create — product listings (title, description, price, categories, images), messages sent through in-app chat, feedback you submit, and quotes, orders, or inquiries you send or receive.",
         "Device and technical information — platform (iOS, Android, web), push-notification token, IP address recorded at login for security auditing, and basic device information used by the app to render correctly (screen size, OS version).",
         "Activity information — login events (timestamp, IP address) for security, product views, favorites, cart contents, and ad interactions (impressions, clicks, dismissals) within ARVANN.",
-        "Payment information — online payment is currently available on the ARVANN website only; the mobile app does not process payments and instead routes you to a quote or a direct enquiry. Where payment does occur, it is processed by Razorpay (a PCI-DSS-compliant payment processor). Your card, UPI, or bank details are entered directly into Razorpay's secure interface and we never see or store them. We only receive the transaction status, an order reference, and the payment amount."
+        "Order and enquiry data — ARVANN does not currently process online payments on either the app or the website. Buying happens off-platform: you request a quote or contact the seller directly, and payment is settled between you and the seller outside ARVANN. We therefore do not collect card, UPI, or bank details at all. If we introduce online payment in future, we will update this policy and name the payment processor before switching it on."
       ]
     },
     {
@@ -99,8 +99,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
       items: [
         "Amazon Web Services (AWS S3) — media you upload (product images, verification documents, ad banners, videos) is stored in Amazon S3. AWS acts as our storage provider and does not access the content of your files for its own purposes.",
         "Apple — Sign in with Apple. If you choose Sign in with Apple, Apple returns a stable user identifier and (with your permission) your name and email address. We use this only to create or match your ARVANN account.",
-        "Apple Push Notification service (APNs) and Firebase Cloud Messaging (FCM) — when your device registers for push notifications, we obtain a push token that we send to APNs or FCM to deliver notifications. Push previews may include your first name and a snippet of a message; we do not include email addresses or payment details in push previews.",
-        "Razorpay — payments are processed by Razorpay Software Private Limited. When you pay, you interact directly with Razorpay's SDK; we do not see your card or UPI details.",
+        "Apple Push Notification service (APNs) and Firebase Cloud Messaging (FCM) — when your device registers for push notifications, we obtain a push token that we send to APNs or FCM to deliver notifications. Push previews may include your first name and a snippet of a message; we do not include email addresses or other sensitive details in push previews.",
         "Nodemailer / SMTP email delivery — used to send OTPs, password reset links, verification decision notices, and other operational messages."
       ]
     },
@@ -113,7 +112,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
         "Account data is retained as long as your account is active. If you delete your account (see Section 10), we delete your personal information within 30 days, except where retention is required by law (for example, tax records for orders) or for legitimate security purposes (for example, logs of abusive activity).",
         "Uploaded verification documents (GST certificate, Aadhaar card, etc.) are retained as long as the company is active on the platform. They are accessible only to internal verification admins, are not visible to other users, and are deleted when the associated company is removed.",
         "Chat messages are retained so both sides of a conversation can review their history; you can request deletion (see Section 10).",
-        "Payment records and related tax invoices are retained for the period required under Indian tax law."
+        "Invoices and accounting records you create in ARVANN's bookkeeping tools are retained for the period required under Indian tax law."
       ]
     },
     {
@@ -239,7 +238,7 @@ export const termsAndConditionsContent: LegalDocumentContent = {
     {
       title: "7. Orders, Services, and Payments",
       paragraphs: [
-        "Some parts of the service may support business requests, service bookings, product-order workflows, and payment processing. Third-party payment providers, including Razorpay where enabled, may be used to process or verify payment events.",
+        "ARVANN currently facilitates business requests, service bookings, quotes, and product enquiries. It does not process payments — commercial terms and settlement are agreed directly between buyer and seller off-platform. If online payment is introduced in future, we will name the payment provider in our Privacy Policy before enabling it.",
         "ARVANN does not guarantee that any marketplace interaction, service request, product order, or commercial negotiation will result in a completed transaction, successful fulfillment, or uninterrupted payment flow."
       ],
       items: [

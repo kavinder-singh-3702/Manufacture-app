@@ -59,18 +59,23 @@ For every data type below, the answers are the same unless noted:
 
 ### Do NOT declare Payment Info
 
-The in-app Razorpay checkout is currently disabled — the "Buy Now" branch
-in `ProductDetailsScreen` is commented out, and products show "Get Quote"
-or "Contact to Purchase" instead. The iOS app therefore **never collects
-payment information**, so declaring *Financial Info → Payment Info* would
-over-declare against actual behaviour.
+ARVANN does not process online payments anywhere — not in the app, not on
+the website. Buying happens off-platform: buyers request a quote or
+contact the seller, and payment is settled directly between them.
 
-The `react-native-razorpay` SDK is still bundled but is never invoked. An
-unused dependency is not a violation, so there's no need to strip it
-before this submission.
+In the app, checkout is off behind `IN_APP_CHECKOUT_ENABLED` in
+`src/constants/features.ts`, and the "Buy Now" branch in
+`ProductDetailsScreen` is commented out. Products surface "Get Quote" or
+"Contact to Purchase" instead. The `react-native-razorpay` SDK is still
+bundled but unreachable — an unused dependency is not a violation, so
+there's no need to strip it before this submission.
 
-> If in-app checkout is ever re-enabled, you must come back and add
-> *Financial Info → Payment Info* here.
+Declaring *Financial Info → Payment Info* would therefore over-declare
+against actual behaviour.
+
+> If online payment is ever switched on, you must come back and add
+> *Financial Info → Payment Info* here, and update the privacy policy to
+> name the payment processor.
 
 ### Data types to LEAVE UNCHECKED
 
@@ -166,9 +171,9 @@ Also included in this build:
   * Reports route to an admin moderation queue (admin accounts only:
     sidebar > Moderation).
 
-Payments are processed by Razorpay. Test purchases can be completed
-using Razorpay test-mode cards if needed - please contact us and we
-will enable test mode for the review period.
+ARVANN does not process payments in the app. Buyers request a quote or
+contact the seller directly, and payment is settled off-platform between
+the two businesses. There is no in-app purchase flow to test.
 
 We do not use any third-party analytics or advertising SDKs. Ads shown
 in the app are our own marketplace promotions for products already
@@ -209,6 +214,7 @@ Sanity-check each of these on a real device with the demo account **before** sub
 - [ ] Profile → Delete Account → warning screen renders (do **not** actually delete the demo account)
 - [ ] Every bottom tab opens a functional screen (no placeholders)
 - [ ] Rotate to landscape on iPad — layout holds
+- [ ] Add an item to the cart — confirm **no** "Proceed to Payment" button appears (in-app checkout is off; a reviewer reaching a payment screen that fails is a Guideline 2.1 rejection)
 
 ---
 
@@ -218,6 +224,6 @@ Most likely remaining risks, in order:
 
 1. **Guideline 1.2 depth** — if they want per-message reporting (we currently report at the user level from chat), that's a small addition
 2. **Demo account content** — if the reviewer's account looks empty, they may flag completeness. Seed it well.
-3. **Payments** — if they can't complete a purchase, enable Razorpay test mode and tell them in the notes
+3. **Payments** — if a reviewer asks why there's no purchase flow, the answer is that ARVANN is an enquiry-and-quote marketplace: buyers and sellers settle payment off-platform, so there is nothing to buy in-app and no in-app-purchase obligation under Guideline 3.1.1
 
 Reply to rejections in Resolution Center with specifics: which guideline, what you changed, and where to find it in the app.

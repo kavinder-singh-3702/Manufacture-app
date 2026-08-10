@@ -46,7 +46,7 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   {
     kind: "p",
     text:
-      "This policy is a notice describing how we handle your information — not a blanket consent to every processing activity. Different activities rest on different legal bases: providing the marketplace and completing your orders is necessary to perform our agreement with you; retaining tax and payment records is a legal obligation; security logging serves our legitimate interest in protecting the platform; and anything optional (such as marketing messages) is done only with your separate consent, which you can withdraw at any time.",
+      "This policy is a notice describing how we handle your information — not a blanket consent to every processing activity. Different activities rest on different legal bases: providing the marketplace and handling your enquiries is necessary to perform our agreement with you; retaining tax and accounting records is a legal obligation; security logging serves our legitimate interest in protecting the platform; and anything optional (such as marketing messages) is done only with your separate consent, which you can withdraw at any time.",
   },
   {
     kind: "p",
@@ -111,11 +111,11 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
       "Some ads may link to external websites (e.g. a partner store). When you tap through, we do not share your ARVANN account data with the destination. The external site's own privacy policy applies from that point onward.",
   },
 
-  { kind: "h2", text: "2.6 Payment information" },
+  { kind: "h2", text: "2.6 Payments" },
   {
     kind: "p",
     text:
-      "Online payment is currently available on the ARVANN website only. This mobile app does not process payments — product enquiries route to a quote request or a direct conversation with the seller instead. Where payment does occur on the website, it is processed by Razorpay, a PCI-DSS-compliant payment processor: your card, UPI, or bank details are entered directly into Razorpay's secure interface, we never see or store them, and we receive only the transaction status, an order reference, and the amount.",
+      "ARVANN does not currently process online payments. Buying happens off-platform: you request a quote or contact the seller directly, and payment is settled between you and the seller outside ARVANN. We therefore do not collect card, UPI, or bank details at all. If we introduce online payment in future, we will update this policy and name the payment processor before switching it on.",
   },
   { kind: "divider" },
 
@@ -177,13 +177,13 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   {
     kind: "p",
     text:
-      "When your device registers for push notifications, we obtain a push token that we send to APNs (iOS) or FCM (Android) to deliver the notification. The notification body may include your first name and a preview of a message; we do not include email addresses or payment details in push previews.",
+      "When your device registers for push notifications, we obtain a push token that we send to APNs (iOS) or FCM (Android) to deliver the notification. The notification body may include your first name and a preview of a message; we do not include email addresses or other sensitive details in push previews.",
   },
-  { kind: "h2", text: "5.4 Razorpay" },
+  { kind: "h2", text: "5.4 Email delivery" },
   {
     kind: "p",
     text:
-      "Payments are processed by Razorpay Software Private Limited. When you pay, you interact directly with Razorpay's SDK; we do not see your card / UPI details.",
+      "Transactional email (signup codes, password reset links, verification decisions) is delivered over SMTP. Only your email address and the message content are shared with the mail transport.",
   },
   {
     kind: "p",
@@ -200,7 +200,7 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   },
   { kind: "bullet", text: "Uploaded verification documents are retained as long as the company is active on the platform." },
   { kind: "bullet", text: "Chat messages are retained so both sides of a conversation can review their history; you can request deletion (see Section 8)." },
-  { kind: "bullet", text: "Payment records and related tax invoices are retained for the period required under Indian tax law." },
+  { kind: "bullet", text: "Invoices and accounting records you create in ARVANN's bookkeeping tools are retained for the period required under Indian tax law." },
   { kind: "divider" },
 
   { kind: "h2", text: "7. Security" },
