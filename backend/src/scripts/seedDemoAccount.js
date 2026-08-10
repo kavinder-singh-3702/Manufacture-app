@@ -23,6 +23,14 @@
  *   2. Create a company in the app (the accounting books bootstrap on
  *      company creation, which is why this step isn't scripted).
  *
+ * PRODUCT PHOTOS (optional but strongly recommended)
+ *   Drop images into src/scripts/demo-assets/ named by SKU:
+ *     DEMO-YARN-40S.jpg, DEMO-KRAFT-120.jpg, ...
+ *   The script reads each file and base64-encodes it before upload, so you
+ *   just supply ordinary .jpg/.png/.webp files. Any SKU without an image is
+ *   still created — it just shows the "No image" placeholder, which is the
+ *   single weakest thing a reviewer can see.
+ *
  * USAGE
  *   # dry run — prints what it would do, writes nothing
  *   node src/scripts/seedDemoAccount.js --email demo@arvann.in
@@ -39,9 +47,25 @@
  */
 
 const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
 
 const DEFAULT_API_BASE = 'http://localhost:4000/api';
 const REQUEST_TIMEOUT_MS = 30000;
+
+// Drop product photos here named by SKU — e.g. DEMO-YARN-40S.jpg — and the
+// script uploads them automatically. The API takes base64, but you never
+// have to produce that yourself: the script reads the file and encodes it,
+// exactly like the mobile app does when you pick a photo from the library.
+// Missing images are skipped with a warning; the product is still created.
+const ASSETS_DIR = path.join(__dirname, 'demo-assets');
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+const MIME_BY_EXTENSION = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
 
 // ---------------------------------------------------------------------------
 // Seed data
@@ -321,6 +345,51 @@ const isoDaysAgo = (days) => {
 
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
+/**
+ * Looks for demo-assets/<SKU>.<ext> and returns an upload payload, or null
+ * if no image was provided for this SKU.
+ *
+ * The product image API takes base64 in `content` (there's no multipart
+ * variant for product images), so we read the file and encode it here —
+ * the same thing the mobile app does after you pick a photo. Nobody has to
+ * hand-produce base64.
+ */
+const findImageForSku = (sku) => {
+  for (const ext of IMAGE_EXTENSIONS) {
+    const candidate = path.join(ASSETS_DIR, `${sku}${ext}`);
+    if (fs.existsSync(candidate)) {
+      const buffer = fs.readFileSync(candidate);
+      return {
+        fileName: `${sku}${ext}`,
+        mimeType: MIME_BY_EXTENSION[ext] || 'image/jpeg',
+        content: buffer.toString('base64'),
+        sizeKb: Math.round(buffer.length / 1024),
+      };
+    }
+  }
+  return null;
+};
+
+const uploadProductImage = async ({ apiBase, token, productId, sku }) => {
+  const image = findImageForSku(sku);
+  if (!image) return { uploaded: false, reason: 'no local image' };
+
+  // A failed image upload must not abort the whole seed — the product is
+  // already created and useful without a photo.
+  try {
+    await requestJson({
+      apiBase,
+      token,
+      path: `/products/${productId}/images`,
+      method: 'POST',
+      body: { fileName: image.fileName, mimeType: image.mimeType, content: image.content },
+    });
+    return { uploaded: true, sizeKb: image.sizeKb };
+  } catch (err) {
+    return { uploaded: false, reason: err.message };
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Seed steps
 // ---------------------------------------------------------------------------
@@ -352,7 +421,9 @@ const seedProducts = async ({ apiBase, token, apply }) => {
     }
 
     if (!apply) {
-      console.log(`  [dry-run] would create ${seed.name} (${seed.sku}) · stock ${seed.openingStock}`);
+      const img = findImageForSku(seed.sku);
+      const imgNote = img ? ` + image (${img.sizeKb} KB)` : ' (no image found)';
+      console.log(`  [dry-run] would create ${seed.name} (${seed.sku}) · stock ${seed.openingStock}${imgNote}`);
       created.push({ sku: seed.sku, id: null });
       continue;
     }
@@ -374,8 +445,19 @@ const seedProducts = async ({ apiBase, token, apply }) => {
 
     const res = await requestJson({ apiBase, token, path: '/products', method: 'POST', body: payload });
     const product = res?.product || res;
+    const productId = product?._id;
     console.log(`  ✓ ${seed.name} — ${money(seed.price.amount)}/${seed.price.unit}, stock ${seed.openingStock}`);
-    created.push({ sku: seed.sku, id: product?._id });
+
+    if (productId) {
+      const img = await uploadProductImage({ apiBase, token, productId, sku: seed.sku });
+      if (img.uploaded) {
+        console.log(`      ↳ image uploaded (${img.sizeKb} KB)`);
+      } else if (img.reason !== 'no local image') {
+        console.log(`      ↳ image upload failed: ${img.reason}`);
+      }
+    }
+
+    created.push({ sku: seed.sku, id: productId });
   }
 
   if (skipped.length) {
@@ -520,6 +602,16 @@ const main = async () => {
     );
   }
   console.log(`Signed in as ${user.displayName || user.email} (company ${user.activeCompany})`);
+
+  const withImages = SEED_PRODUCTS.filter((p) => findImageForSku(p.sku)).length;
+  if (withImages === 0) {
+    console.log('');
+    console.log(`No product photos found in ${ASSETS_DIR}`);
+    console.log('Products will be created without images. To add them, drop .jpg/.png files');
+    console.log('named by SKU into that folder and re-run — e.g. DEMO-YARN-40S.jpg');
+  } else {
+    console.log(`Product photos found: ${withImages}/${SEED_PRODUCTS.length}`);
+  }
   console.log('');
 
   console.log('Products');

@@ -1,0 +1,5 @@
+# Demo product photos are local-only — they're seed material for the
+# App Store reviewer account, not source code, and would bloat the repo.
+*
+!.gitignore
+!README.md
