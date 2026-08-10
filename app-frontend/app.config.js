@@ -37,7 +37,12 @@ module.exports = ({ config }) => {
     },
     ios: {
       supportsTablet: true,
-      buildNumber: "1",
+      // Apple requires a NEW build number for every binary uploaded to App
+      // Store Connect, even when resubmitting after a rejection. Build 1
+      // was rejected (placeholder "Coming Soon" content under Guideline
+      // 2.1); build 2 carries the compliance fixes. `version` stays 1.0.0
+      // because nothing has publicly released yet.
+      buildNumber: "2",
       bundleIdentifier: isProd ? PROD_BUNDLE_IDENTIFIER : DEV_BUNDLE_IDENTIFIER,
       usesAppleSignIn: true,
       // Requires apple-app-site-association to be served from

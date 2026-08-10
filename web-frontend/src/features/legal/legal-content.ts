@@ -29,7 +29,8 @@ export const privacyPolicyContent: LegalDocumentContent = {
       paragraphs: [
         "ARVANN (\"we\", \"us\", \"our\") is an industrial-marketplace mobile and web application that connects manufacturers, traders, and buyers.",
         "This Privacy Policy explains what information we collect, how we use it, who we share it with, and the choices you have.",
-        "By using ARVANN, you agree to the practices described here. If you do not agree, please do not use the app or website."
+        "This policy is a notice describing how we handle your information — not a blanket consent to every processing activity. Different activities rest on different legal bases: providing the marketplace and completing your orders is necessary to perform our agreement with you; retaining tax and payment records is a legal obligation; security logging serves our legitimate interest in protecting the platform; and anything optional (such as marketing messages) is done only with your separate consent, which you can withdraw at any time.",
+        "If you do not agree with how we handle information, please stop using ARVANN and contact us to close your account."
       ]
     },
     {
