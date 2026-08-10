@@ -160,8 +160,21 @@ export const AppNavigator = () => {
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <RootStack.Navigator key={authSection} screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (
-          // Not authenticated: Show login/signup screens
-          <RootStack.Screen name="Auth" component={AuthScreen} />
+          // Not authenticated: login/signup, plus the Privacy Policy so a
+          // visitor can read it BEFORE creating an account (Apple Guideline
+          // 5.1.1 wants the policy reachable in-app; the AuthScreen intro
+          // panel links here). It's registered in this branch as well as the
+          // authenticated one below — RootStack swaps its entire screen set
+          // when `user` flips, so a screen only present in the other branch
+          // would fail to navigate with "not handled by any navigator".
+          <>
+            <RootStack.Screen name="Auth" component={AuthScreen} />
+            <RootStack.Screen
+              name="PrivacyPolicy"
+              component={PrivacyPolicyScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+          </>
         ) : (pendingSocialPhoneCollection && !user.phone) ? (
           // One-time phone-collection gate. Fires only when the AuthProvider
           // flag is set — which only happens AT the moment of a fresh,
