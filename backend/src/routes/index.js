@@ -20,6 +20,8 @@ const productOrderRouter = require('../modules/productOrders/routes/productOrder
 const productInquiryRouter = require('../modules/productInquiry/routes/productInquiry.routes');
 const contactRouter = require('../modules/contact/routes/contact.routes');
 const feedbackRouter = require('../modules/feedback/routes/feedback.routes');
+const reportRouter = require('../modules/moderation/routes/report.routes');
+const blockRouter = require('../modules/moderation/routes/block.routes');
 
 const router = Router();
 
@@ -44,5 +46,7 @@ router.use('/product-orders', productOrderRouter);
 router.use('/product-inquiries', productInquiryRouter);
 router.use('/contact', contactRouter);
 router.use('/feedback', feedbackRouter);
+router.use('/reports', reportRouter);
+router.use('/blocks', blockRouter);
 
 module.exports = router;

@@ -52,6 +52,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   Feedback: undefined;
   FeedbackInbox: undefined;
+  ReportsInbox: undefined;
   AddProduct: undefined;
   InternalInventoryItemCreate: undefined;
   InternalInventoryItemEdit: { itemId: string };

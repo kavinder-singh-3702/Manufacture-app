@@ -32,6 +32,7 @@ import { productInquiryService } from "../../services/productInquiry.service";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { isPublicListingProduct } from "./utils/publicListing";
 import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
+import { ReportSheet } from "../../components/moderation/ReportSheet";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
 
@@ -97,6 +98,7 @@ export const ProductDetailsScreen = () => {
   const [inquirySheetOpen, setInquirySheetOpen] = useState(false);
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
   const [adjustStockOpen, setAdjustStockOpen] = useState(false);
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
 
   const isGuest = user?.role === "guest";
 
@@ -404,6 +406,13 @@ export const ProductDetailsScreen = () => {
           <TouchableOpacity onPress={handleShare} hitSlop={8}>
             <Ionicons name="share-social-outline" size={20} color={colors.text} />
           </TouchableOpacity>
+          {/* Report — Apple Guideline 1.2 requires a way to flag
+              user-generated content. Hidden on your own listings. */}
+          {!isOwnProduct && !isGuest ? (
+            <TouchableOpacity onPress={() => setReportSheetOpen(true)} hitSlop={8}>
+              <Ionicons name="flag-outline" size={20} color={colors.text} />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
@@ -906,6 +915,14 @@ export const ProductDetailsScreen = () => {
               setAdjustStockOpen(false);
               loadData();
             }}
+          />
+
+          <ReportSheet
+            visible={reportSheetOpen}
+            targetType="product"
+            targetId={product._id}
+            targetLabel={product.name}
+            onClose={() => setReportSheetOpen(false)}
           />
         </>
       ) : null}

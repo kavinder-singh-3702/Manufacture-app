@@ -7,6 +7,7 @@ const ServiceRequest = require('../../../models/serviceRequest.model');
 const User = require('../../../models/user.model');
 const { emitToUser } = require('../../../socket');
 const { isAdminRole } = require('../../../utils/roles');
+const { isBlockedEitherDirection } = require('../../moderation/services/block.service');
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value) && String(new mongoose.Types.ObjectId(value)) === String(value);
 
@@ -211,6 +212,15 @@ const buildParticipantSummaries = async (conversation) => {
 const getOrCreateConversation = async (userId, participantId) => {
   const userObjId = ensureObjectId(userId);
   const participantObjId = ensureObjectId(participantId);
+
+  // Apple Guideline 1.2 — a blocked pair must not be able to reach each
+  // other. Checked symmetrically: neither the blocker nor the blocked
+  // party can open (or reopen) a thread with the other.
+  const blocked = await isBlockedEitherDirection(userObjId, participantObjId);
+  if (blocked) {
+    throw createError(403, 'You can no longer message this user.');
+  }
+
   const pairKey = ChatConversation.buildParticipantPairKey(userObjId, participantObjId);
 
   // Fast path: an indexed lookup on the canonical pair key. If a row already
@@ -430,6 +440,23 @@ const sendMessage = async (conversationId, senderId, { content, senderRole = 'us
   // an admin/support reply to a thread they weren't seeded as a participant
   // on (see assertConversationAccess docs above).
   await assertConversationAccess(conversationId, senderId, { role: callerRole });
+
+  // Apple Guideline 1.2 — block enforcement on an ALREADY-OPEN thread.
+  // getOrCreateConversation blocks new threads, but a pair who chatted
+  // before a block was placed still holds a live conversationId, so the
+  // send path needs its own symmetric check. Admin/support replies are
+  // exempt: a user blocking another user must not sever support access.
+  if (!isAdminRole(callerRole)) {
+    const conversationForBlockCheck = await ChatConversation.findById(conversationId)
+      .select('participants.user')
+      .lean();
+    const counterpartyId = conversationForBlockCheck?.participants
+      ?.map((p) => p.user)
+      .find((id) => String(id) !== String(senderId));
+    if (counterpartyId && (await isBlockedEitherDirection(senderId, counterpartyId))) {
+      throw createError(403, 'You can no longer message this user.');
+    }
+  }
 
   // Sanitise contextRef — only persist the small subset of fields the schema
   // defines so a malformed client payload doesn't pollute the document.

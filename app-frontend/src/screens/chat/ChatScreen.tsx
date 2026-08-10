@@ -28,6 +28,8 @@ import { useUnreadMessages } from "../../providers/UnreadMessagesProvider";
 import type { RootStackParamList } from "../../navigation/types";
 import type { ChatMessage } from "../../types/chat";
 import { ChatProductContextCard } from "./components/ChatProductContextCard";
+import { ReportSheet } from "../../components/moderation/ReportSheet";
+import { moderationService } from "../../services/moderation.service";
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, "Chat">;
 type ChatScreenNavProp = NativeStackNavigationProp<RootStackParamList, "Chat">;
@@ -108,8 +110,13 @@ export const ChatScreen = () => {
   // uninitialized until this line runs), so ChatScreen threw
   // `ReferenceError: Cannot access 'productId' before initialization` on
   // every single render (X1). Moved above the block that reads it.
-  const { conversationId, recipientName, recipientPhone, productId } = route.params;
+  const { conversationId, recipientName, recipientPhone, productId, recipientId } = route.params;
   const currentUserId = useMemo(() => user?.id || "user-guest", [user]);
+
+  // Moderation (Apple Guideline 1.2): report the counterparty or block
+  // them outright. Both live behind the header's ⋯ menu.
+  const [moderationMenuOpen, setModerationMenuOpen] = useState(false);
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
 
   // Seller-chat context card: when route.params.productId is present (added in
   // step 4 of the unify effort), fetch a thin product summary and render
@@ -360,6 +367,38 @@ export const ChatScreen = () => {
     try { await Linking.openURL(url); } catch { Alert.alert("Call User", `Phone: ${p}`); }
   };
 
+  // Apple Guideline 1.2 — block a bad actor. Backend enforces the block
+  // symmetrically (neither party can open or continue a thread), so after
+  // a successful block we pop back to the previous screen: the thread is
+  // no longer usable.
+  const handleBlockUser = useCallback(() => {
+    setModerationMenuOpen(false);
+    if (!recipientId) {
+      Alert.alert("Unavailable", "We couldn't identify this user. Please try from their profile.");
+      return;
+    }
+    Alert.alert(
+      `Block ${recipientName || "this user"}?`,
+      "They will no longer be able to message you, and you won't be able to message them. You can undo this later from Profile → Blocked users.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await moderationService.blockUser(recipientId);
+              Alert.alert("User blocked", `${recipientName || "This user"} can no longer contact you.`);
+              navigation.goBack();
+            } catch (err: any) {
+              Alert.alert("Block failed", err?.message || "Could not block this user right now.");
+            }
+          },
+        },
+      ]
+    );
+  }, [navigation, recipientId, recipientName]);
+
   const toggleAttachMenu = () => {
     Keyboard.dismiss();
     setShowAttachMenu((prev) => !prev);
@@ -581,10 +620,53 @@ export const ChatScreen = () => {
         <TouchableOpacity onPress={handleCallUser} style={styles.headerActionBtn}>
           <Ionicons name="call-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerActionBtn}>
+        <TouchableOpacity style={styles.headerActionBtn} onPress={() => setModerationMenuOpen((v) => !v)}>
           <Ionicons name="ellipsis-vertical" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
+
+      {/* Moderation menu (Apple Guideline 1.2). Anchored under the header's
+          ⋯ button. Report is always available; Block needs a resolvable
+          counterparty id from route params. */}
+      {moderationMenuOpen ? (
+        <>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setModerationMenuOpen(false)}
+          />
+          <View
+            style={[
+              styles.moderationMenu,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.moderationMenuItem}
+              onPress={() => {
+                setModerationMenuOpen(false);
+                setReportSheetOpen(true);
+              }}
+            >
+              <Ionicons name="flag-outline" size={18} color={colors.text} />
+              <Text style={[styles.moderationMenuText, { color: colors.text }]}>Report user</Text>
+            </TouchableOpacity>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
+            <TouchableOpacity style={styles.moderationMenuItem} onPress={handleBlockUser}>
+              <Ionicons name="ban-outline" size={18} color={colors.error} />
+              <Text style={[styles.moderationMenuText, { color: colors.error }]}>Block user</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : null}
+
+      <ReportSheet
+        visible={reportSheetOpen}
+        targetType="user"
+        targetId={recipientId ?? null}
+        targetLabel={recipientName}
+        onClose={() => setReportSheetOpen(false)}
+      />
 
       {/* Seller chat: pinned product context card. Hidden for support chat. */}
       {contextProduct ? (
@@ -684,6 +766,32 @@ const styles = StyleSheet.create({
   headerName: { fontSize: 17, fontWeight: "700", letterSpacing: 0.1 },
   headerStatus: { fontSize: 12, fontWeight: "500", marginTop: 1 },
   headerActionBtn: { padding: 8 },
+  // Moderation dropdown anchored under the header's ⋯ button. zIndex keeps
+  // it above the message list; the full-screen backdrop behind it closes
+  // the menu on outside tap.
+  moderationMenu: {
+    position: "absolute",
+    top: 96,
+    right: 12,
+    minWidth: 180,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+    zIndex: 50,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+  },
+  moderationMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  moderationMenuText: { fontSize: 14, fontWeight: "700" },
 
   dayContainer: { alignItems: "center", marginVertical: 12 },
   dayPill: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 5 },

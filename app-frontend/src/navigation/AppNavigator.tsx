@@ -26,6 +26,7 @@ import { CompanyContextPickerScreen } from "../screens/company/CompanyContextPic
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { FeedbackScreen } from "../screens/feedback/FeedbackScreen";
 import { FeedbackInboxScreen } from "../screens/admin/FeedbackInboxScreen";
+import { ReportsInboxScreen } from "../screens/admin/ReportsInboxScreen";
 import {
   AddProductScreen,
   EditProductScreen,
@@ -253,6 +254,11 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="FeedbackInbox"
               component={FeedbackInboxScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="ReportsInbox"
+              component={ReportsInboxScreen}
               options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen

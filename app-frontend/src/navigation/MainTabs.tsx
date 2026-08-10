@@ -412,6 +412,11 @@ export const MainTabs = () => {
     stackNavigation.navigate(isAdmin ? "FeedbackInbox" : "Feedback");
   }, [isAdmin, isAuthenticated, requestLogin, stackNavigation]);
 
+  const handleModeration = useCallback(() => {
+    setSidebarVisible(false);
+    stackNavigation.navigate("ReportsInbox");
+  }, [stackNavigation]);
+
   const handleLogout = useCallback(async () => {
     setSidebarVisible(false);
     await logout();
@@ -505,6 +510,17 @@ export const MainTabs = () => {
           : "Tell us what's working and what isn't",
         onPress: handleSendFeedback,
       },
+      // Apple Guideline 1.2 — the in-app Report action has to route to a
+      // queue a human actually reviews. Admin-only.
+      ...(isAdmin
+        ? [
+            {
+              label: "Moderation",
+              description: "Review reported listings, messages, and users",
+              onPress: handleModeration,
+            },
+          ]
+        : []),
       ...(isAuthenticated
         ? [
             {
@@ -516,7 +532,7 @@ export const MainTabs = () => {
           ]
         : []),
     ];
-  }, [handleForgotPassword, handleHelp, handleLogout, handleNotificationStudio, handlePreferences, handleSendFeedback, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
+  }, [handleForgotPassword, handleHelp, handleLogout, handleModeration, handleNotificationStudio, handlePreferences, handleSendFeedback, isAdmin, isAuthenticated, navigationItems, profileOrLoginItem, tabs]);
 
   const closeCompanyModal = useCallback(() => setCompanyModalOpen(false), []);
 
