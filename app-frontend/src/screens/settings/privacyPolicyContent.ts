@@ -115,7 +115,7 @@ export const PRIVACY_POLICY_BLOCKS: PolicyBlock[] = [
   {
     kind: "p",
     text:
-      "When you complete a purchase, payment is processed by Razorpay, a PCI-DSS-compliant payment processor. Your card, UPI, or bank details are entered directly into Razorpay's secure interface — we never see or store them. We only receive the transaction status (success / failure), an order reference, and the payment amount. See Section 5.4 for Razorpay's role.",
+      "Online payment is currently available on the ARVANN website only. This mobile app does not process payments — product enquiries route to a quote request or a direct conversation with the seller instead. Where payment does occur on the website, it is processed by Razorpay, a PCI-DSS-compliant payment processor: your card, UPI, or bank details are entered directly into Razorpay's secure interface, we never see or store them, and we receive only the transaction status, an order reference, and the amount.",
   },
   { kind: "divider" },
 

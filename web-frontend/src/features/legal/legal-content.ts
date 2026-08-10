@@ -44,7 +44,7 @@ export const privacyPolicyContent: LegalDocumentContent = {
         "Content you create — product listings (title, description, price, categories, images), messages sent through in-app chat, feedback you submit, and quotes, orders, or inquiries you send or receive.",
         "Device and technical information — platform (iOS, Android, web), push-notification token, IP address recorded at login for security auditing, and basic device information used by the app to render correctly (screen size, OS version).",
         "Activity information — login events (timestamp, IP address) for security, product views, favorites, cart contents, and ad interactions (impressions, clicks, dismissals) within ARVANN.",
-        "Payment information — when you complete a purchase, payment is processed by Razorpay (a PCI-DSS-compliant payment processor). Your card, UPI, or bank details are entered directly into Razorpay's secure interface and we never see or store them. We only receive the transaction status, an order reference, and the payment amount."
+        "Payment information — online payment is currently available on the ARVANN website only; the mobile app does not process payments and instead routes you to a quote or a direct enquiry. Where payment does occur, it is processed by Razorpay (a PCI-DSS-compliant payment processor). Your card, UPI, or bank details are entered directly into Razorpay's secure interface and we never see or store them. We only receive the transaction status, an order reference, and the payment amount."
       ]
     },
     {

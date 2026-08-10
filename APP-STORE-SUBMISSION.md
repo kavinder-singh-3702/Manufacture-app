@@ -49,7 +49,6 @@ For every data type below, the answers are the same unless noted:
 | Contact Info | Name | App Functionality |
 | Contact Info | Phone Number | App Functionality |
 | Contact Info | Physical Address | App Functionality *(only when a user enters shipping/billing details)* |
-| Financial Info | Payment Info | App Functionality *(processed by Razorpay; we never store card details, but a payment happens in-app so Apple wants it declared)* |
 | User Content | Photos or Videos | App Functionality *(product images, verification documents, chat attachments, avatars)* |
 | User Content | Customer Support | App Functionality *(in-app chat messages)* |
 | User Content | Other User Content | App Functionality *(product descriptions, feedback text)* |
@@ -57,6 +56,21 @@ For every data type below, the answers are the same unless noted:
 | Identifiers | Device ID | App Functionality *(Expo push notification token only)* |
 | Usage Data | Product Interaction | App Functionality, Product Personalization |
 | Sensitive Info | Other Sensitive Info | App Functionality — description: *"Business owners may upload GST certificates or identity documents (including Aadhaar) to verify their company listing. Used only for compliance verification and visible only to internal verification admins."* |
+
+### Do NOT declare Payment Info
+
+The in-app Razorpay checkout is currently disabled — the "Buy Now" branch
+in `ProductDetailsScreen` is commented out, and products show "Get Quote"
+or "Contact to Purchase" instead. The iOS app therefore **never collects
+payment information**, so declaring *Financial Info → Payment Info* would
+over-declare against actual behaviour.
+
+The `react-native-razorpay` SDK is still bundled but is never invoked. An
+unused dependency is not a violation, so there's no need to strip it
+before this submission.
+
+> If in-app checkout is ever re-enabled, you must come back and add
+> *Financial Info → Payment Info* here.
 
 ### Data types to LEAVE UNCHECKED
 
