@@ -1,6 +1,7 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
 const { uploadUserDocument } = require('../services/storage.service');
+const { deleteCurrentUserAccount } = require('../services/accountDeletion.service');
 const { ACTIVITY_ACTIONS } = require('../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../modules/activity/services/activity.service');
 const { clearStaleActiveCompany } = require('../modules/auth/utils/activeCompany.util');
@@ -158,8 +159,21 @@ const uploadUserFile = async (req, res, next) => {
   }
 };
 
+const deleteCurrentUser = async (req, res, next) => {
+  try {
+    const result = await deleteCurrentUserAccount(req, {
+      password: req.body?.password,
+      confirm: req.body?.confirm,
+    });
+    return res.json(result);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getCurrentUser,
   updateCurrentUser,
-  uploadUserFile
+  uploadUserFile,
+  deleteCurrentUser
 };

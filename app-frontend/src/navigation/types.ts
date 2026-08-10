@@ -41,6 +41,8 @@ export type RootStackParamList = {
   Profile: undefined;
   Appearance: undefined;
   NotificationPreferences: undefined;
+  DeleteAccount: undefined;
+  PrivacyPolicy: undefined;
   Cart: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   CompanyCreate: { redirectTo?: CompanyContextRedirectTarget } | undefined;

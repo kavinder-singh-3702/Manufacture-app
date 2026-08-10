@@ -13,6 +13,8 @@ import { FullScreenLoader } from "./components/FullScreenLoader";
 import { ProfileScreen } from "../screens/profile/ProfileScreen";
 import { AppearanceScreen } from "../screens/settings/AppearanceScreen";
 import { NotificationPreferencesScreen } from "../screens/settings/NotificationPreferencesScreen";
+import { DeleteAccountScreen } from "../screens/settings/DeleteAccountScreen";
+import { PrivacyPolicyScreen } from "../screens/settings/PrivacyPolicyScreen";
 import { MainTabs } from "./MainTabs";
 import { useTheme } from "../hooks/useTheme";
 import { RootStackParamList } from "./types";
@@ -196,6 +198,16 @@ export const AppNavigator = () => {
             <RootStack.Screen
               name="NotificationPreferences"
               component={NotificationPreferencesScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="DeleteAccount"
+              component={DeleteAccountScreen}
+              options={{ animation: "slide_from_right" }}
+            />
+            <RootStack.Screen
+              name="PrivacyPolicy"
+              component={PrivacyPolicyScreen}
               options={{ animation: "slide_from_right" }}
             />
             <RootStack.Screen

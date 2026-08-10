@@ -57,8 +57,13 @@ module.exports = ({ config }) => {
         NSLocalNetworkUsageDescription:
           "ARVANN needs local network access to connect to the development server.",
         NSBonjourServices: ["_http._tcp"],
-        NSCameraUsageDescription: "ARVANN needs camera access to take product photos.",
-        NSPhotoLibraryUsageDescription: "ARVANN needs photo library access to upload product images.",
+        // Apple rejects if the description doesn't match every real use.
+        // Camera is invoked from three surfaces: product listings, chat
+        // image attachments, and business-verification document capture.
+        NSCameraUsageDescription:
+          "ARVANN uses your camera to take photos for product listings, chat messages, and business-verification documents.",
+        NSPhotoLibraryUsageDescription:
+          "ARVANN needs photo library access so you can upload product images, chat attachments, and verification documents.",
       },
     },
     android: {

@@ -5,6 +5,7 @@ const ACTIVITY_ACTIONS = Object.freeze({
   AUTH_PASSWORD_RESET_REQUESTED: 'auth.password.reset-requested',
   AUTH_PASSWORD_RESET: 'auth.password.reset',
   USER_PROFILE_UPDATED: 'user.profile.updated',
+  USER_ACCOUNT_DELETED: 'user.account.deleted',
   USER_FILE_UPLOADED: 'user.file.uploaded',
   COMPANY_CREATED: 'company.created',
   COMPANY_UPDATED: 'company.updated',

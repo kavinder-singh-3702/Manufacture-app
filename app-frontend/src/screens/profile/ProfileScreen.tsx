@@ -248,6 +248,23 @@ export const ProfileScreen = () => {
         navigation.navigate("CompanyCreate");
       },
     },
+    // Apple App Store Guideline 5.1.1: privacy policy must be
+    // reachable inside the app, not just via a URL in App Store Connect.
+    {
+      key: "privacy-policy",
+      label: "Privacy Policy",
+      icon: "shield-checkmark-outline" as const,
+      onPress: () => navigation.navigate("PrivacyPolicy"),
+    },
+    // Apple App Store Guideline 5.1.1(v): account deletion must be
+    // reachable from inside the app. This entry point drives the
+    // DeleteAccountScreen which does the actual purge.
+    {
+      key: "delete-account",
+      label: "Delete Account",
+      icon: "trash-outline" as const,
+      onPress: () => navigation.navigate("DeleteAccount"),
+    },
   ];
 
   const fullAddress = formatAddress(user);

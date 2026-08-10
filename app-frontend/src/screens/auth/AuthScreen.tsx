@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../navigation/types";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./LoginScreen";
@@ -176,6 +179,10 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
   const { colors } = useTheme();
   const { resolvedMode } = useThemeMode();
   const { isCompact, isXCompact, clamp, fs, sp } = useResponsiveLayout();
+  // Navigation for the pre-signup Privacy Policy link. Apple + best
+  // practice: users should be able to read the policy BEFORE creating
+  // an account, not only from inside the authenticated app.
+  const introNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isDark = resolvedMode === "dark";
   const [reduceMotionEnabled, setReduceMotionEnabled] = useState(false);
   // Apple sign-in errors used to be swallowed here because the button
@@ -600,6 +607,18 @@ const IntroPanel = ({ onJoin, onSkip }: IntroPanelProps) => {
             <Text style={[styles.skipText, { color: skipTextColor, fontSize: fs(14) }]}>Skip</Text>
           </Pressable>
         </Animated.View>
+        {/* Pre-signup Privacy Policy link — Apple + best practice.
+            Users should be able to read the policy before creating an
+            account, not only from inside the authenticated app. */}
+        <Pressable
+          onPress={() => introNavigation.navigate("PrivacyPolicy")}
+          style={styles.privacyLinkPressable}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={[styles.privacyLinkText, { color: colors.textMuted, fontSize: fs(12) }]}>
+            Privacy Policy
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -784,6 +803,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     letterSpacing: 0.3,
+  },
+  privacyLinkPressable: {
+    marginTop: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    alignSelf: "center",
+  },
+  privacyLinkText: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    textDecorationLine: "underline",
   },
   errorBanner: {
     marginTop: 24,

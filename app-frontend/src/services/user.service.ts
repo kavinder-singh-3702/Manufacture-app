@@ -31,8 +31,19 @@ const uploadUserFile = async (payload: { fileName: string; mimeType?: string; ur
   });
 };
 
+/**
+ * Permanent, in-app account deletion required by Apple App Store
+ * Guideline 5.1.1(v). The backend anonymizes the user record, unpublishes
+ * the user's products, wipes push devices + inbox + preferences, and
+ * force-logs-out any outstanding sessions. Password is optional for
+ * Apple-signin-only accounts.
+ */
+const deleteAccount = (payload: { confirm: "DELETE"; password?: string }) =>
+  apiClient.post<{ success: boolean; message: string }>("/users/me/delete", payload);
+
 export const userService = {
   getCurrentUser,
   updateCurrentUser,
   uploadUserFile,
+  deleteAccount,
 };
