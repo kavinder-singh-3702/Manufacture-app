@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { LegalDocumentContent } from "./legal-content";
-import { SiteFooter } from "@/src/features/marketing/components/SiteFooter";
 import { BrandWordmark } from "@/src/components/BrandLogo";
 import {
   SUPPORT_EMAIL,
@@ -166,6 +165,54 @@ export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => (
       </div>
     </main>
 
-    <SiteFooter />
+    {/* Minimal legal-page footer. Keeps only what a compliance reader
+        actually needs: copyright (legal identification of the operator),
+        cross-links to the sibling legal doc, and lean contact info.
+        The full marketing SiteFooter (brand tagline, "Sell on ARVANN"
+        CTA, industry link columns, socials) is deliberately NOT used
+        here — same reason we stripped the auth CTAs from the header. */}
+    <footer
+      className="mt-auto"
+      style={{
+        borderTop: "1px solid var(--border)",
+        backgroundColor: "var(--surface)",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-start gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <p className="text-xs" style={{ color: "var(--medium-gray)" }}>
+          © {new Date().getFullYear()} ARVANN Technologies. All rights reserved.
+        </p>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Link
+            href="/privacy-policy"
+            className="text-xs transition-opacity hover:opacity-70"
+            style={{ color: "var(--medium-gray)" }}
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/terms-and-conditions"
+            className="text-xs transition-opacity hover:opacity-70"
+            style={{ color: "var(--medium-gray)" }}
+          >
+            Terms
+          </Link>
+          <a
+            href={SUPPORT_EMAIL_MAILTO}
+            className="text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: "var(--foreground)" }}
+          >
+            {SUPPORT_EMAIL}
+          </a>
+          <a
+            href={SUPPORT_PHONE_TEL}
+            className="text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: "var(--foreground)" }}
+          >
+            {SUPPORT_PHONE_DISPLAY}
+          </a>
+        </div>
+      </div>
+    </footer>
   </div>
 );
