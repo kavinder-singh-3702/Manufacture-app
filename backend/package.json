@@ -10,6 +10,7 @@
     "email:smoke": "node src/scripts/sendSmokeEmail.js",
     "storage:verify": "node src/scripts/verifyStorageConnection.js",
     "seed:paper-packaging": "node src/scripts/seedPaperPackagingProducts.js",
+    "seed:demo-account": "node src/scripts/seedDemoAccount.js",
     "cleanup:legacy-campaigns": "node src/scripts/cleanupLegacyCampaigns.js",
     "bootstrap:accounting": "node src/modules/accounting/scripts/bootstrapCompanyBooks.js",
     "lint": "echo \"Add lint command\" && exit 0",
