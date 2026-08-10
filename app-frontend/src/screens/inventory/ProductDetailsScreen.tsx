@@ -33,6 +33,7 @@ import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { isPublicListingProduct } from "./utils/publicListing";
 import { QuickAdjustStockSheet } from "./components/QuickAdjustStockSheet";
 import { ReportSheet } from "../../components/moderation/ReportSheet";
+import { IN_APP_CHECKOUT_ENABLED } from "../../constants/features";
 
 type ScreenRoute = RouteProp<RootStackParamList, "ProductDetails">;
 
@@ -217,6 +218,14 @@ export const ProductDetailsScreen = () => {
 
   const ensureCheckoutReady = useCallback(() => {
     if (!product) return null;
+    // Hard stop while in-app payments are off for v1.0 — see
+    // constants/features.ts. The "Buy Now" branch that calls into this is
+    // already commented out, so this is defence in depth against any
+    // future edit re-exposing the button before payments are ready.
+    if (!IN_APP_CHECKOUT_ENABLED) {
+      toastError("Checkout unavailable", "Please request a quote or contact the seller to purchase.");
+      return null;
+    }
     if (!checkoutEligible) {
       toastError("Prepaid checkout unavailable", "This product is not enabled for Razorpay checkout.");
       return null;

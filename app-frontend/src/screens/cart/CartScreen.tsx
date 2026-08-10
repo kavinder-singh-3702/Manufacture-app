@@ -22,6 +22,7 @@ import { useToast } from "../../components/ui/Toast";
 import { CartItem } from "../../providers/CartProvider";
 import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
 import { SUPPORT_PHONE_DISPLAY } from "../../constants/brand";
+import { IN_APP_CHECKOUT_ENABLED } from "../../constants/features";
 import { RootStackParamList } from "../../navigation/types";
 import {
   canCallProduct,
@@ -595,7 +596,12 @@ export const CartScreen = () => {
               <Text style={styles.contactHelperText}>{contactHelperText}</Text>
             </View>
 
-            {eligibleItems.length ? (
+            {/* IN_APP_CHECKOUT_ENABLED is off for v1.0 — see
+                constants/features.ts. This is the last remaining route
+                into the Razorpay flow, so gating it here means no
+                payment path is reachable even if an in-house product
+                has prepaid switched on. */}
+            {IN_APP_CHECKOUT_ENABLED && eligibleItems.length ? (
               <TouchableOpacity
                 style={styles.paymentActionButton}
                 activeOpacity={0.9}
