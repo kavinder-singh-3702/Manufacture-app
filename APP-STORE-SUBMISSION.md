@@ -126,14 +126,26 @@ When asked *"Does your app use encryption?"*:
 
 ### Demo account
 
-Create one on production before submitting, then fill in:
-
 ```
-Username: <your demo email>
-Password: <your demo password>
+Username: <your account email>
+Password: <your account password>
 ```
 
-> Make sure this account has: a verified company, a few products with images, at least one posted sales invoice, and one support chat thread. Reviewers judge the app by what this account sees.
+We're submitting a real (non-admin) user account rather than a purpose-made
+demo account. That's fine for review — reviewers only need user-facing
+features — but two things to do first:
+
+- **Check the account looks populated.** Reviewers judge the app by what
+  this account sees. It wants visible products with images, non-zero
+  accounting figures, and at least one chat thread. If it's thin, the seed
+  script (`npm run seed:demo-account`) works against any account.
+- **Skim your chat threads** and clear anything you'd rather a stranger
+  not read. Apple staff will be signed in as you.
+
+> Do **not** use an admin account. A reviewer browsing the admin sidebar
+> would see User Management with every real user's email and phone number,
+> which contradicts the privacy policy's "accessible only to internal
+> verification admins".
 
 ### Notes to reviewer
 
@@ -153,9 +165,18 @@ wording has been removed from the bundle.
 Also included in this build:
 
 - Account deletion (Guideline 5.1.1(v)): Profile > Delete Account.
-  Requires typing DELETE plus password confirmation, then permanently
-  anonymizes the account, unpublishes the user's listings, purges push
-  tokens and personal data, and signs the user out on all devices.
+  The confirmation screen lists exactly what is deleted and what is
+  retained. Completing it requires typing DELETE plus the account
+  password, then permanently anonymizes the account, unpublishes the
+  user's listings, purges push tokens and personal data, and signs the
+  user out on all devices.
+
+  PLEASE NOTE: the credentials above are for a live account. Please do
+  not complete the deletion flow on it, as the action is irreversible
+  and would end your access to the app for the rest of the review. The
+  confirmation screen can be reached and inspected without confirming.
+  We are happy to provide a separate disposable account if you would
+  like to test the deletion end to end - just ask in Resolution Center.
 
 - Privacy policy in-app (Guideline 5.1.1): Profile > Privacy Policy.
   Also linked from the sign-in screen before account creation, and
