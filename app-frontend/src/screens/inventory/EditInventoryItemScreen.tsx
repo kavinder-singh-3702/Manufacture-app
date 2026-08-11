@@ -11,7 +11,10 @@ import {
   Platform,
   ActivityIndicator,
   TextInput,
+  Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -46,6 +49,15 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const [variantSummary, setVariantSummary] = useState({ total: 0 });
+
+  // Product images. The create screen has always supported uploads, but
+  // this screen didn't — so any product created without a photo (including
+  // every product created via the API or a seed script) could never get
+  // one from inside the app. Images upload immediately on pick rather than
+  // on Save, matching how the image API works: it's a separate endpoint
+  // per image, not part of the product PATCH payload.
+  const [productImages, setProductImages] = useState<Product["images"]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState<CreateProductInput>({
     name: "",
@@ -122,6 +134,7 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
         mode === "inhouse"
           ? await adminService.getInhouseProductById(productId, { includeVariantSummary: true })
           : await productService.getById(productId, { scope: "company", includeVariantSummary: true });
+      setProductImages(item.images || []);
       setFormData({
         name: item.name,
         description: item.description || "",
@@ -186,6 +199,62 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
   }, [categories, categorySearch]);
 
   const selectedCategory = useMemo(() => categories.find((c) => c.id === formData.category), [categories, formData.category]);
+
+  const handleAddImage = useCallback(async () => {
+    if (uploadingImage) return;
+
+    // iOS: deliberately skip requestMediaLibraryPermissionsAsync. Asking for
+    // permission makes iOS fall back to the legacy picker, which honours
+    // "Limited Library Access" and shows only Recents. Skipping it lets
+    // expo-image-picker use PHPicker, which needs no permission and shows
+    // the full library. Android still requires the check.
+    if (Platform.OS === "android") {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission needed", "Please allow photo library access to add product images.");
+        return;
+      }
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsMultipleSelection: false,
+      base64: true,
+      exif: false,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    if (!asset.base64) {
+      toastError("Upload failed", "Could not read the selected image.");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const payload = {
+        fileName: asset.fileName || asset.uri.split("/").pop() || `image-${Date.now()}.jpg`,
+        mimeType: asset.mimeType || "image/jpeg",
+        content: asset.base64,
+      };
+
+      const response =
+        mode === "inhouse"
+          ? await adminService.uploadInhouseProductImage(productId, payload)
+          : await productService.uploadImage(productId, payload);
+
+      // Prefer the product the server echoes back so the list reflects
+      // whatever ordering/derived fields it applied.
+      setProductImages(response.product?.images || []);
+      toastSuccess("Image added", formData.name || "Product image uploaded");
+    } catch (err: any) {
+      toastError("Upload failed", err?.message || "Could not upload the image.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [formData.name, mode, productId, toastError, toastSuccess, uploadingImage]);
 
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -329,6 +398,50 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
               </View>
             </View>
           </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>Photos</Text>
+
+          <View style={[styles.imageRow, { marginBottom: spacing.lg }]}>
+            {productImages?.map((img, index) => (
+              <View
+                key={img.url || `${index}`}
+                style={[styles.imageThumb, { borderColor: colors.border, borderRadius: radius.md }]}
+              >
+                <Image source={{ uri: img.url }} style={styles.imageThumbInner} resizeMode="cover" />
+                {index === 0 ? (
+                  <View style={[styles.coverBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.coverBadgeText}>Cover</Text>
+                  </View>
+                ) : null}
+              </View>
+            ))}
+
+            <TouchableOpacity
+              onPress={handleAddImage}
+              disabled={uploadingImage}
+              activeOpacity={0.85}
+              style={[
+                styles.imageThumb,
+                styles.addImageTile,
+                { borderColor: colors.primary, borderRadius: radius.md, backgroundColor: colors.primary + "0F" },
+              ]}
+            >
+              {uploadingImage ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={22} color={colors.primary} />
+                  <Text style={[styles.addImageText, { color: colors.primary }]}>Add photo</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {!productImages?.length && !uploadingImage ? (
+            <Text style={[styles.imageHelperText, { color: colors.textMuted, marginBottom: spacing.lg }]}>
+              Products with photos get noticeably more buyer interest. The first photo you add becomes the cover image.
+            </Text>
+          ) : null}
 
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>Basic Information</Text>
 
@@ -611,6 +724,49 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
+  },
+  imageRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  imageThumb: {
+    width: 92,
+    height: 92,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  imageThumbInner: {
+    width: "100%",
+    height: "100%",
+  },
+  addImageTile: {
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  addImageText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  coverBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 3,
+    alignItems: "center",
+  },
+  coverBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  imageHelperText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   errorText: {
     fontSize: 12,
