@@ -127,22 +127,26 @@ When asked *"Does your app use encryption?"*:
 ### Demo account
 
 ```
-Username: <your account email>
-Password: <your account password>
+Username: abj11kickshot@gmail.com
+Password: <paste from your password manager — see note below>
 ```
 
-We're submitting a real (non-admin) user account rather than a purpose-made
-demo account. That's fine for review — reviewers only need user-facing
-features — but two things to do first:
+**The password is deliberately not committed here.** This repo is shared
+and may go public, and plaintext credentials in git trip secret scanners.
+Keep it wherever you keep passwords and paste it straight into App Store
+Connect.
 
-- **Check the account looks populated.** Reviewers judge the app by what
-  this account sees. It wants visible products with images, non-zero
-  accounting figures, and at least one chat thread. If it's thin, the seed
-  script (`npm run seed:demo-account`) works against any account.
-- **Skim your chat threads** and clear anything you'd rather a stranger
-  not read. Apple staff will be signed in as you.
+This is a disposable account created purely for review — non-admin, no
+real customer data, populated by `npm run seed:demo-account`. Two
+consequences worth knowing:
 
-> Do **not** use an admin account. A reviewer browsing the admin sidebar
+- Reviewers **can** be invited to exercise the account-deletion flow,
+  because losing this account costs nothing. That's a stronger signal
+  than asking them not to touch it.
+- Nothing in it is confidential, so there's no need to audit chat threads
+  before submitting.
+
+> Never submit an admin account. A reviewer browsing the admin sidebar
 > would see User Management with every real user's email and phone number,
 > which contradicts the privacy policy's "accessible only to internal
 > verification admins".
@@ -171,12 +175,11 @@ Also included in this build:
   user's listings, purges push tokens and personal data, and signs the
   user out on all devices.
 
-  PLEASE NOTE: the credentials above are for a live account. Please do
-  not complete the deletion flow on it, as the action is irreversible
-  and would end your access to the app for the rest of the review. The
-  confirmation screen can be reached and inspected without confirming.
-  We are happy to provide a separate disposable account if you would
-  like to test the deletion end to end - just ask in Resolution Center.
+  The account above was created solely for this review and holds no real
+  customer data, so please feel free to run the deletion end to end if
+  you wish to verify it. If you do and then need access again, let us
+  know in Resolution Center and we will provide fresh credentials
+  immediately.
 
 - Privacy policy in-app (Guideline 5.1.1): Profile > Privacy Policy.
   Also linked from the sign-in screen before account creation, and
