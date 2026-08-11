@@ -470,8 +470,10 @@ const seedParties = async ({ apiBase, token, apply }) => {
   const existing = await requestJson({
     apiBase,
     token,
+    // listPartiesValidation caps limit at 100 — a larger value fails
+    // validation with a bare "Invalid value".
     path: '/accounting/parties',
-    query: { limit: 200, offset: 0 },
+    query: { limit: 100, offset: 0 },
   });
   const byName = new Map(
     (existing?.parties || []).map((p) => [String(p.name).trim().toLowerCase(), p])
@@ -513,8 +515,17 @@ const seedVouchers = async ({ apiBase, token, apply, productIdBySku, partyIdByNa
     path: '/accounting/vouchers',
     query: { limit: 100, offset: 0 },
   });
-  if ((existing?.vouchers || []).length > 0) {
-    console.log(`  (skipped — ${existing.vouchers.length} voucher(s) already exist; not adding more)`);
+
+  // Only trade vouchers count as "already seeded". Setting openingStock on
+  // a product posts a stock_adjustment voucher, so a freshly seeded catalog
+  // always arrives with one per product — counting those would skip the
+  // invoices and leave Sales/Purchases at zero, which is the whole thing
+  // this script exists to avoid.
+  const tradeVouchers = (existing?.vouchers || []).filter((v) =>
+    ['sales_invoice', 'purchase_bill'].includes(v.voucherType)
+  );
+  if (tradeVouchers.length > 0) {
+    console.log(`  (skipped — ${tradeVouchers.length} sales/purchase voucher(s) already exist)`);
     return;
   }
 
@@ -534,7 +545,10 @@ const seedVouchers = async ({ apiBase, token, apply, productIdBySku, partyIdByNa
       })
       .filter(Boolean);
 
-    const total = items.reduce((sum, i) => sum + i.amount, 0);
+    // Compute from the seed definition rather than `items` so the dry run
+    // reports a real figure — in dry-run mode no products exist yet, so
+    // `items` resolves empty and every total would print as ₹0.
+    const total = seed.items.reduce((sum, line) => sum + line.quantity * line.rate, 0);
     const label = seed.kind === 'sales_invoice' ? 'Sales Invoice' : 'Purchase Bill';
 
     if (!apply) {
