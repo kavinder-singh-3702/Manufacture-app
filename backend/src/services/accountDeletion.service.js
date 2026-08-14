@@ -5,7 +5,10 @@ const Product = require('../models/product.model');
 const UserDevice = require('../models/userDevice.model');
 const UserFavorite = require('../models/userFavorite.model');
 const Notification = require('../models/notification.model');
-const UserPreferenceEvent = require('../models/userPreferenceEvent.model');
+// Named export, unlike every other model in this file which exports the
+// model directly. Importing it the usual way yields the wrapper object,
+// whose .deleteMany is undefined.
+const { UserPreferenceEvent } = require('../models/userPreferenceEvent.model');
 const { ACTIVITY_ACTIONS } = require('../constants/activity');
 const { recordActivitySafe, extractRequestContext } = require('../modules/activity/services/activity.service');
 
@@ -78,16 +81,31 @@ const unpublishOwnedProducts = async (userId) => {
 };
 
 const purgeDevicesAndInbox = async (userId) => {
-  // Push devices: hard-delete so the user's iPhone stops receiving
-  // notifications addressed to the now-deleted account.
-  await UserDevice.deleteMany({ user: userId }).catch(() => undefined);
-  // Notifications: hard-delete the personal inbox. Broadcast copies to
-  // other users are unaffected.
-  await Notification.deleteMany({ user: userId }).catch(() => undefined);
-  // Favorites: personal signal, no reason to retain post-deletion.
-  await UserFavorite.deleteMany({ user: userId }).catch(() => undefined);
-  // Behavior signals: personal, purge.
-  await UserPreferenceEvent.deleteMany({ user: userId }).catch(() => undefined);
+  // Each purge is independent and best-effort: one failing collection must
+  // not abort the deletion, because the anonymisation that follows is the
+  // part that actually satisfies the user's request.
+  //
+  // try/catch rather than .catch() on the promise — a missing method (e.g.
+  // a model imported with the wrong shape) throws synchronously, before any
+  // promise exists, so .catch() never runs and the whole request 500s.
+  const purges = [
+    // Push devices: stop the user's phone receiving notifications addressed
+    // to an account that no longer exists.
+    ['push devices', () => UserDevice.deleteMany({ user: userId })],
+    // Personal notification inbox. Other users' copies are unaffected.
+    ['notifications', () => Notification.deleteMany({ user: userId })],
+    // Favourites and behaviour signals are personal; no reason to retain.
+    ['favorites', () => UserFavorite.deleteMany({ user: userId })],
+    ['preference events', () => UserPreferenceEvent.deleteMany({ user: userId })],
+  ];
+
+  for (const [label, run] of purges) {
+    try {
+      await run();
+    } catch (err) {
+      console.warn(`[AccountDeletion] Failed to purge ${label}:`, err?.message || err);
+    }
+  }
 };
 
 const deleteCurrentUserAccount = async (req, { password, confirm }) => {
