@@ -242,12 +242,172 @@ Sanity-check each of these on a real device with the demo account **before** sub
 
 ---
 
-## 7. If Apple rejects again
+## 7. Guideline 2.1 "Information Needed" — standing reply
 
-Most likely remaining risks, in order:
+Apple asked for this on the first 1.0 submission (2026-08-11). It is an
+**information request, not a rejection** — nothing is broken, review simply
+pauses until you reply in Resolution Center.
+
+They ask seven things. Put the answers in the **Notes** field of App Review
+Information on every future submission and this shouldn't recur.
+
+### Screen recording (item 1)
+
+Record on a **physical iPhone**, not a simulator. Control Centre screen
+recorder is fine. 3–5 minutes. Apple named specific flows, so hit each:
+
+1. Launch from the home screen (they want the cold start)
+2. Register a new account, including OTP entry
+3. Log out, then log back in
+4. Browse: Home → category → product detail
+5. Trigger the photo-library permission prompt (Edit product → Add photo)
+6. Report a listing: flag icon → reason → Submit
+7. Block a user: seller chat → ⋯ → Block
+8. Request a quote (our equivalent of a purchase flow)
+9. Accounting dashboard showing real figures
+10. **Account deletion, completed end to end** — do this last
+
+Upload to Drive/Dropbox with link sharing on, paste the link into item 1.
+
+After recording deletion, create a fresh account and update the credentials
+in both App Store Connect and item 4.
+
+### The reply
+
+Fill the two placeholders (video link, device models), then paste:
+
+```
+Thank you for reviewing ARVANN. Responses to each item below.
+
+1. SCREEN RECORDING
+A screen recording captured on a physical iPhone running iOS 26 is
+available here: [PASTE YOUR LINK]
+It covers app launch, account registration with email OTP verification,
+login, browsing and product detail, the photo-library permission prompt,
+content reporting, user blocking, the quote request flow, the accounting
+dashboard, and the full account deletion flow.
+
+2. DEVICES AND OS TESTED
+- iPhone [MODEL], iOS 26.5.2
+- iPad [MODEL], iPadOS 26 (the app supports tablet layouts and rotation)
+
+3. APP FUNCTION AND TARGET AUDIENCE
+ARVANN is a business-to-business marketplace for the Indian
+manufacturing sector. The target audience is manufacturers, traders,
+wholesalers, and industrial buyers - typically small and medium
+enterprises.
+
+Problem it solves: sourcing industrial materials in India still happens
+largely over phone calls and WhatsApp, with no structured record of who
+quoted what. Small manufacturers also lack affordable GST-compliant
+bookkeeping.
+
+ARVANN provides: a searchable catalogue across 16+ manufacturing
+categories; verified company profiles backed by GST and identity
+document review; structured quote requests where sellers respond with
+unit price, minimum order quantity, and lead time; real-time buyer-
+seller messaging; and integrated GST-compliant invoicing with inventory
+that updates automatically from those invoices.
+
+ARVANN does not process payments. Buyers and sellers agree commercial
+terms in the app and settle directly between themselves off-platform.
+There is no in-app purchase, subscription, or paid content of any kind.
+
+4. SETUP AND ACCESS INSTRUCTIONS
+No setup or sample files are required. Sign in with:
+
+  Username: abj11kickshot@gmail.com
+  Password: [see password manager]
+
+This account is created solely for review, contains no real customer
+data, and is pre-populated with 8 products, 3 trading parties, and 4
+posted invoices so all features are immediately visible.
+
+Where to find each feature:
+- Browse catalogue: Home tab > Browse by category
+- Product detail and enquiry: tap any product
+- Report a listing: open a product you do not own > flag icon in the
+  top bar > choose a reason > Submit
+- Report or block a user: open any seller chat > three-dot menu in the
+  header > Report user / Block user
+- Request a quote: open a product > Get Quote
+- Chat with a seller: open a product > Message
+- Accounting and invoicing: Accounts tab > Accounting
+- Inventory: Accounts tab > Inventory
+- Your own listings: Profile > Open Company > Products
+- Privacy Policy: Profile > Privacy Policy (also linked on the sign-in
+  screen before account creation, and at
+  https://arvann.in/privacy-policy)
+- Account deletion: Profile > Delete Account. Requires typing DELETE
+  and the account password. Permanently anonymises the account,
+  unpublishes the user's listings, purges push tokens and personal
+  data, and signs out all devices. Please feel free to run this end to
+  end - the account is disposable. If you need access afterwards, ask
+  here and we will supply fresh credentials immediately.
+
+Note on content moderation: reports submitted by users route to an
+internal admin moderation queue where they are reviewed and actioned.
+That queue is admin-only and is not reachable from the review account,
+by design - it would expose other users' personal data.
+
+5. EXTERNAL SERVICES USED
+- Amazon Web Services (S3) - storage for product images, verification
+  documents, and other uploads
+- Sign in with Apple - optional social authentication
+- Apple Push Notification service (APNs) - iOS push delivery
+- Firebase Cloud Messaging - Android push delivery only; not used on iOS
+- SMTP email delivery - signup OTP codes, password reset links,
+  verification decisions
+- MongoDB - primary application database
+- Redis - session storage and real-time message fan-out
+- Socket.IO - real-time chat transport
+
+We do not use any analytics SDK, advertising SDK, or AI service. There
+is no payment processor integrated in the app, as ARVANN does not
+process payments. Advertisements shown in the app are our own
+promotions for products already listed on ARVANN; they are not served
+by any third-party ad network and involve no cross-app tracking.
+
+6. REGIONAL DIFFERENCES
+The app functions identically in all regions where it is available.
+There is no region-gated content or functionality.
+
+The app is designed for the Indian market: prices display in INR, and
+the invoicing module implements Indian GST rules. These are product
+characteristics rather than regional restrictions - the same features
+are present for every user regardless of location.
+
+The app is not distributed in China mainland.
+
+7. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+ARVANN does not operate in a regulated industry. It is a listings and
+communication platform: it does not sell goods itself, hold inventory,
+process payments, act as a financial institution, or provide regulated
+professional advice. Transactions are agreed and settled directly
+between the two businesses.
+
+The invoicing module is a bookkeeping tool that helps users produce
+their own GST-compliant documents. It does not file returns with any
+government authority and does not require a licence to provide.
+
+Businesses may optionally upload GST certificates or identity documents
+to earn a verified badge. These are supplied voluntarily by the
+business about itself, are visible only to internal verification
+administrators, and are deleted when the associated company is removed.
+This is described in section 2 of our Privacy Policy.
+
+All product listings, images, and descriptions are user-generated by
+the listing business. We do not host third-party copyrighted material.
+
+Thank you - happy to provide anything further.
+```
+
+---
+
+## 8. Other rejection risks
 
 1. **Guideline 1.2 depth** — if they want per-message reporting (we currently report at the user level from chat), that's a small addition
-2. **Demo account content** — if the reviewer's account looks empty, they may flag completeness. Seed it well.
-3. **Payments** — if a reviewer asks why there's no purchase flow, the answer is that ARVANN is an enquiry-and-quote marketplace: buyers and sellers settle payment off-platform, so there is nothing to buy in-app and no in-app-purchase obligation under Guideline 3.1.1
+2. **Demo account content** — if the reviewer's account looks empty, they may flag completeness. Re-run `npm run seed:demo-account`.
+3. **Payments** — if asked why there's no purchase flow: ARVANN is an enquiry-and-quote marketplace, buyers and sellers settle off-platform, so there is nothing sold in-app and no in-app-purchase obligation under Guideline 3.1.1
 
-Reply to rejections in Resolution Center with specifics: which guideline, what you changed, and where to find it in the app.
+Reply in Resolution Center with specifics: which guideline, what you changed, and where to find it in the app.
