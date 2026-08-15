@@ -45,14 +45,17 @@ Produces an `.aab` (Android App Bundle), which is what Play requires.
 
 First run asks about the Android Keystore — let EAS generate and manage it.
 
-> **Back the keystore up immediately afterwards:**
-> ```bash
-> eas credentials
-> ```
-> Download and store it somewhere safe. If it is lost, you can never ship
-> an update under `com.manufactureapp.frontend` again — Google has no
-> recovery process. This is the single most unrecoverable mistake
-> available in Android release management.
+> **Back the keystore up afterwards.** With EAS: `eas credentials` and
+> download it. With a local Gradle build, it's whatever path
+> `ARVANN_UPLOAD_STORE_FILE` points at in `~/.gradle/gradle.properties`.
+>
+> Note this is the **upload key**, not the app signing key. Because AAB
+> uploads require Play App Signing, Google generates and holds the actual
+> app signing key and re-signs every build before distribution. So losing
+> the upload key is recoverable — request a reset, register a new one.
+> It costs days and a support round-trip, not the app. The old "lose the
+> keystore, lose the app forever" rule applied to the pre-AAB world where
+> you signed the distributed artifact yourself.
 
 `versionCode` auto-increments (see `eas.json`), so repeat builds won't
 collide.
@@ -210,7 +213,7 @@ After 14 days
 | Feature graphic | Not required | **Required** |
 | Privacy declaration | App Privacy | Data safety |
 | Binary | `.ipa` | `.aab` |
-| Keystore loss | Recoverable via Apple | **Unrecoverable** |
+| Signing key loss | Recoverable via Apple | Recoverable — Play App Signing means Google holds the real key |
 
 Android's total time to public is longer, but review itself is usually
 faster and less adversarial. iOS remains the quicker route to launch.
