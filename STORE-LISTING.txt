@@ -1,0 +1,79 @@
+═══════════════════════════════════════════════════════════
+APP NAME  (30 char limit)
+═══════════════════════════════════════════════════════════
+ARVANN
+
+
+═══════════════════════════════════════════════════════════
+SHORT DESCRIPTION  (80 char limit)
+═══════════════════════════════════════════════════════════
+B2B marketplace for Indian manufacturing. Source, quote, chat and invoice.
+
+
+═══════════════════════════════════════════════════════════
+FULL DESCRIPTION  (4000 char limit)
+═══════════════════════════════════════════════════════════
+ARVANN is a B2B marketplace built for Indian manufacturing. Source raw materials, find verified suppliers, negotiate quotes, and run your books - from one app.
+
+BROWSE A REAL MANUFACTURING CATALOGUE
+Search products across 16+ industries including textiles, paper and packaging, chemicals, metals, plastics, auto components, pharma, and food processing. Filter by category, price, and specification to find exactly what your line needs.
+
+SOURCE WITH CONFIDENCE
+Every listing shows the supplying company, its verification status, and full product specifications. Verified sellers display a trust badge earned by submitting GST and identity documentation for review.
+
+REQUEST QUOTES, NOT GUESSWORK
+Send a structured RFQ with your quantity, target price, and deadline. Sellers respond with unit pricing, minimum order quantity, lead time, and validity - so you can compare offers properly instead of chasing phone calls.
+
+TALK DIRECTLY TO SELLERS
+Message any supplier in real time. Product enquiries open with the item pinned to the conversation, so both sides know exactly what is being discussed. Share images and documents inline.
+
+GST-READY BOOKKEEPING
+Raise sales invoices and purchase bills with automatic CGST, SGST, and IGST calculation based on party state. Record receipts and payments, and track what you are owed with aged outstanding reports.
+
+Run the reports your accountant asks for: Profit and Loss, GST Summary, Trial Balance, Party Outstanding, Stock Summary, and Stock Ledger.
+
+INVENTORY THAT MATCHES YOUR BOOKS
+Track stock across your catalogue with product variants, low-stock alerts, and a full movement history. Every invoice updates inventory automatically, so your stock position and your ledger never drift apart.
+
+LIST YOUR OWN PRODUCTS
+Publish your catalogue with photos, specifications, and variant pricing. Buyers find you by category and reach you by chat or call.
+
+BUSINESS SERVICES
+Request machine repair, skilled workforce, or transport and fleet coordination directly through the app, and track each request to completion.
+
+BUILT FOR INDIAN BUSINESS
+Pricing in INR. GST-compliant invoicing. Multi-company support for operators running more than one entity.
+
+HOW BUYING WORKS
+ARVANN connects buyers and sellers - it does not process payments. You enquire, negotiate, and agree commercial terms directly with the other business, then settle between yourselves. No commission, no payment gateway in between.
+
+Questions or feedback: arvann100@gmail.com
+
+
+═══════════════════════════════════════════════════════════
+GRAPHICS REQUIRED
+═══════════════════════════════════════════════════════════
+App icon         512 x 512 PNG, no transparency
+                 -> assets/brand/arvann-icon-1024.png (resize to 512)
+
+Feature graphic  1024 x 500 PNG or JPG   ** YOU DO NOT HAVE THIS YET **
+                 Banner across the top of your Play listing.
+                 Logo on the brand gradient + "Source. Connect. Grow."
+                 is enough. Canva or Figma, ten minutes.
+
+Phone screenshots  2-8 images, min 320px on the shortest side
+                   Reuse the ones already uploaded to App Store Connect.
+
+Tablet screenshots  Optional, but the app supports tablet so worth adding.
+
+
+═══════════════════════════════════════════════════════════
+OTHER LISTING FIELDS
+═══════════════════════════════════════════════════════════
+App category      Business
+Tags              Choose up to 5 that fit: Business, Productivity,
+                  Shopping, Tools
+Contact email     arvann100@gmail.com
+Contact phone     optional
+Website           https://arvann.in
+Privacy policy    https://arvann.in/privacy-policy
