@@ -14,7 +14,7 @@ module.exports = ({ config }) => {
     ...config,
     name: "ARVANN",
     slug: "arvann",
-    version: "1.0.0",
+    version: "1.0.1",
     // "default" lets iPhone use its natural device orientation (usually
     // portrait on rotate-locked devices) and lets iPad rotate freely
     // between portrait and landscape. iPad users expect rotation; locking
@@ -37,12 +37,12 @@ module.exports = ({ config }) => {
     },
     ios: {
       supportsTablet: true,
-      // Apple requires a NEW build number for every binary uploaded to App
-      // Store Connect, even when resubmitting after a rejection. Build 1
-      // was rejected (placeholder "Coming Soon" content under Guideline
-      // 2.1); build 2 carries the compliance fixes. `version` stays 1.0.0
-      // because nothing has publicly released yet.
-      buildNumber: "2",
+      // 1.0.0 was APPROVED on the App Store, which seals it permanently —
+      // Apple rejects any further upload carrying an approved marketing
+      // version (error 90062), so every release from here bumps `version`.
+      // Build numbers only need to be unique within a version; a new
+      // version restarts at 1.
+      buildNumber: "1",
       bundleIdentifier: isProd ? PROD_BUNDLE_IDENTIFIER : DEV_BUNDLE_IDENTIFIER,
       usesAppleSignIn: true,
       // Requires apple-app-site-association to be served from
@@ -73,7 +73,10 @@ module.exports = ({ config }) => {
     },
     android: {
       package: isProd ? "com.manufactureapp.frontend" : "com.manufactureapp.frontend.dev",
-      versionCode: 3,
+      // Play refuses duplicate versionCodes; 3 is already on the closed
+      // track, and local Gradle builds do NOT auto-increment (eas.json's
+      // autoIncrement only applies to EAS builds). Bump before each upload.
+      versionCode: 4,
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {
