@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -45,6 +46,7 @@ export const QuickAdjustStockSheet = ({
 }) => {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -65,12 +67,23 @@ export const QuickAdjustStockSheet = ({
 
   const adjustment = useMemo(() => (mode === "add" ? qty : -qty), [mode, qty]);
 
-  const projectedStock = useMemo(() => {
+  const currentStock = useMemo(() => {
     if (!product) return null;
     const current = Number(variant ? variant.availableQuantity : product.availableQuantity || 0);
-    if (!Number.isFinite(current)) return null;
-    return Math.max(0, current + adjustment);
-  }, [adjustment, product, variant]);
+    return Number.isFinite(current) ? current : null;
+  }, [product, variant]);
+
+  const projectedStock = useMemo(() => {
+    if (currentStock === null) return null;
+    return Math.max(0, currentStock + adjustment);
+  }, [adjustment, currentStock]);
+
+  // The server refuses to take stock below zero rather than clamping, so block
+  // the save here instead of letting the user submit and get a 409 back.
+  const exceedsStock = useMemo(
+    () => mode === "remove" && currentStock !== null && qty > currentStock,
+    [currentStock, mode, qty]
+  );
 
   const bump = useCallback((delta: number) => {
     setQtyText((prev) => {
@@ -84,6 +97,10 @@ export const QuickAdjustStockSheet = ({
     if (!product) return;
     if (!qty || qty <= 0) {
       toastError("Invalid quantity", "Enter a quantity greater than 0.");
+      return;
+    }
+    if (exceedsStock) {
+      toastError("Not enough stock", `You only have ${currentStock} in stock.`);
       return;
     }
     if (saving) return;
@@ -104,7 +121,7 @@ export const QuickAdjustStockSheet = ({
     } finally {
       setSaving(false);
     }
-  }, [adjustment, onClose, onSaved, product, qty, saving, toastError, toastSuccess, variant]);
+  }, [adjustment, currentStock, exceedsStock, onClose, onSaved, product, qty, saving, toastError, toastSuccess, variant]);
 
   const disabled = !product;
 
@@ -113,8 +130,7 @@ export const QuickAdjustStockSheet = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
-            <KeyboardAvoidingView
-              behavior="padding"
+            <View
               style={[
                 styles.sheet,
                 {
@@ -124,7 +140,8 @@ export const QuickAdjustStockSheet = ({
                   borderTopRightRadius: radius.xl,
                   paddingHorizontal: spacing.lg,
                   paddingTop: spacing.lg,
-                  paddingBottom: spacing.lg + insets.bottom,
+                  paddingBottom: spacing.lg + Math.max(insets.bottom, spacing.md),
+                  maxHeight: windowHeight * 0.88,
                 },
               ]}
             >
@@ -140,6 +157,13 @@ export const QuickAdjustStockSheet = ({
                 </TouchableOpacity>
               </View>
 
+              <ScrollView
+                style={{ flexShrink: 1 }}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+              >
               {/* Mode toggle */}
               <View style={[styles.modeToggle, { backgroundColor: colors.surfaceElevated, borderRadius: radius.pill }]}>
                 <TouchableOpacity
@@ -233,22 +257,25 @@ export const QuickAdjustStockSheet = ({
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.previewLabel, { color: colors.subtextOnLightSurface }]}>After</Text>
-                      <Text style={[styles.previewValue, { color: colors.textOnLightSurface }]}>{projectedStock?.toLocaleString("en-IN") ?? "—"}</Text>
+                      <Text style={[styles.previewValue, { color: exceedsStock ? colors.error : colors.textOnLightSurface }]}>
+                        {exceedsStock ? `Only ${currentStock} available` : projectedStock?.toLocaleString("en-IN") ?? "—"}
+                      </Text>
                     </View>
                   </View>
                 ) : null}
               </View>
+              </ScrollView>
 
               <TouchableOpacity
                 activeOpacity={0.9}
-                disabled={disabled || saving}
+                disabled={disabled || saving || exceedsStock}
                 onPress={handleSave}
                 style={[
                   styles.saveButton,
                   {
                     marginTop: spacing.lg,
                     borderRadius: radius.lg,
-                    backgroundColor: disabled ? colors.buttonSecondary : colors.primary,
+                    backgroundColor: disabled || exceedsStock ? colors.buttonSecondary : colors.primary,
                   },
                 ]}
               >
@@ -261,7 +288,7 @@ export const QuickAdjustStockSheet = ({
                   </>
                 )}
               </TouchableOpacity>
-            </KeyboardAvoidingView>
+            </View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>

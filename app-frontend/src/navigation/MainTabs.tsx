@@ -303,7 +303,9 @@ export const MainTabs = () => {
   }, [activeRoute, activeRouteForNav, tabs]);
 
   const isInventoryShortcutOpen = !isAdmin && activeRoute === routes.STATS;
-  const topBarMode = isInventoryShortcutOpen ? "two_row" : activeTabConfig?.topBarMode ?? "two_row";
+  // Inventory has its own item search inside the screen, so the global
+  // product search bar in the two-row top bar is redundant there.
+  const topBarMode = isInventoryShortcutOpen ? "compact" : activeTabConfig?.topBarMode ?? "two_row";
   const topBarTitle = isInventoryShortcutOpen
     ? "Inventory"
     : activeTabConfig?.tabLabel ?? activeTabConfig?.label ?? (isAdmin ? "Dashboard" : "Home");
@@ -715,7 +717,7 @@ export const MainTabs = () => {
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[styles.accountsSheetOptionTitle, { color: colors.textOnLightSurface }]}>Accounting</Text>
-                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Dashboard, reports, vouchers, internal stock</Text>
+                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Dashboard, reports and vouchers</Text>
                     </View>
                   </TouchableOpacity>
 
@@ -732,7 +734,7 @@ export const MainTabs = () => {
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text style={[styles.accountsSheetOptionTitle, { color: colors.textOnLightSurface }]}>Inventory</Text>
-                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Internal stock insights and low-stock queue</Text>
+                      <Text style={[styles.accountsSheetOptionDesc, { color: colors.subtextOnLightSurface }]}>Stock items, insights and low-stock queue</Text>
                     </View>
                   </TouchableOpacity>
                 </View>

@@ -51,7 +51,8 @@ export interface PartyListResponse {
 }
 
 export interface VoucherItemLine {
-  product: string;
+  // Optional — a line can name a catalogue product, or just carry a description.
+  product?: string;
   variant?: string;
   description?: string;
   quantity: number;

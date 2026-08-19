@@ -14,6 +14,8 @@ import {
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Reanimated, { useAnimatedStyle } from "react-native-reanimated";
+import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -101,6 +103,24 @@ export const ChatScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ChatScreenNavProp>();
   const route = useRoute<ChatScreenRouteProp>();
+  // ─── Keyboard handling — DO NOT REMOVE ───────────────────────────────────
+  // This screen owns its keyboard avoidance. It has been deleted by refactors
+  // and swapped between mechanisms five times (e228833 deleted it silently,
+  // 98d07f8 restored it, a8c3bb5 replaced it with GiftedChat bottomOffset,
+  // a12710f with manual Keyboard listeners, 2ea5cc7 with an app-root
+  // KeyboardAvoidingView) and the input bar ended up under the keyboard on
+  // every cycle. The app-root KAV cannot do this job: react-native-screens
+  // manages pushed screens natively and ignores ancestor React layout, and on
+  // Android that KAV is configured as a no-op. AppContainer therefore disables
+  // the global KAV for this route, and the padding below is the single
+  // mechanism on BOTH platforms:
+  //   closed → insets.bottom (home indicator), open → exact keyboard height,
+  //   tracked per-frame so the input bar rides the keyboard on both platforms.
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardPadding = useAnimatedStyle(() => ({
+    paddingBottom: Math.max(insets.bottom, keyboardHeight.value),
+  }));
+
   const flatListRef = useRef<FlatList>(null);
 
   const inputRef = useRef<TextInput>(null);
@@ -601,7 +621,7 @@ export const ChatScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
+    <Reanimated.View style={[styles.container, { backgroundColor: colors.background }, keyboardPadding]}>
       {/* Status bar */}
       <View style={{ height: insets.top, backgroundColor: colors.surface }} />
 
@@ -758,7 +778,7 @@ export const ChatScreen = () => {
           <Ionicons name="send" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
-    </View>
+    </Reanimated.View>
   );
 };
 

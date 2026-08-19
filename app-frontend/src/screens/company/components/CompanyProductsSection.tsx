@@ -388,6 +388,10 @@ export const CompanyProductsSection = ({
         </View>
       ) : (
         <FlatList
+          // Without an explicit flex the list sizes to its content, overflows
+          // the flex:1 container, and refuses to scroll — it thinks it already
+          // shows everything while the screen clips the rest.
+          style={{ flex: 1 }}
           data={products}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
@@ -415,14 +419,14 @@ export const CompanyProductsSection = ({
                     marginTop: 6,
                     paddingVertical: 10,
                     borderWidth: 1,
-                    borderColor: colors.border,
+                    borderColor: stockQtyOf(item) <= 0 ? stockToneOf(item, colors) : colors.border,
                     borderRadius: radius.md,
                     backgroundColor: colors.surface,
                   }}
                 >
-                  <Ionicons name="cube-outline" size={15} color={colors.primary} />
-                  <Text style={{ fontSize: 12, fontWeight: "800", color: colors.primary }}>
-                    Adjust Stock
+                  <Ionicons name="cube-outline" size={15} color={stockToneOf(item, colors)} />
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: stockToneOf(item, colors) }}>
+                    {stockLabelOf(item)}
                   </Text>
                 </TouchableOpacity>
               ) : null}
@@ -479,6 +483,24 @@ export const CompanyProductsSection = ({
       />
     </View>
   );
+};
+
+type ThemeColors = ReturnType<typeof useTheme>["colors"];
+
+// The owner is about to change this number, so show it on the button itself.
+// Zero is the state that silently blocks a Sales Invoice, so it reads loudest.
+const stockQtyOf = (product: Product) => Number(product.availableQuantity ?? 0);
+
+const stockToneOf = (product: Product, colors: ThemeColors) => {
+  const qty = stockQtyOf(product);
+  if (qty <= 0) return colors.error;
+  if (qty <= Number(product.minStockQuantity ?? 0)) return colors.warning;
+  return colors.primary;
+};
+
+const stockLabelOf = (product: Product) => {
+  const qty = stockQtyOf(product);
+  return qty <= 0 ? "Out of stock \u2014 Add Stock" : `In stock: ${qty} \u00b7 Adjust Stock`;
 };
 
 const createStyles = (

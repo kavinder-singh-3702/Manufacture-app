@@ -304,6 +304,7 @@ const persistVoucherArtifacts = async ({
   if (artifacts.stockMoves.length) {
     stockMoves = await applyStockMoves(companyId, artifacts.stockMoves, {
       preventNegativeStock: true,
+      voucherType: voucher.voucherType,
       session
     });
 

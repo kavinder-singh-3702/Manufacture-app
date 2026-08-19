@@ -386,6 +386,10 @@ export const RequestsTab = () => {
       />
 
       <FlatList
+        // Same latent bug as CompanyProductsSection: without flex the list
+        // sizes to its content and silently stops scrolling once it outgrows
+        // the screen.
+        style={{ flex: 1 }}
         data={requests}
         keyExtractor={(item) => `${item.kind}:${item.id}`}
         renderItem={renderItem}

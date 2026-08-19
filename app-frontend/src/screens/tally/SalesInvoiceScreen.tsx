@@ -61,6 +61,17 @@ export const SalesInvoiceScreen = () => {
     ]);
   };
 
+  // The Item field is the single source of truth for what a line is. Typing
+  // into it detaches any previously picked catalogue product, so a linked line
+  // can never carry a name that disagrees with the product it points at.
+  const setLineItemName = (index: number, text: string) => {
+    setItems((prev) =>
+      prev.map((line, i) =>
+        i === index ? { ...line, description: text, product: '', variant: undefined, productName: undefined, variantLabel: undefined } : line
+      )
+    );
+  };
+
   const removeItem = (index: number) => {
     if (items.length > 1) {
       setItems(items.filter((_, i) => i !== index));
@@ -132,11 +143,9 @@ export const SalesInvoiceScreen = () => {
           : selection.product.unit || current.unit,
       productName: variantLabel ? `${selection.product.name} • ${variantLabel}` : selection.product.name,
       variantLabel,
-      description: current.description?.trim()
-        ? current.description
-        : variantLabel
-          ? `${selection.product.name} - ${variantLabel}`
-          : selection.product.name,
+      // The Item field always mirrors the picked product — typing is what
+      // detaches it, so there is nothing worth preserving here.
+      description: variantLabel ? `${selection.product.name} - ${variantLabel}` : selection.product.name,
       rate,
       amount: (current.quantity || 0) * rate,
     };
@@ -175,8 +184,11 @@ export const SalesInvoiceScreen = () => {
       return;
     }
 
-    if (items.some((item) => !item.product || item.product.length !== 24 || item.quantity <= 0 || item.rate <= 0)) {
-      Alert.alert('Error', 'Please select a product and fill quantity/rate for all items');
+    // A line needs either a catalogue product or a typed description — not both.
+    const isNamed = (item: LineItem) =>
+      (typeof item.product === 'string' && item.product.length === 24) || Boolean(item.description?.trim());
+    if (items.some((item) => !isNamed(item) || item.quantity <= 0 || item.rate <= 0)) {
+      Alert.alert('Error', 'Every line needs a product or a description, plus quantity and rate.');
       return;
     }
 
@@ -199,7 +211,7 @@ export const SalesInvoiceScreen = () => {
         partyId: customerPartyId,
         date,
         items: items.map((item) => ({
-          product: item.product,
+          product: item.product || undefined,
           variant: item.variant,
           description: item.description,
           quantity: item.quantity,
@@ -351,51 +363,48 @@ export const SalesInvoiceScreen = () => {
                 )}
               </View>
 
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Product *</Text>
-              <TouchableOpacity
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Item *</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      flex: 1,
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.text,
+                      borderRadius: radius.md,
+                    },
+                  ]}
+                  value={item.description}
+                  onChangeText={(text) => setLineItemName(index, text)}
+                  placeholder="Type item name"
+                  placeholderTextColor={colors.textMuted}
+                />
+                <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '700' }}>or</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => openProductPicker(index)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
                     borderRadius: radius.md,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  },
-                ]}
-                activeOpacity={0.8}
-                onPress={() => openProductPicker(index)}
+                    backgroundColor: colors.primary + '12',
+                  }}
+                >
+                  <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 12 }}>Browse catalogue</Text>
+                </TouchableOpacity>
+              </View>
+              <Text
+                style={{ color: item.product ? colors.success : colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 4, marginBottom: 8 }}
+                numberOfLines={1}
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: item.productName ? colors.text : colors.textMuted, fontWeight: '600' }} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
-                    {item.productName || 'Select product'}
-                  </Text>
-                  {item.variantLabel ? (
-                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 3 }} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
-                      Variant: {item.variantLabel}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={{ color: colors.textMuted, fontWeight: '700', marginLeft: 10 }}>›</Text>
-              </TouchableOpacity>
-
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Description</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.text,
-                    borderRadius: radius.md,
-                  },
-                ]}
-                value={item.description}
-                onChangeText={(text) => updateItem(index, 'description', text)}
-                placeholder="Item description (optional)"
-                placeholderTextColor={colors.textMuted}
-              />
+                {item.product
+                  ? `Linked to catalogue${item.variantLabel ? ` · ${item.variantLabel}` : ''} · stock will update`
+                  : 'Not in catalogue · no stock tracking'}
+              </Text>
 
               <View style={styles.row}>
                 <View style={styles.flex1}>

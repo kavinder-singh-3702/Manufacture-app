@@ -105,7 +105,7 @@ export const InternalInventoryScreen = () => {
         setItems((prev) => (append ? [...prev, ...(listData.items || [])] : listData.items || []));
         setPagination(listData.pagination || { total: 0, limit: PAGE_SIZE, offset, hasMore: false });
       } catch (err: any) {
-        const message = err?.message || "Failed to load internal inventory";
+        const message = err?.message || "Failed to load inventory";
         setError(message);
       } finally {
         setLoading(false);
@@ -160,7 +160,7 @@ export const InternalInventoryScreen = () => {
       try {
         setAdjusting(true);
         await internalInventoryService.adjustItem(adjustSheet.item._id, payload);
-        toastSuccess("Stock updated", "Internal inventory is updated.");
+        toastSuccess("Stock updated", "Inventory is updated.");
         closeAdjust();
         await fetchAll(0, false);
       } catch (err: any) {
@@ -185,7 +185,7 @@ export const InternalInventoryScreen = () => {
   const handleChooseCompany = useCallback(() => {
     navigation.navigate("CompanyContextPicker", {
       redirectTo: { kind: "main", screen: routes.STATS },
-      source: "Internal Inventory",
+      source: "Inventory",
     });
   }, [navigation]);
 
@@ -195,7 +195,7 @@ export const InternalInventoryScreen = () => {
         <View style={{ flex: 1, padding: spacing.lg, justifyContent: "center" }}>
           <CompanyRequiredCard
             title="Login to continue"
-            description="Sign in to manage your internal stock and inventory analytics."
+            description="Sign in to manage your stock and inventory analytics."
             primaryLabel="Login"
             onPrimaryPress={requestLogin}
           />
@@ -209,7 +209,7 @@ export const InternalInventoryScreen = () => {
       <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ flex: 1, padding: spacing.lg, justifyContent: "center" }}>
           <CompanyRequiredCard
-            description="Internal inventory is maintained per company. Choose an active company to continue."
+            description="Inventory is maintained per company. Choose an active company to continue."
             onPrimaryPress={handleChooseCompany}
             onSecondaryPress={() => navigation.navigate("CompanyCreate", { redirectTo: { kind: "main", screen: routes.STATS } })}
           />
@@ -221,8 +221,8 @@ export const InternalInventoryScreen = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={[styles.header, { paddingHorizontal: spacing.lg, paddingTop: spacing.md }]}> 
-        <Text style={[styles.title, { color: colors.text }]}>Internal Inventory</Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Track stock for analytics and operations.</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Inventory</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Stock items you track here. Listed products are managed under Products.</Text>
       </View>
 
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md }}>
@@ -231,7 +231,7 @@ export const InternalInventoryScreen = () => {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search internal items"
+            placeholder="Search items"
             placeholderTextColor={colors.textTertiary}
             style={[styles.searchInput, { color: colors.text }]}
             autoCapitalize="none"
@@ -299,7 +299,7 @@ export const InternalInventoryScreen = () => {
       {loading && !items.length ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading internal inventory...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading inventory...</Text>
         </View>
       ) : (
         <FlatList
@@ -419,14 +419,14 @@ export const InternalInventoryScreen = () => {
           ListEmptyComponent={
             <View style={[styles.emptyState, { paddingHorizontal: spacing.lg, paddingTop: spacing.xl }]}> 
               <Ionicons name="cube-outline" size={52} color={colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No internal items yet</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Add stock items for internal analytics and planning.</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No items yet</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>Add stock items for analytics and planning.</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate("InternalInventoryItemCreate")}
                 style={[styles.emptyPrimary, { borderRadius: radius.lg, backgroundColor: colors.primary }]}
               >
                 <Ionicons name="add" size={18} color={colors.textOnPrimary} />
-                <Text style={[styles.emptyPrimaryText, { color: colors.textOnPrimary }]}>Add Internal Item</Text>
+                <Text style={[styles.emptyPrimaryText, { color: colors.textOnPrimary }]}>Add Item</Text>
               </TouchableOpacity>
             </View>
           }

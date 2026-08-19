@@ -85,10 +85,10 @@ const GuardedAddProductScreen = withCompanyContextGuard(AddProductScreen, { sour
 const GuardedEditProductScreen = withCompanyContextGuard(EditProductScreen, { sourceLabel: "Edit Product" });
 const GuardedProductVariantsScreen = withCompanyContextGuard(ProductVariantsScreen, { sourceLabel: "Product Variants" });
 const GuardedInternalInventoryItemCreateScreen = withCompanyContextGuard(InternalInventoryItemFormScreen, {
-  sourceLabel: "Internal Inventory Item",
+  sourceLabel: "Inventory Item",
 });
 const GuardedInternalInventoryItemEditScreen = withCompanyContextGuard(InternalInventoryItemFormScreen, {
-  sourceLabel: "Internal Inventory Item",
+  sourceLabel: "Inventory Item",
 });
 const GuardedSalesInvoiceScreen = withCompanyContextGuard(SalesInvoiceScreen, { sourceLabel: "Sales Invoice" });
 const GuardedPurchaseBillScreen = withCompanyContextGuard(PurchaseBillScreen, { sourceLabel: "Purchase Bill" });
@@ -157,6 +157,11 @@ export const AppNavigator = () => {
 
   return (
     <AppQueryClientProvider>
+    {/* Never key/remount this container: AppShell registers a "state"
+        listener on rootNavigationRef after mount, and a remounted container
+        gets a fresh emitter — the listener would be silently dropped and the
+        keyboard-exemption toggle would freeze. Remount keys belong on
+        RootStack.Navigator (where authSection already is), not here. */}
     <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <RootStack.Navigator key={authSection} screenOptions={{ headerShown: false, animation: "fade" }}>
         {!user ? (

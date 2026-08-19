@@ -14,9 +14,24 @@ const LineTaxSchema = new Schema(
 
 const VoucherItemLineSchema = new Schema(
   {
-    product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    // Optional: a bill line may be for something that was never listed in the
+    // catalogue (a one-off service, freight, an unlisted material). Lines with
+    // no product simply produce no stock move — buildStockMovesFromItems
+    // already filters those out — so nothing downstream needs a placeholder.
+    product: { type: Schema.Types.ObjectId, ref: 'Product' },
     variant: { type: Schema.Types.ObjectId, ref: 'ProductVariant' },
-    description: { type: String, trim: true, maxlength: 300 },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      // A line has to be identifiable by something.
+      required: [
+        function () {
+          return !this.product;
+        },
+        'Enter an item name for lines without a catalogue product'
+      ]
+    },
     quantity: { type: Number, required: true, min: 0.000001 },
     unit: Schema.Types.Mixed,
     rate: { type: Number, min: 0, default: 0 },

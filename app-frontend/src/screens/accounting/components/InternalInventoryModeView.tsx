@@ -40,7 +40,7 @@ export const InternalInventoryModeView = ({ enabled, onAddItem, onOpenInventory 
       setDashboard(dashboardResult);
       setLowStockItems(lowStockList.items || []);
     } catch (err: any) {
-      setError(err?.message || "Failed to load internal inventory insights.");
+      setError(err?.message || "Failed to load inventory insights.");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export const InternalInventoryModeView = ({ enabled, onAddItem, onOpenInventory 
         setAdjusting(true);
         await internalInventoryService.adjustItem(adjustSheet.item._id, payload);
         setAdjustSheet({ open: false, item: null });
-        toastSuccess("Stock updated", "Internal stock updated successfully.");
+        toastSuccess("Stock updated", "Stock updated successfully.");
         await fetchData();
       } catch (err: any) {
         toastError("Update failed", err?.message || "Unable to update stock right now.");
@@ -93,7 +93,7 @@ export const InternalInventoryModeView = ({ enabled, onAddItem, onOpenInventory 
     return (
       <View style={[styles.centered, { paddingVertical: spacing.xl }]}> 
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.centeredText, { color: colors.textMuted }]}>Loading internal stock...</Text>
+        <Text style={[styles.centeredText, { color: colors.textMuted }]}>Loading inventory...</Text>
       </View>
     );
   }
@@ -112,7 +112,7 @@ export const InternalInventoryModeView = ({ enabled, onAddItem, onOpenInventory 
             },
           ]}
         >
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Internal Stock Overview</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Inventory Overview</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Private inventory for analytics, planning, and operations.</Text>
 
           <View style={[styles.metricsGrid, { marginTop: spacing.md }]}> 
@@ -129,7 +129,7 @@ export const InternalInventoryModeView = ({ enabled, onAddItem, onOpenInventory 
               activeOpacity={0.85}
             >
               <Ionicons name="add" size={16} color={colors.textOnPrimary} />
-              <Text style={[styles.actionText, { color: colors.textOnPrimary }]}>Add Internal Item</Text>
+              <Text style={[styles.actionText, { color: colors.textOnPrimary }]}>Add Item</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onOpenInventory}

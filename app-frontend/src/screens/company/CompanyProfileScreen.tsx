@@ -87,7 +87,7 @@ export const CompanyProfileScreen = () => {
   const route = useRoute<CompanyProfileRoute>();
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<CompanyProfileTab>("overview");
+  const [activeTab, setActiveTab] = useState<CompanyProfileTab>(route.params?.initialTab ?? "overview");
   const [productsTotal, setProductsTotal] = useState(0);
 
   const [company, setCompany] = useState<Company | null>(null);

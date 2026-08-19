@@ -2,9 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -13,6 +11,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Reanimated, { useAnimatedStyle } from "react-native-reanimated";
+import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,19 @@ export const AdminConversationViewerScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<AdminConversationViewerRoute>();
   const insets = useSafeAreaInsets();
+  // Same keyboard contract as ChatScreen: this route is exempted from the
+  // global KeyboardAvoidingView in AppContainer (see
+  // KEYBOARD_SELF_HANDLED_ROUTES) and owns its avoidance on BOTH platforms.
+  // The old RN-core KAV here was ios-padding / android-undefined — a no-op on
+  // Android, where the composer sat under the keyboard.
+  const keyboardHeight = useKeyboardHeight();
+  // The composer carries composerBasePadding itself, so the container only
+  // adds what is missing to clear the keyboard exactly — total bottom space
+  // is composerBasePadding when closed and exactly keyboardHeight when open.
+  const composerBasePadding = Math.max(insets.bottom, spacing.sm);
+  const keyboardPadding = useAnimatedStyle(() => ({
+    paddingBottom: Math.max(0, keyboardHeight.value - composerBasePadding),
+  }));
 
   const { id, siblingIds } = route.params;
   // Bundle id + siblings into one array so the markRead helper hits every
@@ -293,11 +306,7 @@ export const AdminConversationViewerScreen = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-        >
+        <Reanimated.View style={[{ flex: 1 }, keyboardPadding]}>
           <FlatList
             data={[...messages, ...pendingMessages]}
             keyExtractor={(m) => m.id}
@@ -347,7 +356,7 @@ export const AdminConversationViewerScreen = () => {
                 borderTopColor: colors.border,
                 paddingHorizontal: spacing.md,
                 paddingTop: spacing.sm,
-                paddingBottom: Math.max(insets.bottom, spacing.sm),
+                paddingBottom: composerBasePadding,
               },
             ]}
           >
@@ -386,7 +395,7 @@ export const AdminConversationViewerScreen = () => {
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </Reanimated.View>
       )}
     </View>
   );

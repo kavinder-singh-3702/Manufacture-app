@@ -23,7 +23,6 @@ import type { RootStackParamList } from "../../navigation/types";
 import { routes } from "../../navigation/routes";
 import { DateRangePicker, type DateRange } from "../../components/accounting/DateRangePicker";
 import { AdaptiveSingleLineText } from "../../components/text/AdaptiveSingleLineText";
-import { InternalInventoryModeView } from "./components/InternalInventoryModeView";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -97,7 +96,8 @@ export const AccountingDashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [mode, setMode] = useState<"books" | "internal_stock">("books");
+  // Overview holds the KPI cards; Books holds entry, reports and snapshots.
+  const [mode, setMode] = useState<"overview" | "books">("overview");
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [recentVouchers, setRecentVouchers] = useState<Voucher[]>([]);
@@ -108,13 +108,6 @@ export const AccountingDashboardScreen = () => {
     if (isGuest || !hasCompany) {
       setDashboard(null);
       setRecentVouchers([]);
-      setError(null);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    if (mode !== "books") {
       setError(null);
       setLoading(false);
       setRefreshing(false);
@@ -158,7 +151,7 @@ export const AccountingDashboardScreen = () => {
 
   useEffect(() => {
     // If date range changes while screen is visible, refresh.
-    if (mode === "books" && !loading && !isGuest && hasCompany) {
+    if (!loading && !isGuest && hasCompany) {
       setLoading(true);
       fetchAll();
     }
@@ -243,7 +236,7 @@ export const AccountingDashboardScreen = () => {
         contentContainerStyle={{ padding: contentPadding, paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          mode === "books" ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} /> : undefined
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         {/* Header */}
@@ -252,7 +245,7 @@ export const AccountingDashboardScreen = () => {
             Accounting
           </AdaptiveSingleLineText>
           <AdaptiveSingleLineText style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {mode === "books" ? periodLabel : "Internal stock analytics mode"}
+            {periodLabel}
           </AdaptiveSingleLineText>
         </View>
 
@@ -270,29 +263,20 @@ export const AccountingDashboardScreen = () => {
           <TouchableOpacity
             onPress={() => setMode("books")}
             activeOpacity={0.85}
-            style={[
-              styles.modeSwitchBtn,
-              mode === "books" && { backgroundColor: colors.primary, borderRadius: radius.pill },
-            ]}
+            style={[styles.modeSwitchBtn, mode === "books" && { backgroundColor: colors.primary, borderRadius: radius.pill }]}
           >
             <Text style={[styles.modeSwitchText, { color: mode === "books" ? colors.textOnPrimary : colors.text }]}>Books</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setMode("internal_stock")}
+            onPress={() => setMode("overview")}
             activeOpacity={0.85}
-            style={[
-              styles.modeSwitchBtn,
-              mode === "internal_stock" && { backgroundColor: colors.primary, borderRadius: radius.pill },
-            ]}
+            style={[styles.modeSwitchBtn, mode === "overview" && { backgroundColor: colors.primary, borderRadius: radius.pill }]}
           >
-            <Text style={[styles.modeSwitchText, { color: mode === "internal_stock" ? colors.textOnPrimary : colors.text }]}>
-              Internal Stock
-            </Text>
+            <Text style={[styles.modeSwitchText, { color: mode === "overview" ? colors.textOnPrimary : colors.text }]}>Overview</Text>
           </TouchableOpacity>
         </View>
 
-        {mode === "books" ? (
-          <>
+        <>
             {/* Error Banner */}
             {error ? (
           <View
@@ -321,6 +305,8 @@ export const AccountingDashboardScreen = () => {
               <DateRangePicker label="Period" value={dateRange} onChange={setDateRange} />
             </View>
 
+            {mode === "overview" ? (
+              <>
             {/* KPI Grid */}
             <SectionHeader title="Overview" subtitle="Key financial metrics" />
             <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
@@ -373,7 +359,11 @@ export const AccountingDashboardScreen = () => {
             cardPadding={cardPadding}
           />
             </View>
+              </>
+            ) : null}
 
+            {mode === "books" ? (
+              <>
             {/* Quick Entry */}
             <SectionHeader title="Quick Entry" subtitle="Create transactions fast" />
             <View style={[styles.grid, { marginBottom: spacing.lg, gap: gridGap }]}>
@@ -626,14 +616,9 @@ export const AccountingDashboardScreen = () => {
                 })}
               </View>
             ) : null}
-          </>
-        ) : (
-          <InternalInventoryModeView
-            enabled={mode === "internal_stock"}
-            onAddItem={() => navigation.navigate("InternalInventoryItemCreate")}
-            onOpenInventory={() => navigation.navigate("Main", { screen: routes.STATS })}
-          />
-        )}
+              </>
+            ) : null}
+        </>
       </ScrollView>
     </SafeAreaView>
   );

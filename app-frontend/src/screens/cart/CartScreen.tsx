@@ -233,9 +233,9 @@ const EmptyCart = () => {
         <View style={styles.emptyIconRing} />
       </View>
 
-      <Text style={styles.emptyTitle}>Your Shortlist is Empty</Text>
+      <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
       <Text style={[styles.emptySubtitle, isCompact ? { fontSize: fs(14), lineHeight: fs(20) } : null]}>
-        Shortlist products and contact sellers through message or call.
+        Add products to your cart and contact sellers through message or call.
       </Text>
 
       <TouchableOpacity
@@ -335,13 +335,30 @@ export const CartScreen = () => {
   type SellerContactOption = {
     sellerId: string;
     sellerName: string;
+    /** Shown in the picker. */
     product: CartItem["item"];
+    /** First product from this seller that can actually be messaged/called.
+     *  Tracked separately because a seller may have one product with chat
+     *  disabled and another without a phone — judging both from a single
+     *  representative loses whichever capability that product lacks. */
+    messageProduct?: CartItem["item"];
+    callProduct?: CartItem["item"];
     itemCount: number;
   };
 
+  // checkoutEligible items (in-house catalogue products with prepaid on) are
+  // normally excluded from seller contact because they were meant to be bought
+  // outright. IN_APP_CHECKOUT_ENABLED is off, so that payment path does not
+  // exist — without this they sit in the cart offering neither payment nor a
+  // way to reach the seller.
+  const contactableItems = useMemo(
+    () => (IN_APP_CHECKOUT_ENABLED ? shortlistItems : items),
+    [items, shortlistItems]
+  );
+
   const sellerOptions = useMemo<SellerContactOption[]>(() => {
     const groups = new Map<string, SellerContactOption>();
-    shortlistItems.forEach((cartItem) => {
+    contactableItems.forEach((cartItem) => {
       const product = cartItem.item;
       const sellerId = product.createdBy ? String(product.createdBy) : product.company?._id ? String(product.company._id) : null;
       if (!sellerId) return;
@@ -350,6 +367,8 @@ export const CartScreen = () => {
           sellerId,
           sellerName: product.company?.displayName || "Seller",
           product,
+          messageProduct: canMessageProduct(product, user?.id) ? product : undefined,
+          callProduct: canCallProduct(product, user?.id) ? product : undefined,
           itemCount: cartItem.quantity,
         });
         return;
@@ -357,22 +376,31 @@ export const CartScreen = () => {
       const existing = groups.get(sellerId);
       if (existing) {
         existing.itemCount += cartItem.quantity;
+        // Previously eligibility was judged on whichever product happened to be
+        // added first, so a single item with chat disabled — or a seller record
+        // with no phone — silently muted every other product from that seller.
+        if (!existing.messageProduct && canMessageProduct(product, user?.id)) {
+          existing.messageProduct = product;
+        }
+        if (!existing.callProduct && canCallProduct(product, user?.id)) {
+          existing.callProduct = product;
+        }
       }
     });
 
     return Array.from(groups.values()).sort((a, b) => a.sellerName.localeCompare(b.sellerName));
-  }, [shortlistItems]);
+  }, [contactableItems, user?.id]);
 
   // canMessageProduct/canCallProduct now exclude products the current user owns
   // (would otherwise hit "cannot message yourself"). Keying on user?.id ensures
   // the filter re-runs if auth state changes.
   const messageOptions = useMemo(
-    () => sellerOptions.filter((option) => canMessageProduct(option.product, user?.id)),
-    [sellerOptions, user?.id]
+    () => sellerOptions.filter((option) => Boolean(option.messageProduct)),
+    [sellerOptions]
   );
   const callOptions = useMemo(
-    () => sellerOptions.filter((option) => canCallProduct(option.product, user?.id)),
-    [sellerOptions, user?.id]
+    () => sellerOptions.filter((option) => Boolean(option.callProduct)),
+    [sellerOptions]
   );
 
   const activeOptions = contactMode === "message" ? messageOptions : callOptions;
@@ -381,7 +409,7 @@ export const CartScreen = () => {
     async (mode: "message" | "call", option: SellerContactOption) => {
       if (mode === "message") {
         await startProductConversation({
-          product: option.product,
+          product: option.messageProduct || option.product,
           isGuest: user?.role === "guest",
           currentUserId: user?.id,
           requestLogin,
@@ -391,7 +419,7 @@ export const CartScreen = () => {
         return;
       }
       await callProductSeller({
-        product: option.product,
+        product: option.callProduct || option.product,
         toastError,
       });
     },
@@ -425,21 +453,21 @@ export const CartScreen = () => {
   );
 
   const contactHelperText = useMemo(() => {
-    if (eligibleItems.length && !shortlistItems.length) {
+    if (IN_APP_CHECKOUT_ENABLED && eligibleItems.length && !shortlistItems.length) {
       return "These products support prepaid checkout, so you can complete the order directly.";
     }
-    if (eligibleItems.length && shortlistItems.length) {
-      return `${shortlistItemCount} shortlisted item${shortlistItemCount === 1 ? "" : "s"} still need seller confirmation.`;
+    if (IN_APP_CHECKOUT_ENABLED && eligibleItems.length && shortlistItems.length) {
+      return `${shortlistItemCount} item${shortlistItemCount === 1 ? "" : "s"} still need seller confirmation.`;
     }
     if (!messageOptions.length && !callOptions.length) {
       // Previously a dead end — no seller channel and nothing to fall back on.
-      return `No seller contact options available for shortlisted items. Call ARVANN on ${SUPPORT_PHONE_DISPLAY} and we'll help.`;
+      return `No seller contact options available for items in your cart. Call ARVANN on ${SUPPORT_PHONE_DISPLAY} and we'll help.`;
     }
     if (!messageOptions.length) {
-      return "Messaging is unavailable for current shortlisted sellers.";
+      return "Messaging is unavailable for the sellers in your cart.";
     }
     if (!callOptions.length) {
-      return "Calling is unavailable for current shortlisted sellers.";
+      return "Calling is unavailable for the sellers in your cart.";
     }
     return "Contact sellers directly to finalize pricing and order terms.";
   }, [callOptions.length, eligibleItems.length, messageOptions.length, shortlistItemCount, shortlistItems.length]);
@@ -466,7 +494,7 @@ export const CartScreen = () => {
       description:
         eligibleItems.length === 1
           ? `Payment for ${eligibleItems[0].item.name}`
-          : `Payment for ${eligibleItems.length} shortlisted products`,
+          : `Payment for ${eligibleItems.length} products in your cart`,
       productName:
         eligibleItems.length === 1 ? eligibleItems[0].item.name : `${eligibleItems.length} products`,
     });
@@ -517,7 +545,7 @@ export const CartScreen = () => {
         <View style={styles.headerCenter}>
           <View style={styles.headerTitleRow}>
             <Text style={[styles.headerTitle, isCompact ? { fontSize: fs(20) } : null]} numberOfLines={1} ellipsizeMode="clip" adjustsFontSizeToFit minimumFontScale={0.72}>
-              My Shortlist
+              My Cart
             </Text>
             {refreshing && (
               <ActivityIndicator size="small" color={COLORS.accent} style={{ marginLeft: 8 }} />
@@ -569,13 +597,13 @@ export const CartScreen = () => {
           >
             {/* Summary Header */}
             <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>Shortlist Summary</Text>
+              <Text style={styles.summaryTitle}>Cart Summary</Text>
               <View style={styles.summaryBadge}>
                 <Text style={styles.summaryBadgeText}>{totalItems} items</Text>
               </View>
             </View>
 
-            {/* Shortlist details */}
+            {/* Cart details */}
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Estimated value</Text>
@@ -679,7 +707,7 @@ export const CartScreen = () => {
                 >
                   <Text style={styles.pickerOptionName}>{option.sellerName}</Text>
                   <Text style={styles.pickerOptionMeta}>
-                    {option.itemCount} shortlisted item{option.itemCount === 1 ? "" : "s"}
+                    {option.itemCount} item{option.itemCount === 1 ? "" : "s"} in cart
                   </Text>
                   {contactMode === "call" && option.product.company?.contact?.phone ? (
                     <Text style={styles.pickerOptionMeta}>{option.product.company.contact.phone}</Text>

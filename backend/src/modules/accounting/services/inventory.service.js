@@ -100,7 +100,38 @@ const applySnapshots = async ({ companyId, touchedProducts, touchedVariants, ses
   }
 };
 
-const applyStockMoves = async (companyId, moves, { preventNegativeStock = true, session } = {}) => {
+const buildInsufficientStockMessage = async (move, availableQty, requestedQty, session, voucherType) => {
+  let label = 'this item';
+  try {
+    if (move.variant) {
+      const variant = await ProductVariant.findById(move.variant).select('name sku').session(session).lean();
+      if (variant?.name || variant?.sku) label = variant.name || variant.sku;
+    }
+    if (label === 'this item') {
+      const product = await Product.findById(move.product).select('name').session(session).lean();
+      if (product?.name) label = product.name;
+    }
+  } catch (err) {
+    // Naming the product is a nicety; never let it mask the real error.
+    console.warn('[Inventory] Could not resolve product name for stock error:', err?.message || err);
+  }
+
+  const shortfall = `Not enough stock for "${label}" — you have ${availableQty}, this entry needs ${requestedQty}.`;
+
+  // The user is already on the stock screen when adjusting; pointing them back
+  // to it would be circular. Only outward-facing vouchers get the directions.
+  if (voucherType === 'stock_adjustment') {
+    return `${shortfall} You cannot reduce stock below zero.`;
+  }
+
+  return (
+    `${shortfall} ` +
+    'Add stock in Profile > Open Company > Products > Adjust Stock. ' +
+    'Items under Inventory are a separate register and do not count towards invoices.'
+  );
+};
+
+const applyStockMoves = async (companyId, moves, { preventNegativeStock = true, voucherType = null, session } = {}) => {
   const safeMoves = ensureArray(moves).map(normalizeMove).filter((move) => move.product && move.quantityBase > 0);
   const processedMoves = [];
   const touchedProducts = new Set();
@@ -124,7 +155,11 @@ const applyStockMoves = async (companyId, moves, { preventNegativeStock = true, 
       move.costValue = 0;
     } else {
       if (preventNegativeStock && previousQty < quantity) {
-        throw createError(409, 'Insufficient stock for one or more items');
+        // Name the product and say where to fix it. The old message ("for one
+        // or more items") gave the user nothing to act on, and the fix lives in
+        // a different part of the app than most people look — Internal
+        // Inventory is a separate ledger that never feeds these balances.
+        throw createError(409, await buildInsufficientStockMessage(move, previousQty, quantity, session, voucherType));
       }
 
       const costRate = previousQty > 0 ? roundMoney(previousValue / previousQty) : roundMoney(balance.avgCost);

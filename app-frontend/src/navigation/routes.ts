@@ -91,7 +91,9 @@ export const TAB_CONFIG: RouteConfig[] = [
     icon: "📒",
     activeIcon: "pie-chart",
     inactiveIcon: "pie-chart-outline",
-    topBarMode: "two_row",
+    // Accounting has its own period filter and tabs; the global product
+    // search bar is noise here, so use the single-row bar.
+    topBarMode: "compact",
     gradientKey: "canvasSubtle",
     roles: ["user", "guest"],
   },

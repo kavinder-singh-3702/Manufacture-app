@@ -99,6 +99,10 @@ export const ProductDetailsScreen = () => {
   const [inquirySheetOpen, setInquirySheetOpen] = useState(false);
   const [inquirySubmitting, setInquirySubmitting] = useState(false);
   const [adjustStockOpen, setAdjustStockOpen] = useState(false);
+  // The absolute bottom bar's height varies wildly by role — one row for a
+  // buyer, four stacked rows for the owner. A fixed scroll padding of 130 left
+  // the owner's last ~130px of content permanently hidden under the bar.
+  const [bottomBarHeight, setBottomBarHeight] = useState(130);
   const [reportSheetOpen, setReportSheetOpen] = useState(false);
 
   const isGuest = user?.role === "guest";
@@ -440,11 +444,14 @@ export const ProductDetailsScreen = () => {
       ) : product ? (
         <>
           <ScrollView
+            // Without flex the scroller sizes to its content and the part that
+            // overflows the screen is clipped instead of scrollable.
+            style={{ flex: 1 }}
             contentContainerStyle={{
               paddingHorizontal: horizontalPadding,
               paddingTop: spacing.lg,
               gap: spacing.md,
-              paddingBottom: 130,
+              paddingBottom: bottomBarHeight + spacing.md,
             }}
             showsVerticalScrollIndicator={false}
           >
@@ -693,6 +700,7 @@ export const ProductDetailsScreen = () => {
           </ScrollView>
 
           <View
+            onLayout={(e) => setBottomBarHeight(Math.ceil(e.nativeEvent.layout.height))}
             style={[
               styles.bottomBar,
               {

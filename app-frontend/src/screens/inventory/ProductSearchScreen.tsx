@@ -274,9 +274,6 @@ export const ProductSearchScreen = () => {
               },
             })
           }
-          showPrimaryAction
-          primaryActionLabel="Add to cart"
-          onPrimaryActionPress={(product) => handleAddToCart(product)}
           currentUserId={user?.id}
           onBoostPress={(product) => startProductBoost(navigation, product)}
         />
@@ -459,16 +456,6 @@ export const ProductSearchScreen = () => {
                         <Text style={[styles.hCardMeta, { color: colors.textMuted }]}>{metaLabel}</Text>
                         <Text style={[styles.hCardPrice, { color: colors.primary }]}>{priceLabel}</Text>
                       </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.hAddButton,
-                          { borderColor: colors.primary, borderRadius: radius.sm, backgroundColor: colors.surface },
-                        ]}
-                        onPress={() => handleAddToCart(item)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.hAddText, { color: colors.primary }]}>ADD</Text>
-                      </TouchableOpacity>
                     </TouchableOpacity>
                   );
                 })}

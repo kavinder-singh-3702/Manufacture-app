@@ -200,10 +200,10 @@ export const InternalInventoryItemFormScreen = () => {
       setLoading(true);
       if (isEdit && itemId) {
         await internalInventoryService.updateItem(itemId, payload);
-        toastSuccess("Item updated", form.name || "Internal item saved");
+        toastSuccess("Item updated", form.name || "Item saved");
       } else {
         await internalInventoryService.createItem(payload as any);
-        toastSuccess("Item added", form.name || "Internal item created");
+        toastSuccess("Item added", form.name || "Item created");
       }
       navigation.goBack();
     } catch (err: any) {
@@ -216,7 +216,7 @@ export const InternalInventoryItemFormScreen = () => {
   const handleDelete = () => {
     if (!itemId) return;
 
-    Alert.alert("Delete item", "Remove this internal inventory item?", [
+    Alert.alert("Delete item", "Remove this inventory item?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -225,7 +225,7 @@ export const InternalInventoryItemFormScreen = () => {
           try {
             setLoading(true);
             await internalInventoryService.deleteItem(itemId);
-            toastSuccess("Item deleted", "Internal item removed.");
+            toastSuccess("Item deleted", "Item removed.");
             navigation.goBack();
           } catch (err: any) {
             toastError("Delete failed", err?.message || "Could not delete item.");
@@ -262,7 +262,7 @@ export const InternalInventoryItemFormScreen = () => {
           >
             <Text style={[styles.backText, { color: colors.primary }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{isEdit ? "Edit Internal Item" : "Add Internal Item"}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{isEdit ? "Edit Item" : "Add Item"}</Text>
           {isEdit ? (
             <TouchableOpacity onPress={handleDelete}>
               <Text style={[styles.deleteText, { color: colors.error }]}>Delete</Text>
@@ -291,13 +291,13 @@ export const InternalInventoryItemFormScreen = () => {
               },
             ]}
           >
-            <Text style={[styles.infoTitle, { color: colors.text }]}>Internal item only</Text>
-            <Text style={[styles.infoText, { color: colors.textMuted }]}>This stock is for internal analytics and does not list publicly in marketplace.</Text>
+            <Text style={[styles.infoTitle, { color: colors.text }]}>Not listed publicly</Text>
+            <Text style={[styles.infoText, { color: colors.textMuted }]}>This stock is for your own tracking and does not list publicly in the marketplace.</Text>
           </View>
 
           {!isEdit ? (
             <TouchableOpacity
-              onPress={openPicker}
+              onPress={() => navigation.navigate("CompanyProfile", { initialTab: "products" })}
               activeOpacity={0.85}
               style={[
                 styles.pickerButton,
@@ -311,8 +311,8 @@ export const InternalInventoryItemFormScreen = () => {
             >
               <Ionicons name="cube-outline" size={18} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.pickerButtonTitle, { color: colors.primary }]}>Pick from catalog products</Text>
-                <Text style={[styles.pickerButtonSubtitle, { color: colors.textMuted }]}>Auto-fill name, SKU, category, unit</Text>
+                <Text style={[styles.pickerButtonTitle, { color: colors.primary }]}>Manage stock for my Listed products</Text>
+                <Text style={[styles.pickerButtonSubtitle, { color: colors.textMuted }]}>Adjust stock for products you already list</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.primary} />
             </TouchableOpacity>
@@ -323,7 +323,7 @@ export const InternalInventoryItemFormScreen = () => {
             required
             value={form.name}
             onChangeText={(v) => updateField("name", v)}
-            placeholder="Enter internal stock item"
+            placeholder="Enter non listed products"
             errorText={errors.name}
           />
 
@@ -392,7 +392,7 @@ export const InternalInventoryItemFormScreen = () => {
 
         </ScrollView>
         <View style={[styles.footer, { paddingHorizontal: spacing.lg, borderTopColor: colors.border }]}>
-          <Button label={isEdit ? "Save changes" : "Create internal item"} onPress={handleSave} loading={loading} />
+          <Button label={isEdit ? "Save changes" : "Create item"} onPress={handleSave} loading={loading} />
         </View>
       </KeyboardAvoidingView>
 

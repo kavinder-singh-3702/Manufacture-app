@@ -44,7 +44,7 @@ export type RootStackParamList = {
   DeleteAccount: undefined;
   PrivacyPolicy: undefined;
   Cart: undefined;
-  CompanyProfile: { companyId?: string } | undefined;
+  CompanyProfile: { companyId?: string; initialTab?: "overview" | "products" | "compliance" } | undefined;
   CompanyCreate: { redirectTo?: CompanyContextRedirectTarget } | undefined;
   CompanyContextPicker: { redirectTo?: CompanyContextRedirectTarget; source?: string } | undefined;
   CompanyVerification: { companyId: string };
