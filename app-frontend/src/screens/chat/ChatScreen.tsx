@@ -855,7 +855,9 @@ const styles = StyleSheet.create({
   attachLabel: { fontSize: 12, fontWeight: "600" },
 
   loadingEarlier: { paddingVertical: 16, alignItems: "center" },
-  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60, transform: [{ scaleY: -1 }] },
+  // No scaleY counter-flip here: VirtualizedList already un-inverts the
+  // ListEmptyComponent cell on inverted lists, so a manual flip re-mirrors it.
+  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60 },
   emptyText: { fontSize: 16, fontWeight: "600", marginTop: 12 },
   emptySubtext: { fontSize: 13, marginTop: 4 },
 });
