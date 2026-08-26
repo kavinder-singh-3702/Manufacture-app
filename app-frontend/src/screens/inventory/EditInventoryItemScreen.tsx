@@ -20,6 +20,7 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
+import { NumericInputField } from "../../components/common/NumericInput";
 import { Button } from "../../components/common/Button";
 import { productService, CreateProductInput, Product, ProductCategory } from "../../services/product.service";
 import { productVariantService } from "../../services/productVariant.service";
@@ -589,15 +590,11 @@ export const EditProductScreen = ({ mode = "company" }: EditProductScreenProps) 
 
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <InputField
+              <NumericInputField
                 label="Price Amount"
                 placeholder="0.00"
-                value={formData.price.amount === 0 ? "" : formData.price.amount.toString()}
-                onChangeText={(text) => {
-                  const cleaned = text.replace(/[^0-9.]/g, "");
-                  updatePriceField("amount", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
-                }}
-                keyboardType="decimal-pad"
+                value={formData.price.amount}
+                onChangeNumber={(n) => updatePriceField("amount", n ?? 0)}
                 errorText={errors.price}
               />
             </View>

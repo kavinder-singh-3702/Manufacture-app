@@ -205,32 +205,28 @@ export const QuickAdjustStockSheet = ({
               {/* Quantity input */}
               <View style={{ marginTop: spacing.md }}>
                 <Text style={[styles.fieldLabel, { color: colors.subtextOnLightSurface }]}>Quantity</Text>
+                {/* Plain number field. The typed amount previews with its sign
+                    and tone — green "+10" when adding, red "−10" when removing —
+                    so the direction of the adjustment is never ambiguous. */}
                 <View style={[styles.qtyRow, { borderRadius: radius.lg, borderColor: colors.border, backgroundColor: colors.surface }]}>
-                  <TouchableOpacity
-                    onPress={() => bump(-1)}
-                    disabled={disabled}
-                    activeOpacity={0.85}
-                    style={styles.qtyButton}
-                  >
-                    <Ionicons name="remove" size={20} color={colors.subtextOnLightSurface} />
-                  </TouchableOpacity>
+                  {qty > 0 ? (
+                    <Text style={[styles.qtySign, { color: mode === "add" ? colors.success : colors.error }]}>
+                      {mode === "add" ? "+" : "\u2212"}
+                    </Text>
+                  ) : null}
                   <TextInput
                     value={qtyText}
                     onChangeText={(t) => setQtyText(t.replace(/[^0-9]/g, ""))}
                     keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={colors.subtextOnLightSurface}
-                    style={[styles.qtyInput, { color: colors.textOnLightSurface }]}
+                    placeholder="Enter quantity"
+                    placeholderTextColor={colors.textDisabled}
+                    style={[
+                      styles.qtyInput,
+                      qty > 0 ? { minWidth: 64 } : { flex: 1 },
+                      { color: qty > 0 ? (mode === "add" ? colors.success : colors.error) : colors.textOnLightSurface },
+                    ]}
                     editable={!disabled}
                   />
-                  <TouchableOpacity
-                    onPress={() => bump(1)}
-                    disabled={disabled}
-                    activeOpacity={0.85}
-                    style={styles.qtyButton}
-                  >
-                    <Ionicons name="add" size={20} color={colors.subtextOnLightSurface} />
-                  </TouchableOpacity>
                 </View>
 
                 <View style={styles.stepperRow}>
@@ -242,7 +238,9 @@ export const QuickAdjustStockSheet = ({
                       disabled={disabled}
                       style={[styles.stepPill, { backgroundColor: colors.surfaceElevated, borderColor: colors.border, borderRadius: radius.pill }]}
                     >
-                      <Text style={[styles.stepPillText, { color: colors.textOnLightSurface }]}>+{n}</Text>
+                      <Text style={[styles.stepPillText, { color: colors.textOnLightSurface }]}>
+                        {mode === "add" ? "+" : "\u2212"}{n}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -306,9 +304,9 @@ const styles = StyleSheet.create({
   modeOption: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderWidth: 1 },
   modeText: { fontSize: 12, fontWeight: "900" },
   fieldLabel: { fontSize: 12, fontWeight: "800", marginBottom: 8 },
-  qtyRow: { flexDirection: "row", alignItems: "center", borderWidth: 1 },
-  qtyButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center" },
-  qtyInput: { flex: 1, fontSize: 18, fontWeight: "900", textAlign: "center", paddingVertical: 14 },
+  qtyRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 1, minHeight: 52, paddingHorizontal: 12 },
+  qtySign: { fontSize: 22, fontWeight: "900", marginRight: 2 },
+  qtyInput: { fontSize: 18, fontWeight: "900", textAlign: "center", paddingVertical: 14 },
   stepperRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   stepPill: { paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1 },
   stepPillText: { fontSize: 12, fontWeight: "900" },

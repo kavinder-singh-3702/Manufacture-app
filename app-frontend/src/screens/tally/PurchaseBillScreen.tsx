@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 import { tallyService, VoucherItemLine } from '../../services/tally.service';
 import { productService, type Product } from '../../services/product.service';
+import { NumericTextInput } from '../../components/common/NumericInput';
 import { VariantChoiceSelection, VariantChoiceSheet } from '../inventory/components/VariantChoiceSheet';
 import { hasVariants, variantDisplayLabel } from '../inventory/components/variantDomain';
 
@@ -417,7 +418,7 @@ export const PurchaseBillScreen = () => {
               <View style={styles.row}>
                 <View style={styles.flex1}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>Quantity *</Text>
-                  <TextInput
+                  <NumericTextInput
                     style={[
                       styles.input,
                       {
@@ -427,9 +428,8 @@ export const PurchaseBillScreen = () => {
                         borderRadius: radius.md,
                       },
                     ]}
-                    value={String(item.quantity)}
-                    onChangeText={(text) => updateItem(index, 'quantity', parseFloat(text) || 0)}
-                    keyboardType="numeric"
+                    value={item.quantity}
+                    onChangeNumber={(n) => updateItem(index, 'quantity', n ?? 0)}
                     placeholder="0"
                     placeholderTextColor={colors.textMuted}
                   />
@@ -437,7 +437,7 @@ export const PurchaseBillScreen = () => {
 
                 <View style={styles.flex1}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>Rate *</Text>
-                  <TextInput
+                  <NumericTextInput
                     style={[
                       styles.input,
                       {
@@ -447,9 +447,8 @@ export const PurchaseBillScreen = () => {
                         borderRadius: radius.md,
                       },
                     ]}
-                    value={String(item.rate)}
-                    onChangeText={(text) => updateItem(index, 'rate', parseFloat(text) || 0)}
-                    keyboardType="numeric"
+                    value={item.rate}
+                    onChangeNumber={(n) => updateItem(index, 'rate', n ?? 0)}
                     placeholder="0.00"
                     placeholderTextColor={colors.textMuted}
                   />

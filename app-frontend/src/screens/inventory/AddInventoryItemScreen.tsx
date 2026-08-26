@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../../hooks/useTheme";
 import { InputField } from "../../components/common/InputField";
+import { NumericInputField } from "../../components/common/NumericInput";
 import { Button } from "../../components/common/Button";
 import { productService, CreateProductInput, ProductCategory, Product } from "../../services/product.service";
 import { ProductVariant, ProductVariantUpsertInput, productVariantService } from "../../services/productVariant.service";
@@ -710,15 +711,11 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
 
       <View style={styles.row}>
         <View style={{ flex: 1, marginRight: spacing.sm }}>
-          <InputField
+          <NumericInputField
             label="Price Amount"
             placeholder="0.00"
-            value={formData.price.amount === 0 ? "" : formData.price.amount.toString()}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/[^0-9.]/g, "");
-              updatePriceField("amount", cleaned === "" ? 0 : parseFloat(cleaned) || 0);
-            }}
-            keyboardType="decimal-pad"
+            value={formData.price.amount}
+            onChangeNumber={(n) => updatePriceField("amount", n ?? 0)}
             errorText={errors.price}
             required
           />
@@ -796,19 +793,12 @@ export const AddProductScreen = ({ mode = "company" }: AddProductScreenProps) =>
           is immediately sellable via a Sales Invoice. */}
       {variantDrafts.length === 0 ? (
         <View style={{ marginTop: spacing.md }}>
-          <InputField
+          <NumericInputField
             label="Opening Stock (optional)"
             placeholder="e.g. 100"
-            value={
-              formData.openingStock === undefined || formData.openingStock === 0
-                ? ""
-                : String(formData.openingStock)
-            }
-            onChangeText={(text) => {
-              const cleaned = text.replace(/[^0-9.]/g, "");
-              updateField("openingStock", cleaned === "" ? undefined : parseFloat(cleaned) || 0);
-            }}
-            keyboardType="decimal-pad"
+            value={formData.openingStock}
+            emptyValue={undefined}
+            onChangeNumber={(n) => updateField("openingStock", n)}
           />
           <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 6, lineHeight: 16 }}>
             Sets initial stock so this product can be sold immediately (e.g. via a Sales Invoice).
