@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Modal,
   View,
   TouchableWithoutFeedback,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,13 +40,39 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
   const modeLabel = isDark ? "Dark mode" : "Light mode";
   const modeIcon = isDark ? "moon" : "sunny";
 
+  // The hamburger sits top-left, so the drawer must come from the left.
+  // Modal's built-in "slide" animates up from the bottom regardless of layout,
+  // so the slide is driven by hand: the panel starts fully off the left edge
+  // (plus its shadow) and the backdrop fades in alongside it. `rendered` keeps
+  // the Modal mounted long enough to play the exit before unmounting.
+  const { width: windowWidth } = useWindowDimensions();
+  const panelWidth = Math.min(windowWidth * 0.8, 340);
+  const hiddenX = -(panelWidth + 24);
+  const progress = useRef(new Animated.Value(0)).current;
+  const [rendered, setRendered] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setRendered(true);
+      Animated.timing(progress, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+      return;
+    }
+    Animated.timing(progress, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setRendered(false);
+    });
+  }, [progress, visible]);
+
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [hiddenX, 0] });
+
+  if (!rendered) return null;
+
   return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+    <Modal animationType="none" transparent visible={rendered} onRequestClose={onClose}>
       <View style={styles.wrapper}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]} />
+          <Animated.View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop, opacity: progress }]} />
         </TouchableWithoutFeedback>
-        <View style={styles.panelSafeArea}>
+        <Animated.View style={[styles.panelSafeArea, { transform: [{ translateX }] }]}>
           <LinearGradient
             colors={[colors.sidebarGradientStart, colors.sidebarGradientMid, colors.sidebarGradientEnd]}
             locations={[0, 0.52, 1]}
@@ -209,7 +238,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
               })}
             </ScrollView>
           </LinearGradient>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -218,7 +247,9 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    flexDirection: "row",
+    // Backdrop is declared first for touch layering; reversing the row puts
+    // the panel on the left, under the hamburger that opened it.
+    flexDirection: "row-reverse",
   },
   backdrop: {
     flex: 1,
@@ -226,7 +257,7 @@ const styles = StyleSheet.create({
   panel: {
     flex: 1,
     shadowOpacity: 0.18,
-    shadowOffset: { width: -4, height: 0 },
+    shadowOffset: { width: 4, height: 0 },
     shadowRadius: 12,
     elevation: 15,
   },
