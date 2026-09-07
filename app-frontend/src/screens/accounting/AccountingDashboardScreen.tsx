@@ -97,7 +97,7 @@ export const AccountingDashboardScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   // Overview holds the KPI cards; Books holds entry, reports and snapshots.
-  const [mode, setMode] = useState<"overview" | "books">("overview");
+  const [mode, setMode] = useState<"overview" | "books">("books");
 
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [recentVouchers, setRecentVouchers] = useState<Voucher[]>([]);
