@@ -146,7 +146,11 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 </TouchableOpacity>
               </View>
 
-              <View
+              <TouchableOpacity
+                onPress={toggleMode}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={`Switch theme. Current ${modeLabel}`}
                 style={[
                   styles.modePill,
                   {
@@ -160,7 +164,7 @@ export const SidebarMenu = ({ visible, onClose, headerTitle, headerSubtitle, men
                 <Typography variant="caption" color={colors.textOnPrimary} style={{ fontSize: 11, fontWeight: "700" }}>
                   {modeLabel}
                 </Typography>
-              </View>
+              </TouchableOpacity>
             </LinearGradient>
 
             <ScrollView

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
@@ -64,6 +64,9 @@ export const InternalInventoryItemFormScreen = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  // Quantity as loaded from the server — the save path turns any difference
+  // into a stock-adjustment movement rather than a silent overwrite.
+  const originalQtyRef = useRef(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Catalog product picker — lets the user pre-fill the internal item
@@ -133,6 +136,7 @@ export const InternalInventoryItemFormScreen = () => {
     try {
       setFetching(true);
       const item = await internalInventoryService.getItem(itemId);
+      originalQtyRef.current = Number(item.onHandQty ?? 0);
       setForm({
         name: item.name || "",
         sku: item.sku || "",
@@ -150,9 +154,11 @@ export const InternalInventoryItemFormScreen = () => {
     }
   }, [itemId, navigation, toastError]);
 
-  useEffect(() => {
-    fetchItem();
-  }, [fetchItem]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchItem();
+    }, [fetchItem])
+  );
 
   const validate = () => {
     const next: Record<string, string> = {};
@@ -167,10 +173,8 @@ export const InternalInventoryItemFormScreen = () => {
     const avgCost = parseNumber(form.avgCost, 0);
     if (avgCost < 0) next.avgCost = "Avg cost cannot be negative";
 
-    if (!isEdit) {
-      const onHandQty = parseNumber(form.onHandQty, 0);
-      if (onHandQty < 0) next.onHandQty = "On hand quantity cannot be negative";
-    }
+    const onHandQty = parseNumber(form.onHandQty, 0);
+    if (onHandQty < 0) next.onHandQty = "On hand quantity cannot be negative";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -200,6 +204,22 @@ export const InternalInventoryItemFormScreen = () => {
       setLoading(true);
       if (isEdit && itemId) {
         await internalInventoryService.updateItem(itemId, payload);
+        const nextQty = parseNumber(form.onHandQty, originalQtyRef.current);
+        const delta = Number((nextQty - originalQtyRef.current).toFixed(3));
+        if (delta !== 0) {
+          try {
+            await internalInventoryService.adjustItem(itemId, {
+              movementType: "adjust",
+              quantity: delta,
+            });
+          } catch (adjustErr: any) {
+            toastError(
+              "Quantity not updated",
+              adjustErr?.message || "Other changes saved, but the stock adjustment failed."
+            );
+            return;
+          }
+        }
         toastSuccess("Item updated", form.name || "Item saved");
       } else {
         await internalInventoryService.createItem(payload as any);
@@ -366,9 +386,11 @@ export const InternalInventoryItemFormScreen = () => {
             <InputField
               label="On Hand Quantity"
               value={form.onHandQty}
-              editable={false}
+              onChangeText={(v) => updateField("onHandQty", v)}
               placeholder="0"
-              helperText="Use stock adjust from inventory screen to change this quantity."
+              keyboardType="decimal-pad"
+              errorText={errors.onHandQty}
+              helperText="Changing this records a stock adjustment in the item's history."
             />
           )}
 
