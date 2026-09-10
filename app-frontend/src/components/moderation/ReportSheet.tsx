@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { useModalKeyboardClearance } from "../../hooks/useModalKeyboardClearance";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
@@ -56,6 +57,7 @@ export const ReportSheet = ({
 }) => {
   const { colors, spacing, radius } = useTheme();
   const insets = useSafeAreaInsets();
+  const { sheetRef, keyboardPad } = useModalKeyboardClearance();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -103,13 +105,16 @@ export const ReportSheet = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
+            {/* Measurable native wrapper: the clearance hook needs
+                measureInWindow, which KAV's composite ref does not expose. */}
+            <View ref={sheetRef} collapsable={false}>
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : undefined}
               style={[
                 styles.sheet,
                 {
                   backgroundColor: colors.surface,
-                  paddingBottom: Math.max(insets.bottom, 12) + 8,
+                  paddingBottom: Math.max(insets.bottom, 12) + 8 + keyboardPad,
                   borderTopLeftRadius: radius.xl,
                   borderTopRightRadius: radius.xl,
                 },
@@ -214,6 +219,7 @@ export const ReportSheet = ({
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
+            </View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>

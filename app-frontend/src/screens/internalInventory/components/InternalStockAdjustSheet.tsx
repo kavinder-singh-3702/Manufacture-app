@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
+import { useModalKeyboardClearance } from "../../../hooks/useModalKeyboardClearance";
 import { useTheme } from "../../../hooks/useTheme";
 import { Button } from "../../../components/common/Button";
 import type { InternalInventoryItem, InternalStockMovementType } from "../../../services/internalInventory.service";
@@ -22,6 +23,9 @@ export const InternalStockAdjustSheet = ({ visible, item, loading = false, onClo
   const { colors, radius, spacing } = useTheme();
 
   const [movementType, setMovementType] = useState<InternalStockMovementType>("in");
+  // Android keyboard clearance — see the hook for why this pads by measured
+  // overlap rather than raw keyboard height. iOS keeps the KAV below.
+  const { sheetRef, keyboardPad } = useModalKeyboardClearance();
   const [quantityInput, setQuantityInput] = useState("");
   const [unitCostInput, setUnitCostInput] = useState("");
   const [note, setNote] = useState("");
@@ -87,6 +91,7 @@ export const InternalStockAdjustSheet = ({ visible, item, loading = false, onClo
         <View style={[styles.backdrop, { backgroundColor: colors.modalBackdrop }]}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <View
+              ref={sheetRef}
               style={[
                 styles.sheet,
                 {
@@ -96,7 +101,7 @@ export const InternalStockAdjustSheet = ({ visible, item, loading = false, onClo
                   borderTopRightRadius: radius.lg,
                   paddingHorizontal: spacing.md,
                   paddingTop: spacing.md,
-                  paddingBottom: spacing.xl,
+                  paddingBottom: spacing.xl + keyboardPad,
                 },
               ]}
             >
