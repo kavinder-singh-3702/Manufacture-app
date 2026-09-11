@@ -76,7 +76,7 @@ module.exports = ({ config }) => {
       // Play refuses duplicate versionCodes; 3 is already on the closed
       // track, and local Gradle builds do NOT auto-increment (eas.json's
       // autoIncrement only applies to EAS builds). Bump before each upload.
-      versionCode: 4,
+      versionCode: 5,
       usesCleartextTraffic: !isProd,
       softwareKeyboardLayoutMode: "adjustResize",
       adaptiveIcon: {
